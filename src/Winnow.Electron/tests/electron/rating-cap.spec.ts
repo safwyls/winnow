@@ -129,19 +129,49 @@ for (const [mode, scale] of [
             .toBe(expected)
         }
       }
-      const slider = page.getByRole('slider', {
+      const control = page.getByRole(mode === 'desktop' ? 'slider' : 'button', {
         name: mode === 'desktop' ? 'Rating cap' : 'Content age limit',
         exact: true,
       })
       const section = page.getByRole('region', { name: 'Rating cap preference', exact: true })
-      await expect(slider).toHaveValue('5')
-      await expect(slider).toHaveAttribute('min', '0')
-      await expect(slider).toHaveAttribute('max', '5')
-      await expect(slider).toHaveAttribute('step', '1')
+      const tiers = ['everyone', 'preteen', 'teen', 'mature', 'restricted18', 'adults_only']
+      const labels = ['All ages', 'Preteen', 'Teen', 'Mature', '18+', 'Adults only']
+      const expectCap = async (index: number) => {
+        if (mode === 'desktop') await expect(control).toHaveValue(String(index))
+        else await expect(control).toContainText(labels[index]!)
+      }
+      const setCap = async (index: number) => {
+        if (mode === 'desktop') await control.fill(String(index))
+        else {
+          let current = tiers.indexOf(
+            (await api<LibraryPreferences>(page, { route: 'preferences.library.get' })).maturityCap!,
+          )
+          while (current !== index) {
+            await control.press(index < current ? 'ArrowLeft' : 'ArrowRight')
+            current += index < current ? -1 : 1
+            await expectCap(current)
+            await expect(control).toBeEnabled()
+          }
+        }
+        await expectCap(index)
+        await expect(control).toBeEnabled()
+      }
+      await expectCap(5)
+      if (mode === 'desktop') {
+        await expect(control).toHaveAttribute('min', '0')
+        await expect(control).toHaveAttribute('max', '5')
+        await expect(control).toHaveAttribute('step', '1')
+      } else {
+        await setCap(0)
+        await control.press('ArrowLeft')
+        await expectCap(0)
+        await setCap(5)
+        await control.press('ArrowRight')
+        await expectCap(5)
+      }
       await expect(section.getByText(/Adults-only content is still hidden/)).toBeVisible()
-      await slider.fill('2')
-      await expect(slider).toBeEnabled()
-      await expect(slider).toHaveAttribute('aria-valuetext', 'Teen')
+      await setCap(2)
+      if (mode === 'desktop') await expect(control).toHaveAttribute('aria-valuetext', 'Teen')
       await expect(section.getByText('Hiding 1 title.', { exact: true })).toBeVisible()
       expect((await api<LibraryPreferences>(page, { route: 'preferences.library.get' })).maturityCap).toBe(
         'teen',
@@ -150,7 +180,7 @@ for (const [mode, scale] of [
         (await api<LibraryResponse>(page, { route: 'library.get' })).games.map((game) => game.title),
       ).toEqual(['Unrated fixture'])
       if (mode === 'fullscreen') {
-        await slider.focus()
+        await control.focus()
         await page.evaluate(() => {
           const pad = { pressed: [] as number[] }
           Object.assign(window, { ratingPad: pad })
@@ -173,21 +203,20 @@ for (const [mode, scale] of [
               requestAnimationFrame(() => requestAnimationFrame(() => done())),
             )
           }, pressed)
-        await expect(slider).toHaveValue('3')
-        await expect(slider).toHaveAttribute('aria-valuetext', 'Mature')
-        await expect(slider).toBeEnabled()
-        await expect(slider).toBeFocused()
+        await expectCap(3)
+        await expect(control).toBeEnabled()
+        await expect(control).toBeFocused()
         expect(
           await section
             .locator('p')
             .first()
             .evaluate((node) => parseFloat(getComputedStyle(node).fontSize)),
-        ).toBeCloseTo(20 * scale)
+        ).toBeCloseTo(22 * scale * (scale === 1 ? 1280 / 1920 : 1), 1)
       }
-      await expect(slider).toBeEnabled()
-      await slider.fill('5')
+      await expect(control).toBeEnabled()
+      await setCap(5)
       await expect(section.getByText('No titles hidden.', { exact: true })).toBeVisible()
-      await expect(slider).toBeEnabled()
+      await expect(control).toBeEnabled()
       await section.scrollIntoViewIfNeeded()
       await page.screenshot({ path: info.outputPath(`${mode}-${scale}-rating-cap.png`) })
       if (mode === 'desktop') {
@@ -202,7 +231,10 @@ for (const [mode, scale] of [
           .click()
         await expect(page.getByRole('slider', { name: 'Rating cap', exact: true })).toHaveCount(0)
       }
-      const explicit = page.getByRole('checkbox', { name: 'Show explicit content', exact: true })
+      const explicit = page.getByRole(mode === 'desktop' ? 'checkbox' : 'switch', {
+        name: mode === 'desktop' ? 'Show explicit content' : 'Explicit content',
+        exact: true,
+      })
       await expect(explicit).not.toBeChecked()
       await explicit.click()
       await expect(explicit).toBeChecked()
@@ -219,7 +251,7 @@ for (const [mode, scale] of [
       }, mode)
       await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
       await openControl()
-      await expect(slider).toHaveValue('5')
+      await expectCap(5)
       await expect(section.getByText(/Adults-only content is still hidden/)).toHaveCount(0)
       expect((await api<LibraryResponse>(page, { route: 'library.get' })).games).toHaveLength(3)
       expect(errors).toEqual([])

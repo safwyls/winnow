@@ -53,6 +53,13 @@ focus when a trigger changes sections.
   `.tmp/fullscreen-settings-focus-final/results.json`. Programmatic entry now has the
   same visible underline as controller input. The assertion waits for the ordinary color
   transition to finish rather than comparing two intermediate colors.
+- The complete 244-case native run on `88506ebe` passes 239 cases and fails five,
+  without skips or flaky results, in 24.3 minutes. Two long-hero cases encounter two
+  Theme Studio buttons after the new Appearance action was added. Two Epic cases and
+  one Platforms/manual case still assume Settings initially opens on Platforms.
+  Their workflow assertions are not reached. The original report is retained at
+  `.tmp/fullscreen-settings-complete-native/results.json`; the navigation corrections
+  are verified with the following settings package.
 
 Six source methods now have complete replacement evidence: four formerly pending fullscreen
 row/guide methods and the previously partial cover-crop and typography interaction methods.

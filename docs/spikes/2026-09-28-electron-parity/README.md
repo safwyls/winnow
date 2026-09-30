@@ -45,14 +45,16 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [fullscreen Settings checkpoint](checkpoint-thirty-six.md) records 3,071 passing component/API
-cases across 151 files, with build and typecheck passing. Native Appearance, typography,
-Controller guide, Spending return navigation and controlled service restart checks pass.
-The last complete native run is recorded in the [IGDB and startup checkpoint](checkpoint-thirty-five.md):
-all 236 cases on commit `7c48c35b`, including delayed first attachment and both Epic workflows.
+The [fullscreen Library/Application checkpoint](checkpoint-thirty-seven.md) records 3,093
+passing component/API cases across 152 files, with build and typecheck passing. Native
+shared settings, controller rows, reading bounds, rating and update workflows pass.
+The [Appearance/Controller checkpoint](checkpoint-thirty-six.md) records the latest full
+native run: 239 passed and five navigation/selector failures on `88506ebe`. Those five
+have passing follow-up evidence in checkpoint 37. The last entirely passing combined run,
+all 236 cases on `7c48c35b`, is in the [IGDB/startup checkpoint](checkpoint-thirty-five.md).
 All 133 backend HTTP cases also pass there, including credential protection and rollback.
-The migration inventory contains 1,113 ported, 559 retained backend, 17 framework-specific,
-642 pending and 104 partial methods. The migration gate remains incomplete.
+The migration inventory contains 1,117 ported, 559 retained backend, 17 framework-specific,
+638 pending and 104 partial methods. The migration gate remains incomplete.
 The [journal checkpoint](checkpoint-thirty-three.md)
 records the latest full .NET pass: 6,869 passed and two Linux-only skips across 13 assemblies,
 including all 896 Avalonia UI cases. The table below preserves earlier measured checkpoints.

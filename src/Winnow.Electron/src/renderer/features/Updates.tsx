@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ApplicationUpdateAction, ApplicationUpdateSnapshot } from '../../shared/bridge'
 import { Notice } from './shared'
 import './updates.css'
+import { FullscreenSwitch } from './FullscreenSettingRows'
 
 const updateKey = ['native', 'application-update']
 function useUpdates() {
@@ -120,13 +121,13 @@ function UpdateActions({
     </div>
   )
 }
-export function ApplicationUpdates() {
+export function ApplicationUpdates({ mode = 'desktop' }: { mode?: 'desktop' | 'fullscreen' } = {}) {
   const update = useUpdates(),
     value = update.snapshot
   if (!window.winnow.updateSnapshot) return null
   return (
     <section
-      className="feature-panel application-updates"
+      className={`${mode === 'fullscreen' ? 'fullscreen-settings-content' : 'feature-panel'} application-updates`}
       onKeyDown={(event) => {
         if (!event.currentTarget.closest('.mode-fullscreen') || !['ArrowDown', 'ArrowUp'].includes(event.key))
           return
@@ -141,26 +142,50 @@ export function ApplicationUpdates() {
         next.scrollIntoView({ block: 'nearest' })
       }}
     >
-      <h2>Updates</h2>
+      <h2 className={mode === 'fullscreen' ? 'fullscreen-settings-group' : undefined}>Updates</h2>
       <p>Winnow can download updates in the background. Restart to install when you are ready.</p>
-      <label className="check-field">
-        <input
-          type="checkbox"
-          checked={value?.automatic ?? true}
+      {mode === 'fullscreen' ? (
+        <FullscreenSwitch
+          label="Automatic background updates"
+          description="Download updates in the background. Restart when you are ready."
+          value={value?.automatic ?? true}
           disabled={!value || update.pending || (!!value.busy && !value.canCancel)}
-          onChange={(event) => void update.action('automatic', event.target.checked)}
+          change={(next) => {
+            void update.action('automatic', next)
+          }}
         />
-        Download updates automatically
-      </label>
-      <label className="check-field">
-        <input
-          type="checkbox"
-          checked={value?.includeBeta ?? false}
+      ) : (
+        <label className="check-field">
+          <input
+            type="checkbox"
+            checked={value?.automatic ?? true}
+            disabled={!value || update.pending || (!!value.busy && !value.canCancel)}
+            onChange={(event) => void update.action('automatic', event.target.checked)}
+          />
+          Download updates automatically
+        </label>
+      )}
+      {mode === 'fullscreen' ? (
+        <FullscreenSwitch
+          label="Include beta releases"
+          description="Receive preview releases as well as stable updates."
+          value={value?.includeBeta ?? false}
           disabled={!value || update.pending || (!!value.busy && !value.canCancel)}
-          onChange={(event) => void update.action('beta', event.target.checked)}
+          change={(next) => {
+            void update.action('beta', next)
+          }}
         />
-        Include beta releases
-      </label>
+      ) : (
+        <label className="check-field">
+          <input
+            type="checkbox"
+            checked={value?.includeBeta ?? false}
+            disabled={!value || update.pending || (!!value.busy && !value.canCancel)}
+            onChange={(event) => void update.action('beta', event.target.checked)}
+          />
+          Include beta releases
+        </label>
+      )}
       {value && (
         <p role="status">
           {value.status}

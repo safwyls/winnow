@@ -326,7 +326,7 @@ for (const [width, height, scale, margin] of [
           .getByRole('navigation', { name: 'Settings section' })
           .getByRole('button', { name: 'Library', exact: true }),
       ).toHaveAttribute('aria-pressed', 'true')
-      await expect(page.getByRole('checkbox', { name: 'Ask for a note after playing' })).toBeVisible()
+      await expect(page.getByRole('switch', { name: 'Journal after playing' })).toBeVisible()
       await tap(6)
       await expect(guide).toBeVisible()
     } finally {

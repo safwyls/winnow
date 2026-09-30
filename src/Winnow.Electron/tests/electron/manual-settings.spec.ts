@@ -75,6 +75,10 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       const tap = await controller(page)
       const nav = page.getByRole('navigation', { name: 'Main navigation' })
       await page.getByRole('button', { name: 'Settings', exact: true }).click()
+      await page
+        .getByRole('navigation', { name: 'Settings section' })
+        .getByRole('button', { name: 'Platforms', exact: true })
+        .click()
       await expect(page.getByRole('region', { name: 'Steam connection' })).toBeVisible()
       await page.getByRole('button', { name: 'GOG', exact: true }).click()
       await expect(page.getByRole('region', { name: 'GOG connection' })).toBeVisible()

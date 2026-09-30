@@ -1,5 +1,26 @@
-import { useId, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from 'react'
 import './fullscreen-settings.css'
+
+export function useFullscreenSettingsEntry(ready: boolean) {
+  const surface = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!ready) return
+    const timer = setTimeout(() => {
+      const active = document.activeElement
+      if (surface.current?.closest('[inert]')) return
+      if (
+        active === document.body ||
+        active?.id === 'main-content' ||
+        active?.closest('.settings-page > .tabs')
+      )
+        surface.current
+          ?.querySelector<HTMLButtonElement>('button:not(:disabled)')
+          ?.focus({ preventScroll: true })
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [ready])
+  return surface
+}
 
 function useSettingFocus(disabled: boolean) {
   const row = useRef<HTMLButtonElement>(null)
@@ -36,6 +57,7 @@ export function FullscreenAdjustment({
   change,
   steppers = false,
   initial = false,
+  describedBy,
 }: {
   label: string
   description: string
@@ -44,6 +66,7 @@ export function FullscreenAdjustment({
   change(direction: -1 | 1): void
   steppers?: boolean
   initial?: boolean
+  describedBy?: string
 }) {
   const id = useId(),
     focus = useSettingFocus(disabled)
@@ -58,7 +81,7 @@ export function FullscreenAdjustment({
         ref={focus.row}
         className="fullscreen-setting-row"
         aria-label={label}
-        aria-describedby={`${id}-description ${id}-value`}
+        aria-describedby={`${id}-description ${id}-value${describedBy ? ` ${describedBy}` : ''}`}
         disabled={disabled}
         data-fullscreen-settings-initial={initial || undefined}
         onClick={() => adjust(1)}

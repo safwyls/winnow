@@ -168,7 +168,11 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       .getByRole('navigation', { name: 'Settings section' })
       .getByRole('button', { name: 'Application', exact: true })
       .click()
-    await expect(page.getByRole('checkbox', { name: /Close to notification area/ })).toBeVisible()
+    await expect(
+      page.getByRole(mode === 'fullscreen' ? 'switch' : 'checkbox', {
+        name: mode === 'fullscreen' ? 'Close to tray' : /Close to notification area/,
+      }),
+    ).toBeVisible()
     await noHorizontalOverflow()
     await navigation.getByRole('button', { name: 'Activity', exact: true }).click()
     await expect(page.locator('.journal-page')).toBeVisible()

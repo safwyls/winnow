@@ -161,14 +161,14 @@
     "reason": "The row follows external preference changes and Left, Right and A toggle Fit/Fill. Real fullscreen Chromium verifies saved state, cover rendering policy, retained controller focus and preservation across fullscreen reset."
   },
   "FullscreenSettingsTests.Shared_visibility_change_refreshes_the_independent_fullscreen_library": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-settings.test.tsx",
-        "case": "saves library visibility against fresh preferences without overwriting another frontend"
+        "file": "tests/parity-fullscreen-shared-settings.test.tsx",
+        "case": "refreshes an independent Library and preserves the newest other visibility preferences"
       }
     ],
-    "reason": "Visibility commands preserve freshly read shared settings and invalidate library queries. Two independently mounted library screens are not asserted here."
+    "reason": "The fullscreen visibility switch updates a separately mounted production Library query observer and its visible titles. The whole-object write first reads the latest shared values, preserving another client's explicit-content and maturity choices."
   },
   "JournalNotificationTests.Activation_or_fallback_uses_the_finished_session_and_only_save_writes": {
     "status": "ported",

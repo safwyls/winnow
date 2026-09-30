@@ -30,7 +30,9 @@ import { RatingCapPreference, useLibraryPreferenceChange } from './RatingCap'
 import { IgdbConnectionPanel } from './IgdbSettings'
 export { IgdbForm } from './IgdbSettings'
 import { useSteamModal } from './SteamModals'
-import { FullscreenAppearance } from './FullscreenAppearance'
+import { FullscreenAppearance, FullscreenSettingsPreview } from './FullscreenAppearance'
+import { FullscreenLibrarySettings } from './FullscreenLibrarySettings'
+import { LibraryTools } from './LibraryTools'
 import { ControllerGuide } from './ControllerGuide'
 import { FullscreenSettingsAction } from './FullscreenSettingRows'
 
@@ -38,18 +40,23 @@ export function Settings({
   mode = 'desktop',
   ratingCapInDisplayPreferences = false,
   fullscreenThemeControls,
+  onOpenGame,
 }: {
   mode?: Mode
   ratingCapInDisplayPreferences?: boolean
   fullscreenThemeControls?: ReactNode
+  onOpenGame?(workId: number): void
 }) {
   const [savedTab, setTab] = useViewState(
     `${mode}:settings:tab`,
     mode === 'fullscreen' ? 'Appearance' : 'Platforms',
   )
   const tab = savedTab === 'Connections' ? 'Platforms' : savedTab === 'Providers' ? 'Plugins' : savedTab
-  const parentTab =
-    tab === 'Spending' || tab === 'Recommendations' ? 'Library' : tab === 'Operations' ? 'Application' : tab
+  const parentTab = ['Spending', 'Recommendations', 'Library tools'].includes(tab)
+    ? 'Library'
+    : tab === 'Operations'
+      ? 'Application'
+      : tab
   const page = useRef<HTMLElement>(null)
   const previousTab = useRef(tab)
   useEffect(() => {
@@ -174,36 +181,45 @@ export function Settings({
         </>
       )}
       {tab === 'Plugins' && <PluginSettings mode={mode} />}
-      {tab === 'Library' && (
-        <>
-          <section className="feature-panel">
-            <h2>Library visibility</h2>
-            <Notice error={preferences.error} />
-            {preferences.data && (
-              <LibraryPreferenceForm initial={preferences.data} key={JSON.stringify(preferences.data)} />
-            )}
-            {!ratingCapInDisplayPreferences && <RatingCapPreference mode={mode} />}
-            <AccountVisibility />
-          </section>
-          <LibraryPresentationPreferences />
-          {mode === 'fullscreen' && (
-            <section className="fullscreen-settings-content" aria-label="Library tools">
-              <FullscreenSettingsAction label="Spending" onClick={() => setTab('Spending')} />
-              <FullscreenSettingsAction label="Recommendations" onClick={() => setTab('Recommendations')} />
+      {tab === 'Library' &&
+        (mode === 'fullscreen' ? (
+          <div className="fullscreen-appearance-layout">
+            <FullscreenLibrarySettings
+              onTools={() => setTab('Library tools')}
+              onSpending={() => setTab('Spending')}
+              onRecommendations={() => setTab('Recommendations')}
+            />
+            <FullscreenSettingsPreview section="Library" />
+          </div>
+        ) : (
+          <>
+            <section className="feature-panel">
+              <h2>Library visibility</h2>
+              <Notice error={preferences.error} />
+              {preferences.data && (
+                <LibraryPreferenceForm initial={preferences.data} key={JSON.stringify(preferences.data)} />
+              )}
+              {!ratingCapInDisplayPreferences && <RatingCapPreference mode={mode} />}
+              <AccountVisibility />
             </section>
-          )}
-        </>
-      )}
-      {tab === 'Application' && (
-        <>
+            <LibraryPresentationPreferences />
+          </>
+        ))}
+      {tab === 'Application' &&
+        (mode === 'fullscreen' ? (
+          <div className="fullscreen-appearance-layout">
+            <div className="fullscreen-settings-content">
+              <ApplicationPreferences mode={mode} />
+              <section className="fullscreen-settings-content">
+                <FullscreenSettingsAction label="Operations" onClick={() => setTab('Operations')} />
+              </section>
+            </div>
+            <FullscreenSettingsPreview section="Application" />
+          </div>
+        ) : (
           <ApplicationPreferences />
-          {mode === 'fullscreen' && (
-            <section className="fullscreen-settings-content">
-              <FullscreenSettingsAction label="Operations" onClick={() => setTab('Operations')} />
-            </section>
-          )}
-        </>
-      )}
+        ))}
+      {tab === 'Library tools' && <LibraryTools mode={mode} onOpenGame={onOpenGame} />}
       {tab === 'Spending' && <AccountStatistics mode={mode} />}
       {tab === 'Appearance' && (
         <>

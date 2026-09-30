@@ -1,4 +1,52 @@
 {
+  "LinkDestinationTests.Both_settings_surfaces_report_a_failed_preference_write": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fullscreen-shared-settings.test.tsx",
+        "case": "%s reports a failed link preference save and retries from confirmed state"
+      }
+    ],
+    "reason": "The actual desktop selector and fullscreen adjustment row both report rejected writes, preserve their confirmed destination, and allow a successful explicit retry."
+  },
+  "FullscreenSettingsTests.Default_sort_setting_is_shared_by_desktop_and_controller_controls": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fullscreen-shared-settings.test.tsx",
+        "case": "shares all six default sort choices with desktop and an independent Library observer"
+      },
+      {
+        "file": "tests/electron/fullscreen-shared-settings.spec.ts",
+        "case": "fullscreen shared settings keep directional controller state across desktop changes and return navigation"
+      }
+    ],
+    "reason": "Desktop and fullscreen use the same saved default. Directional adjustment reaches all six choices and changes the independent Library browsing order. Native controller and desktop changes persist through presentation switches, section return and reload."
+  },
+  "FullscreenSettingsTests.Fullscreen_startup_setting_is_shared_with_desktop_application_toggle": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fullscreen-shared-settings.test.tsx",
+        "case": "shares %s between desktop and fullscreen in both directions"
+      },
+      {
+        "file": "tests/electron/fullscreen-shared-settings.spec.ts",
+        "case": "fullscreen shared settings keep directional controller state across desktop changes and return navigation"
+      }
+    ],
+    "reason": "The fullscreen switch and desktop checkbox reflect each other's confirmed startup preference. Native A enables it; the desktop checkbox disables it; returning to fullscreen and reopening Application retain the saved false value."
+  },
+  "FullscreenSettingsHierarchyTests.Settings_groups_keep_text_within_their_reading_region_and_controls_reachable": {
+    "status": "partial",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-shared-settings.spec.ts",
+        "case": "fullscreen Library and Application settings retain reading bounds and focus"
+      }
+    ],
+    "reason": "Library passes both original 2560×1440 text-scale cases, with named sections, one-pixel rules wider than 300px, contained text and controls fully reachable after focus. Additional 720p Library/Application checks pass. The original IGDB and artwork-order reading-region cases still require their separate fullscreen hierarchy."
+  },
   "FullscreenSettingsTests.Appearance_adjustment_stays_on_its_row_and_leaves_desktop_preferences_alone": {
     "status": "ported",
     "tests": [

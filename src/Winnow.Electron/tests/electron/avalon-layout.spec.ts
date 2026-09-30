@@ -809,7 +809,7 @@ for (const [width, height] of [
       document.documentElement.style.setProperty('--fullscreen-safe-margin', '2%')
     })
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
-    await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
+    await page.getByRole('banner').getByRole('button', { name: 'Theme Studio', exact: true }).click()
     await page.getByRole('combobox', { name: /^Avalon palette/ }).selectOption('bottle-green')
     await page
       .getByRole('navigation', { name: 'Main navigation' })

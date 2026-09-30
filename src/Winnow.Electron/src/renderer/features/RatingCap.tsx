@@ -6,6 +6,7 @@ import type { LibraryPreferences, Mode } from '../api/types'
 import { Notice } from './shared'
 import './rating-cap.css'
 import { useSetupBusy, useSetupPreferenceError } from './settingsState'
+import { FullscreenAdjustment } from './FullscreenSettingRows'
 
 export const ratingCapSteps = [
   ['everyone', 'All ages'],
@@ -37,6 +38,7 @@ export function RatingCapControl({
   disabled = false,
   change,
   mode = 'desktop',
+  presentation = 'range',
 }: {
   value?: string | null
   adultContentAllowed?: boolean
@@ -45,6 +47,7 @@ export function RatingCapControl({
   disabled?: boolean
   change(value: string): void
   mode?: Mode
+  presentation?: 'range' | 'row'
 }) {
   const focusAfterSave = useRef<HTMLInputElement | null>(null)
   useLayoutEffect(() => {
@@ -70,26 +73,43 @@ export function RatingCapControl({
     label = ratingCapSteps[index]![1]
   return (
     <section className={`rating-cap mode-${mode}`} aria-label="Rating cap preference">
-      <label htmlFor={id} className="rating-cap-heading">
-        <span>{mode === 'fullscreen' ? 'Content age limit' : 'Rating cap'}</span>
-        <span>{label}</span>
-      </label>
-      <input
-        id={id}
-        aria-label={mode === 'fullscreen' ? 'Content age limit' : 'Rating cap'}
-        aria-valuetext={label}
-        aria-describedby={`${id}-help ${id}-count${index === 5 && !adultContentAllowed ? ` ${id}-clamp` : ''}`}
-        type="range"
-        min={0}
-        max={5}
-        step={1}
-        value={index}
-        disabled={disabled}
-        onChange={(event) => {
-          focusAfterSave.current = document.activeElement === event.currentTarget ? event.currentTarget : null
-          change(ratingCapAt(Number(event.target.value)))
-        }}
-      />
+      {presentation === 'row' ? (
+        <FullscreenAdjustment
+          label="Content age limit"
+          description="Shared with your desktop library."
+          describedBy={`${id}-help ${id}-count${index === 5 && !adultContentAllowed ? ` ${id}-clamp` : ''}`}
+          value={label}
+          disabled={disabled}
+          change={(direction) => {
+            const next = ratingCapAt(index + direction)
+            if (next !== ratingCapAt(index)) change(next)
+          }}
+        />
+      ) : (
+        <>
+          <label htmlFor={id} className="rating-cap-heading">
+            <span>{mode === 'fullscreen' ? 'Content age limit' : 'Rating cap'}</span>
+            <span>{label}</span>
+          </label>
+          <input
+            id={id}
+            aria-label={mode === 'fullscreen' ? 'Content age limit' : 'Rating cap'}
+            aria-valuetext={label}
+            aria-describedby={`${id}-help ${id}-count${index === 5 && !adultContentAllowed ? ` ${id}-clamp` : ''}`}
+            type="range"
+            min={0}
+            max={5}
+            step={1}
+            value={index}
+            disabled={disabled}
+            onChange={(event) => {
+              focusAfterSave.current =
+                document.activeElement === event.currentTarget ? event.currentTarget : null
+              change(ratingCapAt(Number(event.target.value)))
+            }}
+          />
+        </>
+      )}
       <p id={`${id}-help`}>Hides games rated above this level. Unrated games always stay.</p>
       <p id={`${id}-count`} role="status">
         {countFailed
@@ -129,7 +149,13 @@ export function useLibraryPreferenceChange() {
   }
 }
 
-export function RatingCapPreference({ mode = 'desktop' }: { mode?: Mode }) {
+export function RatingCapPreference({
+  mode = 'desktop',
+  presentation = 'range',
+}: {
+  mode?: Mode
+  presentation?: 'range' | 'row'
+}) {
   const preferences = useApiQuery<LibraryPreferences>('preferences.library.get')
   const counts = useApiQuery<{ ratingCapHidden: number }>('library.visibility')
   const change = useLibraryPreferenceChange()
@@ -139,6 +165,7 @@ export function RatingCapPreference({ mode = 'desktop' }: { mode?: Mode }) {
     <>
       <RatingCapControl
         mode={mode}
+        presentation={presentation}
         value={preferences.data?.maturityCap}
         adultContentAllowed={preferences.data?.showExplicitContent}
         hiddenCount={counts.data?.ratingCapHidden}

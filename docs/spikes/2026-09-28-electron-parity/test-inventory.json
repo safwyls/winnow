@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 642,
+    "pending": 638,
     "partial": 104,
-    "ported": 1113,
+    "ported": 1117,
     "retained-backend": 559,
     "framework-specific": 17
   },
@@ -23309,12 +23309,30 @@
     {
       "id": "FullscreenSettingsHierarchyTests.Settings_groups_keep_text_within_their_reading_region_and_controls_reachable",
       "source": "tests/Winnow.Ui.Tests/FullscreenSettingsHierarchyTests.cs",
-      "status": "pending"
+      "status": "partial",
+      "tests": [
+        {
+          "file": "tests/electron/fullscreen-shared-settings.spec.ts",
+          "case": "fullscreen Library and Application settings retain reading bounds and focus"
+        }
+      ],
+      "reason": "Library passes both original 2560×1440 text-scale cases, with named sections, one-pixel rules wider than 300px, contained text and controls fully reachable after focus. Additional 720p Library/Application checks pass. The original IGDB and artwork-order reading-region cases still require their separate fullscreen hierarchy."
     },
     {
       "id": "FullscreenSettingsTests.Default_sort_setting_is_shared_by_desktop_and_controller_controls",
       "source": "tests/Winnow.Ui.Tests/FullscreenSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-fullscreen-shared-settings.test.tsx",
+          "case": "shares all six default sort choices with desktop and an independent Library observer"
+        },
+        {
+          "file": "tests/electron/fullscreen-shared-settings.spec.ts",
+          "case": "fullscreen shared settings keep directional controller state across desktop changes and return navigation"
+        }
+      ],
+      "reason": "Desktop and fullscreen use the same saved default. Directional adjustment reaches all six choices and changes the independent Library browsing order. Native controller and desktop changes persist through presentation switches, section return and reload."
     },
     {
       "id": "FullscreenSettingsTests.Cover_art_setting_tracks_shared_preference_and_controller_input",
@@ -23351,7 +23369,18 @@
     {
       "id": "FullscreenSettingsTests.Fullscreen_startup_setting_is_shared_with_desktop_application_toggle",
       "source": "tests/Winnow.Ui.Tests/FullscreenSettingsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-fullscreen-shared-settings.test.tsx",
+          "case": "shares %s between desktop and fullscreen in both directions"
+        },
+        {
+          "file": "tests/electron/fullscreen-shared-settings.spec.ts",
+          "case": "fullscreen shared settings keep directional controller state across desktop changes and return navigation"
+        }
+      ],
+      "reason": "The fullscreen switch and desktop checkbox reflect each other's confirmed startup preference. Native A enables it; the desktop checkbox disables it; returning to fullscreen and reopening Application retain the saved false value."
     },
     {
       "id": "FullscreenSettingsTests.Switches_report_state_and_direction_sets_a_value_without_repeated_toggling",
@@ -23412,14 +23441,14 @@
     {
       "id": "FullscreenSettingsTests.Shared_visibility_change_refreshes_the_independent_fullscreen_library",
       "source": "tests/Winnow.Ui.Tests/FullscreenSettingsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-settings.test.tsx",
-          "case": "saves library visibility against fresh preferences without overwriting another frontend"
+          "file": "tests/parity-fullscreen-shared-settings.test.tsx",
+          "case": "refreshes an independent Library and preserves the newest other visibility preferences"
         }
       ],
-      "reason": "Visibility commands preserve freshly read shared settings and invalidate library queries. Two independently mounted library screens are not asserted here."
+      "reason": "The fullscreen visibility switch updates a separately mounted production Library query observer and its visible titles. The whole-object write first reads the latest shared values, preserving another client's explicit-content and maturity choices."
     },
     {
       "id": "FullscreenShelfIndicatorTests.Shelf_targets_select_by_mouse_without_taking_controller_focus",
@@ -24281,7 +24310,14 @@
     {
       "id": "LinkDestinationTests.Both_settings_surfaces_report_a_failed_preference_write",
       "source": "tests/Winnow.Ui.Tests/LinkDestinationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-fullscreen-shared-settings.test.tsx",
+          "case": "%s reports a failed link preference save and retries from confirmed state"
+        }
+      ],
+      "reason": "The actual desktop selector and fullscreen adjustment row both report rejected writes, preserve their confirmed destination, and allow a successful explicit retry."
     },
     {
       "id": "ListBrowsingPositionTests.Adding_to_a_list_keeps_the_scrolled_library_position",

@@ -45,6 +45,14 @@ theme, typography and cover choices. The Controller guide keeps ten mappings and
 help on one screen. Spending and recommendation history open from Library; background
 operations open from Application.
 
+Fullscreen Library and Application use the original adjustment rows, switches, section
+rules and separate reading panes. Library sort, journal prompts, visibility, expansion
+grouping, startup, tray and link choices share their saved values with desktop. Left and
+Right set switches explicitly; controller focus stays on a row after saving. Library tools
+opens from Library settings and Back returns to its action. Application includes diagnostics
+help, the active backend's log directory, setup replay and update controls. Unsupported
+startup registration is omitted from fullscreen and explained in desktop settings.
+
 **Plugins** gives every runtime-loaded provider its own tab, followed by **Manage plugins**.
 Overflow arrows scroll the tabs without changing the selection. Ordinary drafts survive
 navigation; secret replacements clear on departure or successful save. Advanced fields

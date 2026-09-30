@@ -10,6 +10,12 @@ import { parseExpansionGrouping } from './parity-library-grain'
 import { usePluginInstallation } from './plugin-installation'
 import { PluginInstallStatus } from './PluginInstallStatus'
 import { useViewState } from '../viewState'
+import {
+  FullscreenAdjustment,
+  FullscreenSettingsAction,
+  FullscreenSwitch,
+  useFullscreenSettingsEntry,
+} from './FullscreenSettingRows'
 
 export interface PresentationPreferenceValue {
   preference: string
@@ -36,11 +42,24 @@ export function usePresentationPreferences() {
   return { values, set, pending: command.isPending, error: error || query.error, loaded: !!query.data }
 }
 
-export function ApplicationPreferences({ setup = false }: { setup?: boolean }) {
+export function ApplicationPreferences({
+  setup = false,
+  mode = 'desktop',
+}: {
+  setup?: boolean
+  mode?: Mode
+}) {
   const [, setSetupSuspended] = useViewState('setup:suspended', false)
   const preferences = usePresentationPreferences()
   const command = useCommand()
   const client = useQueryClient()
+  const directory = useApiQuery<{ directory: string }>(
+    'plugins.directory',
+    undefined,
+    mode === 'fullscreen' && !setup,
+  )
+  // Resolve the backend's active location independently of native startup information.
+  const dataPrefix = directory.data?.directory?.match(/^(.*[\\/])plugins[\\/]?$/i)?.[1]
   const info = useQuery({
     queryKey: ['native', 'applicationInfo'],
     queryFn: () => window.winnow.applicationInfo!(),
@@ -51,6 +70,7 @@ export function ApplicationPreferences({ setup = false }: { setup?: boolean }) {
   useSetupBusy(preferences.pending || command.isPending || nativeBusy)
   useSetupPreferenceError(preferences.error || nativeError)
   async function autostart(enabled: boolean) {
+    if (!info.data?.autostartSupported || nativeBusy) return
     setNativeBusy(true)
     setNativeError(null)
     try {
@@ -62,104 +82,191 @@ export function ApplicationPreferences({ setup = false }: { setup?: boolean }) {
       setNativeBusy(false)
     }
   }
+  const fullscreen = mode === 'fullscreen'
+  const entry = useFullscreenSettingsEntry(fullscreen && preferences.loaded)
+  const linkOptions = [
+    ['in-app', 'In Winnow'],
+    ['browser', 'Default browser'],
+    ...(info.data?.steamStoreAvailable ? [['store', 'Steam client, when available']] : []),
+  ]
+  const currentLink =
+    preferences.values.LinkDestination === 'store' && info.data?.steamStoreAvailable === false
+      ? 'browser'
+      : (preferences.values.LinkDestination ?? 'in-app')
+  const linkIndex = Math.max(
+    0,
+    linkOptions.findIndex(([value]) => value === currentLink),
+  )
+  const replay = () =>
+    command.mutate(
+      { route: 'setup.put', body: { step: 0 } },
+      {
+        onSuccess: () => client.setQueryData(['api', 'setup.get', undefined], { step: 0, problem: null }),
+        onError: () =>
+          client.setQueryData(['setup-recovery'], {
+            step: 0,
+            problem:
+              'Could not save setup progress. Continue or Skip setup to try again. Your saved preferences are unchanged.',
+          }),
+        onSettled: () => setSetupSuspended(false),
+      },
+    )
   return (
-    <section className="feature-panel">
-      <h2>Application</h2>
-      <p>Preferences save as you change them.</p>
+    <section
+      ref={entry}
+      className={fullscreen ? 'fullscreen-settings-content' : 'feature-panel'}
+      aria-label="Application preferences"
+    >
+      <h2 className={fullscreen ? 'fullscreen-settings-group' : undefined}>
+        {fullscreen ? 'Startup & window' : 'Application'}
+      </h2>
+      {!fullscreen && <p>Preferences save as you change them.</p>}
       {[
         [
           'MinimizeToTray',
-          'Minimize to notification area',
-          'Hides Winnow from the taskbar when you minimize it.',
+          fullscreen ? 'Minimize to tray' : 'Minimize to notification area',
+          fullscreen
+            ? 'Keep Winnow running when minimized.'
+            : 'Hides Winnow from the taskbar when you minimize it.',
         ],
         [
           'CloseToTray',
-          'Close to notification area',
-          'Keeps Winnow available when you close its window. Use Quit from the notification area to exit.',
+          fullscreen ? 'Close to tray' : 'Close to notification area',
+          fullscreen
+            ? 'Keep Winnow running when its window is closed.'
+            : 'Keeps Winnow available when you close its window. Use Quit from the notification area to exit.',
         ],
         ['StartInFullscreen', 'Start in fullscreen', 'Open the TV interface on your next launch.'],
-      ].map(([key, label, note]) => (
-        <label className="check-field" key={key}>
-          <input
-            type="checkbox"
-            checked={preferences.values[key]?.toLowerCase() === 'true'}
-            disabled={!preferences.loaded || preferences.pending}
-            onChange={(event) => preferences.set(key, String(event.target.checked))}
-          />
-          <span>
-            {label}
-            <small>{note}</small>
-          </span>
-        </label>
-      ))}
-      {info.data && (
-        <label className="check-field">
-          <input
-            type="checkbox"
-            checked={info.data.openAtLogin}
-            disabled={!info.data.autostartSupported || nativeBusy}
-            onChange={(event) => void autostart(event.target.checked)}
-          />
-          <span>
-            Start with {info.data.platform === 'win32' ? 'Windows' : 'my computer'}
-            <small>
-              {info.data.autostartSupported
+      ]
+        .sort((a, b) =>
+          fullscreen ? Number(b[0] === 'StartInFullscreen') - Number(a[0] === 'StartInFullscreen') : 0,
+        )
+        .map(([key, label, note]) =>
+          fullscreen ? (
+            <FullscreenSwitch
+              key={key}
+              label={label}
+              description={note}
+              value={preferences.values[key]?.toLowerCase() === 'true'}
+              disabled={!preferences.loaded || preferences.pending}
+              change={(value) => preferences.set(key, String(value))}
+            />
+          ) : (
+            <label className="check-field" key={key}>
+              <input
+                type="checkbox"
+                checked={preferences.values[key]?.toLowerCase() === 'true'}
+                disabled={!preferences.loaded || preferences.pending}
+                onChange={(event) => preferences.set(key, String(event.target.checked))}
+              />
+              <span>
+                {label}
+                <small>{note}</small>
+              </span>
+            </label>
+          ),
+        )}
+      {info.data &&
+        (!fullscreen || info.data.autostartSupported) &&
+        (fullscreen ? (
+          <FullscreenSwitch
+            label={`Start with ${info.data.platform === 'win32' ? 'Windows' : 'my computer'}`}
+            description={
+              info.data.autostartSupported
                 ? 'Start quietly in the notification area when you sign in.'
-                : 'Startup registration is unavailable in this build.'}
-            </small>
-          </span>
+                : 'Startup registration is unavailable in this build.'
+            }
+            value={info.data.openAtLogin}
+            disabled={!info.data.autostartSupported || nativeBusy}
+            change={(value) => {
+              void autostart(value)
+            }}
+          />
+        ) : (
+          <label className="check-field">
+            <input
+              type="checkbox"
+              checked={info.data.openAtLogin}
+              disabled={!info.data.autostartSupported || nativeBusy}
+              onChange={(event) => void autostart(event.target.checked)}
+            />
+            <span>
+              Start with {info.data.platform === 'win32' ? 'Windows' : 'my computer'}
+              <small>
+                {info.data.autostartSupported
+                  ? 'Start quietly in the notification area when you sign in.'
+                  : 'Startup registration is unavailable in this build.'}
+              </small>
+            </span>
+          </label>
+        ))}
+      {fullscreen && <h2 className="fullscreen-settings-group">Links</h2>}
+      {fullscreen ? (
+        <FullscreenAdjustment
+          label="Open links in"
+          description="Choose where store pages and external links open."
+          value={linkOptions[linkIndex]![1]}
+          disabled={!preferences.loaded || preferences.pending}
+          change={(direction) =>
+            preferences.set(
+              'LinkDestination',
+              linkOptions[(linkIndex + direction + linkOptions.length) % linkOptions.length]![0],
+            )
+          }
+        />
+      ) : (
+        <label className="field">
+          Open links in
+          <select
+            value={
+              preferences.values.LinkDestination === 'store' && info.data?.steamStoreAvailable === false
+                ? 'browser'
+                : (preferences.values.LinkDestination ?? 'in-app')
+            }
+            disabled={!preferences.loaded || preferences.pending}
+            onChange={(event) => preferences.set('LinkDestination', event.target.value)}
+          >
+            <option value="in-app">In Winnow</option>
+            <option value="browser">Default browser</option>
+            {info.data?.steamStoreAvailable === true && (
+              <option value="store">Steam client, when available</option>
+            )}
+          </select>
         </label>
       )}
-      <label className="field">
-        Open links in
-        <select
-          value={
-            preferences.values.LinkDestination === 'store' && info.data?.steamStoreAvailable === false
-              ? 'browser'
-              : (preferences.values.LinkDestination ?? 'in-app')
-          }
-          disabled={!preferences.loaded || preferences.pending}
-          onChange={(event) => preferences.set('LinkDestination', event.target.value)}
-        >
-          <option value="in-app">In Winnow</option>
-          <option value="browser">Default browser</option>
-          {info.data?.steamStoreAvailable === true && (
-            <option value="store">Steam client, when available</option>
-          )}
-        </select>
-      </label>
-      {!setup && (
-        <div className="form-actions">
-          <button
-            disabled={command.isPending}
-            onClick={() =>
-              command.mutate(
-                { route: 'setup.put', body: { step: 0 } },
-                {
-                  onSuccess: () =>
-                    client.setQueryData(['api', 'setup.get', undefined], { step: 0, problem: null }),
-                  onError: () =>
-                    client.setQueryData(['setup-recovery'], {
-                      step: 0,
-                      problem:
-                        'Could not save setup progress. Continue or Skip setup to try again. Your saved preferences are unchanged.',
-                    }),
-                  onSettled: () => setSetupSuspended(false),
-                },
-              )
-            }
-          >
-            Run setup again
-          </button>
-          {window.winnow.openDataFolder && (
-            <button onClick={() => void window.winnow.openDataFolder!('logs').catch(setNativeError)}>
-              Open logs folder
+      {!setup &&
+        (fullscreen ? (
+          <>
+            <h2 className="fullscreen-settings-group">Diagnostics</h2>
+            {window.winnow.openDataFolder && (
+              <FullscreenSettingsAction
+                label="Open logs folder"
+                onClick={() => {
+                  void window.winnow.openDataFolder!('logs').catch(setNativeError)
+                }}
+              />
+            )}
+            <p className="muted">
+              For a bug report, include the Winnow version, what happened and when, and the recent log files.
+            </p>
+            {dataPrefix && <p className="muted fullscreen-settings-path">{dataPrefix}logs</p>}
+            <h2 className="fullscreen-settings-group">Tools</h2>
+            <FullscreenSettingsAction label="Run setup again" onClick={replay} disabled={command.isPending} />
+          </>
+        ) : (
+          <div className="form-actions">
+            <button disabled={command.isPending} onClick={replay}>
+              Run setup again
             </button>
-          )}
-        </div>
-      )}
+            {window.winnow.openDataFolder && (
+              <button onClick={() => void window.winnow.openDataFolder!('logs').catch(setNativeError)}>
+                Open logs folder
+              </button>
+            )}
+          </div>
+        ))}
       {!setup && info.data && <p className="muted">Winnow {info.data.version}</p>}
-      {!setup && <ApplicationUpdates />}
+      {!setup && <ApplicationUpdates mode={mode} />}
       <Notice error={preferences.error || command.error || nativeError || info.error} />
     </section>
   )
@@ -252,30 +359,42 @@ export function LibraryPresentationPreferences() {
   )
 }
 
-export function JournalPromptPreference() {
+export function JournalPromptPreference({ mode = 'desktop' }: { mode?: Mode } = {}) {
   const query = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
   const command = useCommand()
   useSetupBusy(command.isPending)
   useSetupPreferenceError(command.error)
   return (
     <div>
-      <label className="check-field">
-        <input
-          type="checkbox"
-          checked={query.data?.promptAfterPlay ?? false}
+      {mode === 'fullscreen' ? (
+        <FullscreenSwitch
+          label="Journal after playing"
+          description="Ask for a note after a session."
+          value={query.data?.promptAfterPlay ?? false}
           disabled={!query.data || command.isPending}
-          onChange={(event) =>
-            command.mutate({
-              route: 'journal.preferences.put',
-              body: { promptAfterPlay: event.target.checked },
-            })
+          change={(value) =>
+            command.mutate({ route: 'journal.preferences.put', body: { promptAfterPlay: value } })
           }
         />
-        <span>
-          Ask for a note after playing
-          <small>Offer a short journal note and rating when a recorded session ends. Off by default.</small>
-        </span>
-      </label>
+      ) : (
+        <label className="check-field">
+          <input
+            type="checkbox"
+            checked={query.data?.promptAfterPlay ?? false}
+            disabled={!query.data || command.isPending}
+            onChange={(event) =>
+              command.mutate({
+                route: 'journal.preferences.put',
+                body: { promptAfterPlay: event.target.checked },
+              })
+            }
+          />
+          <span>
+            Ask for a note after playing
+            <small>Offer a short journal note and rating when a recorded session ends. Off by default.</small>
+          </span>
+        </label>
+      )}
       <Notice error={query.error || command.error} />
     </div>
   )
@@ -369,32 +488,51 @@ export function FullscreenPreferences({ mode }: { mode: Mode }) {
   )
 }
 
-export function AccountVisibility({ credentials }: { credentials?: StoreConnections['steam'] } = {}) {
+export function AccountVisibility({
+  credentials,
+  mode = 'desktop',
+}: { credentials?: StoreConnections['steam']; mode?: Mode } = {}) {
   const state = useApiQuery<{ accountConfirmed: boolean; ownAccountOnly: boolean; hiddenCount: number }>(
     'connections.visibility.get',
   )
   const command = useCommand()
   return (
     <div>
-      <label className="check-field">
-        <input
-          type="checkbox"
-          checked={state.data?.ownAccountOnly ?? false}
-          title={
+      {mode === 'fullscreen' ? (
+        <FullscreenSwitch
+          label="Only show games from my Steam account"
+          description={
             state.data?.accountConfirmed
               ? 'Hide games from other Steam accounts on this computer.'
               : 'The account filter becomes available after Steam confirms which account is yours.'
           }
+          value={state.data?.ownAccountOnly ?? false}
           disabled={!state.data?.accountConfirmed || command.isPending}
-          onChange={(event) =>
-            command.mutate({
-              route: 'connections.visibility.put',
-              body: { ownAccountOnly: event.target.checked },
-            })
+          change={(value) =>
+            command.mutate({ route: 'connections.visibility.put', body: { ownAccountOnly: value } })
           }
         />
-        Only show games from my Steam account
-      </label>
+      ) : (
+        <label className="check-field">
+          <input
+            type="checkbox"
+            checked={state.data?.ownAccountOnly ?? false}
+            title={
+              state.data?.accountConfirmed
+                ? 'Hide games from other Steam accounts on this computer.'
+                : 'The account filter becomes available after Steam confirms which account is yours.'
+            }
+            disabled={!state.data?.accountConfirmed || command.isPending}
+            onChange={(event) =>
+              command.mutate({
+                route: 'connections.visibility.put',
+                body: { ownAccountOnly: event.target.checked },
+              })
+            }
+          />
+          Only show games from my Steam account
+        </label>
+      )}
       {!state.data?.accountConfirmed && <p className="muted">Account confirmation pending</p>}
       <p className="muted">
         {state.data?.accountConfirmed

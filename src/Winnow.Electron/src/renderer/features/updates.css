@@ -71,11 +71,11 @@ html[data-mode='fullscreen'] .update-status {
 .mode-fullscreen .application-updates {
   max-width: 1320px;
 }
-.mode-fullscreen .application-updates :is(p, label, button) {
+.mode-fullscreen .application-updates:not(.fullscreen-settings-content) :is(p, label, button) {
   font-size: calc(28px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
   line-height: 1.5;
 }
-.mode-fullscreen .application-updates button {
+.mode-fullscreen .application-updates:not(.fullscreen-settings-content) button {
   min-height: calc(64px * var(--fullscreen-text-scale, 1));
 }
 .mode-fullscreen .application-updates [role='status'] {

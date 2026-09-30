@@ -52,6 +52,10 @@ for (const [mode, scale] of [
           if (!response.ok) throw Error('Could not save fixture text scale')
         }, scale)
       await page.getByRole('button', { name: 'Settings', exact: true }).click()
+      await page
+        .getByRole('navigation', { name: 'Settings section' })
+        .getByRole('button', { name: 'Platforms', exact: true })
+        .click()
       await page.getByRole('button', { name: /^EPIC/ }).click()
       if (mode === 'fullscreen')
         await expect(page.getByRole('heading', { name: 'Epic Games', exact: true })).toHaveCSS(

@@ -448,6 +448,7 @@ export function App() {
       return (
         <Settings
           mode={mode}
+          onOpenGame={openGame}
           ratingCapInDisplayPreferences={mode === 'desktop' && runtime.profile.themeId === 'avalon'}
           fullscreenThemeControls={
             <FullscreenThemeSettings runtime={runtime} openStudio={() => navigate('studio')} />

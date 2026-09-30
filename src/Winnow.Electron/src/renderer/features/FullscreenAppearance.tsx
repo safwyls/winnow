@@ -25,8 +25,6 @@ const resetValues = {
 export function FullscreenAppearance({ themeControls }: { themeControls?: ReactNode }) {
   const preferences = usePresentationPreferences(),
     client = useQueryClient()
-  const sample = useLibrary().data?.games[0]
-  const ramp = dormancy(sample?.lastPlayedAt)
   const [confirm, setConfirm] = useState(false),
     [resetting, setResetting] = useState(false),
     [failure, setFailure] = useState<unknown>(null)
@@ -210,27 +208,42 @@ export function FullscreenAppearance({ themeControls }: { themeControls?: ReactN
           </Dialog.Portal>
         </Dialog.Root>
       </section>
-      <aside className="fullscreen-settings-preview" aria-label="Appearance preview">
-        <h2 className="fullscreen-settings-group">Preview</h2>
-        {sample && (
-          <div
-            className="fullscreen-settings-preview-cover"
-            style={{
-              filter:
-                preferences.values.DimDormantCovers?.trim().toLowerCase() === 'false'
-                  ? 'none'
-                  : `saturate(${ramp.saturation}) hue-rotate(${ramp.hue}deg) brightness(${ramp.brightness})`,
-            }}
-          >
-            <Artwork workId={sample.workId} />
-          </div>
-        )}
-        <h3>{sample?.title ?? 'Your next game is already here.'}</h3>
-        <p>
-          Theme, typography, cover art and cover dimming apply to both views. Other appearance settings apply
-          to fullscreen.
-        </p>
-      </aside>
+      <FullscreenSettingsPreview />
     </div>
+  )
+}
+
+export function FullscreenSettingsPreview({
+  section = 'Appearance',
+}: {
+  section?: 'Appearance' | 'Library' | 'Application'
+}) {
+  const preferences = usePresentationPreferences()
+  const library = useLibrary()
+  const sample = section === 'Appearance' ? library.data?.games[0] : undefined
+  const ramp = dormancy(sample?.lastPlayedAt)
+  return (
+    <aside className="fullscreen-settings-preview" aria-label={`${section} preview`}>
+      <h2 className="fullscreen-settings-group">{section === 'Appearance' ? 'Preview' : section}</h2>
+      {sample && (
+        <div
+          className="fullscreen-settings-preview-cover"
+          style={{
+            filter:
+              preferences.values.DimDormantCovers?.trim().toLowerCase() === 'false'
+                ? 'none'
+                : `saturate(${ramp.saturation}) hue-rotate(${ramp.hue}deg) brightness(${ramp.brightness})`,
+          }}
+        >
+          <Artwork workId={sample.workId} />
+        </div>
+      )}
+      <h3>{sample?.title ?? 'Your next game is already here.'}</h3>
+      <p>
+        {section === 'Appearance'
+          ? 'Theme, typography, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen.'
+          : 'Library and account settings apply to both desktop and fullscreen.'}
+      </p>
+    </aside>
   )
 }
