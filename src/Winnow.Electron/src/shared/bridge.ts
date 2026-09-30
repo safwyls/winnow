@@ -96,6 +96,9 @@ export type ApplicationActivation =
   | { kind: 'game'; ownershipId: number | string }
   | { kind: 'plugin'; pluginId: string; releaseTag: string }
 export interface WinnowBridge {
+  filePickerSnapshot?(): Promise<import('./file-picker').FilePickerSnapshot | null>
+  onFilePicker?(callback: (snapshot: import('./file-picker').FilePickerSnapshot | null) => void): () => void
+  filePickerAction?(action: import('./file-picker').FilePickerAction): Promise<void>
   appearanceSession?(): Promise<import('./appearance-session').AppearanceSession | null>
   importArtwork?(input: ArtworkImport): Promise<ApiResult<ArtworkSaveResult> | null>
   prepareEpicSignIn?(): Promise<import('./epic').EpicSignInPreparation | null>

@@ -89,7 +89,7 @@ beforeEach(() => {
   vi.spyOn(document, 'hasFocus').mockImplementation(() => focused)
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-    const index = [...document.querySelectorAll('button,input')].indexOf(this)
+    const index = [...document.querySelectorAll('button,input,summary')].indexOf(this)
     return {
       left: 0,
       top: index * 80,
@@ -124,6 +124,30 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   Reflect.deleteProperty(navigator, 'getGamepads')
+})
+
+it('reaches disclosure summaries while skipping closed content and pointer-only steppers', () => {
+  render(
+    <Harness actions={callbacks()}>
+      <button>Start</button>
+      <button tabIndex={-1}>Pointer stepper</button>
+      <details>
+        <summary>Filter groups</summary>
+        <button>Hidden choice</button>
+      </details>
+      <button>End</button>
+    </Harness>,
+  )
+  screen.getByRole('button', { name: 'Start' }).focus()
+  tap(13)
+  expect(document.activeElement).toBe(screen.getByText('Filter groups'))
+  tap(13)
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'End' }))
+  tap(12)
+  tap(0)
+  expect(document.querySelector('details')!.open).toBe(true)
+  tap(13)
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Hidden choice' }))
 })
 
 it('desktop direction and Accept operate checkboxes inside the active flyout and Back closes only that scope', () => {

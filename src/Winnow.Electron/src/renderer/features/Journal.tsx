@@ -29,8 +29,19 @@ interface JournalDraftState {
   needsRead?: boolean
 }
 
-export function JournalEditor({ sessionId, onClose }: { sessionId: number; onClose: () => void }) {
+export function JournalEditor({
+  sessionId,
+  onClose,
+  mode = 'desktop',
+  editText,
+}: {
+  sessionId: number
+  onClose(): void
+  mode?: Mode
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
+}) {
   const query = useApiQuery<JournalResponse>('journal.get', { sessionId })
+  const origin = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null)
   const [draft] = useViewState<JournalDraftState | null>(`draft:journal:${sessionId}`, null)
   const cancel = () => {
     if (draft?.sending) return
@@ -46,7 +57,16 @@ export function JournalEditor({ sessionId, onClose }: { sessionId: number; onClo
     >
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="dialog-content journal-dialog">
+        <Dialog.Content
+          className={`dialog-content journal-dialog mode-${mode}`}
+          onEscapeKeyDown={(event) => {
+            if (draft?.sending) event.preventDefault()
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            if (origin.current?.isConnected) origin.current.focus({ preventScroll: true })
+          }}
+        >
           <div className="feature-heading">
             <div>
               <Dialog.Title>Remember this session</Dialog.Title>
@@ -61,7 +81,12 @@ export function JournalEditor({ sessionId, onClose }: { sessionId: number; onClo
           ) : query.error ? (
             <Notice error={query.error} />
           ) : query.data ? (
-            <JournalDraft initial={query.data} onClose={onClose} />
+            <JournalDraft
+              initial={query.data}
+              onClose={onClose}
+              showKeyboardAction={mode === 'fullscreen'}
+              editText={editText}
+            />
           ) : null}
         </Dialog.Content>
       </Dialog.Portal>
@@ -74,11 +99,13 @@ export function JournalDraft({
   onClose,
   promptMode,
   editText,
+  showKeyboardAction = promptMode === 'fullscreen',
 }: {
   initial: JournalResponse
   onClose: () => void
   promptMode?: Mode
   editText?(input: HTMLInputElement | HTMLTextAreaElement): void
+  showKeyboardAction?: boolean
 }) {
   const client = useQueryClient()
   const noteInput = useRef<HTMLTextAreaElement>(null)
@@ -196,7 +223,7 @@ export function JournalDraft({
           />
         )}
       </label>
-      {promptMode === 'fullscreen' && (
+      {showKeyboardAction && (
         <button
           className="journal-edit-note"
           type="button"
@@ -359,9 +386,11 @@ export function SessionRows({ sessions, onEdit }: { sessions: Session[]; onEdit:
 export function Journal({
   mode = 'desktop',
   onOpenGame,
+  editText,
 }: {
   mode?: Mode
   onOpenGame?: (workId: number) => void
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
 }) {
   const [section, setSection] = useViewState(`${mode}:journal:section`, 0)
   const [days, setDays] = useViewState(`${mode}:journal:days`, mode === 'fullscreen' ? 0 : 30)
@@ -728,7 +757,9 @@ export function Journal({
           )}
         </>
       )}
-      {editing != null && <JournalEditor sessionId={editing} onClose={() => setEditing(null)} />}
+      {editing != null && (
+        <JournalEditor sessionId={editing} onClose={() => setEditing(null)} mode={mode} editText={editText} />
+      )}
       {mode === 'fullscreen' ? (
         <FullscreenNoteReading
           open={reading}

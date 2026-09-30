@@ -1,10 +1,11 @@
 ---
 id: TASK-381.5
 title: 'Electron: finish controller keyboard and accessible modal routes'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:44'
+updated_date: '2026-09-30 23:41'
 labels:
   - electron
   - parity
@@ -49,13 +50,35 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Controller keyboard case changes, typing, backspace, inverted-T arrows, one-shot Back and original-field focus restoration pass the complete original interaction/geometry matrices.
-- [ ] #2 Settings, filters, combined prompts, journal fields and file pickers expose meaningful names, validation and reachable controller actions; dynamic modal close restores its invoking control on both applicable surfaces.
-- [ ] #3 All 10 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Controller keyboard case changes, typing, backspace, inverted-T arrows, one-shot Back and original-field focus restoration pass the complete original interaction/geometry matrices.
+- [x] #2 Settings, filters, combined prompts, journal fields and file pickers expose meaningful names, validation and reachable controller actions; dynamic modal close restores its invoking control on both applicable surfaces.
+- [x] #3 All 10 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit all ten assigned source methods against current keyboard, controller dispatch, Settings/filter controls, list prompts, journal editors and file selection; preserve all original fixtures and edge cases.
+2. Restore demonstrated keyboard and file-picker gaps using bounded domain-agent ownership. Coordinator owns accessibility/modal integration and shared controller dispatch. Serialize native Electron runs.
+3. Verify accessible names/enabled states and directional reachability across all ten source screens, prompt empty/busy/error transitions, both journal entry points, dynamic modal return and keyboard return. Verify file filters, cancellation, overwrite consent and no picker writes with disposable fixtures.
+4. Run focused tests, full component/live API checks and affected native regressions on desktop and fullscreen. Inspect screenshots, map only these ten source contracts, update documentation and commit.
+5. Stop after TASK-381.5 for review; do not begin TASK-381.6 until the user prompts continuation.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Implemented the five-row 57-key controller keyboard, main-owned fullscreen file chooser with Cancel-first overwrite consent and pending-action cancellation, journal keyboard actions and return focus, disclosure navigation, settings save-time focus retention and age-limit row alignment. Desktop and fullscreen are independently exercised. Final build/typecheck, Prettier and diff checks pass. All 3,388 component/live API cases across 166 files pass with eight workers in 49.41 seconds. All 65 distinct native cases pass in serialized batches; the joined latest-results report has no skips or retries. Initial runs exposed a zoom-sensitive underline assertion and a Search test timeout; the corrected zoom reference passes and Search passed alone then in the full bounded run without changing its assertions or timeout. All ten assigned source methods are now ported: 1,313 ported, 625 retained backend, 30 framework-specific, 384 pending and 83 partial (467 unresolved). Evidence and limitations: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty.md. Physical devices remain unverified; native desktop chooser options are checked at the Electron boundary. Existing TASK-381.7 records fullscreen Filters visual comparison. Stop after this milestone; TASK-381.6 is not started.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Restored complete keyboard geometry and controller edits, accessible settings/modal routes, fullscreen file selection and exact opener focus. Verified 3,388 component/live API cases and 65 distinct native cases on both surfaces, plus build/typecheck and visual inspection. All ten assigned source contracts now have executed replacement evidence; 467 remain unresolved elsewhere. Checkpoint sixty records logs, screenshots, initial failures and validation limits. Milestone commit and review boundary will be recorded before closing.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -45,6 +45,13 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [controller accessibility checkpoint](checkpoint-sixty.md) records all 3,388 component/live
+API cases and 65 distinct native cases passing. It restores the five-row controller keyboard,
+fullscreen file chooser, journal keyboard actions and focus across asynchronous settings and
+modal routes. All ten assigned source methods gain complete evidence; 384 pending and 83 partial
+methods remain. Physical-device checks and fullscreen filter visual comparison remain open.
+TASK-381.5 stops for review before library loading and live refresh in TASK-381.6.
+
 The [fullscreen sizing checkpoint](checkpoint-fifty-nine.md) records all 3,369 component/live
 API cases passing. It restores the 85% baseline, display scaling, artwork edge padding,
 source shelf targets, Activity reading hierarchy and full-canvas decorative backdrops.

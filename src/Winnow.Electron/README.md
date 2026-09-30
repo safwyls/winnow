@@ -343,6 +343,20 @@ and a recommendation filmstrip. Gamepad API navigation supports directional move
 page and tab switching, actions, a quick menu and an on-screen keyboard. Physical-controller
 and TV-distance validation remain outstanding.
 
+The shared text keyboard uses five QWERTY rows, a wide Space key and an inverted-T
+caret cluster. Case changes the letters and symbols; X deletes backward and RT invokes
+Enter. B and Done close once and return focus to the original field. Activity and game
+details journal editors use larger fullscreen fields and an explicit Edit note action. Expandable
+filter and help sections participate in directional navigation.
+
+Fullscreen file selection stays inside Winnow for artwork, manual executables, appearance
+profile import/export, developer-theme folders and acquisition CSV export. The chooser
+pages through folders, filters extensions without regard to case, and asks before replacing
+an existing file, initially focusing Cancel. Choosing a path never writes the file; the
+operation that opened the chooser owns the subsequent read or write. Desktop keeps native
+file dialogs. Saved Steam HTML pages still use the separate multi-file input, and installing
+a developer theme retains its native trust confirmation.
+
 Fullscreen keeps LB/RB glyphs on either side of the centered main menu. Library, Activity
 and Settings keep LT/RT glyphs beside their local sections.
 Bold selection reserves its width, so changing sections keeps the strip stationary; selected

@@ -48,6 +48,15 @@ export function setTextValue(input: HTMLInputElement | HTMLTextAreaElement, valu
   input.dispatchEvent(new Event('change', { bubbles: true }))
 }
 function available(element: HTMLElement) {
+  // Closed disclosure content still has DOM nodes, but only its summary can receive input.
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    if (
+      parent instanceof HTMLDetailsElement &&
+      !parent.open &&
+      !parent.querySelector(':scope > summary')?.contains(element)
+    )
+      return false
+  }
   return (
     !element.closest(
       '[inert],[hidden],[aria-hidden="true"],[role="dialog"][data-state="closed"],[role="alertdialog"][data-state="closed"],[role="menu"][data-state="closed"],[data-controller-scope][data-state="closed"]',
@@ -59,12 +68,13 @@ function available(element: HTMLElement) {
 function controls(scope: ParentNode) {
   return [
     ...scope.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
+      'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], summary, [tabindex="0"]',
     ),
   ].filter(
     (element) =>
       available(element) &&
       !element.matches(':disabled') &&
+      element.tabIndex >= 0 &&
       element.getBoundingClientRect().width > 0 &&
       element.getBoundingClientRect().height > 0,
   )

@@ -654,7 +654,9 @@ export function AvalonDetailsLayout({
         {panel}
       </div>
       <MetadataRefreshStatus state={refresh} className="detail-refetch-status" polite />
-      {editing != null && <JournalEditor sessionId={editing} onClose={() => setEditing(null)} />}
+      {editing != null && (
+        <JournalEditor sessionId={editing} onClose={() => setEditing(null)} mode={mode} editText={editText} />
+      )}
       {listPrompt && game && (
         <AddToListDialog
           games={[game]}

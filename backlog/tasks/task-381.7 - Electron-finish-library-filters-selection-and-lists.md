@@ -5,6 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:45'
+updated_date: '2026-09-30 23:29'
 labels:
   - electron
   - parity
@@ -89,3 +90,9 @@ Review boundary: work on this task only after the user prompts continuation from
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-381.5 review finding: the existing fullscreen Filters surface passes native accessible-name and D-pad reachability checks, but still uses the shared auto-fit form layout with 20px labels and smaller supporting actions. Compare that presentation with FullscreenBrowseFiltersPage and the fullscreen design tokens during this filter checkpoint; controller-route evidence alone does not establish visual parity. This task remains To Do and has not been started.
+<!-- SECTION:NOTES:END -->

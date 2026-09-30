@@ -14,6 +14,9 @@ function subscribe<T>(channel: string, callback: (value: T) => void): () => void
   return () => ipcRenderer.removeListener(channel, listener)
 }
 const bridge: WinnowBridge = {
+  filePickerSnapshot: () => ipcRenderer.invoke('winnow:file-picker:snapshot'),
+  onFilePicker: (callback) => subscribe('winnow:file-picker:changed', callback),
+  filePickerAction: (action) => ipcRenderer.invoke('winnow:file-picker:action', action),
   importArtwork: (input) => ipcRenderer.invoke('winnow:artwork:import', input),
   request: (request) => ipcRenderer.invoke('winnow:request', request),
   cancelRequest: (requestId) => ipcRenderer.invoke('winnow:request:cancel', requestId),

@@ -43,6 +43,43 @@ function click(name: string) {
 }
 
 describe('on-screen keyboard field lifetime and editing parity', () => {
+  it('wraps five weighted rows through Case, Q and Space using directional input', () => {
+    const target = input('')
+    render(<OnScreenKeyboard input={target} close={vi.fn()} />)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '1' }))
+    const direction = (key: string) => fireEvent.keyDown(document.activeElement!, { key })
+    direction('ArrowDown')
+    direction('ArrowDown')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Case' }))
+    fireEvent.click(document.activeElement!)
+    expect(screen.getByRole('button', { name: 'Case' }).getAttribute('aria-pressed')).toBe('true')
+    direction('ArrowUp')
+    fireEvent.click(document.activeElement!)
+    expect(target.value).toBe('Q')
+    direction('ArrowUp')
+    direction('ArrowUp')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Done' }))
+    direction('ArrowRight')
+    fireEvent.click(document.activeElement!)
+    expect(target.value).toBe('Q ')
+    click('Backspace')
+    expect(target.value).toBe('Q')
+  })
+
+  it('Back closes once, restores the original field and rejects stale keyboard actions', async () => {
+    const target = input(''),
+      close = vi.fn()
+    render(<OnScreenKeyboard input={target} close={close} />)
+    const initial = screen.getByRole('button', { name: '1' })
+    fireEvent.keyDown(initial, { key: 'Escape' })
+    await waitFor(() => expect(document.activeElement).toBe(target))
+    fireEvent.keyDown(initial, { key: 'Escape' })
+    fireEvent.click(initial)
+    expect(close).toHaveBeenCalledOnce()
+    expect(target.value).toBe('')
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('replaces a selection through the input binding without truncating the trailing text at maxlength', () => {
     const target = input('hello', { maxLength: 5 }),
       boundValue = vi.fn()
@@ -65,9 +102,10 @@ describe('on-screen keyboard field lifetime and editing parity', () => {
     render(<OnScreenKeyboard input={target} close={close} />)
     click('Backspace')
     expect(target.value).toBe('a')
+    const key = screen.getByRole('button', { name: '1' })
     target.readOnly = true
-    click('1')
-    click('1')
+    fireEvent.click(key)
+    fireEvent.click(key)
     expect(target.value).toBe('a')
     expect(close).toHaveBeenCalledOnce()
   })
@@ -76,11 +114,14 @@ describe('on-screen keyboard field lifetime and editing parity', () => {
     const target = input('note'),
       close = vi.fn()
     render(<OnScreenKeyboard input={target} close={close} />)
-    click('Done')
-    click('Done')
-    click('1')
+    const done = screen.getByRole('button', { name: 'Done' }),
+      key = screen.getByRole('button', { name: '1' })
+    fireEvent.click(done)
+    fireEvent.click(done)
+    fireEvent.click(key)
     expect(close).toHaveBeenCalledOnce()
     expect(target.value).toBe('note')
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('Enter closes before submitting a single-line field while Done only closes', () => {
@@ -121,12 +162,14 @@ describe('on-screen keyboard field lifetime and editing parity', () => {
     target.value = 'Updated note'
     frame()
     expect(screen.getByLabelText('Current text').textContent).toBe('Updated note')
+    const preview = screen.getByLabelText('Current text'),
+      key = screen.getByRole('button', { name: '1' })
     target.remove()
     target.value = 'Detached'
     frame()
     expect(close).toHaveBeenCalledOnce()
-    expect(screen.getByLabelText('Current text').textContent).toBe('Updated note')
-    click('1')
+    expect(preview.textContent).toBe('Updated note')
+    fireEvent.click(key)
     expect(target.value).toBe('Detached')
   })
 
@@ -168,7 +211,7 @@ describe('on-screen keyboard field lifetime and editing parity', () => {
     const first = input('first'),
       second = input('second')
     const rendered = render(<OnScreenKeyboard input={first} close={vi.fn()} />)
-    click('Shift')
+    click('Case')
     rendered.rerender(<OnScreenKeyboard input={second} close={vi.fn()} />)
     expect(screen.getByLabelText('Current text').textContent).toBe('second')
     click('a')

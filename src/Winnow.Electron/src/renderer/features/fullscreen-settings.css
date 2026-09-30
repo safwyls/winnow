@@ -36,9 +36,10 @@
   margin: 0 24px;
   font: calc(clamp(14.67px, 1.146vw, 22px) * var(--settings-scale))/1.45 var(--font-body);
 }
-.fullscreen-settings-content .rating-cap {
+.fullscreen-settings-content .rating-cap.mode-fullscreen {
   margin: 0;
   padding: 0;
+  max-width: none;
 }
 .fullscreen-settings-path {
   overflow-wrap: anywhere;

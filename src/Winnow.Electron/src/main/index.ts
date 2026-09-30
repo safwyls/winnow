@@ -28,6 +28,8 @@ import { recentGames } from './jump-list'
 import { SnapshotRefresh } from '../shared/snapshot-refresh'
 import { FontCatalogue } from './fonts'
 import { inspectExecutable } from './executable-facts'
+import { FullscreenFilePickerService, type FilePickerOptions } from './file-picker'
+import type { FilePickerSnapshot } from '../shared/file-picker'
 import { WindowsControllerProbe, matchingControllerBattery } from './controller-battery'
 import { validateControllerSample } from '../shared/controller-status'
 import { frontendDataLocation } from './frontend-data-location'
@@ -171,7 +173,14 @@ app.on('open-url', (event, url) => {
 
 function emit(
   channel: string,
-  payload: BackendEvent | ConnectionState | ApplicationUpdateSnapshot | boolean | undefined,
+  payload:
+    | BackendEvent
+    | ConnectionState
+    | ApplicationUpdateSnapshot
+    | FilePickerSnapshot
+    | boolean
+    | null
+    | undefined,
 ): void {
   if (window && !window.isDestroyed()) window.webContents.send(channel, payload)
 }
@@ -419,6 +428,32 @@ async function initialize(): Promise<void> {
       return handler(...args)
     })
   }
+  const filePicker = new FullscreenFilePickerService((snapshot) =>
+    emit('winnow:file-picker:changed', snapshot),
+  )
+  handle('winnow:file-picker:snapshot', () => filePicker.snapshot)
+  handle('winnow:file-picker:action', (action: unknown) => filePicker.action(action))
+  const chooseFile = async (options: FilePickerOptions): Promise<string | null> => {
+    if (window!.isFullScreen())
+      return filePicker.choose({ initialDirectory: app.getPath('documents'), ...options })
+    const filters = options.extensions?.length
+      ? [{ name: options.filterName ?? 'Allowed files', extensions: options.extensions }]
+      : undefined
+    if (options.mode === 'save') {
+      const choice = await dialog.showSaveDialog(window!, {
+        title: options.title,
+        defaultPath: options.suggestedName,
+        filters,
+      })
+      return choice.canceled ? null : (choice.filePath ?? null)
+    }
+    const choice = await dialog.showOpenDialog(window!, {
+      title: options.title,
+      properties: [options.mode === 'directory' ? 'openDirectory' : 'openFile'],
+      filters,
+    })
+    return choice.canceled ? null : (choice.filePaths[0] ?? null)
+  }
   const requestLifetimes = new RequestLifetimes()
   const requestOwners = new WeakSet<object>()
   const observeRequestOwner = (owner: Electron.WebContents) => {
@@ -494,12 +529,12 @@ async function initialize(): Promise<void> {
   handle('winnow:artwork:import', (input: unknown) =>
     importArtworkFile(input, {
       choose: async () => {
-        const choice = await dialog.showOpenDialog(window!, {
+        return chooseFile({
           title: 'Choose artwork',
-          properties: ['openFile'],
-          filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }],
+          mode: 'open',
+          filterName: 'Images',
+          extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'],
         })
-        return choice.canceled ? null : (choice.filePaths[0] ?? null)
       },
       upload: (target, bytes) => transport!.importArtwork(target, bytes),
     }),
@@ -518,21 +553,24 @@ async function initialize(): Promise<void> {
     sessionAppearance ? sessionAppearance.saveProfile(value) : saveProfile(preferencesFile, value),
   )
   handle('winnow:profile:import', async () => {
-    const choice = await dialog.showOpenDialog(window!, {
+    const path = await chooseFile({
       title: 'Import appearance profile',
-      filters: [{ name: 'Winnow appearance profile', extensions: ['json'] }],
-      properties: ['openFile'],
+      mode: 'open',
+      filterName: 'Winnow appearance profile',
+      extensions: ['json'],
     })
-    return choice.canceled || !choice.filePaths[0] ? null : readProfile(choice.filePaths[0])
+    return path ? readProfile(path) : null
   })
   handle('winnow:profile:export', async (value: unknown) => {
-    const choice = await dialog.showSaveDialog(window!, {
+    const path = await chooseFile({
       title: 'Export appearance profile',
-      defaultPath: 'winnow-appearance.json',
-      filters: [{ name: 'JSON', extensions: ['json'] }],
+      mode: 'save',
+      suggestedName: 'winnow-appearance.json',
+      filterName: 'JSON',
+      extensions: ['json'],
     })
-    if (choice.canceled || !choice.filePath) return false
-    await saveProfile(choice.filePath, value)
+    if (!path) return false
+    await saveProfile(path, value)
     return true
   })
   handle('winnow:themes:list', () => listThemePackages(themesRoot))
@@ -557,12 +595,8 @@ async function initialize(): Promise<void> {
     if (installing) return null
     installing = true
     try {
-      const choice = await dialog.showOpenDialog(window!, {
-        title: 'Choose a Winnow theme folder',
-        properties: ['openDirectory'],
-      })
-      if (choice.canceled || !choice.filePaths[0]) return null
-      const source = choice.filePaths[0]
+      const source = await chooseFile({ title: 'Choose a Winnow theme folder', mode: 'directory' })
+      if (!source) return null
       const manifest = await readManifest(source)
       const trust = await dialog.showMessageBox(window!, {
         type: 'warning',
@@ -621,12 +655,11 @@ async function initialize(): Promise<void> {
     }),
   )
   const chooseManualExecutable = async () => {
-    const result = await dialog.showOpenDialog(window!, {
+    return chooseFile({
       title: 'Choose game executable',
-      properties: ['openFile'],
-      ...(process.platform === 'win32' ? { filters: [{ name: 'Executable', extensions: ['exe'] }] } : {}),
+      mode: 'open',
+      ...(process.platform === 'win32' ? { filterName: 'Executable', extensions: ['exe'] } : {}),
     })
-    return result.canceled ? null : (result.filePaths[0] ?? null)
   }
   handle('winnow:manual-executable', chooseManualExecutable)
   handle('winnow:manual-executable-facts', async () => {
@@ -638,13 +671,15 @@ async function initialize(): Promise<void> {
       route: 'acquisitions.export',
     })
     if (!result.ok || !result.data) throw new Error('Acquisitions could not be exported. Try again.')
-    const choice = await dialog.showSaveDialog(window!, {
+    const path = await chooseFile({
       title: 'Export acquisitions',
-      defaultPath: 'winnow-acquisitions.csv',
-      filters: [{ name: 'CSV', extensions: ['csv'] }],
+      mode: 'save',
+      suggestedName: 'winnow-acquisitions.csv',
+      filterName: 'CSV',
+      extensions: ['csv'],
     })
-    if (choice.canceled || !choice.filePath) return false
-    await writeFile(choice.filePath, result.data.content, 'utf8')
+    if (!path) return false
+    await writeFile(path, result.data.content, 'utf8')
     return true
   })
   handle('winnow:steam:signin', (options: SteamSignInOptions) =>
@@ -756,9 +791,12 @@ async function initialize(): Promise<void> {
     window.webContents.on('will-attach-webview', (event) => event.preventDefault())
     window.webContents.on('did-start-loading', () => {
       rendererAcceptsActivation = false
+      filePicker.cancel()
     })
+    window.webContents.on('render-process-gone', () => filePicker.cancel())
     window.on('enter-full-screen', () => emit('winnow:fullscreen:changed', true))
     window.on('leave-full-screen', () => {
+      filePicker.cancel()
       controllerProbe.dispose()
       emit('winnow:fullscreen:changed', false)
     })
@@ -784,6 +822,7 @@ async function initialize(): Promise<void> {
       if (!quitting && windowTray?.closing()) event.preventDefault()
     })
     window.on('closed', () => {
+      filePicker.cancel()
       controllerProbe.dispose()
       window = undefined
     })

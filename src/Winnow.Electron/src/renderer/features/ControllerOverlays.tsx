@@ -99,6 +99,33 @@ export function QuickMenu({
 }
 const keyboardTargets = new WeakMap<Element, number>()
 let nextKeyboardTarget = 0
+type KeyboardKey = { label: string; shifted?: string; width: number; action?: boolean }
+const characters = (normal: string, shifted: string): KeyboardKey[] =>
+  [...normal].map((label, index) => ({ label, shifted: shifted[index], width: 1 }))
+const keyboardRows: KeyboardKey[][] = [
+  [...characters('1234567890-=', '!@#$%^&*()_+'), { label: 'Backspace', width: 2.5, action: true }],
+  [...characters('qwertyuiop[]\\', 'QWERTYUIOP{}|'), { label: 'Delete', width: 1.5, action: true }],
+  [
+    { label: 'Case', width: 1.75, action: true },
+    ...characters("asdfghjkl;'", 'ASDFGHJKL:\"'),
+    { label: 'Enter', width: 1.75, action: true },
+  ],
+  [
+    { label: '`', shifted: '~', width: 1.75 },
+    ...characters('zxcvbnm,./', 'ZXCVBNM<>?'),
+    { label: '', width: 0.75 },
+    { label: 'Up', width: 1, action: true },
+    { label: '', width: 1 },
+  ],
+  [
+    { label: 'Done', width: 2, action: true },
+    { label: 'Space', width: 9.5, action: true },
+    ...['Left', 'Down', 'Right'].map((label) => ({ label, width: 1, action: true })),
+  ],
+]
+const keyCenter = (row: number, column: number) =>
+  keyboardRows[row].slice(0, column).reduce((sum, key) => sum + key.width, 0) +
+  keyboardRows[row][column].width / 2
 export function OnScreenKeyboard({
   input,
   close,
@@ -112,12 +139,14 @@ export function OnScreenKeyboard({
 
 function KeyboardSession({ input, close }: { input: HTMLInputElement | HTMLTextAreaElement; close(): void }) {
   const [shift, setShift] = useState(false)
+  const [isClosed, setClosed] = useState(false)
+  const keys = useRef<Array<Array<HTMLButtonElement | null>>>([])
   const [value, setValue] = useState(input.value)
   const [cursor, setCursor] = useState(input.selectionStart ?? input.value.length)
   const [end, setEnd] = useState(input.selectionEnd ?? input.value.length)
   // React can restore the unfocused input's old DOM selection after its value changes.
   // While the keyboard owns editing, its caret is authoritative between commits.
-  const selection = useRef({start:cursor,end})
+  const selection = useRef({ start: cursor, end })
   const secure = useRef(input.type === 'password').current
   const closed = useRef(false)
   const closeCurrent = useRef(close)
@@ -128,10 +157,15 @@ function KeyboardSession({ input, close }: { input: HTMLInputElement | HTMLTextA
     (submit = false) => {
       if (closed.current) return
       closed.current = true
+      setClosed(true)
       closeCurrent.current()
       if (!input.isConnected || input.disabled || input.readOnly) return
       input.focus()
-      try { input.setSelectionRange(selection.current.start,selection.current.end) } catch { /* Number fields have no selection. */ }
+      try {
+        input.setSelectionRange(selection.current.start, selection.current.end)
+      } catch {
+        /* Number fields have no selection. */
+      }
       if (submit && !(input instanceof HTMLTextAreaElement)) {
         const unhandled = input.dispatchEvent(
           new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
@@ -154,7 +188,10 @@ function KeyboardSession({ input, close }: { input: HTMLInputElement | HTMLTextA
         setValue(input.value)
         setCursor(input.selectionStart ?? input.value.length)
         setEnd(input.selectionEnd ?? input.value.length)
-        selection.current={start:input.selectionStart ?? input.value.length,end:input.selectionEnd ?? input.value.length}
+        selection.current = {
+          start: input.selectionStart ?? input.value.length,
+          end: input.selectionEnd ?? input.value.length,
+        }
       }
       frame = requestAnimationFrame(inspect)
     }
@@ -182,7 +219,7 @@ function KeyboardSession({ input, close }: { input: HTMLInputElement | HTMLTextA
     setValue(next)
     setCursor(start + insert.length)
     setEnd(start + insert.length)
-    selection.current={start:start+insert.length,end:start+insert.length}
+    selection.current = { start: start + insert.length, end: start + insert.length }
     setTextValue(input, next)
     try {
       input.setSelectionRange(start + insert.length, start + insert.length)
@@ -225,16 +262,45 @@ function KeyboardSession({ input, close }: { input: HTMLInputElement | HTMLTextA
     }
     setCursor(next)
     setEnd(next)
-    selection.current={start:next,end:next}
+    selection.current = { start: next, end: next }
     try {
       input.setSelectionRange(next, next)
     } catch {
       /* Number fields do not expose a selection. */
     }
   }
+  const activate = (key: KeyboardKey) => {
+    if (closed.current) return
+    if (!key.action) return change(shift ? key.shifted! : key.label)
+    switch (key.label) {
+      case 'Case':
+        setShift((value) => !value)
+        break
+      case 'Space':
+        change(' ')
+        break
+      case 'Backspace':
+        change('', 'backward')
+        break
+      case 'Delete':
+        change('', 'forward')
+        break
+      case 'Enter':
+        multiline ? change('\n') : finish(true)
+        break
+      case 'Done':
+        finish()
+        break
+      case 'Left':
+      case 'Right':
+      case 'Up':
+      case 'Down':
+        moveCaret(key.label.toLowerCase() as 'left' | 'right' | 'up' | 'down')
+    }
+  }
   return (
     <Dialog.Root
-      open
+      open={!isClosed}
       onOpenChange={(open) => {
         if (!open) finish()
       }}
@@ -243,57 +309,80 @@ function KeyboardSession({ input, close }: { input: HTMLInputElement | HTMLTextA
         <Dialog.Overlay className="dialog-overlay keyboard-overlay" />
         <Dialog.Content
           className="dialog-content onscreen-keyboard"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+            keys.current[0]?.[0]?.focus()
+          }}
+          onKeyDown={(event) => {
+            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return
+            event.preventDefault()
+            event.stopPropagation()
+            if (closed.current) return
+            let row = keys.current.findIndex((items) =>
+              items.includes(document.activeElement as HTMLButtonElement),
+            )
+            if (row < 0) return
+            let column = keys.current[row].indexOf(document.activeElement as HTMLButtonElement)
+            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+              const center = keyCenter(row, column)
+              row = (row + (event.key === 'ArrowUp' ? -1 : 1) + keyboardRows.length) % keyboardRows.length
+              column = keyboardRows[row].reduce(
+                (nearest, key, index) =>
+                  key.label &&
+                  Math.abs(keyCenter(row, index) - center) < Math.abs(keyCenter(row, nearest) - center)
+                    ? index
+                    : nearest,
+                0,
+              )
+            } else {
+              const direction = event.key === 'ArrowLeft' ? -1 : 1
+              do {
+                column = (column + direction + keyboardRows[row].length) % keyboardRows[row].length
+              } while (!keyboardRows[row][column].label)
+            }
+            keys.current[row]?.[column]?.focus({ preventScroll: true })
+          }}
           onCloseAutoFocus={(event) => {
             event.preventDefault()
             if (input.isConnected && !input.disabled) input.focus()
           }}
         >
           <Dialog.Title>Enter text</Dialog.Title>
-          <Dialog.Description>A selects a key · X deletes · RT enters · B closes</Dialog.Description>
+          <Dialog.Description>D-pad moves · A types · X backspaces · RT enters · B closes</Dialog.Description>
           <output className="keyboard-preview" aria-label="Current text">
             {secure ? '•'.repeat(value.length) : value || ' '}
           </output>
-          {['1234567890', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm', '-_./:@?&='].map((row) => (
-            <div className="keyboard-row" key={row}>
-              {[...row].map((key) => (
-                <button key={key} onClick={() => change(shift ? key.toUpperCase() : key)}>
-                  {shift ? key.toUpperCase() : key}
-                </button>
-              ))}
+          {keyboardRows.map((row, rowIndex) => (
+            <div
+              className="keyboard-row"
+              key={rowIndex}
+              style={{ gridTemplateColumns: row.map((key) => `${key.width}fr`).join(' ') }}
+            >
+              {row.map((key, column) =>
+                key.label ? (
+                  <button
+                    key={column}
+                    ref={(element) => {
+                      ;(keys.current[rowIndex] ??= [])[column] = element
+                    }}
+                    aria-label={key.action ? key.label : undefined}
+                    aria-pressed={key.label === 'Case' ? shift : undefined}
+                    data-keyboard-backspace={key.label === 'Backspace' ? '' : undefined}
+                    data-keyboard-enter={key.label === 'Enter' ? '' : undefined}
+                    onClick={() => activate(key)}
+                  >
+                    {key.label === 'Case'
+                      ? `Case: ${shift ? 'ABC' : 'abc'}`
+                      : (({ Up: '↑', Left: '←', Down: '↓', Right: '→' } as Record<string, string>)[
+                          key.label
+                        ] ?? (key.action || !shift ? key.label : key.shifted))}
+                  </button>
+                ) : (
+                  <span key={column} aria-hidden="true" />
+                ),
+              )}
             </div>
           ))}
-          <div className="keyboard-row">
-            <button aria-pressed={shift} onClick={() => setShift(!shift)}>
-              Shift
-            </button>
-            <button data-keyboard-backspace onClick={() => change('', 'backward')}>
-              Backspace
-            </button>
-            <button onClick={() => change('', 'forward')}>Delete</button>
-            <button data-keyboard-enter onClick={() => (multiline ? change('\n') : finish(true))}>
-              Enter
-            </button>
-            <button onClick={() => finish()}>Done</button>
-          </div>
-          <div className="keyboard-bottom">
-            <button className="keyboard-space" onClick={() => change(' ')}>
-              Space
-            </button>
-            <div className="keyboard-arrows">
-              <button className="keyboard-up" aria-label="Up" onClick={() => moveCaret('up')}>
-                ↑
-              </button>
-              <button className="keyboard-left" aria-label="Left" onClick={() => moveCaret('left')}>
-                ←
-              </button>
-              <button className="keyboard-down" aria-label="Down" onClick={() => moveCaret('down')}>
-                ↓
-              </button>
-              <button className="keyboard-right" aria-label="Right" onClick={() => moveCaret('right')}>
-                →
-              </button>
-            </div>
-          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

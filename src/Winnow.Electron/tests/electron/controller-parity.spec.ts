@@ -214,7 +214,16 @@ for (const count of [0, 1, 2])
         return color
       })
       await expect(details.getByRole('tab').nth(1)).toHaveCSS('background-color', raised)
-      await expect(overview).toHaveCSS('border-bottom-width', '2px')
+      const underlineWidth = await overview.evaluate((node) => {
+        // Chromium snaps borders to device pixels after applying the interface zoom.
+        const probe = document.createElement('span')
+        probe.style.borderBottom = '2px solid'
+        node.parentElement!.append(probe)
+        const width = getComputedStyle(probe).borderBottomWidth
+        probe.remove()
+        return width
+      })
+      await expect(overview).toHaveCSS('border-bottom-width', underlineWidth)
       await expect(overview).not.toHaveCSS('border-bottom-color', 'rgba(0, 0, 0, 0)')
       if (count === 2 && scale === 1.4)
         await page.screenshot({ path: info.outputPath('fullscreen-controller-details.png') })

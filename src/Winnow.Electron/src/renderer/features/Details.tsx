@@ -208,10 +208,12 @@ function SharedDetails({
   workId,
   mode = 'desktop',
   onClose,
+  editText,
 }: {
   workId: number
   mode?: Mode
   onClose?: () => void
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
 }) {
   const library = useLibrary()
   const workspace = useWorkspace()
@@ -500,7 +502,9 @@ function SharedDetails({
           <HideGame key={`visibility:${workId}`} workId={workId} onHidden={onClose} />
         </aside>
       </div>
-      {editing != null && <JournalEditor sessionId={editing} onClose={() => setEditing(null)} />}
+      {editing != null && (
+        <JournalEditor sessionId={editing} onClose={() => setEditing(null)} mode={mode} editText={editText} />
+      )}
     </section>
   )
 }

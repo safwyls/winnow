@@ -1,0 +1,64 @@
+@layer components {
+  .dialog-content.fullscreen-file-picker {
+    --picker-text-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+    position: fixed;
+    inset: 0 auto auto 0;
+    transform: none;
+    width: calc(100vw / var(--effective-interface-scale));
+    height: calc(100dvh / var(--effective-interface-scale));
+    max-width: none;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    background: var(--bg);
+    padding: calc(100vh * var(--fullscreen-safe-ratio, 0.05) / var(--effective-interface-scale))
+      calc(100vw * var(--fullscreen-safe-ratio, 0.05) / var(--effective-interface-scale));
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow: hidden;
+  }
+  .fullscreen-file-picker > h2 {
+    margin: 0;
+    font-size: calc(clamp(32px, 2.5vw, 48px) * var(--picker-text-scale));
+  }
+  .fullscreen-file-picker .file-picker-location {
+    color: var(--muted);
+    overflow-wrap: anywhere;
+    margin: 0;
+  }
+  .fullscreen-file-picker p,
+  .fullscreen-file-picker label {
+    font-size: calc(clamp(18.67px, 1.458vw, 28px) * var(--picker-text-scale));
+  }
+  .file-picker-rows {
+    overflow: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 4px;
+  }
+  .file-picker-rows > button,
+  .file-picker-rows input {
+    flex-shrink: 0;
+    width: min(100%, 1200px);
+    min-height: 56px;
+    font-size: calc(clamp(21.33px, 1.667vw, 32px) * var(--picker-text-scale));
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .file-picker-rows > button {
+    justify-content: flex-start;
+  }
+  .file-picker-rows > label {
+    display: grid;
+    gap: 8px;
+  }
+  .file-picker-kind {
+    color: var(--muted);
+    display: inline-block;
+    min-width: 100px;
+  }
+}

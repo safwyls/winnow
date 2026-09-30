@@ -26,8 +26,29 @@ export function usePresentationPreferences() {
   const command = useCommand()
   const [error, setError] = useState<unknown>(null)
   const client = useQueryClient()
+  const changedControl = useRef<HTMLElement | null>(null)
+  useLayoutEffect(() => {
+    if (command.isPending) {
+      const cancel = () => {
+        changedControl.current = null
+      }
+      document.addEventListener('pointerdown', cancel, true)
+      document.addEventListener('keydown', cancel, true)
+      return () => {
+        document.removeEventListener('pointerdown', cancel, true)
+        document.removeEventListener('keydown', cancel, true)
+      }
+    }
+    const control = changedControl.current
+    changedControl.current = null
+    // Chromium blurs disabled fields while the shared preference is saved.
+    if (control?.isConnected && document.activeElement === document.body)
+      control.focus({ preventScroll: true })
+  }, [command.isPending])
   const values = Object.fromEntries((query.data ?? []).map((row) => [row.preference, row.value]))
   const set = (preference: string, value: string) => {
+    const active = document.activeElement
+    changedControl.current = active instanceof HTMLElement && active !== document.body ? active : null
     setError(null)
     return command
       .mutateAsync({ route: 'preferences.presentation.put', params: { preference }, body: { value } })

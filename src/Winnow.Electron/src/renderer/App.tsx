@@ -16,6 +16,7 @@ import { SessionNotifications } from './features/SessionNotifications'
 import { UpdateStatus } from './features/Updates'
 import { LinkNotifications } from './features/LinkNotifications'
 import { QuickMenu, OnScreenKeyboard } from './features/ControllerOverlays'
+import { FullscreenFilePicker } from './features/FullscreenFilePicker'
 import { controllerScope, useController } from './controller'
 import type { PresentationPreferenceValue } from './features/SettingsPreferences'
 import { pluginInstallation } from './features/plugin-installation'
@@ -448,7 +449,7 @@ export function App() {
     if (page === 'studio') return <ThemeStudio runtime={runtime} />
     if (page === 'discover') return <AvalonDiscover {...context} />
     if (page === 'library' || page === 'search') return <AvalonLibrary {...context} />
-    if (page === 'journal') return <Journal mode={mode} onOpenGame={openGame} />
+    if (page === 'journal') return <Journal mode={mode} onOpenGame={openGame} editText={setKeyboardInput} />
     if (page === 'merges') return <Merges mode={mode} onOpenGame={openGame} />
     if (page === 'settings')
       return (
@@ -462,7 +463,7 @@ export function App() {
         />
       )
     return position.workId !== null ? (
-      <Details workId={position.workId} mode={mode} onClose={closeGame} />
+      <Details workId={position.workId} mode={mode} onClose={closeGame} editText={setKeyboardInput} />
     ) : (
       <p>Choose a game from your library.</p>
     )
@@ -728,6 +729,7 @@ export function App() {
               exit={toggleFullscreen}
             />
           )}
+          <FullscreenFilePicker />
           {keyboardInput && <OnScreenKeyboard input={keyboardInput} close={() => setKeyboardInput(null)} />}
           <button
             className="recovery-shortcut"
