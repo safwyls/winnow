@@ -236,6 +236,14 @@ available. Reentry shares an unfinished read and refreshes completed reads witho
 Theme colors and mark size update within the same animation circuit; hiding or detaching the
 presentation releases its worker and canvas.
 
+Avalon's desktop command bar keeps Density beside **Display**, which opens the saved cover,
+dormancy, non-game, rating-cap, expansion and journal preferences. The six-step rating cap
+names the selected age level and counts only the titles it hides; unrated games stay visible.
+The explicit-content toggle remains in Library settings, and the cap explains when that
+toggle is still hiding adults-only content. Fullscreen exposes **Content age limit** in
+Library settings, with controller adjustment and scaled text. Setup and alternative layouts
+also expose the shared cap preference.
+
 Session journal prompts are off until enabled in Display preferences. Each prompt names one
 finished sitting. Desktop uses a compact dock with a note field and retractable rating dots;
 fullscreen uses a larger editor with controller keyboard support. An untouched prompt expires

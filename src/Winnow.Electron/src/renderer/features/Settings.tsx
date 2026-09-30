@@ -33,9 +33,16 @@ import { steamCapturePermissionExplanation, steamConnectionState } from './steam
 import { NativeEpicAccount } from './EpicAccount'
 import { SteamAccountOperation, useSteamAccountBusy } from './SteamAccountOperation'
 import { Platforms } from './Platforms'
+import { RatingCapPreference, useLibraryPreferenceChange } from './RatingCap'
 import { useSteamModal } from './SteamModals'
 
-export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
+export function Settings({
+  mode = 'desktop',
+  ratingCapInDisplayPreferences = false,
+}: {
+  mode?: Mode
+  ratingCapInDisplayPreferences?: boolean
+}) {
   const [savedTab, setTab] = useViewState(`${mode}:settings:tab`, 'Platforms')
   const tab = savedTab === 'Connections' ? 'Platforms' : savedTab === 'Providers' ? 'Plugins' : savedTab
   const stores = useApiQuery<StoreConnections>('connections.get')
@@ -116,6 +123,7 @@ export function Settings({ mode = 'desktop' }: { mode?: Mode }) {
             {preferences.data && (
               <LibraryPreferenceForm initial={preferences.data} key={JSON.stringify(preferences.data)} />
             )}
+            {!ratingCapInDisplayPreferences && <RatingCapPreference mode={mode} />}
             <AccountVisibility />
           </section>
           <LibraryPresentationPreferences />
@@ -659,36 +667,16 @@ export function IgdbForm({ snapshot }: { snapshot: IgdbConnection }) {
 }
 
 export function LibraryPreferenceForm({ initial }: { initial: LibraryPreferences }) {
-  const command = useCommand()
-  const [reading, setReading] = useState(false)
-  const writing = useRef(false)
-  useSetupBusy(command.isPending || reading)
-  async function change(field: keyof LibraryPreferences, value: boolean | string) {
-    // This endpoint replaces the whole object: read the latest fields before changing one.
-    const latest = await request<LibraryPreferences>('preferences.library.get')
-    await command.mutateAsync({ route: 'preferences.library.put', body: { ...latest, [field]: value } })
-  }
-  const [readError, setReadError] = useState<unknown>(null)
-  useSetupPreferenceError(readError || command.error)
-  function apply(field: keyof LibraryPreferences, value: boolean | string) {
-    if (writing.current) return
-    writing.current = true
-    setReading(true)
-    setReadError(null)
-    void change(field, value)
-      .catch(setReadError)
-      .finally(() => {
-        writing.current = false
-        setReading(false)
-      })
-  }
+  const { apply, pending, error } = useLibraryPreferenceChange()
+  useSetupBusy(pending)
+  useSetupPreferenceError(error)
   return (
     <div className="editor-form">
       <label className="check-field">
         <input
           type="checkbox"
           checked={initial.showNonGameEntries}
-          disabled={command.isPending || reading}
+          disabled={pending}
           onChange={(event) => apply('showNonGameEntries', event.target.checked)}
         />
         Show tools, demos, and other non-game entries
@@ -697,30 +685,15 @@ export function LibraryPreferenceForm({ initial }: { initial: LibraryPreferences
         <input
           type="checkbox"
           checked={initial.showExplicitContent}
-          disabled={command.isPending || reading}
+          disabled={pending}
           onChange={(event) => apply('showExplicitContent', event.target.checked)}
         />
         Show explicit content
       </label>
-      <label className="field">
-        Maturity cap
-        <select
-          value={initial.maturityCap}
-          disabled={command.isPending || reading}
-          onChange={(event) => apply('maturityCap', event.target.value)}
-        >
-          <option value="everyone">Everyone</option>
-          <option value="preteen">Preteen</option>
-          <option value="teen">Teen</option>
-          <option value="mature">Mature</option>
-          <option value="restricted18">18 and over</option>
-          <option value="adults_only">No rating cap</option>
-        </select>
-      </label>
       <p className="muted">
         Unrated games remain visible. These preferences apply to every frontend attached to this library.
       </p>
-      <Notice error={readError || command.error} />
+      <Notice error={error} />
     </div>
   )
 }

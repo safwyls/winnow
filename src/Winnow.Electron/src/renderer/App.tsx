@@ -440,7 +440,13 @@ export function App() {
     if (page === 'discover') return <AvalonDiscover {...context} />
     if (page === 'library' || page === 'search') return <AvalonLibrary {...context} />
     if (page === 'journal') return <Journal mode={mode} onOpenGame={openGame} />
-    if (page === 'settings') return <Settings mode={mode} />
+    if (page === 'settings')
+      return (
+        <Settings
+          mode={mode}
+          ratingCapInDisplayPreferences={mode === 'desktop' && runtime.profile.themeId === 'avalon'}
+        />
+      )
     return position.workId !== null ? (
       <Details workId={position.workId} mode={mode} onClose={closeGame} />
     ) : (

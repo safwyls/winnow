@@ -22,6 +22,7 @@ async function fixtureEndpoint(directory: string) {
 /** Only a fixture's own discovery file and launched process are eligible for cleanup. */
 export async function closeFixture(application: ElectronApplication | undefined, directory?: string) {
   let backendError: unknown
+  let stoppedBackend: number | undefined
   if (directory) {
     try {
       const endpoint = await fixtureEndpoint(directory)
@@ -34,6 +35,9 @@ export async function closeFixture(application: ElectronApplication | undefined,
         signal: AbortSignal.timeout(5000),
       })
       if (!response.ok) throw Error(`Fixture backend shutdown returned ${response.status}`)
+      if (!Number.isSafeInteger(endpoint.processId) || endpoint.processId <= 0)
+        throw Error('Unexpected fixture backend process identity')
+      stoppedBackend = endpoint.processId
     } catch (error) {
       // Startup can fail before discovery; an already stopped backend cannot answer.
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !(error instanceof TypeError))
@@ -41,6 +45,7 @@ export async function closeFixture(application: ElectronApplication | undefined,
     }
   }
   if (!application) {
+    await waitForBackendExit(stoppedBackend)
     if (backendError) throw backendError
     return
   }
@@ -113,4 +118,20 @@ export async function closeFixture(application: ElectronApplication | undefined,
     child.stderr?.off('data', record)
   }
   if (backendError) throw backendError
+  await waitForBackendExit(stoppedBackend)
+}
+
+async function waitForBackendExit(processId?: number) {
+  if (!processId) return
+  const deadline = Date.now() + 10000
+  for (;;) {
+    try {
+      process.kill(processId, 0)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ESRCH') return
+      throw error
+    }
+    if (Date.now() >= deadline) throw Error(`Fixture backend ${processId} did not exit after shutdown`)
+    await delay(100)
+  }
 }

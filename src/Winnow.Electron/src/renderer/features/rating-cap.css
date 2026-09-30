@@ -1,0 +1,33 @@
+.rating-cap {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.rating-cap-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--text);
+}
+.rating-cap input {
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+.rating-cap p {
+  margin: 0;
+  color: var(--muted);
+  font-size: calc(12px * var(--theme-text-scale, 1));
+  line-height: 1.45;
+}
+.rating-cap.mode-fullscreen {
+  max-width: 980px;
+  gap: 16px;
+  font-size: calc(24px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}
+.rating-cap.mode-fullscreen p {
+  font-size: calc(20px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}
+.rating-cap.mode-fullscreen input {
+  min-height: 48px;
+}

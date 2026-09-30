@@ -309,7 +309,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s settings parity', (mode) =
   })
 
   it('saves library visibility against fresh preferences without overwriting another frontend', async () => {
-    const current = { showNonGameEntries: true, showExplicitContent: true, maturityCap: 'adults_only' }
+    const current = { showNonGameEntries: false, showExplicitContent: true, maturityCap: 'teen' }
     const { request, wrapper } = fixture((input) =>
       input.route === 'preferences.library.get' ? current : null,
     )
@@ -319,12 +319,12 @@ describe.each(['desktop', 'fullscreen'] as const)('%s settings parity', (mode) =
       />,
       { wrapper },
     )
-    fireEvent.change(screen.getByLabelText('Maturity cap'), { target: { value: 'teen' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Show tools, demos, and other non-game entries' }))
     await waitFor(() =>
       expect(request).toHaveBeenCalledWith({
         route: 'preferences.library.put',
         params: undefined,
-        body: { ...current, maturityCap: 'teen' },
+        body: { ...current, showNonGameEntries: true },
       }),
     )
   })

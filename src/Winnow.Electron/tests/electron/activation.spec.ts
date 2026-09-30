@@ -35,12 +35,32 @@ async function launch(
     } as Record<string, string>,
     chromiumSandbox: true,
   })
-  await expect
-    .poll(() => application.evaluate(() => (globalThis as any).__activationFixture.state.waiting))
-    .toBe(true)
-  const page = await application.firstWindow()
-  await expect.poll(() => page.evaluate(async () => (await window.winnow.connection()).connected)).toBe(true)
-  return application
+  try {
+    await expect
+      .poll(() => application.evaluate(() => (globalThis as any).__activationFixture.state.waiting))
+      .toBe(true)
+    const page = await application.firstWindow()
+    await expect
+      .poll(() => page.evaluate(async () => (await window.winnow.connection()).connected))
+      .toBe(true)
+    return application
+  } catch (failure) {
+    const connection = await application
+      .firstWindow()
+      .then((page) => page.evaluate(() => window.winnow.connection()))
+      .catch(() => null)
+    try {
+      await closeFixture(application, directory)
+    } catch (cleanupFailure) {
+      throw new AggregateError(
+        [failure, cleanupFailure],
+        `Activation startup failed: ${directory}; ${JSON.stringify(connection)}`,
+      )
+    }
+    throw new Error(`Activation startup failed: ${directory}; ${JSON.stringify(connection)}`, {
+      cause: failure,
+    })
+  }
 }
 async function secondary(directory: string, args: string[]) {
   const child = spawn(electronPath as unknown as string, [resolve('.'), '--data-dir', directory, ...args], {

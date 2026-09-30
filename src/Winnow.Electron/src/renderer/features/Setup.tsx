@@ -5,6 +5,7 @@ import { request } from '../api/client'
 import { useApiQuery } from '../api/hooks'
 import type { IgdbConnection, LibraryPreferences, Mode, StoreConnections } from '../api/types'
 import { EpicConnectionCard, IgdbForm, LibraryPreferenceForm, SteamConnectionCard } from './Settings'
+import { RatingCapPreference } from './RatingCap'
 import { ApplicationPreferences, LibraryPresentationPreferences } from './SettingsPreferences'
 import { SetupBusyContext, SetupErrorContext } from './settingsState'
 import { Notice } from './shared'
@@ -206,7 +207,7 @@ export function Setup({
                 {safeStep === 5 &&
                   (appearance ?? <p>Open Theme Studio after setup to choose your appearance.</p>)}
                 {safeStep === 6 && <ApplicationPreferences setup />}
-                {safeStep === 7 && <SetupLibrary />}
+                {safeStep === 7 && <SetupLibrary mode={mode} />}
                 {safeStep === 8 && <p>Anything you skipped remains available in Settings.</p>}
               </SetupErrorContext.Provider>
             </SetupBusyContext.Provider>
@@ -285,12 +286,13 @@ function SetupEpic({ mode }: { mode: Mode }) {
     </>
   )
 }
-function SetupLibrary() {
+function SetupLibrary({ mode }: { mode: Mode }) {
   const preferences = useApiQuery<LibraryPreferences>('preferences.library.get')
   return (
     <>
       <Notice error={preferences.error} />
       {preferences.data && <LibraryPreferenceForm initial={preferences.data} />}
+      <RatingCapPreference mode={mode} />
       <LibraryPresentationPreferences />
     </>
   )

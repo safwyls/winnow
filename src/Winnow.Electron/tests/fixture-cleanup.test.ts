@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { closeFixture } from './electron/fixture-cleanup'
 
 it.each([200, 503])(
@@ -24,6 +24,13 @@ it.each([200, 503])(
     const backend = join(directory, 'backend'),
       endpoint = join(backend, 'endpoint.json')
     await mkdir(backend)
+    let probes = 0
+    const processProbe = vi.spyOn(process, 'kill').mockImplementation((pid, signal) => {
+      expect(pid).toBe(471381)
+      expect(signal).toBe(0)
+      if (++probes <= 2) return true
+      throw Object.assign(new Error('Fixture process exited'), { code: 'ESRCH' })
+    })
     try {
       const shutdown = closeFixture(undefined, directory)
       const result =
@@ -34,13 +41,19 @@ it.each([200, 503])(
       expect(requests).toEqual([])
       await writeFile(
         endpoint,
-        JSON.stringify({ address: `http://127.0.0.1:${address.port}/`, token: 'fixture-token' }),
+        JSON.stringify({
+          address: `http://127.0.0.1:${address.port}/`,
+          token: 'fixture-token',
+          processId: 471381,
+        }),
       )
       await result
+      expect(probes).toBe(status === 200 ? 3 : 0)
       expect(requests).toEqual([
         { method: 'POST', path: '/api/v1/lifecycle/shutdown', authorization: 'Bearer fixture-token' },
       ])
     } finally {
+      processProbe.mockRestore()
       await new Promise<void>((resolve) => server.close(() => resolve()))
       await unlink(endpoint)
       await rmdir(backend)

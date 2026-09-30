@@ -40,6 +40,7 @@ import { libraryDefaultSort, useAvalonLists } from './avalon-list-state'
 import { useLibraryProjection, type ExpansionMark } from '../features/parity-library-projection'
 import '../features/parity-library-projection.css'
 import { usePresentationPreferences } from '../features/SettingsPreferences'
+import { DisplayPreferences } from '../features/DisplayPreferences'
 import { libraryScroll, useViewState } from '../viewState'
 import dragon from '../assets/dragon.svg'
 import { avalonFilter, coverGrid, coverWallExtent, dormancy, matchesBucket } from './avalon-data'
@@ -1148,6 +1149,7 @@ export function AvalonLibrary(context: ThemeContext) {
               onChange={(event) => setDensity(reflectedDensity(Number(event.target.value)))}
             />
           </label>
+          <DisplayPreferences />
         </>
       )}
     </div>

@@ -37,8 +37,15 @@ button to retry, while a changed revision requires an explicit choice.
   correct them. The native event fixture also waits for renderer delivery before releasing
   a pending request. Its first run used a Release backend without demo seeding; the empty
   library was corrected by using the verified Debug build.
-- The preceding frozen `ca9b84f3` build passes all 225 native cases together in 19.6 minutes.
-  A combined 228-case run with this package is not yet claimed.
+- The combined 228-case run against `66f11ac` passed 227 cases in 21.1 minutes, with one
+  initial profile connection timeout and a subsequent worker teardown timeout. Its report
+  is retained in `.tmp/journal-complete-native/results.json`; this is not a passing full run.
+  The activation helper now cleans up a launch whose readiness assertion fails and records
+  its final connection state. Fixture cleanup also waits for its own authenticated backend
+  process to exit. All eight activation workflows passed three repeats (24 cases, 2.6 minutes)
+  against the same frozen build: `.tmp/journal-activation-repeat`. The initial timeout did
+  not reproduce; its cause is unconfirmed. The preceding `ca9b84f3` build passed all 225
+  native cases together in 19.6 minutes.
 - The complete .NET Release build/test run passes 6,869 cases across thirteen assemblies,
   including 896 Avalonia UI cases, with two Linux-only cases skipped on Windows:
   `.tmp/journal-regression.log` and the thirteen TRX files in `.tmp/journal-regression-results`.

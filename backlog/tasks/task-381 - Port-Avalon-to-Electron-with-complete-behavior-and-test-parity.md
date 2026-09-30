@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 06:26'
+updated_date: '2026-09-30 07:07'
 labels: []
 dependencies: []
 priority: high
@@ -128,6 +128,10 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 48. Restore and port RatingCapPreference contracts: source six-step slider, named levels, clamped adults-only explanation, cap-only hidden count, snapshot reload and persisted defaults/restart. Keep desktop and fullscreen accessible controls and existing full-object preference concurrency safeguards. Verify the actual HTTP preferences/counts boundary and renderer/controller behavior; retain or explicitly classify the legacy no-store preview case only after checking current frontend architecture.
 
 48a. Source review confirms the desktop rating cap belongs in a command-bar Display preferences popover beside density and dormancy, while fullscreen uses its library settings control. Restore that placement and share the preference/count logic; keep alternative themes and first-run setup able to change the cap. Update affected density interaction fixtures to open the popover before manipulating its slider.
+
+48b. Investigate the full native profile-restart failure before certifying the journal milestone. Require fixture shutdown to observe its authenticated backend process exiting, and clean up a launched Electron process if readiness fails. Repeat the unchanged activation behavior assertions against the frozen journal build, then update native density interactions for the Display preferences popover and verify rating-cap behavior on both surfaces.
+
+48c. Direct MainWindow.axaml inspection resolves the Display placement ambiguity: Density is a per-session command-bar control beside the persisted Display flyout. Keep Density inline, preserve its existing native tests, and restore the flyout Cover art Fit/Fill, dormancy, non-game, cap, expansion and journal controls in source order with source explanations. Verify the cap placement independently from Density.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -254,4 +258,6 @@ Checkpoint32 complete: all225 native Electron cases pass together in19.6minutes 
 Plan47 verified: all2966 component/liveAPI cases in146files pass without skips51.32s; build and77focused journal/activity/controller cases pass. All115 backend HTTP cases pass, including6 new journal contracts. A controlled client-disconnect test first proved accepted-note loss, then passed after the endpoint stopped forwarding frontend cancellation. Three native journal workflows pass26.8s across desktop/fullscreen and140percent text; final captures inspected. Stable note labels, fullscreen feedback scaling, pending-offer races and fixture delivery timing were corrected. Fourteen source methods ported; inventory1082ported559retained17framework669pending108partial. Full.NET Release regression is running. Evidence checkpoint-thirty-three.md; all AC remain unchecked.
 
 Checkpoint33 full.NET Release regression passes6869 cases across13assemblies, including896AvaloniaUI, with2Linux-only skips onWindows and no failures. Evidence .tmp/journal-regression.log and13TRX in .tmp/journal-regression-results. Journal package verified; combined228native run remains outstanding. Rating-cap implementation is separate and has not been built or tested yet. All AC remain unchecked.
+
+Plan48 verified: all3009 component/liveAPI cases in147files pass without skips52.38s; build/typecheck and121backendHTTP cases pass. All33native rating/layout/library checks pass2.8m, followed by3final rating workflows38.6s after a stronger assertion exposed and fixed save-time controller focus loss. Desktop Density remains inline beside the restored Display popover; fullscreen uses Content age limit. Final captures inspected. Initial full228journal run passed227 with one startup timeout plus worker teardown failure; hardened fixture cleanup and all24activation repeats pass, root cause of initial timeout unconfirmed. Twelve source contracts ported; inventory1094ported559retained17framework657pending108partial. Evidence checkpoint-thirty-four.md. All AC remain unchecked.
 <!-- SECTION:NOTES:END -->
