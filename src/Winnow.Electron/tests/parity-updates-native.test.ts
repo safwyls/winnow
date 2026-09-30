@@ -36,6 +36,7 @@ function fixture() {
     disableDifferentialDownload: false,
     checkForUpdates: vi.fn(async () => ({ isUpdateAvailable: true, updateInfo: metadata })),
     downloadUpdate: vi.fn(async () => [resolve('verified-cache-update.exe')]),
+    discardDownload: vi.fn(async () => {}),
     on: events.on.bind(events),
     removeListener: events.removeListener.bind(events),
   }
@@ -47,12 +48,23 @@ function fixture() {
     platform: 'win32',
     arch: 'x64',
     supported: true,
+    verify: vi.fn(async () => {}),
     install,
     quit,
   })
   return { driver, native, metadata, install, quit, events }
 }
 describe('native Electron update adapter', () => {
+  it('revokes staging when a checked version changes its checksum', async () => {
+    const { driver, native, metadata, install } = fixture()
+    const release = await driver.check(false)
+    await driver.download(release!, new AbortController().signal, () => {})
+    metadata.files[0] = { ...metadata.files[0], sha512: Buffer.alloc(64, 1).toString('base64') }
+    await expect(driver.check(false)).rejects.toThrow('metadata changed')
+    expect(native.discardDownload).toHaveBeenCalledOnce()
+    await expect(driver.install()).rejects.toThrow('Download and verify')
+    expect(install).not.toHaveBeenCalled()
+  })
   it('disables automatic installation and downgrades while selecting only matching Electron artifacts', async () => {
     const { driver, native, metadata } = fixture()
     metadata.files.unshift({ ...metadata.files[0], url: 'Winnow-Electron-2.0.0-win-arm64-Setup.exe' })

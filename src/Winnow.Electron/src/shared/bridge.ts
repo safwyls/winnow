@@ -149,6 +149,7 @@ export type ApplicationUpdateAction =
   | 'automatic'
   | 'beta'
   | 'manual-download'
+  | 'release-notes'
 export interface ApplicationUpdateSnapshot {
   automatic: boolean
   includeBeta: boolean

@@ -33,6 +33,7 @@ function fixture(overrides: Partial<UpdatePorts> = {}) {
         progress(60)
       }),
       install: vi.fn(async () => {}),
+      discard: vi.fn(async () => {}),
     },
     preferences: vi.fn(async () => ({ ...preferences })),
     savePreference: vi.fn(async (key, value) => {
@@ -153,6 +154,7 @@ describe('Electron application update lifecycle parity', () => {
     await updater.download()
     preferences.includeBeta = false
     await updater.refreshPreferences()
+    expect(ports.driver.discard).toHaveBeenCalledOnce()
     expect(updater.snapshot).toMatchObject({
       includeBeta: false,
       canRestart: false,
@@ -169,6 +171,61 @@ describe('Electron application update lifecycle parity', () => {
     expect(ports.driver.download).not.toHaveBeenCalled()
     await updater.download()
     expect(updater.snapshot.canRestart).toBe(true)
+  })
+  it('awaits a paused manual check on disposal without publishing or downloading after shutdown', async () => {
+    const { updater, ports, preferences } = fixture(),
+      entered = deferred<void>(),
+      releaseCheck = deferred<void>()
+    preferences.automatic = true
+    vi.mocked(ports.driver.check).mockImplementation(async (_beta, signal) => {
+      entered.resolve()
+      await releaseCheck.promise
+      expect(signal?.aborted).toBe(true)
+      return release
+    })
+    const listener = vi.fn()
+    updater.subscribe(listener)
+    const check = updater.check()
+    await entered.promise
+    const calls = listener.mock.calls.length
+    let drained = false
+    const stop = updater.dispose().then(() => {
+      drained = true
+    })
+    await Promise.resolve()
+    expect(drained).toBe(false)
+    releaseCheck.resolve()
+    await Promise.all([check, stop])
+    expect(listener).toHaveBeenCalledTimes(calls)
+    expect(ports.driver.download).not.toHaveBeenCalled()
+  })
+  it('disabling automatic updates aborts a blocked metadata request and completes without a response', async () => {
+    const { updater, ports, preferences } = fixture(),
+      entered = deferred<void>()
+    preferences.automatic = true
+    vi.mocked(ports.driver.check).mockImplementation(
+      (_beta, signal) =>
+        new Promise((_resolve, reject) => {
+          signal!.addEventListener('abort', () => reject(signal!.reason), { once: true })
+          entered.resolve()
+        }),
+    )
+    const check = updater.check()
+    await entered.promise
+    await updater.setPreference('AutomaticUpdates', false)
+    await check
+    expect(updater.snapshot).toMatchObject({ automatic: false, busy: false, canRestart: false })
+    expect(ports.driver.download).not.toHaveBeenCalled()
+  })
+  it('local channel changes discard installer staging before another check is authorized', async () => {
+    const { updater, ports } = fixture()
+    await updater.check()
+    await updater.download()
+    await updater.setPreference('IncludeBetaUpdates', true)
+    expect(ports.driver.discard).toHaveBeenCalledOnce()
+    expect(updater.snapshot).toMatchObject({ includeBeta: true, canRestart: false, canDownload: false })
+    await updater.restart()
+    expect(ports.driver.install).not.toHaveBeenCalled()
   })
   it('unsupported installations expose browser links and never download or install', async () => {
     const { updater, ports, preferences } = fixture()

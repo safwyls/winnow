@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 02:28'
+updated_date: '2026-09-30 03:04'
 labels: []
 dependencies: []
 priority: high
@@ -106,6 +106,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 39a. The new native Epic capture shows desktop-sized text on the fullscreen connection form. Restore the original 64px platform title, 28px body/action text and 64/72px controls, preserve consent paragraph breaks, and verify scrolling and masked input at normal and enlarged text sizes. Record this visual correction with the Epic HTTP/fallback evidence.
 
 40. Complete remaining application-update contracts with exact version/channel/platform matrices, bounded manual release pagination, installer-cache cleanup and cancellation/disposal ownership. Exercise real download verification through an isolated transport and test both desktop/fullscreen update status, progress, explicit restart and recovery guidance. Keep native installer execution confined to fixture callbacks and retain packaging/device validation limits.
+
+41. Restore desktop startup and every fullscreen entry/return preparation against DesktopStartupTests and FullscreenStartupTests: a Ground loading surface, original dragon/wordmark and copy, first-painted-frame 1.8s circuit plus 180ms fade, preference-aware reduced motion, library/primary-feed/layout readiness, retry, caption and Back availability, hidden preparation, cancellation and shared in-flight loads. Animate contours with an OffscreenCanvas worker so UI publication cannot pause rendering; keep tests explicit about worker versus compositor ownership. Preserve setup isolation and page retention. Validate controlled timing plus real Electron frames and both-mode layouts before mapping source methods.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -204,4 +206,8 @@ Checkpoint 24 complete: all 198 native Electron cases pass in one run with clean
 Plan 39: all 105 backend tests pass, including 13 new Epic HTTP cases, plus 24 retained original Epic cases. Full component/API repeat passes 2756 cases in 136 files without skips (46.47s). The preceding run passed 2755 and exposed a Steam retry fixture that did not await shared busy-state release; all 98 affected cases now pass three repeats with unchanged import/no-recapture assertions. All three new native Epic workflows pass, including 140% fullscreen text and scroll-contained actions; captures inspected. Source typography red-before-fix and build/typecheck pass recorded. Full 201 native run is in progress. Inventory 1006 ported, 552 retained backend, 15 framework-specific, 735 pending and 127 partial.
 
 Checkpoint 25: 2756 component/API cases pass; 105 backend and 24 retained Epic cases pass. The full native run passed 200/201 in 9.9 minutes; the feed fixture reduced a request failure or empty snapshot to zero. After an explicit connection wait and separate full-result assertion, both viewport cases pass three repeats (six checks, 33.1s). The original error was not retained, so exact cause and a combined 201-case pass are not claimed. Epic desktop/fullscreen sign-in workflows and 140% text checks pass. Evidence recorded in checkpoint-twenty-five.md; all AC remain unchecked. Updater package continues separately.
+
+Plan 40: 108 focused updater cases and all 2810 component/live API cases across 138 files pass without skips (43.74s); build/typecheck passes. Three native updater workflows pass (25.2s) on desktop and fullscreen at 100/140 percent text. Restored caption/progress slot, Quick menu action dismissal, release links, vertical controller traversal and polite recovery. Real NSIS/AppImage downloader fixtures verify bytes, cancellation/cleanup, remote/local beta cache discard, redirect refusal and re-verification before installer handoff. Native initial ESM import failure and fixture query/scale/cadence assumptions were corrected; a full non-integration run also exposed six missing optional-bridge guards, now corrected and covered by the complete pass. Inventory: 1023 ported, 552 retained backend, 15 framework-specific, 735 pending, 110 partial. Full 204 native suite is running; no acceptance criteria checked.
+
+Checkpoint26: complete native204/204passes in one10.1minute run with clean completion, including the prior Epic and feed fixes. Component/liveAPI2810/138passes without skips43.74s; build/typecheck and108focused updater cases pass. Final enlarged fullscreen captions and recovery inspected. Source inventory1023ported552retained15framework735pending110partial. Evidence checkpoint-twenty-six.md records transport/cache/shutdown fixtures and actual installer/hardware limitations. All acceptance criteria remain unchecked. Plan41 startup implementation is underway.
 <!-- SECTION:NOTES:END -->

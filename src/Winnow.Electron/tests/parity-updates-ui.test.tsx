@@ -2,7 +2,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ApplicationUpdates, UpdateStatus } from '../src/renderer/features/Updates'
+import {
+  ApplicationUpdates,
+  UpdateStatus,
+  UpdateCaption,
+  QuickUpdate,
+} from '../src/renderer/features/Updates'
 import { BackendRestart } from '../src/renderer/features/BackendRestart'
 import { initialUpdateSnapshot } from '../src/main/application-updater'
 import type { ApplicationUpdateSnapshot } from '../src/shared/bridge'
@@ -38,7 +43,53 @@ function fixture(initial: Partial<ApplicationUpdateSnapshot> = {}) {
   )
   return { publish, updateAction, restartBackend, wrapper }
 }
-describe.each(['desktop', 'fullscreen'])('%s update presentation parity', (mode) => {
+describe.each(['desktop', 'fullscreen'] as const)('%s update presentation parity', (mode) => {
+  it('shares caption readiness and progress while Quick menu requires explicit activation', async () => {
+    const { wrapper, publish, updateAction } = fixture()
+    const { container } = render(
+      <>
+        <UpdateCaption mode={mode} />
+        <QuickUpdate />
+      </>,
+      { wrapper },
+    )
+    expect(container.querySelector('.update-caption')).toBeNull()
+    act(() => publish({ canDownload: true, status: 'An update is available.' }))
+    const caption = await waitFor(() => {
+      const value = container.querySelector('.update-caption')
+      expect(value).not.toBeNull()
+      return value!
+    })
+    expect(updateAction).not.toHaveBeenCalled()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Update and restart' }).at(-1)!)
+    await waitFor(() => expect(updateAction).toHaveBeenCalledWith('update-and-restart', undefined))
+    act(() => publish({ canCancel: true, busy: true, progress: 34 }))
+    await waitFor(() =>
+      expect((within(caption as HTMLElement).getByRole('progressbar') as HTMLProgressElement).value).toBe(34),
+    )
+    expect((screen.getByRole('button', { name: 'Update and restart' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    )
+    act(() => publish({ progress: 78 }))
+    await waitFor(() =>
+      expect((within(caption as HTMLElement).getByRole('progressbar') as HTMLProgressElement).value).toBe(78),
+    )
+  })
+  it('offers release notes and the browser download alongside an available native download', async () => {
+    const { wrapper, updateAction } = fixture({
+      canDownload: true,
+      releaseUrl: 'https://github.com/safwyls/winnow/releases/tag/v2',
+      downloadUrl: 'https://github.com/safwyls/winnow/releases/download/v2/installer.exe',
+    })
+    render(<ApplicationUpdates />, { wrapper })
+    fireEvent.click(await screen.findByRole('button', { name: 'Release notes' }))
+    await waitFor(() => expect(updateAction).toHaveBeenCalledWith('release-notes', undefined))
+    const browser = screen.getByRole('button', { name: 'Download in browser' }) as HTMLButtonElement
+    await waitFor(() => expect(browser.disabled).toBe(false))
+    fireEvent.click(browser)
+    await waitFor(() => expect(updateAction).toHaveBeenCalledWith('manual-download', undefined))
+    expect(screen.getByRole('button', { name: 'Download update' })).toBeTruthy()
+  })
   it('shares preferences and staged readiness while restart requires explicit activation', async () => {
     const { wrapper, publish, updateAction } = fixture()
     render(
@@ -54,9 +105,13 @@ describe.each(['desktop', 'fullscreen'])('%s update presentation parity', (mode)
     await waitFor(() => expect(updateAction).toHaveBeenCalledWith('automatic', false))
     fireEvent.click(screen.getByLabelText('Include beta releases'))
     await waitFor(() => expect(updateAction).toHaveBeenCalledWith('beta', true))
+    const beta = screen.getByLabelText('Include beta releases') as HTMLInputElement
+    await waitFor(() => expect(beta.disabled).toBe(false))
+    beta.focus()
     act(() => publish({ canRestart: true, status: 'Update ready.', availableVersion: '2.0.0' }))
     const header = await screen.findByRole('complementary', { name: 'Application update' })
     expect(within(header).getByRole('button', { name: 'Restart to update' })).toBeTruthy()
+    expect(document.activeElement).toBe(beta)
     expect(updateAction).not.toHaveBeenCalledWith('restart', undefined)
     fireEvent.click(within(header).getByRole('button', { name: 'Restart to update' }))
     await waitFor(() => expect(updateAction).toHaveBeenCalledWith('restart', undefined))
@@ -95,12 +150,17 @@ describe.each(['desktop', 'fullscreen'])('%s update presentation parity', (mode)
       { wrapper },
     )
     const header = await screen.findByRole('complementary', { name: 'Application update' })
-    expect(within(header).getByRole('alert').textContent).toContain('previous update')
+    expect(within(header).getByRole('status', { name: 'Update recovery' }).textContent).toContain(
+      'previous update',
+    )
+    expect(within(header).queryByRole('alert')).toBeNull()
     expect((within(header).getByRole('progressbar') as HTMLProgressElement).value).toBe(25)
     fireEvent.click(within(header).getByRole('button', { name: 'Cancel download' }))
     await waitFor(() => expect(updateAction).toHaveBeenCalledWith('cancel', undefined))
     act(() => publish({ canCancel: false, status: 'Checking for updates…' }))
-    expect(within(header).getByRole('alert').textContent).toContain('previous update')
+    expect(within(header).getByRole('status', { name: 'Update recovery' }).textContent).toContain(
+      'previous update',
+    )
   })
   it('hides unavailable native actions and opens manual downloads through the shared command', async () => {
     const { wrapper, updateAction } = fixture({

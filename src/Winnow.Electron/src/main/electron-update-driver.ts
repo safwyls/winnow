@@ -1,10 +1,26 @@
 import { spawn, type StdioOptions } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { createReadStream, existsSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { dirname, isAbsolute, join } from 'node:path'
-import { AppImageUpdater, NsisUpdater, type AppUpdater } from 'electron-updater'
+import { AppImageUpdater, NsisUpdater } from 'electron-updater'
 import { CancellationToken, type UpdateInfo } from 'builder-util-runtime'
 import type { UpdateDriver, UpdateRelease } from './application-updater'
 import { electronAssetName, newerRelease, updateRepository, validateUpdateFiles } from './update-policy'
+import { manualRelease } from './manual-update-release'
+import { UpdateHttpExecutor } from './update-http'
+
+export async function verifyStagedUpdate(paths: string[], file: { sha512: string; size?: number }) {
+  if (paths.length !== 1) throw new Error('Invalid installer staging.')
+  const hash = createHash('sha512')
+  let size = 0
+  for await (const chunk of createReadStream(paths[0])) {
+    size += chunk.length
+    if (size > (file.size ?? 4 * 1024 ** 3)) throw new Error('The staged installer size changed.')
+    hash.update(chunk)
+  }
+  if ((file.size !== undefined && size !== file.size) || hash.digest('base64') !== file.sha512)
+    throw new Error('The staged installer failed checksum verification.')
+}
 
 export function spawnInstaller(
   command: string,
@@ -21,7 +37,15 @@ export function spawnInstaller(
     })
   })
 }
-class ConfirmedAppImageUpdater extends AppImageUpdater {
+export class ManagedNsisUpdater extends NsisUpdater {
+  async discardDownload() {
+    await this.downloadedUpdateHelper?.clear()
+  }
+}
+export class ConfirmedAppImageUpdater extends AppImageUpdater {
+  async discardDownload() {
+    await this.downloadedUpdateHelper?.clear()
+  }
   private launches: Promise<boolean>[] = []
   protected override spawnLog(
     command: string,
@@ -50,6 +74,7 @@ export interface NativeUpdateAdapter {
   disableWebInstaller: boolean
   disableDifferentialDownload: boolean
   checkForUpdates(): Promise<{ isUpdateAvailable: boolean; updateInfo: UpdateInfo } | null>
+  discardDownload(): Promise<void>
   downloadUpdate(token: CancellationToken): Promise<string[]>
   on(event: string, listener: (...args: any[]) => void): unknown
   removeListener(event: string, listener: (...args: any[]) => void): unknown
@@ -62,7 +87,9 @@ export function createUpdateDriver(options: {
   supported: boolean
   install(paths: string[]): Promise<void>
   quit(): void
-  manualCheck?: (includeBeta: boolean) => Promise<UpdateRelease | null>
+  manualCheck?: (includeBeta: boolean, signal?: AbortSignal) => Promise<UpdateRelease | null>
+  check?: (signal?: AbortSignal) => ReturnType<NativeUpdateAdapter['checkForUpdates']>
+  verify?: typeof verifyStagedUpdate
 }): UpdateDriver {
   const native = options.native
   native.autoDownload = false
@@ -74,10 +101,16 @@ export function createUpdateDriver(options: {
   native.on('error', () => {})
   let release: UpdateRelease | null = null,
     downloaded: string[] = []
+  let verifiedFile: { sha512: string; size?: number } | null = null
+  const discard = async () => {
+    downloaded = []
+    await native.discardDownload()
+  }
   return {
     supported: options.supported,
-    async check(includeBeta) {
-      if (!options.supported && options.manualCheck) return options.manualCheck(includeBeta)
+    discard,
+    async check(includeBeta, signal) {
+      if (!options.supported && options.manualCheck) return options.manualCheck(includeBeta, signal)
       const previousRelease = release,
         previousDownload = downloaded
       release = null
@@ -85,7 +118,8 @@ export function createUpdateDriver(options: {
       native.channel = includeBeta ? 'beta' : 'latest'
       native.allowPrerelease = includeBeta
       native.allowDowngrade = false
-      const result = await native.checkForUpdates()
+      const result = await (options.check ? options.check(signal) : native.checkForUpdates())
+      signal?.throwIfAborted()
       if (
         !result?.isUpdateAvailable ||
         !newerRelease(result.updateInfo.version, options.version, includeBeta)
@@ -100,6 +134,16 @@ export function createUpdateDriver(options: {
       // Keep the native provider's resolved metadata, but remove other architectures before it selects a file.
       const architectureFiles = info.files.filter((file) => file.url.split('/').at(-1) === name)
       info.files.splice(0, info.files.length, ...architectureFiles)
+      const file = architectureFiles[0]
+      if (
+        previousRelease?.version === info.version &&
+        previousDownload.length &&
+        (verifiedFile?.sha512 !== file.sha512 || verifiedFile.size !== file.size)
+      ) {
+        await discard()
+        throw new Error('The staged update metadata changed. Check again before downloading.')
+      }
+      verifiedFile = { sha512: file.sha512, size: file.size }
       if (previousRelease?.version === info.version) downloaded = previousDownload
       release = {
         version: info.version,
@@ -125,58 +169,30 @@ export function createUpdateDriver(options: {
         if (signal.aborted || !paths.length || paths.some((path) => !isAbsolute(path)))
           throw new Error('Update download was cancelled or invalid.')
         downloaded = paths
+      } catch (error) {
+        await discard()
+        throw error
       } finally {
         signal.removeEventListener('abort', cancel)
         native.removeListener('download-progress', listener)
       }
     },
     async install() {
-      if (!options.supported || !release || !downloaded.length)
+      if (!options.supported || !release || !downloaded.length || !verifiedFile)
         throw new Error('Download and verify the update before installing.')
-      await options.install([...downloaded])
+      try {
+        await (options.verify ?? verifyStagedUpdate)(downloaded, verifiedFile)
+        await options.install([...downloaded])
+      } catch (error) {
+        await discard()
+        throw error
+      }
       downloaded = []
       options.quit()
     },
   }
 }
 
-async function manualRelease(version: string, includeBeta: boolean): Promise<UpdateRelease | null> {
-  const response = await fetch('https://api.github.com/repos/safwyls/winnow/releases?per_page=100', {
-    headers: { Accept: 'application/vnd.github+json' },
-    redirect: 'error',
-    signal: AbortSignal.timeout(30_000),
-  })
-  if (!response.ok) throw new Error('The releases could not be read.')
-  const text = await response.text()
-  if (text.length > 4 * 1024 ** 2) throw new Error('The release list is too large.')
-  const releases = JSON.parse(text) as Array<{
-    tag_name?: string
-    draft?: boolean
-    prerelease?: boolean
-    assets?: Array<{ name?: string }>
-  }>
-  if (!Array.isArray(releases)) throw new Error('Invalid releases.')
-  let selected = version
-  for (const release of releases) {
-    if (
-      release.draft ||
-      (!includeBeta && release.prerelease) ||
-      typeof release.tag_name !== 'string' ||
-      !release.tag_name.startsWith('v') ||
-      !release.assets?.some((asset) => asset.name?.startsWith('Winnow-Electron-'))
-    )
-      continue
-    const candidate = release.tag_name.slice(1)
-    if (newerRelease(candidate, selected, includeBeta)) selected = candidate
-  }
-  return selected === version
-    ? null
-    : {
-        version: selected,
-        releaseUrl: `${updateRepository}/releases/tag/v${selected}`,
-        downloadUrl: `${updateRepository}/releases/tag/v${selected}`,
-      }
-}
 export function electronUpdateDriver(options: {
   version: string
   packaged: boolean
@@ -184,7 +200,9 @@ export function electronUpdateDriver(options: {
   quit(): void
 }): UpdateDriver {
   const linux = process.platform === 'linux'
-  const native: AppUpdater = linux ? new ConfirmedAppImageUpdater() : new NsisUpdater()
+  const native = linux ? new ConfirmedAppImageUpdater() : new ManagedNsisUpdater()
+  const executor = new UpdateHttpExecutor()
+  Object.assign(native, { httpExecutor: executor })
   native.setFeedURL({ provider: 'github', owner: 'safwyls', repo: 'winnow' })
   native.logger = null
   const supported =
@@ -202,7 +220,9 @@ export function electronUpdateDriver(options: {
     platform: process.platform,
     arch: process.arch,
     supported,
-    manualCheck: (includeBeta) => manualRelease(options.version, includeBeta),
+    manualCheck: (includeBeta, signal) =>
+      manualRelease(options.version, includeBeta, process.platform, process.arch, signal),
+    check: (signal) => executor.duringCheck(signal, () => native.checkForUpdates()),
     async install(paths) {
       if (linux) {
         process.env.WINNOW_APPIMAGE_UPDATED = '1'

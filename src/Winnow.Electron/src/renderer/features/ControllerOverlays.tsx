@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { setTextValue } from '../controller'
 import type { ThemePage } from '../../shared/theme'
 import './controller.css'
+import { QuickUpdate } from './Updates'
 
 export function QuickMenu({
   close,
@@ -69,6 +70,7 @@ export function QuickMenu({
           ) : (
             <>
               <button onClick={close}>Resume</button>
+              <QuickUpdate close={close} />
               {atRoot && (
                 <button
                   onClick={() => {

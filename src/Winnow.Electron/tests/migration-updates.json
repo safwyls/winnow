@@ -1,13 +1,13 @@
 {
   "ApplicationUpdaterTests.Semantic_versions_sort_in_release_order": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-updates.test.ts",
-        "case": "orders %s before %s"
+        "file": "tests/parity-updates-release-list.test.ts",
+        "case": "orders %s before %s in both directions"
       }
     ],
-    "reason": "Electron tests cover numeric prerelease ordering, stable promotion and patch/major order; the complete original numeric-vs-alphabetic and prefix theory matrix remains to be copied."
+    "reason": "All five original pairs run in both directions, including numeric-vs-alphabetic identifiers and a prerelease prefix; equal versions are also rejected."
   },
   "ApplicationUpdaterTests.Malformed_release_versions_are_rejected": {
     "status": "ported",
@@ -20,34 +20,42 @@
     "reason": "Rejects incomplete versions, leading-zero core/prerelease components and path-shaped input."
   },
   "ApplicationUpdaterTests.Stable_ignores_drafts_and_both_forms_of_prerelease_and_downgrades": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-updates.test.ts",
-        "case": "stable rejects prereleases and every channel rejects downgrades and CI artifacts"
+        "file": "tests/parity-updates-release-list.test.ts",
+        "case": "filters drafts both prerelease forms and downgrades with beta %s"
       }
     ],
-    "reason": "The version policy is verified; native GitHub draft selection and the full original release-list fixture are not independently exercised."
+    "reason": "The original mixed release-list matrix selects stable 2.0.0 and opted-in 5.0.0-beta.1 through manual discovery, rejecting drafts and older/equal versions."
   },
   "ApplicationUpdaterTests.Selects_the_exact_platform_asset": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-updates-native.test.ts",
-        "case": "disables automatic installation and downgrades while selecting only matching Electron artifacts"
+        "file": "tests/parity-updates-release-list.test.ts",
+        "case": "selects exact %s %s manual assets and ignores foreign architecture"
+      },
+      {
+        "file": "tests/parity-updates-release-list.test.ts",
+        "case": "validates exact %s native architecture metadata"
       }
     ],
-    "reason": "Windows architecture selection and legacy filename rejection run against actual metadata policy. Linux AppImage and macOS manual-release fixtures remain."
+    "reason": "Exact Electron NSIS, AppImage and macOS DMG names replace the old ZIP/deb/tar artifact matrix. Native metadata checks all supported architectures; manual checks cover Windows/Linux/macOS x64 and arm64. This does not execute installers."
   },
   "ApplicationUpdaterTests.Release_selection_scans_later_pages_and_rejects_foreign_downloads": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-updates-native.test.ts",
-        "case": "rejects legacy or foreign metadata before starting any download"
+        "file": "tests/parity-updates-release-list.test.ts",
+        "case": "scans later pages and replaces foreign asset URLs with the canonical release page"
+      },
+      {
+        "file": "tests/parity-updates-release-list.test.ts",
+        "case": "bounds pagination and reports an incomplete check instead of an up to date claim"
       }
     ],
-    "reason": "Foreign metadata is rejected; native provider pagination differs and the manual-release query currently reads a bounded first page."
+    "reason": "Manual discovery reads subsequent pages, selects the newer tag, and uses the canonical release page instead of a foreign asset URL. Ten full pages fail explicitly."
   },
   "ApplicationUpdaterTests.Failed_manual_checks_are_not_reported_as_up_to_date": {
     "status": "ported",
@@ -60,14 +68,14 @@
     "reason": "A failed release check preserves a failure status and no restart action."
   },
   "ApplicationUpdaterTests.Background_download_stages_verified_bytes_and_restart_is_explicit": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-updates.test.ts",
-        "case": "stages a background download but requires explicit restart after backend shutdown"
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "stages checksum-verified bytes and installs only after an explicit restart command"
       }
     ],
-    "reason": "State/explicit activation/lifecycle ordering and duplicate restart exclusion are ported. Verified bytes are delegated to the native downloader and are not an end-to-end network/installer test."
+    "reason": "Both installed NSIS/AppImage downloaders stream and verify actual fixture bytes, expose readiness without launch, and hand off only after an explicit restart and backend stop. Installer callbacks are isolated."
   },
   "ApplicationUpdaterTests.FailedInstallerPreparationRestartsBackendBeforeReturning": {
     "status": "ported",
@@ -98,28 +106,32 @@
     "reason": "The lifecycle service owns recovery for rejected/uncertain stops; updater cannot prepare installation until shutdown and exit are confirmed."
   },
   "ApplicationUpdaterTests.RemotePreferenceRefreshDiscardsPackageFromPreviousChannel": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-updates.test.ts",
-        "case": "remote channel changes discard staged prereleases and never silently restart"
-      }
-    ],
-    "reason": "Remote channel changes revoke staging authorization. Native updater cached-file deletion is not proven."
-  },
-  "ApplicationUpdaterTests.Disabling_beta_discards_staged_prerelease_without_downgrading": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-updates.test.ts",
-        "case": "remote channel changes discard staged prereleases and never silently restart"
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "%s beta opt-out clears verified prerelease files and rejects that release afterward"
       },
       {
         "file": "tests/parity-updates.test.ts",
         "case": "stable rejects prereleases and every channel rejects downgrades and CI artifacts"
       }
     ],
-    "reason": "Channel switch revokes restart and prevents downgrades. Native cache removal and full original beta release fixture remain."
+    "reason": "Local and remote opt-out start from a real verified 2.0.0-beta.2 cache in both NSIS and AppImage downloaders, delete the pending files, revoke restart and reject that prerelease on the next stable check. Version policy separately excludes downgrades."
+  },
+  "ApplicationUpdaterTests.Disabling_beta_discards_staged_prerelease_without_downgrading": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "%s beta opt-out clears verified prerelease files and rejects that release afterward"
+      },
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "stable rejects prereleases and every channel rejects downgrades and CI artifacts"
+      }
+    ],
+    "reason": "Local and remote opt-out start from a real verified 2.0.0-beta.2 cache in both NSIS and AppImage downloaders, delete the pending files, revoke restart and reject that prerelease on the next stable check. Version policy separately excludes downgrades."
   },
   "ApplicationUpdaterTests.Disabled_automatic_updates_allow_manual_download_and_persist": {
     "status": "ported",
@@ -152,24 +164,28 @@
     "reason": "The metadata gate requires a canonical SHA-512 and refuses legacy/foreign/wrong-architecture payloads before download."
   },
   "ApplicationUpdaterTests.Hash_mismatch_deletes_partial_and_allows_retry": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-updates-native.test.ts",
-        "case": "keeps verified staging unavailable after native checksum failure and supports retry"
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "removes corrupt bytes and cache metadata before a successful retry"
       }
     ],
-    "reason": "A native checksum rejection blocks installation and permits retry. Native temporary file deletion is outside the mocked adapter test."
+    "reason": "Real stream checksum failure empties pending files and metadata in both downloaders; subsequent valid bytes verify and stage successfully."
   },
   "ApplicationUpdaterTests.Redirect_outside_GitHub_is_rejected_before_following_it": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-updates-native.test.ts",
-        "case": "rejects legacy or foreign metadata before starting any download"
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "rejects a foreign redirect before making its request and removes temporary bytes"
+      },
+      {
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "follows the official release storage redirect while still verifying bytes"
       }
     ],
-    "reason": "Direct foreign metadata URLs are rejected; transport redirect behavior in electron-updater still needs a real network fixture."
+    "reason": "The production redirect gate runs over a loopback socket adapter: a foreign location makes no second request and leaves no bytes; official GitHub release storage succeeds with checksum verification. Chromium networking and live provider behavior are separate validation limits."
   },
   "ApplicationUpdaterTests.Development_builds_never_check_or_stage_releases": {
     "status": "ported",
@@ -182,34 +198,46 @@
     "reason": "dev and ci versions never invoke the release driver."
   },
   "ApplicationUpdaterTests.Shutdown_drains_a_manual_check_after_the_UI_dispatcher_has_stopped": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-updates.test.ts",
-        "case": "schedules automatic checks after startup and stops all timers on disposal"
+        "case": "awaits a paused manual check on disposal without publishing or downloading after shutdown"
+      },
+      {
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "prevents repeated quit events until update shutdown has drained and then permits quit"
       }
     ],
-    "reason": "Disposal cancels future timers and downloads; a paused in-flight check during process shutdown has not been ported."
+    "reason": "The main-process lifetime aborts and awaits an entered check with no later renderer publication or download. The quit barrier handles repeated events and permits exit only after the owned work settles; Electron has no Avalonia dispatcher dependency."
   },
   "ApplicationUpdaterTests.Turning_off_automatic_updates_cancels_an_inflight_check_before_it_can_download": {
     "status": "ported",
     "tests": [
       {
         "file": "tests/parity-updates.test.ts",
-        "case": "turning automatic updates off prevents an in-flight check from downloading"
+        "case": "disabling automatic updates aborts a blocked metadata request and completes without a response"
+      },
+      {
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "cancels a native metadata request before it returns a response"
       }
     ],
-    "reason": "The paused check result cannot trigger download after automatic updates are disabled."
+    "reason": "The controller aborts the blocked check and persists opt-out without waiting for a response; the actual updater HTTP request receives cancellation and no download follows."
   },
   "ApplicationUpdaterTests.Cancelling_a_partial_download_removes_bytes_and_leaves_retry_available": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-updates-native.test.ts",
-        "case": "maps native progress and cancellation and rejects a late completed download"
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "cancels a partial native stream and deletes bytes before allowing retry"
+      },
+      {
+        "file": "tests/parity-updates.test.ts",
+        "case": "cancels a download and leaves retry available without accepting a late success"
       }
     ],
-    "reason": "Cancellation is passed to the native token and late completion cannot authorize restart. Cache-byte cleanup remains a native downloader fixture gap."
+    "reason": "Both real downloader paths create a partial file, receive cancellation, empty their pending cache and permit a verified retry. The controller preserves download availability and refuses late completion."
   },
   "ApplicationUpdaterTests.Failed_handoff_keeps_app_open_and_permits_redownload": {
     "status": "ported",
@@ -217,43 +245,59 @@
       {
         "file": "tests/parity-updates.test.ts",
         "case": "keeps the application open and permits redownload when handoff fails"
+      },
+      {
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "clears staging after a failed installer handoff and leaves the app open"
+      },
+      {
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "rechecks staged bytes before installer handoff and discards a changed payload"
       }
     ],
     "reason": "The main controller recovers backend state after failed handoff and leaves retry available; the native spawn test confirms quit is not called on launch failure."
   },
   "ApplicationUpdaterTests.Archive_staging_failure_never_offers_restart_and_removes_download": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
+      {
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "removes corrupt bytes and cache metadata before a successful retry"
+      },
       {
         "file": "tests/parity-updates.test.ts",
         "case": "does not restart when download verification fails and allows a retry"
       }
     ],
-    "reason": "Electron stages installer/AppImage artifacts rather than extracting the old archive format. Failure blocks restart; native temporary-byte deletion remains unverified."
+    "reason": "Electron stages checksum-verified installer/AppImage files rather than extracting Avalonia archives. Failure in that staging path removes actual bytes, refuses restart and permits retry in both downloader variants."
   },
   "ApplicationUpdaterTests.Channel_change_discards_installer_owned_staging": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
+      {
+        "file": "tests/parity-updates-bytes.test.ts",
+        "case": "%s beta opt-out clears verified prerelease files and rejects that release afterward"
+      },
       {
         "file": "tests/parity-updates.test.ts",
-        "case": "remote channel changes discard staged prereleases and never silently restart"
+        "case": "stable rejects prereleases and every channel rejects downgrades and CI artifacts"
       }
     ],
-    "reason": "Channel switching revokes access to prior staging, but cached package deletion remains unverified."
+    "reason": "Local and remote opt-out start from a real verified 2.0.0-beta.2 cache in both NSIS and AppImage downloaders, delete the pending files, revoke restart and reject that prerelease on the next stable check. Version policy separately excludes downgrades."
   },
   "ApplicationUpdaterUiTests.Caption_and_fullscreen_detect_update_and_only_explicit_click_downloads_then_restarts": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-updates-ui.test.tsx",
-        "case": "offers explicit update-and-restart and recovers focus when download becomes ready"
+        "file": "tests/electron/update-workflow.spec.ts",
+        "case": "${mode} update caption settings and controller actions retain source geometry and lifecycle at text ${scale}"
       },
       {
         "file": "tests/parity-updates-ui.test.tsx",
-        "case": "shares preferences and staged readiness while restart requires explicit activation"
+        "case": "shares caption readiness and progress while Quick menu requires explicit activation"
       }
     ],
-    "reason": "Both modes share action behavior and background readiness. Original caption geometry/progress slot dimensions and controller quick-menu placement need native rendered evidence."
+    "reason": "Native desktop/fullscreen checks cover hidden initial actions, explicit caption/Quick menu activation, fixed caption progress width/position, 34/78 percent updates, cancellation/retry, both browser links, vertical controller traversal with scrolling, valid focus through action replacement and explicit restart. Fullscreen repeats at 140% text; renderer IPC status is substituted and native byte/lifecycle tests cover the implementation separately."
   },
   "ApplicationUpdaterUiTests.Update_and_restart_does_not_restart_when_download_does_not_become_ready": {
     "status": "ported",
@@ -271,9 +315,13 @@
       {
         "file": "tests/parity-updates-ui.test.tsx",
         "case": "keeps recovery guidance visible during later checks and exposes cancellation with progress"
+      },
+      {
+        "file": "tests/electron/update-workflow.spec.ts",
+        "case": "${mode} update caption settings and controller actions retain source geometry and lifecycle at text ${scale}"
       }
     ],
-    "reason": "Both presentation paths retain independent recovery text while status/progress changes."
+    "reason": "Both surfaces retain wrapped recovery guidance during later checks with polite status semantics, verified in component and native rendered workflows."
   },
   "ApplicationUpdaterUiTests.Beta_and_automatic_preferences_stay_shared_in_both_presentations": {
     "status": "ported",
@@ -296,37 +344,45 @@
     "reason": "Native readiness updates shared settings/header without triggering a restart."
   },
   "ApplicationUpdaterUiTests.Fullscreen_hides_unavailable_update_actions_and_reaches_available_links_vertically": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
-        "file": "tests/parity-updates-ui.test.tsx",
-        "case": "hides unavailable native actions and opens manual downloads through the shared command"
-      }
-    ],
-    "reason": "Unavailable actions are absent and manual navigation uses the named native command. Spatial controller traversal requires rendered integration."
-  },
-  "ApplicationUpdaterUiTests.Fullscreen_recovers_focus_when_download_actions_change_availability": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-updates-ui.test.tsx",
-        "case": "offers explicit update-and-restart and recovers focus when download becomes ready"
-      }
-    ],
-    "reason": "DOM focus moves from the removed download action to restart; full controller traversal and all original transitions remain."
-  },
-  "ApplicationUpdaterUiTests.Download_cancellation_retry_and_browser_links_use_shared_commands": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-updates-ui.test.tsx",
-        "case": "keeps recovery guidance visible during later checks and exposes cancellation with progress"
+        "file": "tests/electron/update-workflow.spec.ts",
+        "case": "${mode} update caption settings and controller actions retain source geometry and lifecycle at text ${scale}"
       },
       {
         "file": "tests/parity-updates-ui.test.tsx",
-        "case": "hides unavailable native actions and opens manual downloads through the shared command"
+        "case": "shares caption readiness and progress while Quick menu requires explicit activation"
       }
     ],
-    "reason": "Both modes route cancel and browser commands through main. Native retry behavior is tested separately, but the whole original UI sequence remains to be combined."
+    "reason": "Native desktop/fullscreen checks cover hidden initial actions, explicit caption/Quick menu activation, fixed caption progress width/position, 34/78 percent updates, cancellation/retry, both browser links, vertical controller traversal with scrolling, valid focus through action replacement and explicit restart. Fullscreen repeats at 140% text; renderer IPC status is substituted and native byte/lifecycle tests cover the implementation separately."
+  },
+  "ApplicationUpdaterUiTests.Fullscreen_recovers_focus_when_download_actions_change_availability": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/update-workflow.spec.ts",
+        "case": "${mode} update caption settings and controller actions retain source geometry and lifecycle at text ${scale}"
+      },
+      {
+        "file": "tests/parity-updates-ui.test.tsx",
+        "case": "shares caption readiness and progress while Quick menu requires explicit activation"
+      }
+    ],
+    "reason": "Native desktop/fullscreen checks cover hidden initial actions, explicit caption/Quick menu activation, fixed caption progress width/position, 34/78 percent updates, cancellation/retry, both browser links, vertical controller traversal with scrolling, valid focus through action replacement and explicit restart. Fullscreen repeats at 140% text; renderer IPC status is substituted and native byte/lifecycle tests cover the implementation separately."
+  },
+  "ApplicationUpdaterUiTests.Download_cancellation_retry_and_browser_links_use_shared_commands": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/update-workflow.spec.ts",
+        "case": "${mode} update caption settings and controller actions retain source geometry and lifecycle at text ${scale}"
+      },
+      {
+        "file": "tests/parity-updates-ui.test.tsx",
+        "case": "shares caption readiness and progress while Quick menu requires explicit activation"
+      }
+    ],
+    "reason": "Native desktop/fullscreen checks cover hidden initial actions, explicit caption/Quick menu activation, fixed caption progress width/position, 34/78 percent updates, cancellation/retry, both browser links, vertical controller traversal with scrolling, valid focus through action replacement and explicit restart. Fullscreen repeats at 140% text; renderer IPC status is substituted and native byte/lifecycle tests cover the implementation separately."
   }
 }

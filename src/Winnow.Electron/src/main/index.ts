@@ -47,6 +47,7 @@ import { writeSteamDiagnostic } from './steam-diagnostics'
 import { EpicSignInController } from './epic-auth'
 import type { EpicSignInOptions } from '../shared/epic'
 import { RequestLifetimes } from './request-lifetimes'
+import { quitDrain } from './quit-drain'
 import { dataDirectoryRefusalCode, reportStartupFailure } from './startup-failure'
 import { openLinkBrowser } from './link-browser'
 import { routeLink } from './link-routing'
@@ -863,9 +864,10 @@ else if (startupArgumentError) {
     .catch((error) => {
       app.exit(reportStartupFailure(error, { directory: dataDirectory, surface: dialog.showErrorBox }))
     })
-app.on('before-quit', () => {
+const drainUpdates = quitDrain(() => updater?.dispose() ?? Promise.resolve(), () => app.quit())
+app.on('before-quit', (event) => {
   quitting = true
-  updater?.dispose()
+  if (updater && drainUpdates(event)) return
   tray?.destroy()
   tray = undefined
   transport?.stop()

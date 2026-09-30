@@ -56,7 +56,11 @@ function UpdateActions({
   const root = useRef<HTMLDivElement>(null),
     ownedFocus = useRef(false)
   useLayoutEffect(() => {
-    if (ownedFocus.current && document.activeElement === document.body)
+    if (
+      ownedFocus.current &&
+      (document.activeElement === document.body ||
+        (root.current?.contains(document.activeElement) && document.activeElement?.matches(':disabled')))
+    )
       root.current
         ?.querySelector<HTMLButtonElement>('button.primary-button:not(:disabled), button:not(:disabled)')
         ?.focus()
@@ -105,7 +109,10 @@ function UpdateActions({
           Restart to update
         </button>
       )}
-      {!value.canDownload && !value.canRestart && value.downloadUrl && !value.busy && (
+      {!compact && value.releaseUrl && (
+        <button onClick={() => void update.action('release-notes')}>Release notes</button>
+      )}
+      {(!compact || (!value.canDownload && !value.canRestart)) && value.downloadUrl && !value.busy && (
         <button disabled={busy} onClick={() => void update.action('manual-download')}>
           Download in browser
         </button>
@@ -118,7 +125,22 @@ export function ApplicationUpdates() {
     value = update.snapshot
   if (!window.winnow.updateSnapshot) return null
   return (
-    <section className="feature-panel">
+    <section
+      className="feature-panel application-updates"
+      onKeyDown={(event) => {
+        if (!event.currentTarget.closest('.mode-fullscreen') || !['ArrowDown', 'ArrowUp'].includes(event.key))
+          return
+        const controls = [
+          ...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)'),
+        ]
+        const index = controls.indexOf(event.target as HTMLElement)
+        const next = controls[index + (event.key === 'ArrowDown' ? 1 : -1)]
+        if (index < 0 || !next) return
+        event.preventDefault()
+        next.focus({ preventScroll: true })
+        next.scrollIntoView({ block: 'nearest' })
+      }}
+    >
       <h2>Updates</h2>
       <p>Winnow can download updates in the background. Restart to install when you are ready.</p>
       <label className="check-field">
@@ -145,12 +167,66 @@ export function ApplicationUpdates() {
           {value.availableVersion ? ` Version ${value.availableVersion}.` : ''}
         </p>
       )}
-      {value?.recoveryStatus && <p role="alert">{value.recoveryStatus}</p>}
+      {value?.recoveryStatus && (
+        <p role="status" aria-label="Update recovery">
+          {value.recoveryStatus}
+        </p>
+      )}
       <div className="form-actions">
         <UpdateActions update={update} />
       </div>
       <Notice error={update.error} />
     </section>
+  )
+}
+export function UpdateCaption({ mode }: { mode: 'desktop' | 'fullscreen' }) {
+  return window.winnow?.updateSnapshot ? <NativeUpdateCaption mode={mode} /> : null
+}
+function NativeUpdateCaption({ mode }: { mode: 'desktop' | 'fullscreen' }) {
+  const update = useUpdates(),
+    value = update.snapshot
+  if (!value || !(value.canRestart || value.canDownload || value.canCancel)) return null
+  return (
+    <div className={`update-caption mode-${mode}`} aria-label="Application update" title={value.status}>
+      {value.canCancel ? (
+        <div className="update-caption-progress">
+          <span>Updating</span>
+          <progress aria-label="Update download progress" max={100} value={value.progress} />
+        </div>
+      ) : mode === 'fullscreen' ? (
+        <span role="status">Update available · Menu</span>
+      ) : (
+        <button
+          disabled={value.busy || update.pending}
+          onClick={() => void update.action('update-and-restart')}
+        >
+          Update and restart
+        </button>
+      )}
+      <Notice error={update.error} />
+    </div>
+  )
+}
+export function QuickUpdate({ close }: { close?: () => void }) {
+  return window.winnow?.updateSnapshot ? <NativeQuickUpdate close={close} /> : null
+}
+function NativeQuickUpdate({ close }: { close?: () => void }) {
+  const update = useUpdates(),
+    value = update.snapshot
+  if (!value || !(value.canRestart || value.canDownload || value.canCancel)) return null
+  return (
+    <>
+      <button
+        disabled={value.busy || update.pending}
+        onClick={() => {
+          close?.()
+          void update.action('update-and-restart')
+        }}
+      >
+        Update and restart
+      </button>
+      <Notice error={update.error} />
+    </>
   )
 }
 /** Mount in the shared shell so desktop and fullscreen show the same staged update. */
@@ -162,7 +238,11 @@ export function UpdateStatus() {
   return (
     <aside className="update-status" aria-label="Application update">
       <span role="status">{value.status}</span>
-      {value.recoveryStatus && <span role="alert">{value.recoveryStatus}</span>}
+      {value.recoveryStatus && (
+        <span role="status" aria-label="Update recovery">
+          {value.recoveryStatus}
+        </span>
+      )}
       <UpdateActions update={update} compact />
       <Notice error={update.error} />
     </aside>

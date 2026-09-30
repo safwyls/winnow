@@ -7,9 +7,10 @@ export interface UpdateRelease {
 }
 export interface UpdateDriver {
   supported: boolean
-  check(includeBeta: boolean): Promise<UpdateRelease | null>
+  check(includeBeta: boolean, signal?: AbortSignal): Promise<UpdateRelease | null>
   download(release: UpdateRelease, signal: AbortSignal, progress: (percent: number) => void): Promise<void>
   install(): Promise<void>
+  discard(): Promise<void>
 }
 export interface UpdatePorts {
   version: string
@@ -40,6 +41,7 @@ export class ApplicationUpdater {
   private release: UpdateRelease | null = null
   private running: Promise<void> | null = null
   private downloadCancellation: AbortController | null = null
+  private checkCancellation: AbortController | null = null
   private generation = 0
   private loaded = false
   private disposed = false
@@ -85,8 +87,10 @@ export class ApplicationUpdater {
     this.disposed = true
     this.generation++
     this.downloadCancellation?.abort()
+    this.checkCancellation?.abort()
     this.timers.forEach(clearTimeout)
     this.listeners.clear()
+    return this.running ?? Promise.resolve()
   }
   private run(work: () => Promise<void>): Promise<void> {
     if (this.running || this.disposed || this.handedOff) return this.running ?? Promise.resolve()
@@ -104,14 +108,17 @@ export class ApplicationUpdater {
     const generation = this.generation
     await this.run(async () => {
       await this.load()
+      if (this.disposed || generation !== this.generation) return
       if (!this.ports.packaged || /-(?:dev|ci)(?:\.|$)/i.test(this.ports.version)) {
         this.publish({ status: 'Development and CI builds do not receive release updates.' })
         return
       }
       this.publish({ busy: true, status: 'Checking for updates…' })
       let release: UpdateRelease | null
+      const cancellation = new AbortController()
+      this.checkCancellation = cancellation
       try {
-        release = await this.ports.driver.check(this.value.includeBeta)
+        release = await this.ports.driver.check(this.value.includeBeta, cancellation.signal)
       } catch (failure) {
         this.release = null
         this.publish({
@@ -122,6 +129,8 @@ export class ApplicationUpdater {
           downloadUrl: null,
         })
         throw failure
+      } finally {
+        this.checkCancellation = null
       }
       if (generation !== this.generation || this.disposed) return
       if (release?.version !== this.release?.version) this.publish({ canRestart: false, progress: 0 })
@@ -202,6 +211,7 @@ export class ApplicationUpdater {
         this.handedOff = true
         this.publish({ canRestart: false, canDownload: false, status: 'The update installer has started.' })
       } catch {
+        await this.ports.driver.discard().catch(() => {})
         await this.ports.clearRestart().catch(() => {})
         this.publish({
           canRestart: false,
@@ -229,14 +239,17 @@ export class ApplicationUpdater {
     if (this.value.canRestart && !this.value.busy) await this.restart()
   }
   async setPreference(name: 'AutomaticUpdates' | 'IncludeBetaUpdates', value: boolean) {
-    if (this.handedOff || (this.value.busy && this.value.canRestart)) return
+    if (this.disposed || this.handedOff || (this.value.busy && this.value.canRestart)) return
     this.generation++
     this.cancel()
+    this.checkCancellation?.abort()
     await this.running
+    if (this.disposed) return
     await this.load()
     await this.ports.savePreference(name, value)
     if (name === 'IncludeBetaUpdates') {
       this.release = null
+      await this.ports.driver.discard()
       this.publish({
         includeBeta: value,
         canDownload: false,
@@ -251,15 +264,18 @@ export class ApplicationUpdater {
     if (this.value.automatic) void this.check()
   }
   async refreshPreferences() {
-    if (this.handedOff || (this.value.busy && this.value.canRestart)) return
+    if (this.disposed || this.handedOff || (this.value.busy && this.value.canRestart)) return
     const latest = await this.ports.preferences()
     if (latest.automatic === this.value.automatic && latest.includeBeta === this.value.includeBeta) return
     this.generation++
     this.cancel()
+    this.checkCancellation?.abort()
     await this.running
+    if (this.disposed) return
     const preferences = await this.ports.preferences()
     if (preferences.includeBeta !== this.value.includeBeta) {
       this.release = null
+      await this.ports.driver.discard()
       this.publish({
         canDownload: false,
         canRestart: false,
@@ -284,6 +300,8 @@ export class ApplicationUpdater {
       await this.setPreference(action === 'automatic' ? 'AutomaticUpdates' : 'IncludeBetaUpdates', value)
     } else if (action === 'manual-download') {
       if (this.release) await this.ports.openDownload(this.release.downloadUrl)
+    } else if (action === 'release-notes') {
+      if (this.release) await this.ports.openDownload(this.release.releaseUrl)
     } else throw new Error('Unknown update action.')
     return this.snapshot
   }

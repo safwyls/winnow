@@ -616,7 +616,7 @@ export function App() {
           }
         />
         <SessionNotifications mode={mode} suspended={setupOpen} />
-        {!setupOpen && <UpdateStatus />}
+        {!setupOpen && runtime.profile.themeId !== 'avalon' && <UpdateStatus />}
         <LinkNotifications />
         {quickMenu && (
           <QuickMenu

@@ -81,6 +81,7 @@ import { Details } from '../features/Details'
 import { AvalonSearch } from './avalon-search'
 import { AvalonBackdrop } from './avalon-backdrop'
 import { AvalonLibraryPanel } from './avalon-library-panel'
+import { UpdateCaption } from '../features/Updates'
 
 const destinations = [
   { id: 'discover', label: 'For you', Icon: Compass },
@@ -281,6 +282,7 @@ export function AvalonShell(context: ThemeContext) {
           </nav>
         )}
         <div className="avalon-utilities">
+          <UpdateCaption mode={context.mode} />
           <button
             aria-label="Search library"
             title="Search library (Ctrl+K)"
