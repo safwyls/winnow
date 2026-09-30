@@ -1,4 +1,5 @@
 import type { ApplicationActivation } from '../shared/bridge'
+import { ownershipId } from '../shared/ownership-id'
 
 /** URI launch syntax is checked before options can select or create a data directory. */
 export function validateActivationArguments(args: string[]): void {
@@ -14,13 +15,10 @@ export function validatedActivation(value: unknown): ApplicationActivation | nul
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const input = value as Record<string, unknown>
   if (input.kind === 'show' || input.kind === 'fullscreen') return { kind: input.kind }
-  if (
-    input.kind === 'game' &&
-    typeof input.ownershipId === 'number' &&
-    Number.isSafeInteger(input.ownershipId) &&
-    input.ownershipId > 0
-  )
-    return { kind: 'game', ownershipId: input.ownershipId }
+  if (input.kind === 'game') {
+    const id = ownershipId(input.ownershipId)
+    return id === null ? null : { kind: 'game', ownershipId: id }
+  }
   if (
     input.kind === 'plugin' &&
     typeof input.pluginId === 'string' &&
@@ -75,8 +73,8 @@ export function readActivation(args: string[]): ApplicationActivation {
   if (actions[0] === '--jump-list-fullscreen') return { kind: 'fullscreen' }
   if (actions[0] === '--jump-list-game') {
     const value = args[args.indexOf(actions[0]) + 1]
-    if (/^[1-9]\d*$/.test(value ?? '') && Number.isSafeInteger(Number(value)))
-      return { kind: 'game', ownershipId: Number(value) }
+    const id = ownershipId(value)
+    if (id !== null) return { kind: 'game', ownershipId: id }
   }
   return { kind: 'show' }
 }

@@ -10,9 +10,9 @@
     "reason": "Exercises the same recent-item projection contract, including uninstalled entries, missing identity, missing date, descending order and ten-item limit."
   },
   "SingleInstanceActivationTests.Typed_requests_preserve_order_until_ready_including_cold_start": {
-    "status": "partial",
-    "tests": [{"file":"tests/app.test.tsx","case":"delivers startup activations before a newer event received during the pending handshake"}],
-    "reason": "The renderer preserves startup/event ordering and waits for setup. Production queue and native handoff checks now cover mixed FIFO ordering, coalescing and readiness. The original long.MaxValue ownership ID remains unsupported beyond JavaScript's safe integer range, so this contract is still partial."
+    "status": "ported",
+    "tests": [{"file":"tests/parity-activation-int64.test.ts","case":"retains the original cold-start game fullscreen Int64-max FIFO contract"}, {"file":"tests/electron/activation.spec.ts","case":"cold-start ownership and second-process Int64 requests retain the original complete FIFO sequence"}, {"file":"tests/electron/activation.spec.ts","case":"extended activation reaches the real backend with an exact Int64 URL"}, {"file":"tests/app.test.tsx","case":"waits for startup and sends an extended ownership ID without using rounded snapshot entries"}, {"file":"../../tests/Winnow.Backend.Tests/GameActionParityTests.cs","case":"Primary_action_preserves_Int64_identity_and_selects_current_play_or_install"}],
+    "reason": "The complete original game-23/fullscreen/Int64-max FIFO sequence survives cold start and real second-process delivery. Decimal strings preserve IDs beyond JavaScript precision. Both surfaces wait for startup before issuing an exact named-route request; native HTTP paths retain all digits. Backend HTTP/SQLite fixtures dispatch the exact ID, select current play/install facts and deduplicate retries without a real OS launch."
   },
   "SingleInstanceActivationTests.Second_process_activates_owner_and_exits_before_database_initialization": {
     "status": "partial",

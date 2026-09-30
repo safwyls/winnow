@@ -14,6 +14,10 @@ describe('native activation arguments', () => {
       releaseTag: 'v1.2.3',
     })
     expect(validatedActivation({ kind: 'game', ownershipId: 42 })).toEqual({ kind: 'game', ownershipId: 42 })
+    expect(validatedActivation({ kind: 'game', ownershipId: '42' })).toEqual({
+      kind: 'game',
+      ownershipId: 42,
+    })
     for (const value of [
       null,
       [],
@@ -25,7 +29,7 @@ describe('native activation arguments', () => {
       { kind: 'plugin', pluginId: 'xbox', releaseTag: 'v1.2.3' + 'x'.repeat(65535) },
       '--jump-list-fullscreen',
       { kind: 'game', ownershipId: -1 },
-      { kind: 'game', ownershipId: '42' },
+      { kind: 'game', ownershipId: '042' },
       { kind: 'plugin', pluginId: 'xbox&url=https://evil.test', releaseTag: 'v1.2.3' },
       { kind: 'plugin', pluginId: 'xbox', releaseTag: 'v1.2.3 --data-dir C:\\other' },
     ])
@@ -90,7 +94,6 @@ describe('native activation arguments', () => {
       ['--jump-list-game', '9223372036854775808'],
       ['--jump-list-unknown'],
       ['--jump-list-game', '-1'],
-      ['--jump-list-game', '9007199254740992'],
       ['--jump-list-game', '42', '--jump-list-fullscreen'],
     ])
       expect(readActivation(args)).toEqual({ kind: 'show' })

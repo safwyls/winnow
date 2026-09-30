@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { MotionConfig } from 'motion/react'
 import { AlertCircle, ArrowLeft, RotateCcw, WifiOff } from 'lucide-react'
 import type { ApplicationActivation, ConnectionState } from '../shared/bridge'
+import { ExtendedActivationLauncher } from './activation-launch'
 import type { ThemeContext, ThemePage } from '../shared/theme'
 import { useLibrary, useFeed, useWorkspace, useApiQuery } from './api/hooks'
 import { ApiError, primaryAction, request } from './api/client'
@@ -62,6 +63,7 @@ export function App() {
   const [keyboardInput, setKeyboardInput] = useState<HTMLInputElement | HTMLTextAreaElement | null>(null)
   const [activations, setActivations] = useState<ApplicationActivation[]>([])
   const [activationInFlight, setActivationInFlight] = useState(false)
+  const extendedActivationLauncher = useRef(new ExtendedActivationLauncher())
   const [setupSuspended, setSetupSuspended] = useViewState('setup:suspended', false)
   const [settingsTab, setSettingsTab] = useViewState(`${mode}:settings:tab`, 'Platforms')
   const [, setInstallationPage] = useViewState(`${mode}:plugins:installation`, false)
@@ -527,11 +529,13 @@ export function App() {
           .then(() => setMode('fullscreen'))
           .catch(() => setNotice('Fullscreen could not be opened.'))
     } else if (activation.kind === 'game') {
-      void activationContext.current.actions
-        .launch(activation.ownershipId)
-        .catch((error) =>
-          setNotice(error instanceof Error ? error.message : 'This game could not be started.'),
-        )
+      const launched =
+        typeof activation.ownershipId === 'string'
+          ? extendedActivationLauncher.current.launch(activation.ownershipId)
+          : activationContext.current.actions.launch(activation.ownershipId)
+      void launched.catch((error) =>
+        setNotice(error instanceof Error ? error.message : 'This game could not be started.'),
+      )
     } else if (activation.kind === 'plugin') {
       setActivationInFlight(true)
       void pluginInstallation(client)

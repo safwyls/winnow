@@ -5,7 +5,10 @@ export interface ApiRequest {
   params?: Record<string, string | number>
   body?: unknown
 }
-export interface LinkOpenResult { opened: boolean; message?: string }
+export interface LinkOpenResult {
+  opened: boolean
+  message?: string
+}
 export interface ApiResult<T = unknown> {
   ok: boolean
   status: number
@@ -17,7 +20,10 @@ export interface ArtworkImport {
   slot: 'Hero' | 'Cover' | 'Icon'
   revision: string
 }
-export interface ArtworkSaveResult { success: boolean; message: string }
+export interface ArtworkSaveResult {
+  success: boolean
+  message: string
+}
 export interface ConnectionState {
   connected: boolean
   message: string
@@ -87,7 +93,7 @@ export interface ApplicationInfo {
 export type ApplicationActivation =
   | { kind: 'show' }
   | { kind: 'fullscreen' }
-  | { kind: 'game'; ownershipId: number }
+  | { kind: 'game'; ownershipId: number | string }
   | { kind: 'plugin'; pluginId: string; releaseTag: string }
 export interface WinnowBridge {
   appearanceSession?(): Promise<import('./appearance-session').AppearanceSession | null>
@@ -95,7 +101,9 @@ export interface WinnowBridge {
   prepareEpicSignIn?(): Promise<import('./epic').EpicSignInPreparation | null>
   epicSignIn?(options: import('./epic').EpicSignInOptions): Promise<import('./epic').EpicSignInResult>
   openEpicSignInInBrowser?(options: import('./epic').EpicSignInOptions): Promise<void>
-  completeEpicSignIn?(options: import('./epic').EpicSignInOptions & { callback: string }): Promise<import('./epic').EpicSignInResult>
+  completeEpicSignIn?(
+    options: import('./epic').EpicSignInOptions & { callback: string },
+  ): Promise<import('./epic').EpicSignInResult>
   cancelEpicSignIn?(): Promise<boolean>
   request<T = unknown>(request: ApiRequest): Promise<ApiResult<T>>
   cancelRequest?(requestId: string): Promise<boolean>
@@ -109,10 +117,14 @@ export interface WinnowBridge {
   exportProfile(value: unknown): Promise<boolean>
   listThemes(): Promise<ThemePackage[]>
   listAvalonThemes?(): Promise<import('./avalonThemeDocument').AvalonThemeCatalogue>
-  exportAvalonTheme?(text: string): Promise<{ file: string | null; diagnostics: import('./avalonThemeDocument').AvalonThemeDiagnostic[] }>
+  exportAvalonTheme?(
+    text: string,
+  ): Promise<{ file: string | null; diagnostics: import('./avalonThemeDocument').AvalonThemeDiagnostic[] }>
   onAvalonThemesChanged?(callback: () => void): () => void
   listFonts?(): Promise<string[]>
-  windowAppearance?(value: import('./windowAppearance').WindowAppearanceRequest): Promise<import('./windowAppearance').WindowAppearanceResult>
+  windowAppearance?(
+    value: import('./windowAppearance').WindowAppearanceRequest,
+  ): Promise<import('./windowAppearance').WindowAppearanceResult>
   onWindowAppearanceInvalidated?(callback: () => void): () => void
   installTheme(): Promise<ThemePackage | null>
   setFullscreen(value: boolean): Promise<void>

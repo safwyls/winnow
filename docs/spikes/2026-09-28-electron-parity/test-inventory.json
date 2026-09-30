@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 696,
-    "partial": 110,
-    "ported": 1053,
+    "pending": 695,
+    "partial": 109,
+    "ported": 1055,
     "retained-backend": 559,
     "framework-specific": 17
   },
@@ -13221,14 +13221,30 @@
     {
       "id": "SingleInstanceActivationTests.Typed_requests_preserve_order_until_ready_including_cold_start",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
+          "file": "tests/parity-activation-int64.test.ts",
+          "case": "retains the original cold-start game fullscreen Int64-max FIFO contract"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "cold-start ownership and second-process Int64 requests retain the original complete FIFO sequence"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "extended activation reaches the real backend with an exact Int64 URL"
+        },
+        {
           "file": "tests/app.test.tsx",
-          "case": "delivers startup activations before a newer event received during the pending handshake"
+          "case": "waits for startup and sends an extended ownership ID without using rounded snapshot entries"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+          "case": "Primary_action_preserves_Int64_identity_and_selects_current_play_or_install"
         }
       ],
-      "reason": "The renderer preserves startup/event ordering and waits for setup. Production queue and native handoff checks now cover mixed FIFO ordering, coalescing and readiness. The original long.MaxValue ownership ID remains unsupported beyond JavaScript's safe integer range, so this contract is still partial."
+      "reason": "The complete original game-23/fullscreen/Int64-max FIFO sequence survives cold start and real second-process delivery. Decimal strings preserve IDs beyond JavaScript precision. Both surfaces wait for startup before issuing an exact named-route request; native HTTP paths retain all digits. Backend HTTP/SQLite fixtures dispatch the exact ID, select current play/install facts and deduplicate retries without a real OS launch."
     },
     {
       "id": "SingleInstanceActivationTests.Invalid_payload_is_rejected_without_dispatch",
@@ -13272,7 +13288,7 @@
           "case": "limits Jump List actions to a single valid local ownership ID or fullscreen"
         }
       ],
-      "reason": "Preserves the source accepted fullscreen/game commands and its full rejection matrix: missing ID, zero, negative, store URI, Int64 overflow, unknown command and duplicate commands. The separate typed-queue contract remains partial for valid IDs above JavaScript's safe integer range."
+      "reason": "Preserves the source accepted fullscreen/game commands and its full rejection matrix: missing ID, zero, negative, store URI, Int64 overflow, unknown command and duplicate commands. Valid ownership IDs across the complete positive Int64 range are preserved without numeric rounding."
     },
     {
       "id": "SingleInstanceActivationTests.Second_process_activates_owner_and_exits_before_database_initialization",
@@ -13305,7 +13321,14 @@
     {
       "id": "SingleInstanceActivationTests.Connection_waits_for_listener_startup",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "a real secondary launch waits while the primary has not registered its listener or become ready"
+        }
+      ],
+      "reason": "A real child process calls Electron's single-instance API while the primary is deliberately held before listener registration and app readiness. A marker written immediately before the child's lock request confirms that ordering. Once the primary resumes, the child exits successfully and its fullscreen request is retained for renderer readiness."
     },
     {
       "id": "SingleInstanceActivationTests.Other_directories_and_stopped_sessions_do_not_activate",

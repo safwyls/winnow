@@ -1035,6 +1035,43 @@ describe('integrated frontend', () => {
     await waitFor(() => expect(window.winnow.setFullscreen).toHaveBeenCalledWith(true))
   })
   it.each(['desktop', 'fullscreen'] as const)(
+    '%s waits for startup and sends an extended ownership ID without using rounded snapshot entries',
+    async (mode) => {
+      vi.mocked(window.winnow.isFullscreen).mockResolvedValue(mode === 'fullscreen')
+      let complete!: (value: unknown) => void
+      const setup = new Promise((resolve) => {
+        complete = resolve
+      })
+      const original = window.winnow.request
+      window.winnow.request = vi.fn(async (value) =>
+        value.route === 'setup.get'
+          ? { ok: true, status: 200, data: await setup }
+          : value.route === 'actions.execute'
+            ? { ok: true, status: 200, data: 0 }
+            : original(value),
+      ) as WinnowBridge['request']
+      window.winnow.takeActivations = async () => [{ kind: 'game', ownershipId: '9223372036854775807' }]
+      mount()
+      await screen.findByRole('dialog', {
+        name: mode === 'fullscreen' ? 'Preparing fullscreen' : 'Preparing your library',
+      })
+      expect(
+        vi.mocked(window.winnow.request).mock.calls.filter(([value]) => value.route === 'actions.execute'),
+      ).toHaveLength(0)
+      await act(async () => complete({ step: null }))
+      await waitFor(() =>
+        expect(
+          vi.mocked(window.winnow.request).mock.calls.filter(([value]) => value.route === 'actions.execute'),
+        ).toHaveLength(1),
+      )
+      const request = vi
+        .mocked(window.winnow.request)
+        .mock.calls.find(([value]) => value.route === 'actions.execute')![0]
+      expect(request.params).toEqual({ ownershipId: '9223372036854775807' })
+      expect(request.body).toEqual({ operationId: expect.any(String), action: 'Primary' })
+    },
+  )
+  it.each(['desktop', 'fullscreen'] as const)(
     '%s Plugin_handoff_shows_installation_over_a_fresh_optional_setup',
     async (mode) => {
       vi.mocked(window.winnow.isFullscreen).mockResolvedValue(mode === 'fullscreen')

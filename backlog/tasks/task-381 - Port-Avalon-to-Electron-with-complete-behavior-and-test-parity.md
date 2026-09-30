@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 04:45'
+updated_date: '2026-09-30 05:00'
 labels: []
 dependencies: []
 priority: high
@@ -112,6 +112,8 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 42. Complete the four LoadingDragon source contracts: preserve phase across theme/size updates in the canvas worker, verify all15closed contours and seam geometry across101phases, controlled disable/detach clocks, and native dark/light88/100px rendering. Then audit and migrate remaining application activation/architecture contracts against their actual Electron boundaries. Keep native/component/.NET verification sequential and record desktop/fullscreen evidence.
 
 43. Audit the ten original architecture boundary methods: retain the seven shared .NET core/recommend/ingest rules only after checking current backend composition and focused original tests; add Electron source and bundled dependency guards for renderer and embedded sign-in hosts, including adversarial boundary fixtures. Then extract the bounded native activation queue, preserve FIFO and Show coalescing, reject malformed structured payloads without dispatch, and test real profile isolation and early handoff. Keep any Int64 transport limitation explicit until end-to-end behavior is implemented and tested.
+
+44. Close the remaining typed activation ID gap: preserve valid Int64 ownership IDs as canonical decimal strings when they exceed JavaScript precision; validate them without numeric rounding through the named route boundary. Add an additive backend Primary action that selects the existing current play/install action, keeping launch authorization and idempotency in the backend. Use it only for extended-ID shell activation, retaining ordinary theme launch behavior. Verify original FIFO/cold-start order, both presentation paths, exact HTTP path and real backend dispatch with an Int64-max fixture and a fake OS dispatcher. Also exercise a real secondary launch during primary readiness. Keep packaged executable/shortcut validation separate until exercised.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -224,4 +226,6 @@ Plan42 dragon rendering: all four original source methods now have complete evid
 Checkpoint28 complete: all214native Electron cases pass in one18.0minute run with clean completion, built from3125b61a. The report is copied to .tmp/dragon-native-full/results.json; component/liveAPI2861/142 and earlier build/typecheck remain passing. Subsequent architecture and activation work is separate: all31focused cases now pass after adding the fixture font loader; its new build and native workflows are next. All acceptance criteria remain unchecked.
 
 Plan 43 verification: all 2,882 component/live API cases in 144 files pass without skips (48.48s), with build and final typecheck passing. All ten original architecture checks pass against a fresh .NET build. Four new native activation workflows pass together (26.8s): early background restoration, FIFO/coalescing, rejection without dispatch, bounded recovery, profile isolation/restart and second-process exit before database creation. A fixture top-level readiness deadlock was corrected; no production startup deadlock was found. Inventory: 1,053 ported, 559 retained backend, 17 framework-specific, 696 pending, 110 partial. Int64 activation IDs, packaged/shortcut launches and listener startup remain outstanding. Evidence: checkpoint-twenty-nine.md. No acceptance criteria checked.
+
+Plan 44 verified: all 2,907 component/live API cases in 145 files pass without skips (49.32s), plus build and final typecheck. All 109 backend tests pass, including exact Int64-max HTTP/SQLite dispatch and operation deduplication. All eight native activation workflows pass together (49.8s), including a real pre-readiness secondary request and exact extended-ID URLs on desktop and fullscreen. Two fixture failures assumed setup despite --seed-sample; explicit step-null and navigation assertions corrected them without weakening request checks. Typed FIFO and listener-startup contracts are ported. Inventory: 1,055 ported, 559 retained backend, 17 framework-specific, 695 pending, 109 partial. Evidence checkpoint-thirty.md; packaged/shortcut variants and general numeric JSON identity limits remain documented. All AC remain unchecked.
 <!-- SECTION:NOTES:END -->

@@ -46,6 +46,9 @@ and deliver requests in order. Before the renderer is ready, the queue holds up 
 requests and coalesces adjacent duplicates; after readiness, repeated requests each
 dispatch. Malformed structured activations do not restore the window or enter the queue.
 Separate library directories remain independent, including their backend and browser profile.
+Shell activation IDs above JavaScript's safe integer range travel as canonical decimal
+strings. The backend selects their current primary action, preserving the exact ownership
+ID and the ordinary operation retry rules.
 
 Avalon reads existing authored Winnow JSON palettes from the library's `themes` folder,
 including their fonts and opening preferences. Theme Studio provides reload, diagnostics,

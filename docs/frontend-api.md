@@ -72,6 +72,15 @@ authoritative. Do not query SQLite or reimplement identity resolution and recomm
 in a frontend. Credentials and storage keys have no generic read/write endpoint; credential
 forms submit dedicated commands and read redacted connection state.
 
+`POST entries/{ownershipId}/actions` accepts `Primary` as well as explicit Play, Install,
+Uninstall, Manage and OpenStore actions. Primary selects the existing play/install action
+from current backend ownership facts; unsupported entries are refused. It shares the same
+operation-ID deduplication and cannot accept an executable path or launcher URI from a
+client. This lets shell activations launch an entry without reconstructing its action from
+a possibly stale library snapshot. Ownership IDs in URL paths retain the positive signed
+64-bit range. JavaScript clients must preserve larger IDs as decimal text rather than
+rounding them through `Number`.
+
 `GET works/{workId}/backdrop?aspectRatio=...` returns ordered backdrop candidates and a
 separate portrait fallback. Each candidate includes its source aspect ratio and whether
 an ultrawide surface should fit the whole hero. The backend applies saved artwork choices,

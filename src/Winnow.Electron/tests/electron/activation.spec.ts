@@ -8,16 +8,22 @@ import { closeFixture } from './fixture-cleanup'
 async function directory() {
   return mkdtemp(join(resolve('../..', '.tmp'), 'winnow-native-activation-'))
 }
-async function launch(directory: string, early = false) {
+async function launch(
+  directory: string,
+  early = false,
+  initial: string[] = [],
+  fixture = 'activation-main.mjs',
+) {
   const application = await electron.launch({
     executablePath: electronPath as unknown as string,
     args: [
-      resolve('tests/electron/activation-main.mjs'),
+      resolve('tests/electron', fixture),
       '--data-dir',
       directory,
       '--no-sync',
       '--seed-sample',
       '--background',
+      ...initial,
     ],
     env: {
       ...Object.fromEntries(
@@ -112,7 +118,7 @@ test('native dispatch rejects malformed payloads without showing the window and 
         [],
         {},
         { kind: 'game', ownershipId: -1 },
-        { kind: 'game', ownershipId: '42' },
+        { kind: 'game', ownershipId: '042' },
         { kind: 'plugin', pluginId: '', releaseTag: '' },
         { kind: 'plugin', pluginId: 'x'.repeat(65535), releaseTag: 'v1.2.3' },
       ])
@@ -137,6 +143,74 @@ test('native dispatch rejects malformed payloads without showing the window and 
     await closeFixture(application, profile)
   }
 })
+
+test('cold-start ownership and second-process Int64 requests retain the original complete FIFO sequence', async () => {
+  const profile = await directory(),
+    application = await launch(profile, false, ['--jump-list-game', '23'])
+  try {
+    await secondary(profile, ['--jump-list-fullscreen'])
+    await secondary(profile, ['--jump-list-game', '9223372036854775807'])
+    expect(await release(application)).toEqual([
+      { kind: 'game', ownershipId: 23 },
+      { kind: 'fullscreen' },
+      { kind: 'game', ownershipId: '9223372036854775807' },
+    ])
+    await secondary(profile, [])
+    await expect
+      .poll(() => application.evaluate(() => (globalThis as any).__activationFixture.state.delivered))
+      .toEqual([{ kind: 'show' }])
+  } finally {
+    await closeFixture(application, profile)
+  }
+})
+
+test('a real secondary launch waits while the primary has not registered its listener or become ready', async () => {
+  const profile = await directory(),
+    application = await launch(profile, false, [], 'activation-pre-ready-main.mjs')
+  try {
+    expect(await application.evaluate(() => (globalThis as any).__preReady.requestedBeforeReady)).toBe(true)
+    await expect.poll(() => application.evaluate(() => (globalThis as any).__preReady.exitCode)).toBe(0)
+    expect(await release(application)).toEqual([{ kind: 'fullscreen' }])
+  } finally {
+    await closeFixture(application, profile)
+  }
+})
+
+for (const mode of ['desktop', 'fullscreen'])
+  test(`${mode} extended activation reaches the real backend with an exact Int64 URL`, async () => {
+    const profile = await directory(),
+      application = await launch(profile)
+    try {
+      const page = await application.firstWindow()
+      await application.evaluate(({ BrowserWindow }) => {
+        const fixture = (globalThis as any).__activationFixture
+        fixture.state.forward = true
+        fixture.release()
+        BrowserWindow.getAllWindows()[0].show()
+      })
+      await expect
+        .poll(() => application.evaluate(() => (globalThis as any).__activationFixture.state.ready))
+        .toBe(true)
+      expect(await page.evaluate(async () => window.winnow.request({ route: 'setup.get' }))).toMatchObject({
+        ok: true,
+        data: { step: null },
+      })
+      await expect(page.locator('.startup-presentation')).toHaveCount(0)
+      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()
+      if (mode === 'fullscreen') {
+        await page.evaluate(() => window.winnow.setFullscreen(true))
+        await expect(page.locator('.avalon-shell.fullscreen')).toBeVisible()
+        await expect(page.locator('.startup-presentation')).toHaveCount(0)
+      }
+      await secondary(profile, ['--jump-list-game', '9223372036854775807'])
+      await expect
+        .poll(() => application.evaluate(() => (globalThis as any).__activationFixture.state.actionPaths))
+        .toEqual(['/api/v1/entries/9223372036854775807/actions'])
+      await expect(page.getByText('Game entry not found.', { exact: true })).toBeVisible()
+    } finally {
+      await closeFixture(application, profile)
+    }
+  })
 
 test('profile locks isolate active libraries and a stopped profile can become primary again', async () => {
   const first = await directory(),

@@ -1,4 +1,5 @@
 import type { ApiRequest } from '../shared/bridge'
+import { ownershipId } from '../shared/ownership-id'
 
 type Route = readonly [method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, query?: readonly string[]]
 /** This registry is the renderer's authority: no arbitrary URLs, headers or HTTP methods. */
@@ -143,7 +144,9 @@ export function resolveRoute(request: ApiRequest): { method: string; path: strin
     if (key === 'slot' && value === 'Background') value = 'Hero'
     if (typeof value !== 'number' && typeof value !== 'string') throw new Error(`Missing ${key}`)
     const text = String(value)
-    if (['workId', 'releaseId', 'ownershipId', 'listId', 'sessionId', 'childWorkId', 'igdbId'].includes(key)) {
+    if (key === 'ownershipId') {
+      if (ownershipId(value) === null) throw new Error(`Invalid ${key}`)
+    } else if (['workId', 'releaseId', 'listId', 'sessionId', 'childWorkId', 'igdbId'].includes(key)) {
       if (!/^[1-9]\d{0,15}$/.test(text) || !Number.isSafeInteger(Number(text)))
         throw new Error(`Invalid ${key}`)
     } else if (key === 'slot') {
@@ -163,9 +166,14 @@ export function resolveRoute(request: ApiRequest): { method: string; path: strin
   }
   if (method === 'GET' && request.body !== undefined) throw new Error('Read requests cannot include commands')
   const body = request.body === undefined ? undefined : JSON.stringify(request.body)
-  const limit = name === 'metadata.art-upload' ? 28 * 1024 * 1024
-    : name === 'imports.steam.load' ? 180 * 1024 * 1024
-    : name === 'imports.steam.pages' ? 140 * 1024 * 1024 : 2 * 1024 * 1024
+  const limit =
+    name === 'metadata.art-upload'
+      ? 28 * 1024 * 1024
+      : name === 'imports.steam.load'
+        ? 180 * 1024 * 1024
+        : name === 'imports.steam.pages'
+          ? 140 * 1024 * 1024
+          : 2 * 1024 * 1024
   if (body && Buffer.byteLength(body) > limit) throw new Error('Request is too large')
   return { method, path: `/api/v1/${path}${query.size ? `?${query}` : ''}`, body }
 }

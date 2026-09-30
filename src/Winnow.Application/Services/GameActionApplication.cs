@@ -44,7 +44,7 @@ public sealed class GameActionApplication(IOwnershipRepository ownerships, IRele
             var actions = await plugins.ReadAsync(snapshot, CancellationToken.None);
             action = kind switch
             {
-                GameActionKind.Play => actions.GetValueOrDefault(ownershipId)?.Play,
+                GameActionKind.Play or GameActionKind.Primary => actions.GetValueOrDefault(ownershipId)?.Play,
                 GameActionKind.OpenStore => actions.GetValueOrDefault(ownershipId)?.Store,
                 _ => null
             };

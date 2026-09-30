@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Dapper;
 using Microsoft.Extensions.DependencyInjection;
 using Winnow.Api.Client;
 using Winnow.Api.Contracts.Actions;
@@ -6,6 +7,7 @@ using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
 using Winnow.Core.Repositories;
+using Winnow.Data;
 using Xunit;
 
 namespace Winnow.Backend.Tests;
@@ -13,6 +15,26 @@ namespace Winnow.Backend.Tests;
 /// <summary>Replacement for tile URI assertions at the production action dispatch boundary.</summary>
 public sealed class GameActionParityTests
 {
+    [Theory]
+    [InlineData(true, 9007199254740992L)]
+    [InlineData(false, 9007199254740993L)]
+    [InlineData(true, long.MaxValue)]
+    [InlineData(false, long.MaxValue)]
+    public async Task Primary_action_preserves_Int64_identity_and_selects_current_play_or_install(bool installed, long id)
+    {
+        await using var host = await Host.Start("steam", installed, "620", id);
+        var operation = Guid.NewGuid();
+        var results = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => host.Dispatch(GameActionKind.Primary, operation)));
+        Assert.All(results, result => Assert.Equal(LaunchDispatch.HandedOff, result));
+        var dispatched = Assert.Single(host.Launcher.Calls);
+        Assert.Equal(id, dispatched.Id);
+        Assert.Equal(installed ? "steam://run/620" : "steam://install/620", dispatched.Link.Uri);
+        Assert.Equal(installed, dispatched.Link.StartsGame);
+        var conflict = await Assert.ThrowsAsync<BackendApiException>(() => host.Dispatch(GameActionKind.Uninstall, operation));
+        Assert.Equal(System.Net.HttpStatusCode.Conflict, conflict.StatusCode);
+        Assert.Single(host.Launcher.Calls);
+    }
+
     [Theory]
     [InlineData("steam", true, "620", "steam://run/620")]
     [InlineData("steam", false, "620", "steam://install/620")]
@@ -59,6 +81,7 @@ public sealed class GameActionParityTests
     {
         await using var host = await Host.Start(store, installed, identifier);
         Assert.Equal(LaunchDispatch.Refused, await host.Dispatch(installed ? GameActionKind.Play : GameActionKind.Install));
+        Assert.Equal(LaunchDispatch.Refused, await host.Dispatch(GameActionKind.Primary));
         Assert.Empty(host.Launcher.Calls);
     }
 
@@ -66,10 +89,10 @@ public sealed class GameActionParityTests
     {
         public long OwnershipId { get; } = ownershipId;
         public Launcher Launcher { get; } = launcher;
-        public Task<LaunchDispatch> Dispatch(GameActionKind action) => client.SendAsync<GameActionRequest, LaunchDispatch>(
-            HttpMethod.Post, $"entries/{OwnershipId}/actions", new(Guid.NewGuid(), action));
+        public Task<LaunchDispatch> Dispatch(GameActionKind action, Guid? operationId = null) => client.SendAsync<GameActionRequest, LaunchDispatch>(
+            HttpMethod.Post, $"entries/{OwnershipId}/actions", new(operationId ?? Guid.NewGuid(), action));
 
-        public static async Task<Host> Start(string store, bool installed, string? identifier)
+        public static async Task<Host> Start(string store, bool installed, string? identifier, long? exactOwnershipId = null)
         {
             var directory = Path.Combine(Path.GetTempPath(), "winnow-action-parity", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(directory);
@@ -88,6 +111,12 @@ public sealed class GameActionParityTests
                     await releases.AddExternalIdAsync(new ExternalId { ReleaseId = release, Provider = store, ProviderId = identifier });
                 var ownership = await application.Services.GetRequiredService<IOwnershipRepository>().InsertAsync(
                     new Ownership { ReleaseId = release, Store = store, Installed = installed });
+                if (exactOwnershipId is { } exact)
+                {
+                    using var connection = application.Services.GetRequiredService<ISqliteConnectionFactory>().Open();
+                    await connection.ExecuteAsync("UPDATE ownerships SET id = @exact WHERE id = @ownership", new { exact, ownership });
+                    ownership = exact;
+                }
                 await application.StartAsync();
                 return new(directory, application, WinnowApiClient.Attach(directory), ownership, launcher);
             }

@@ -2,7 +2,13 @@ import { app, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 
 app.setAppPath(fileURLToPath(new URL('../..', import.meta.url)))
-const state = { waiting: false, drained: [], delivered: [] }
+const state = { waiting: false, ready: false, forward: false, drained: [], delivered: [], actionPaths: [] }
+const fetchBackend = globalThis.fetch
+globalThis.fetch = (input, init) => {
+  const path = new URL(typeof input === 'string' || input instanceof URL ? input : input.url).pathname
+  if (/^\/api\/v1\/entries\/\d+\/actions$/.test(path)) state.actionPaths.push(path)
+  return fetchBackend(input, init)
+}
 let release
 const pending = new Promise((resolve) => {
   release = resolve
@@ -13,7 +19,7 @@ app.on('web-contents-created', (_event, contents) => {
   contents.send = (channel, ...args) => {
     if (channel === 'winnow:activation') {
       state.delivered.push(args[0])
-      return
+      if (!state.forward) return
     }
     return send(channel, ...args)
   }
@@ -29,6 +35,7 @@ ipcMain.handle = (channel, listener) =>
           state.waiting = true
           await pending
           state.drained.push(...(await listener(...args)))
+          state.ready = true
           // Inspect native delivery without launching a real game or installing a provider.
           return []
         }
