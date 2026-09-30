@@ -191,3 +191,22 @@ it('detaches backend observations and rejects late callbacks when the host is di
   expect(send).not.toHaveBeenCalled()
   expect(status!.getSnapshot().message).toBe('Starting Two copies…')
 })
+
+it('restores the version chooser after a slow launch temporarily disables its opener', async () => {
+  const request = bridge()
+  let finish!: (value: { ok: boolean; status: number; data: number }) => void
+  request.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  mount('fullscreen')
+  const opener = screen.getByRole('button', { name: 'Choose launch version' }) as HTMLButtonElement
+  fireEvent.click(opener)
+  fireEvent.click((await screen.findAllByRole('button', { name: 'Steam · Installed · Play' }))[1])
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(opener.disabled).toBe(true)
+  await act(async () => finish({ ok: true, status: 200, data: 0 }))
+  await waitFor(() => expect(document.activeElement).toBe(opener))
+})

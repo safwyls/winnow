@@ -45,6 +45,12 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [Details interaction checkpoint](checkpoint-fifty-three.md) records all 3,322 component/live
+API cases and 19 native Details/controller cases passing. History range input, child-end
+confirmation and slow-launch focus restoration are covered alongside achievements, refreshed
+drafts, long titles and pending prompts. Six source methods gain complete evidence;
+434 pending and 100 partial methods remain.
+
 The [launch checkpoint](checkpoint-fifty-two.md) records all 3,321 component/live API
 cases, 34 native launch/Details/controller cases and two new backend HTTP cases passing.
 Shared watcher-driven launch feedback and fullscreen version selection preserve ownership

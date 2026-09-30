@@ -6,6 +6,7 @@ import { primaryAction } from '../../shared/game-actions'
 import { AvalonAction, AvalonActions } from '../themes/avalon-actions'
 import { useLaunchFeedback } from './LaunchFeedback'
 import { Notice } from './shared'
+import { restoreFocusWhenReady } from './restore-focus'
 
 type Attempt = { entry: GameEntry; action: 'Play' | 'Install'; operationId: string }
 export function ChooseLaunchVersion({ game, workspace }: { game: LibraryGame; workspace?: Workspace }) {
@@ -67,7 +68,7 @@ export function ChooseLaunchVersion({ game, workspace }: { game: LibraryGame; wo
         open={open}
         title="Choose launch version"
         close={() => setOpen(false)}
-        restoreFocus={() => origin.current?.focus({ preventScroll: true })}
+        restoreFocus={() => restoreFocusWhenReady(origin.current)}
       >
         {game.entries.map((entry) => {
           const action = primaryAction(entry, workspace)

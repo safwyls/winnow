@@ -162,9 +162,21 @@ export function AvalonDetailsLayout({
       if (body.current) observer.observe(body.current, { childList: true, subtree: true })
       return () => observer.disconnect()
     } else if (reading) {
-      root.current
-        ?.querySelector<HTMLButtonElement>('.avalon-details-back-row button')
-        ?.focus({ preventScroll: true })
+      const focus = () => {
+        const target = root.current?.querySelector<HTMLButtonElement>(
+          fullscreen && reading === 'History'
+            ? '.activity-tracker [aria-label="Play history range"] button'
+            : '.avalon-details-back-row button',
+        )
+        target?.focus({ preventScroll: true })
+        return Boolean(target)
+      }
+      if (focus()) return
+      const observer = new MutationObserver(() => {
+        if (focus()) observer.disconnect()
+      })
+      if (body.current) observer.observe(body.current, { childList: true, subtree: true })
+      return () => observer.disconnect()
     } else if (returnFocus.current) {
       const target = returnFocus.current.isConnected
         ? returnFocus.current
@@ -174,7 +186,7 @@ export function AvalonDetailsLayout({
       target?.focus({ preventScroll: true })
       returnFocus.current = null
     }
-  }, [tool, reading])
+  }, [tool, reading, fullscreen])
   useEffect(() => {
     if (!fullscreen) return
     const frame = requestAnimationFrame(() =>
@@ -264,7 +276,18 @@ export function AvalonDetailsLayout({
             row('.avalon-latest-note button, .screenshot-strip button'),
             row('.screenshot-gallery-link'),
           ]
-        : row('.avalon-details-reading button, .avalon-details-reading a[href]').map((element) => [element])),
+        : reading === 'History'
+          ? [
+              row('.activity-tracker [aria-label="Play history range"] button'),
+              ...row(
+                '.avalon-details-reading button, .avalon-details-reading a[href], .avalon-details-reading summary',
+              )
+                .filter((element) => !element.closest('[aria-label="Play history range"]'))
+                .map((element) => [element]),
+            ]
+          : row('.avalon-details-reading button, .avalon-details-reading a[href]').map((element) => [
+              element,
+            ])),
     ].filter((entries) => entries.length)
     const rowIndex = rows.findIndex((entries) => entries.includes(target))
     if (rowIndex < 0) return

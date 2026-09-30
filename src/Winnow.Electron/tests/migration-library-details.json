@@ -144,7 +144,7 @@
     "reason": "Real Electron desktop Enter and fullscreen controller Accept execute the original correction, legacy, store and mapping scenario matrix against isolated production HTTP/database composition. Opening refreshes stale identity/title; successful correction closes and persists all fields; each refusal keeps draft values and visible field-specific guidance without altering stored IDs. Production backend tests independently stage real IGDB pins and verify all four outcomes. Controller input is simulated through navigator.getGamepads, not physical hardware."
   },
   "FullscreenDetailsTests.Ungroup_from_the_expansion_end_requires_confirmation_and_uses_child_identity": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-details.test.tsx",
@@ -153,9 +153,13 @@
       {
         "file": "tests/parity-library.test.tsx",
         "case": "requires a named confirmation before separating an existing relationship"
+      },
+      {
+        "file": "tests/electron/details-contracts.spec.ts",
+        "case": "expansion-end separation keeps the safe choice and writes the child identity only after confirmation"
       }
     ],
-    "reason": "Both detail Library sections and identity tools require named confirmation and send the child work ID with its expected link ID. Cancel restores focus and failed confirmation remains available. Native controller confirmation and persisted separation still need an Electron integration test."
+    "reason": "The original method records an ungroup callback for child 99 after Down and Accept confirm the safe-first dialog. Native Electron reproduces that child-end interaction through the real preload/action route, records DELETE identity/links/99 with the expected link ID, and verifies opening dispatches nothing. The desktop interaction, cancellation and retained failure are also covered. This method's recording seam does not claim new database-persistence evidence; repository and broader identity workflows remain separate tests."
   },
   "EditionIdentityPresentationTests.Acquired_native_evidence_updates_library_queue_and_details_and_can_be_separated": {
     "status": "partial",

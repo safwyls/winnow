@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 439,
-    "partial": 101,
-    "ported": 1247,
+    "pending": 434,
+    "partial": 100,
+    "ported": 1253,
     "retained-backend": 625,
     "framework-specific": 23
   },
@@ -23989,17 +23989,38 @@
     {
       "id": "FullscreenDetailsTests.Single_copy_achievements_remain_visible_without_an_identity_link",
       "source": "tests/Winnow.Ui.Tests/FullscreenDetailsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-contracts.spec.ts",
+          "case": "single-copy achievements remain visible without an identity relationship"
+        }
+      ],
+      "reason": "Desktop and fullscreen native Details show the original single-copy 5/20 (25%) achievement progress while the relationship collection is empty. Progress is not gated on an edition group."
     },
     {
       "id": "FullscreenDetailsTests.Per_game_history_switches_from_lifetime_to_observed_sessions_with_controller",
       "source": "tests/Winnow.Ui.Tests/FullscreenDetailsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-contracts.spec.ts",
+          "case": "fullscreen history initially focuses Lifetime and controller Right selects the original observed session"
+        }
+      ],
+      "reason": "The native fullscreen history opens on Lifetime. Standard-controller Right and Accept activate Tracked sessions; the original one-hour observed session produces one bar and the unchanged observed-sessions coverage note."
     },
     {
       "id": "FullscreenDetailsTests.Long_game_title_and_actions_fit_the_hero_without_overlapping_section_navigation",
       "source": "tests/Winnow.Ui.Tests/FullscreenDetailsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-contracts.spec.ts",
+          "case": "fullscreen ten-repeat long title keeps every hero action above section navigation"
+        }
+      ],
+      "reason": "The original ten-repeat title wraps beyond one line. Native geometry verifies every header action stays inside its hero and the hero ends above section navigation. The resulting 1920×1080 capture was inspected."
     },
     {
       "id": "FullscreenDetailsTests.Version_chooser_does_not_launch_until_selected_and_uses_the_selected_copy_uri",
@@ -24024,17 +24045,31 @@
     {
       "id": "FullscreenDetailsTests.Reload_replaces_the_underlying_detail_and_preserves_local_section_and_open_editor",
       "source": "tests/Winnow.Ui.Tests/FullscreenDetailsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-contracts.spec.ts",
+          "case": "reload preserves the local Journal section and an open unsaved editor"
+        }
+      ],
+      "reason": "A production bridge event reloads the library snapshot from Before to After while a real journal editor stays open with its unsaved draft. Closing the editor returns to the local Journal section; closing Details returns to Library. Both presentations dispatch no write when cancelling."
     },
     {
       "id": "FullscreenDetailsTests.Pending_session_prompt_opens_on_attach_and_dismisses_through_the_shared_model",
       "source": "tests/Winnow.Ui.Tests/FullscreenDetailsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/details-contracts.spec.ts",
+          "case": "a pending desktop journal prompt appears on fullscreen attachment and Back dismisses the shared prompt"
+        }
+      ],
+      "reason": "An ended-session event opens the shared prompt on desktop. Attaching fullscreen displays the existing prompt, controller Back dismisses it, and returning to desktop confirms the shared prompt is gone without a journal write."
     },
     {
       "id": "FullscreenDetailsTests.Ungroup_from_the_expansion_end_requires_confirmation_and_uses_child_identity",
       "source": "tests/Winnow.Ui.Tests/FullscreenDetailsTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-details.test.tsx",
@@ -24043,9 +24078,13 @@
         {
           "file": "tests/parity-library.test.tsx",
           "case": "requires a named confirmation before separating an existing relationship"
+        },
+        {
+          "file": "tests/electron/details-contracts.spec.ts",
+          "case": "expansion-end separation keeps the safe choice and writes the child identity only after confirmation"
         }
       ],
-      "reason": "Both detail Library sections and identity tools require named confirmation and send the child work ID with its expected link ID. Cancel restores focus and failed confirmation remains available. Native controller confirmation and persisted separation still need an Electron integration test."
+      "reason": "The original method records an ungroup callback for child 99 after Down and Accept confirm the safe-first dialog. Native Electron reproduces that child-end interaction through the real preload/action route, records DELETE identity/links/99 with the expected link ID, and verifies opening dispatches nothing. The desktop interaction, cancellation and retained failure are also covered. This method's recording seam does not claim new database-persistence evidence; repository and broader identity workflows remain separate tests."
     },
     {
       "id": "FullscreenDetailsTests.Opening_details_focuses_play_without_launching_and_triggers_own_local_sections",

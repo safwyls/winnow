@@ -350,6 +350,11 @@ a version carries that copy's ownership through dispatch and feedback. Desktop's
 actions remain in Details' Library section. Install and management actions do not show a
 gameplay status, and uncertain retries retain their original operation ID.
 
+Fullscreen Play history starts on Lifetime; Right then Accept selects Tracked sessions.
+Refreshing Details preserves its local section and an open journal draft. Expansion
+separation names both games, initially selects Keep relationship, and sends the child
+identity only after confirmation.
+
 Complete Avalonia parity has not yet been established. The [migration inventory](../../docs/spikes/2026-09-28-electron-parity/test-inventory.json)
 tracks original presentation contracts individually; unported and partially verified tests
 remain visible and fail the completion gate. Provider connections and game actions depend on backend

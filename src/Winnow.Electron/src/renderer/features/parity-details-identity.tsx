@@ -95,7 +95,10 @@ function Relationship({
           <Dialog.Overlay className="dialog-overlay" />
           <Dialog.Content
             className={`dialog-content feature-panel mode-${mode}`}
-            onOpenAutoFocus={(event) => { event.preventDefault(); keep.current?.focus() }}
+            onOpenAutoFocus={(event) => {
+              event.preventDefault()
+              keep.current?.focus()
+            }}
             onEscapeKeyDown={(event) => {
               if (command.isPending) event.preventDefault()
             }}
@@ -106,13 +109,18 @@ function Relationship({
             <Dialog.Description>
               Both games keep their library records. This removes the relationship between them.
             </Dialog.Description>
-            <div className="form-actions">
+            <div
+              className="form-actions"
+              style={mode === 'fullscreen' ? { flexDirection: 'column', alignItems: 'stretch' } : undefined}
+            >
+              <Dialog.Close asChild>
+                <button ref={keep} disabled={command.isPending}>
+                  Keep relationship
+                </button>
+              </Dialog.Close>
               <button disabled={command.isPending} onClick={() => void separate()}>
                 Separate games
               </button>
-              <Dialog.Close asChild>
-                <button ref={keep} disabled={command.isPending}>Keep relationship</button>
-              </Dialog.Close>
             </div>
             <Notice error={command.error} />
             {command.isPending && <p role="status">Saving the relationship…</p>}

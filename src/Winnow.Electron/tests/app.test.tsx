@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react'
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ApplicationActivation, WinnowBridge } from '../src/shared/bridge'
 import { App } from '../src/renderer/App'
@@ -10,6 +10,9 @@ import { afterglow } from '../src/renderer/themes/afterglow'
 import { AVALON_PALETTES } from '../src/renderer/themes/avalon-palettes'
 import { clearViewState } from '../src/renderer/viewState'
 import { mergeFixture } from './parity-merge-fixtures'
+
+// Whole-app hydration can exceed the one-second query default under parallel worker load.
+configure({ asyncUtilTimeout: 5000 })
 
 // Route tests retain readiness gates but advance presentation frames deterministically.
 // Native startup and controlled preparation suites cover real frame scheduling and fade timing.
