@@ -236,6 +236,13 @@ available. Reentry shares an unfinished read and refreshes completed reads witho
 Theme colors and mark size update within the same animation circuit; hiding or detaching the
 presentation releases its worker and canvas.
 
+Session journal prompts are off until enabled in Display preferences. Each prompt names one
+finished sitting. Desktop uses a compact dock with a note field and retractable rating dots;
+fullscreen uses a larger editor with controller keyboard support. An untouched prompt expires
+after two minutes. A draft or pending save stays open and cannot be replaced by another session.
+Dismissal writes nothing. Save failures keep the draft, and an unchanged stored revision lets
+the same Save button retry. An accepted save finishes in the backend even if the frontend closes.
+
 Complete Avalonia parity has not yet been established. The [migration inventory](../../docs/spikes/2026-09-28-electron-parity/test-inventory.json)
 tracks original presentation contracts individually; unported and partially verified tests
 remain visible and fail the completion gate. Provider connections and game actions depend on backend

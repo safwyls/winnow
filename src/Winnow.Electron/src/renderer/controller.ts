@@ -82,6 +82,16 @@ export function controllerScope(): ParentNode {
   const dialogs = document.querySelectorAll('[role="dialog"], [role="alertdialog"]')
   return dialogs[dialogs.length - 1] ?? document
 }
+export function controllerActivationTarget(): HTMLElement | null {
+  const scope = controllerScope()
+  const focused = document.activeElement as HTMLElement | null
+  if (scope === document || (scope as HTMLElement).contains(focused)) return focused
+  // A passive prompt must not steal focus on arrival; the first controller action enters its scope.
+  return (
+    scope.querySelector<HTMLElement>('[data-controller-initial]:not(:disabled)') ??
+    scope.querySelector<HTMLElement>('button:not(:disabled)')
+  )
+}
 export function moveControllerFocus(direction: Direction) {
   const active = document.activeElement as HTMLElement | null
   const key = new KeyboardEvent('keydown', {
@@ -167,7 +177,8 @@ export function useController(actions: Actions) {
           if (clicked.includes(9)) action.menu()
           if (action.enabled) {
             if (clicked.includes(0)) {
-              const focused = document.activeElement
+              const focused = controllerActivationTarget()
+              if (focused && focused !== document.activeElement) focused.focus({ preventScroll: true })
               if (editable(focused) && !focused.readOnly && !focused.disabled) action.keyboard(focused)
               else (focused as HTMLElement)?.click()
             }

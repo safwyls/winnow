@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 05:42'
+updated_date: '2026-09-30 06:26'
 labels: []
 dependencies: []
 priority: high
@@ -120,6 +120,14 @@ The user requests an entire Electron rebuild of the Avalonia UI with all existin
 45a. Before packaged launches, prevent explicit --data-dir sessions from claiming the global winnow URI association. Keep normal packaged-profile registration and profile-scoped Jump Lists. Verify the registration decision independently and use actual packaged launch tests only with explicit throwaway profiles.
 
 46. Port the twelve remaining UpdateFlag frontend contracts: derive patch counts and unread controls from correlated pushes and each release watermark; preserve captured event sets, confirmed partial writes, retry-only remaining releases and undo behavior. Integrate the shared behavior into desktop and fullscreen details/activity, migrate source-equivalent component and native checks, and record the inventory and visual evidence. Keep the running 222-case native build frozen until completion, then run focused and integrated verification before committing the milestone.
+
+47. Audit and port the fourteen JournalPrompt source contracts against the production backend and both Electron surfaces. Preserve opt-in, exact finished-session identity, no writes on dismissal, draft/pending-save protection, expiry, retractable ratings, failure/retry and shutdown persistence. Restore the specified desktop dock/rating dots and fullscreen journal editor where source inspection shows gaps. Add named source-equivalent tests and isolated native presentation checks, then verify the backend boundary and complete frontend suite. Keep the ca9b84f3 native build frozen while its225case run is active.
+
+47a. Verify accepted journal writes across frontend disconnect as well as graceful backend shutdown. The current journal endpoint forwards request-abort cancellation into the write, unlike the source pending-save drain. Add a controlled HTTP disconnect test that observes the server request-abort signal before releasing its gated repository write; change the accepted-write cancellation boundary only if this reproduces loss, retain revision/transaction checks, and document the public API behavior.
+
+48. Restore and port RatingCapPreference contracts: source six-step slider, named levels, clamped adults-only explanation, cap-only hidden count, snapshot reload and persisted defaults/restart. Keep desktop and fullscreen accessible controls and existing full-object preference concurrency safeguards. Verify the actual HTTP preferences/counts boundary and renderer/controller behavior; retain or explicitly classify the legacy no-store preview case only after checking current frontend architecture.
+
+48a. Source review confirms the desktop rating cap belongs in a command-bar Display preferences popover beside density and dormancy, while fullscreen uses its library settings control. Restore that placement and share the preference/count logic; keep alternative themes and first-run setup able to change the cap. Update affected density interaction fixtures to open the popover before manipulating its slider.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -240,4 +248,10 @@ Plan 45 verified: fresh full .NET Release build/test passes 6,863 tests across 1
 Checkpoint31 complete: all222 development native cases pass together in19.1minutes against2942b280 with clean completion. The copied JSON and log are under .tmp/activation-complete-native. Plan46 update-flag source/tests are now under focused verification and are outside that frozen native build. All acceptance criteria remain unchecked.
 
 Plan46 verified: all2943 component/liveAPI cases in146files pass without skips50.88s; final build/typecheck pass. All3 native update-flag workflows pass32.7s on desktop/fullscreen and140percent text, including partial writes, retry-only remaining releases, undo, captured IDs, full result visibility and scoped focus recovery. Stronger checks caught and fixed clipped results and disabled-button focus loss. Final captures inspected. Twelve source UpdateFlag methods ported; inventory1068ported559retained17framework683pending108partial. Evidence checkpoint-thirty-two.md. Prior frozen222native suite passes19.1m; no combined225pass claimed yet. All AC remain unchecked.
+
+Checkpoint32 complete: all225 native Electron cases pass together in19.6minutes against frozen ca9b84f3 with clean completion. The copied JSON and log are under .tmp/update-flags-complete-native. Journal prompt work remains separate and under verification; focused renderer tests68/3pass. All acceptance criteria remain unchecked.
+
+Plan47 verified: all2966 component/liveAPI cases in146files pass without skips51.32s; build and77focused journal/activity/controller cases pass. All115 backend HTTP cases pass, including6 new journal contracts. A controlled client-disconnect test first proved accepted-note loss, then passed after the endpoint stopped forwarding frontend cancellation. Three native journal workflows pass26.8s across desktop/fullscreen and140percent text; final captures inspected. Stable note labels, fullscreen feedback scaling, pending-offer races and fixture delivery timing were corrected. Fourteen source methods ported; inventory1082ported559retained17framework669pending108partial. Full.NET Release regression is running. Evidence checkpoint-thirty-three.md; all AC remain unchecked.
+
+Checkpoint33 full.NET Release regression passes6869 cases across13assemblies, including896AvaloniaUI, with2Linux-only skips onWindows and no failures. Evidence .tmp/journal-regression.log and13TRX in .tmp/journal-regression-results. Journal package verified; combined228native run remains outstanding. Rating-cap implementation is separate and has not been built or tested yet. All AC remain unchecked.
 <!-- SECTION:NOTES:END -->

@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 683,
+    "pending": 669,
     "partial": 108,
-    "ported": 1068,
+    "ported": 1082,
     "retained-backend": 559,
     "framework-specific": 17
   },
@@ -8171,72 +8171,202 @@
     {
       "id": "JournalPromptTests.The_prompt_is_off_on_a_database_that_has_never_heard_of_it",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/JournalPromptParityTests.cs",
+          "case": "A_fresh_backend_keeps_prompts_off_until_explicit_opt_in"
+        }
+      ],
+      "reason": "The production HTTP host starts with a fresh database and preserves the default-off preference through explicit opt-in and opt-out."
     },
     {
       "id": "JournalPromptTests.With_the_prompt_off_a_finished_session_raises_nothing",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "checks the opt-in preference and never prompts for generic library changes"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/JournalPromptParityTests.cs",
+          "case": "A_fresh_backend_keeps_prompts_off_until_explicit_opt_in"
+        }
+      ],
+      "reason": "The existing production SessionJournalService suppresses events while disabled; the HTTP preference test verifies that service state, and both renderer modes independently refuse an injected ended event without fetching or showing a prompt."
     },
     {
       "id": "JournalPromptTests.With_the_prompt_on_a_finished_session_opens_the_card",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "names the finished sitting and leaves its optional rating empty"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/JournalPromptParityTests.cs",
+          "case": "Only_a_completed_sitting_exposes_its_exact_identity_and_duration"
+        }
+      ],
+      "reason": "Both presentation paths preserve title, 47-minute duration and empty optional content, using the exact completed session returned by the backend."
     },
     {
       "id": "JournalPromptTests.An_in_flight_session_is_never_asked_about",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "does not offer an unfinished or deleted sitting refused by the backend"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/JournalPromptParityTests.cs",
+          "case": "Only_a_completed_sitting_exposes_its_exact_identity_and_duration"
+        }
+      ],
+      "reason": "The actual endpoint refuses an open sitting and both renderer modes leave the editor closed after that refusal."
     },
     {
       "id": "JournalPromptTests.Dismissing_writes_nothing",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "dismisses a typed prompt without writing or changing the session"
+        }
+      ],
+      "reason": "Both modes discard the local note and rating without PUT or DELETE."
     },
     {
       "id": "JournalPromptTests.Saving_attaches_the_note_and_the_rating",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "uses the exact finished session, deduplicates events and writes only on Save"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/JournalPromptParityTests.cs",
+          "case": "A_refused_save_leaves_no_note_and_the_same_revision_can_retry"
+        }
+      ],
+      "reason": "Both modes send the trimmed note and rating for the original sitting and close after success; the real HTTP repository boundary persists both values."
     },
     {
       "id": "JournalPromptTests.A_failed_save_keeps_the_note_open_and_the_same_button_retries",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "keeps a failed save intact and retries with the same Save after verifying an unchanged revision"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/JournalPromptParityTests.cs",
+          "case": "A_refused_save_leaves_no_note_and_the_same_revision_can_retry"
+        }
+      ],
+      "reason": "A repository refusal writes nothing; both editors retain their exact draft and rating. An authoritative unchanged revision permits the same Save to retry without a false conflict choice."
     },
     {
       "id": "JournalPromptTests.Disposing_mid_save_waits_for_the_write_to_land",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/JournalPromptParityTests.cs",
+          "case": "Graceful_backend_shutdown_waits_for_an_accepted_note_to_commit"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/JournalPromptParityTests.cs",
+          "case": "Closing_the_frontend_after_acceptance_does_not_abandon_its_note"
+        },
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "locks draft dismissal and replacement until a pending save settles"
+        }
+      ],
+      "reason": "The independent backend now owns completion. Controlled writes prove graceful host draining and persistence plus SSE after an actual client disconnect; pending editors in both modes cannot dismiss, mutate or replace the draft."
     },
     {
       "id": "JournalPromptTests.Pressing_the_set_rating_again_clears_it",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "retracts the selected rating on a second press and an empty Save writes nothing"
+        }
+      ],
+      "reason": "Desktop dots and fullscreen rating buttons toggle the chosen value back to zero; an empty answer closes without a write."
     },
     {
       "id": "JournalPromptTests.A_second_session_never_interrupts_a_note_being_typed",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "uses the exact finished session, deduplicates events and writes only on Save"
+        }
+      ],
+      "reason": "Both modes preserve the first title and draft when a second session ends, then save to the first session ID."
     },
     {
       "id": "JournalPromptTests.A_second_session_replaces_an_untouched_card",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "dismisses untouched prompts after two minutes but keeps a typed draft"
+        },
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "opens only the current native notification and never resurrects dismissed sessions"
+        }
+      ],
+      "reason": "Both modes replace an untouched first sitting with the second title and session, including the native notification activation path. Stale callbacks cannot restore the first."
     },
     {
       "id": "JournalPromptTests.An_untouched_card_dismisses_itself",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "dismisses untouched prompts after two minutes but keeps a typed draft"
+        }
+      ],
+      "reason": "Controlled time verifies the actual 120-second inactivity timeout on both surfaces."
     },
     {
       "id": "JournalPromptTests.A_card_with_a_note_in_it_stays_put",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "dismisses untouched prompts after two minutes but keeps a typed draft"
+        }
+      ],
+      "reason": "Both surfaces preserve typed content beyond the untouched timeout; clearing the draft starts a fresh timeout."
     },
     {
       "id": "JournalPromptTests.A_session_for_a_game_the_library_cannot_name_is_not_asked_about",
       "source": "tests/Winnow.Tests/JournalPromptTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-settings-notifications.test.tsx",
+          "case": "does not offer a prompt for a library ownership that cannot be named"
+        }
+      ],
+      "reason": "Both modes require a named ownership in the visible library and never fabricate a generic title or fetch an editor for an unknown game."
     },
     {
       "id": "JumpListIconsTests.Icon_contains_six_square_png_frames_from_the_center_of_the_cover",

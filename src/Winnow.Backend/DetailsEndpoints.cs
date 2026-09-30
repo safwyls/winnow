@@ -21,7 +21,9 @@ internal static class DetailsEndpoints
         api.MapPost("/library/derelict-exemptions", async (DerelictExemptionRequest request, IDetailsApplication service, CancellationToken ct) =>
         { await service.ExemptFromDerelictAsync(request, ct); return Results.NoContent(); });
         api.MapGet("/sessions/{sessionId:long}/journal", (long sessionId, IDetailsApplication service, CancellationToken ct) => service.GetJournalAsync(sessionId, ct));
-        api.MapPut("/sessions/{sessionId:long}/journal", (long sessionId, SaveJournalRequest request, IDetailsApplication service, CancellationToken ct) => service.SaveJournalAsync(sessionId, request, ct));
+        // Once the complete note is accepted, closing its frontend must not cancel the write.
+        // The host drains this request during graceful shutdown; a lost response is reconciled by revision.
+        api.MapPut("/sessions/{sessionId:long}/journal", (long sessionId, SaveJournalRequest request, IDetailsApplication service) => service.SaveJournalAsync(sessionId, request, CancellationToken.None));
         api.MapDelete("/sessions/{sessionId:long}/journal", async (long sessionId, [FromBody] DeleteJournalRequest request, IDetailsApplication service, CancellationToken ct) =>
         { await service.DeleteJournalAsync(sessionId, request.ExpectedRevision, ct); return Results.NoContent(); });
         api.MapPost("/releases/{releaseId:long}/acknowledge-updates", (long releaseId, UpdateAcknowledgementRequest request, IDetailsApplication service, CancellationToken ct) => service.AcknowledgeUpdatesAsync(releaseId, request, ct));

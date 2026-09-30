@@ -682,7 +682,13 @@ export function App() {
             </label>
           }
         />
-        {readsStarted && <SessionNotifications mode={mode} suspended={setupOpen || startup.visible} />}
+        {readsStarted && (
+          <SessionNotifications
+            mode={mode}
+            suspended={setupOpen || startup.visible}
+            editText={setKeyboardInput}
+          />
+        )}
         {!setupOpen && runtime.profile.themeId !== 'avalon' && <UpdateStatus />}
         <LinkNotifications />
         {quickMenu && (

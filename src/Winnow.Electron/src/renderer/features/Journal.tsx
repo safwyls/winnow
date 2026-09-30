@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useId, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { BookOpen, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -13,6 +13,7 @@ import { SteamReportedActivity } from './activity-steam'
 import { GameplayDashboard } from './activity-gameplay'
 import { Artwork } from '../components/Artwork'
 import './activity.css'
+import { JournalRating } from './journal-prompt-controls'
 
 const activeEditors = new Map<number, { close: () => void }>()
 interface JournalDraftState {
@@ -66,8 +67,20 @@ export function JournalEditor({ sessionId, onClose }: { sessionId: number; onClo
   )
 }
 
-export function JournalDraft({ initial, onClose }: { initial: JournalResponse; onClose: () => void }) {
+export function JournalDraft({
+  initial,
+  onClose,
+  promptMode,
+  editText,
+}: {
+  initial: JournalResponse
+  onClose: () => void
+  promptMode?: Mode
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
+}) {
   const client = useQueryClient()
+  const noteInput = useRef<HTMLTextAreaElement>(null)
+  const noteLabel = useId()
   useEffect(() => {
     const editor = { close: onClose }
     activeEditors.set(initial.sessionId, editor)
@@ -102,7 +115,12 @@ export function JournalDraft({ initial, onClose }: { initial: JournalResponse; o
   async function readCurrent() {
     try {
       const current = await request<JournalResponse>('journal.get', { sessionId: initial.sessionId })
-      setDraft((previous) => ({ ...previous, current, needsRead: false }))
+      setDraft((previous) => ({
+        ...previous,
+        current: current.revision === previous.revision ? null : current,
+        uncertain: current.revision === previous.revision ? false : previous.uncertain,
+        needsRead: false,
+      }))
     } catch {
       setDraft((previous) => ({ ...previous, needsRead: true }))
     }
@@ -145,30 +163,76 @@ export function JournalDraft({ initial, onClose }: { initial: JournalResponse; o
         event.preventDefault()
         void save()
       }}
-      className="editor-form"
+      className={`editor-form${promptMode ? ` journal-prompt-form prompt-${promptMode}` : ''}`}
     >
-      <label className="field">
-        Your note
-        <textarea
+      <label className="field journal-note-field">
+        <span id={noteLabel} className="journal-note-label">
+          Your note
+        </span>
+        {promptMode === 'desktop' ? (
+          <input
+            name="note"
+            aria-labelledby={noteLabel}
+            type="text"
+            disabled={pending}
+            maxLength={10000}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="How was it?"
+          />
+        ) : (
+          <textarea
+            ref={noteInput}
+            name="note"
+            aria-labelledby={noteLabel}
+            disabled={pending}
+            rows={7}
+            maxLength={10000}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Where did you leave off?"
+          />
+        )}
+      </label>
+      {promptMode === 'fullscreen' && (
+        <button
+          className="journal-edit-note"
+          type="button"
+          data-controller-context
+          data-controller-initial
           disabled={pending}
-          rows={7}
-          maxLength={10000}
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          placeholder="Where did you leave off?"
+          onClick={() => {
+            if (noteInput.current) editText?.(noteInput.current)
+          }}
+        >
+          Edit note
+        </button>
+      )}
+      {promptMode ? (
+        <JournalRating
+          value={rating}
+          disabled={pending}
+          fullscreen={promptMode === 'fullscreen'}
+          change={setRating}
         />
-      </label>
-      <label className="field">
-        Your rating
-        <select disabled={pending} value={rating} onChange={(event) => setRating(Number(event.target.value))}>
-          <option value={0}>No rating</option>
-          {[1, 2, 3, 4, 5].map((value) => (
-            <option key={value} value={value}>
-              {value} / 5
-            </option>
-          ))}
-        </select>
-      </label>
+      ) : (
+        <label className="field">
+          Your rating
+          <select
+            name="rating"
+            disabled={pending}
+            value={rating}
+            onChange={(event) => setRating(Number(event.target.value))}
+          >
+            <option value={0}>No rating</option>
+            {[1, 2, 3, 4, 5].map((value) => (
+              <option key={value} value={value}>
+                {value} / 5
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <Notice error={error} />
       {needsRead && (
         <div className="conflict-panel">
@@ -223,18 +287,22 @@ export function JournalDraft({ initial, onClose }: { initial: JournalResponse; o
           disabled={pending || Boolean(current) || needsRead || confirmDelete}
           type="submit"
         >
-          {pending ? 'Saving…' : 'Save note'}
+          {pending ? 'Saving…' : promptMode ? 'Save' : 'Save note'}
         </button>
-        <button
-          type="button"
-          disabled={pending || Boolean(current) || needsRead}
-          onClick={() => setConfirmDelete(true)}
-        >
-          Delete note
-        </button>
-        <button type="button" disabled={pending} onClick={close}>
-          Cancel
-        </button>
+        {(!promptMode || initial.note || initial.rating) && (
+          <button
+            type="button"
+            disabled={pending || Boolean(current) || needsRead}
+            onClick={() => setConfirmDelete(true)}
+          >
+            Delete note
+          </button>
+        )}
+        {promptMode !== 'desktop' && (
+          <button type="button" disabled={pending} onClick={close}>
+            {promptMode ? 'Dismiss' : 'Cancel'}
+          </button>
+        )}
       </div>
       {confirmDelete && (
         <section className="conflict-panel" aria-label="Delete this note?">

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { BackendEvent } from '../../shared/bridge'
-import { hours, request } from '../api/client'
+import { request } from '../api/client'
+import { X } from 'lucide-react'
 import { useApiQuery, useLibrary } from '../api/hooks'
 import type { JournalResponse, Mode } from '../api/types'
 import { clearViewState, useViewState } from '../viewState'
@@ -9,6 +10,8 @@ import { JournalDraft } from './Journal'
 import { Notice } from './shared'
 import { RefreshQueue } from '../refresh'
 import './session-notifications.css'
+import { sessionDuration } from './journal-prompt-controls'
+import { controllerScope } from '../controller'
 
 interface SessionPrompt {
   sessionId: number
@@ -26,7 +29,15 @@ interface SessionDiagnostics {
 }
 
 /** Live prompts are for newly finished sittings, never reconstructed from playtime totals. */
-export function SessionNotifications({ mode, suspended = false }: { mode: Mode; suspended?: boolean }) {
+export function SessionNotifications({
+  mode,
+  suspended = false,
+  editText,
+}: {
+  mode: Mode
+  suspended?: boolean
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
+}) {
   const library = useLibrary()
   const diagnostics = useApiQuery<SessionDiagnostics>('diagnostics.get')
   const client = useQueryClient()
@@ -71,6 +82,8 @@ export function SessionNotifications({ mode, suspended = false }: { mode: Mode; 
       offered.current.add(sessionId)
       // A running library can collect many sessions; retain a bounded replay guard.
       if (offered.current.size > 4096) offered.current.delete(offered.current.values().next().value!)
+      // A sitting received during editing is discarded, even if that draft closes during later reads.
+      if (latest.current.touched) return
       const generation = ++version
       try {
         const preferences = await request<{ promptAfterPlay: boolean }>('journal.preferences.get')
@@ -145,7 +158,13 @@ export function SessionNotifications({ mode, suspended = false }: { mode: Mode; 
         </aside>
       )}
       {prompt && showCard && (
-        <SessionPromptCard prompt={prompt} dismiss={dismiss} sending={!!draft?.sending} />
+        <SessionPromptCard
+          prompt={prompt}
+          dismiss={dismiss}
+          sending={!!draft?.sending}
+          mode={mode}
+          editText={editText}
+        />
       )}
     </div>
   )
@@ -155,26 +174,64 @@ function SessionPromptCard({
   prompt,
   dismiss,
   sending,
+  mode,
+  editText,
 }: {
   prompt: SessionPrompt
   dismiss: () => void
   sending: boolean
+  mode: Mode
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
 }) {
   const query = useApiQuery<JournalResponse>('journal.get', { sessionId: prompt.sessionId })
+  const card = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const back = (event: KeyboardEvent) => {
+      if (event.key === 'Tab' && mode === 'fullscreen' && controllerScope() === card.current) {
+        const controls = [
+          ...card.current!.querySelectorAll<HTMLElement>(
+            'button:not(:disabled), textarea:not(:disabled), input:not(:disabled):not([type="hidden"])',
+          ),
+        ]
+        const current = controls.indexOf(document.activeElement as HTMLElement)
+        if (current < 0 || (event.shiftKey ? current === 0 : current === controls.length - 1)) {
+          event.preventDefault()
+          const target =
+            current < 0 && !event.shiftKey
+              ? (card.current?.querySelector<HTMLElement>('[data-controller-initial]:not(:disabled)') ??
+                controls[0])
+              : controls[event.shiftKey ? controls.length - 1 : 0]
+          target?.focus()
+        }
+        return
+      }
+      if (event.key !== 'Escape') return
+      const scope = controllerScope()
+      if (mode === 'fullscreen' ? scope !== card.current : !card.current?.contains(document.activeElement))
+        return
+      event.preventDefault()
+      event.stopPropagation()
+      if (!sending) dismiss()
+    }
+    window.addEventListener('keydown', back, true)
+    return () => window.removeEventListener('keydown', back, true)
+  }, [mode, sending, dismiss])
   return (
     <aside
+      ref={card}
       className="session-prompt feature-panel"
+      role={mode === 'fullscreen' ? 'dialog' : undefined}
       aria-label={`Journal after playing ${prompt.title}`}
       key={prompt.sessionId}
     >
       <header className="feature-heading">
         <div>
-          <p className="eyebrow">JUST PLAYED · {hours(prompt.durationSeconds / 60)}</p>
+          {mode === 'fullscreen' && <p className="eyebrow">Your last session</p>}
           <h2>{prompt.title}</h2>
-          <p>How was it? Leave a note for next time.</p>
+          <p className="journal-duration">{sessionDuration(prompt.durationSeconds)}</p>
         </div>
         <button disabled={sending} onClick={dismiss} aria-label="Dismiss journal prompt">
-          Dismiss
+          <X size={16} aria-hidden="true" />
         </button>
       </header>
       {query.isPending && <p role="status">Loading your note…</p>}
@@ -183,8 +240,9 @@ function SessionPromptCard({
         <div
           onSubmitCapture={(event) => {
             const form = event.target as HTMLFormElement
-            const note = form.querySelector('textarea')?.value.trim()
-            const rating = Number(form.querySelector('select')?.value ?? 0)
+            const data = new FormData(form)
+            const note = String(data.get('note') ?? '').trim()
+            const rating = Number(data.get('rating') ?? 0)
             if (!note && !rating && !query.data?.note && !query.data?.rating) {
               event.preventDefault()
               event.stopPropagation()
@@ -192,8 +250,13 @@ function SessionPromptCard({
             }
           }}
         >
-          <JournalDraft initial={query.data} onClose={dismiss} />
+          <JournalDraft initial={query.data} onClose={dismiss} promptMode={mode} editText={editText} />
         </div>
+      )}
+      {mode === 'fullscreen' && (
+        <p className="journal-controller-hints">
+          {sending ? 'Saving…' : 'A Select · Y Keyboard · B Dismiss'}
+        </p>
       )}
     </aside>
   )

@@ -125,6 +125,11 @@ avoid dispatching it twice. Operation IDs are bounded, temporary deduplication r
 not an indefinite exactly-once guarantee across backend restarts. Long-running operations
 return status identifiers and can continue while a frontend disconnects.
 
+An accepted journal PUT also finishes if its frontend disconnects. Graceful backend shutdown
+drains the request before disposing its repositories. After a lost response, read the note
+again: an unchanged revision permits the same draft to retry; a changed revision must be
+reconciled before another write. Closing an editor is not a way to cancel an accepted save.
+
 Typical errors are 400 for invalid input, 401 for a missing/stale token, 403 for a forbidden
 origin or host, 404 for missing resources, and 409 for conflicts. Errors use HTTP problem
 responses where a diagnostic explanation is available. After an uncertain failure, reload

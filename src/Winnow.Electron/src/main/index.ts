@@ -693,7 +693,14 @@ async function initialize(): Promise<void> {
       throw new Error('Invalid session notification')
     if (window?.isFocused() || !Notification.isSupported()) return false
     journalNotifications.get(value.sessionId)?.close()
-    const notification = new Notification({ title: 'Remember this session', body: value.title, silent: true })
+    const notification = new Notification({
+      title: 'Remember this session',
+      body: value.title,
+      silent: true,
+      icon: app.isPackaged
+        ? join(process.resourcesPath, 'icon.ico')
+        : join(app.getAppPath(), 'resources', 'icon.ico'),
+    })
     journalNotifications.set(value.sessionId, notification)
     notification.once('click', () => {
       window?.show()

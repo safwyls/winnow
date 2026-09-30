@@ -32,9 +32,9 @@ and completion restores the initiating action's focus unless the user moved else
   Stronger geometry/focus assertions exposed subpixel edge placement and disabled-button
   focus loss. Result scroll margin and scoped focus recovery correct both without reducing
   those assertions. A component check separately preserves focus moved during a request.
-- The preceding frozen build from `2942b280` passes all 222 native cases in 19.1 minutes,
-  as recorded in checkpoint thirty-one. A combined 225-case run with this package is not
-  yet claimed. The preceding full .NET Release run passes 6,863 cases with two Linux-only
+- The frozen build from `ca9b84f3` passes all 225 native cases together in 19.6 minutes:
+  `.tmp/update-flags-complete-native.log` and its copied `results.json`.
+  The preceding full .NET Release run passes 6,863 cases with two Linux-only
   skips; this package changes no .NET code.
 
 All twelve remaining UpdateFlag frontend methods now have named Electron evidence.
