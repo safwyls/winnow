@@ -1,11 +1,11 @@
 ---
 id: TASK-381.15
 title: 'Electron: finish remaining Details and lightbox contracts'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
-updated_date: '2026-10-01 09:22'
+updated_date: '2026-10-01 09:23'
 labels:
   - electron
   - parity
@@ -65,7 +65,7 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -82,6 +82,8 @@ Started after metadata composition milestone e2be2a53. Fifth of the ten authoriz
 All21 original cases and5 HTTP achievement cases pass. Added2px tab focus, screenshot tooltips, accessible achievement heading/group, and shared desktop/fullscreen prose policy. Focused tests found fullscreen matching focus raced the closing action panel and initial Details focus; both paths now respect existing focus and modal release. Source audit includes Themes descriptions/typography and settings help, with exact empty PreviewMergeCandidateRepository and unloaded AccountStats state. Native lightbox checks retain strict token equality while awaiting image readiness and settled CSS transitions; final regression is pending.
 
 Final gate: 3718 component/live API cases across183 files pass in93.97s. All21 native cases,21 unchanged original cases and5 HTTP cases pass. Visual review includes both lightboxes, achievements, matching, tab focus and desktop/fullscreen prose; original empty Merges and unloaded Spending fixtures preserved. Audit:1450 ported,650 retained,32 framework-specific,247 pending,56 partial. Checkpoint70 records exact evidence and simulated-controller limits.
+
+Verified milestone committed as adef2a8e. Continue to TASK-381.16 under the authorized batch.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
