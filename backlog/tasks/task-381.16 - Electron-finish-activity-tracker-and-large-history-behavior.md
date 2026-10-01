@@ -1,7 +1,7 @@
 ---
 id: TASK-381.16
 title: 'Electron: finish activity tracker and large-history behavior'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
@@ -58,7 +58,7 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -77,6 +77,8 @@ Audit preserves exact180/700px plot and360/620px tracker fixtures. Two original 
 Focused Electron checks now70/70 with Pacific-time UTC axis assertions; production build passes. Restored30px scaled monospace total after native visual review. Initial native run:12passed,4failed,4notrun. Plot failures traced to isolated probe CSS import order/theme variable injection, not production app geometry; fullscreen large setup used a desktop-only search field. Correcting those harness boundaries and waiting for bound history/statistics before recording final UI timings. Original10 and new HTTP5 remain green.
 
 Final verification: 3741/3741 component/live API cases across 185 files (95.72s); 22 distinct native cases; 10 unchanged source cases and 5 new HTTP cases pass. Build/typecheck, formatting and diff checks pass. Exact source-volume Details readiness improves from about 3.9s to 0.8s on both surfaces; the remaining 378–409ms cold-render gap is documented. All eight assigned methods are ported; inventory now 1458 ported, 650 retained-backend, 32 framework-specific, 244 pending and 51 partial. Evidence and adaptations: checkpoint-seventy-one.md and .tmp/task38116-native-evidence.json.
+
+Milestone committed as a871eaf9. Verified task complete; proceeding to TASK-381.17 within the authorized batch.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
