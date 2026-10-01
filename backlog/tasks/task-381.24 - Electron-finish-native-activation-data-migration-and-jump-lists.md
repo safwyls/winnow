@@ -1,11 +1,11 @@
 ---
 id: TASK-381.24
 title: 'Electron: finish native activation, data migration and jump lists'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:47'
-updated_date: '2026-10-01 19:22'
+updated_date: '2026-10-01 19:24'
 labels:
   - electron
   - parity
@@ -74,7 +74,7 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -95,6 +95,8 @@ Focused identity/legacy-theme gate passes 53 cases, Jump List gate passes 11 cas
 Final focused gates: helper/API13, main60, identity53 and Jump List12. Production build passes with index-GqYybSk9.js. Full component/live API run executes3992 cases/203 files:3989 pass; three stale expectations in dependency traversal and Settings capture are corrected without production changes. Both affected files then pass10/10, covering all3992 cases with final source. Native31 execution is active against that frozen bundle; two standalone wrappers require nonblocking Electron readiness adapters before accepting their evidence.
 
 Final verification:31 distinct native cases pass with complete JSON evidence and no skips or final errors (task38124-native-evidence.json). Source24 assigned cases fully execute; supplemental24 reported passes contain20 executed bodies and4 explicitly conditional early returns, so44 source bodies total. All3992 component/live API cases pass across the full run and corrected two-file rerun. Helper/API13 pass; production build, TypeScript, formatting and visual inspection pass. Native test-only adapters fix ESM readiness, bounded pipe connection retry and actual package metadata loading. Real isolated Jump List publication/empty/clear each return ok. Installed packages, non-Windows runtime and physical controllers retain their later milestones. Checkpoint79 records exact boundaries. Inventory:1571 ported,665 retained-backend,32 framework-specific,145 pending,22 partial.
+
+Verified implementation milestone: c071f1a2. Final migration audit validates all2435 methods/299 files and records1571 ported,665 retained-backend,32 framework-specific,145 pending,22 partial.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
