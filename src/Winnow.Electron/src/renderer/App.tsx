@@ -477,7 +477,13 @@ export function App() {
         />
       )
     return position.workId !== null ? (
-      <Details workId={position.workId} mode={mode} onClose={closeGame} editText={setKeyboardInput} />
+      <Details
+        workId={position.workId}
+        mode={mode}
+        onClose={closeGame}
+        onOpenGame={openGame}
+        editText={setKeyboardInput}
+      />
     ) : (
       <p>Choose a game from your library.</p>
     )

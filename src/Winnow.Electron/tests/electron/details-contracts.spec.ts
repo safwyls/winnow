@@ -130,7 +130,17 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     const detail = await details()
     await detail.getByRole('tab', { name: 'Library', exact: true }).click()
     await expect(detail.locator('.avalon-copy')).toHaveCount(1)
-    await expect(detail.getByText('Steam: 5 of 20 unlocked · 25%', { exact: true })).toBeVisible()
+    const title = await detail.locator('h1').textContent()
+    const releaseId = await application.evaluate(
+      ({}, title) =>
+        (globalThis as any).detailsContractsFixture.games.find(
+          (game: { title: string }) => game.title === title,
+        ).entries[0].releaseId,
+      title,
+    )
+    await expect(detail.locator(`.detail-achievements [data-release-id="${releaseId}"]`)).toHaveText(
+      `${title} · Steam: 5 of 20 unlocked · 25%`,
+    )
     await expect(detail.getByRole('heading', { name: 'Related games & editions' })).toHaveCount(0)
   })
   test(`${mode} reload preserves the local Journal section and an open unsaved editor`, async () => {
@@ -268,7 +278,11 @@ for (const section of ['Updates', 'Journal', 'Library'])
           },
           { text, ui },
         )
-        await expect(page.locator('body')).toHaveCSS('zoom', String(ui))
+        await expect(page.locator('html')).toHaveCSS('--fullscreen-interface-scale', String(ui))
+        const expectedZoom = 0.85 * Math.max(1, Math.min(height / 1080, width / 1920)) * ui
+        await expect
+          .poll(() => page.locator('body').evaluate((node) => Number(getComputedStyle(node).zoom)))
+          .toBeCloseTo(expectedZoom, 5)
         await expect(page.locator('html')).toHaveCSS('--fullscreen-text-scale', String(text))
         const reading = detail.locator('.avalon-details-reading')
         await expectReadingGutter(reading)
@@ -344,7 +358,7 @@ for (const section of ['Updates', 'Journal', 'Library'])
                   const pixels = parseFloat(getComputedStyle(node).borderBottomWidth) * scale
                   return pixels >= 0.99 && pixels <= scale + 0.01
                 }),
-              ui,
+              expectedZoom,
             ),
           ).toBe(true)
         if (section === 'Library' && populated) {

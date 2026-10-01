@@ -1126,6 +1126,9 @@
     font-size: calc(13px * var(--theme-text-scale, 1));
     margin: 10px 0;
   }
+  .feature-panel .relationship-description {
+    color: var(--text);
+  }
   .field {
     display: flex;
     flex-direction: column;
@@ -1325,6 +1328,51 @@
   }
   .dialog-content h2 {
     font: calc(32px * var(--theme-text-scale, 1)) var(--font-display);
+  }
+  .relationship-confirmation.mode-fullscreen {
+    --relationship-text-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+    width: min(960px, calc(90vw / var(--effective-interface-scale)));
+    max-height: calc(90dvh / var(--effective-interface-scale));
+    overflow: auto;
+    padding: 32px;
+  }
+  .relationship-confirmation.mode-fullscreen h2 {
+    font-size: calc(clamp(32px, 2.5vw, 48px) * var(--relationship-text-scale));
+    overflow-wrap: anywhere;
+  }
+  .relationship-confirmation.mode-fullscreen p {
+    font-size: calc(clamp(18.67px, 1.458vw, 28px) * var(--relationship-text-scale));
+  }
+  .relationship-confirmation.mode-fullscreen button {
+    min-height: 56px;
+    font-size: calc(clamp(21.33px, 1.667vw, 32px) * var(--relationship-text-scale));
+    white-space: normal;
+  }
+  .relationship-hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 32px;
+    margin-top: 24px;
+    font-size: calc(24px * var(--relationship-text-scale));
+    color: var(--muted);
+  }
+  .relationship-hints > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .relationship-hints [data-relationship-glyph] {
+    display: inline-flex;
+    flex-shrink: 0;
+    width: calc(28px * var(--relationship-text-scale));
+    height: calc(28px * var(--relationship-text-scale));
+  }
+  .relationship-hints svg {
+    width: 100%;
+    height: 100%;
+  }
+  .relationship-hints path {
+    fill: currentColor;
   }
   .check-field {
     display: flex;

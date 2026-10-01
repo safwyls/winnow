@@ -1,10 +1,11 @@
 ---
 id: TASK-381.10
 title: 'Electron: finish identity projections and expansion relationships'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:45'
+updated_date: '2026-10-01 04:53'
 labels:
   - electron
   - parity
@@ -60,13 +61,34 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original read-model/inventory, expansion linking and soft-match registration rules hold at the shared backend boundary; ambiguous matches never auto-merge.
-- [ ] #2 Both surfaces display the resulting groups and expansions with correct visibility, independent play totals and child/parent actions, including account-scoped or hidden counterparts.
-- [ ] #3 All 19 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original read-model/inventory, expansion linking and soft-match registration rules hold at the shared backend boundary; ambiguous matches never auto-merge.
+- [x] #2 Both surfaces display the resulting groups and expansions with correct visibility, independent play totals and child/parent actions, including account-scoped or hidden counterparts.
+- [x] #3 All 19 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit all nineteen frozen source methods, current identity/expansion projections and existing migration evidence. Keep backend-only inventory and composition contracts at their owning boundary.
+2. Close scoped backend or Electron presentation gaps, preserving separate same-game coverage and expansion relationships, per-release achievements, account/hidden visibility and child-specific actions on both surfaces.
+3. Execute exact-fixture backend/component equivalents and isolated native desktop/fullscreen flows, including visual and controller-hint review; update each migration disposition with its actual evidence.
+4. Run relevant regression gates, update current documentation, commit the reviewable milestone and stop for user review before another task.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Owned copies now retain titles and individual figures. Expansions and base-game rows use visible library scope, offer counterpart navigation and separate only the exact child link. Per-release achievements preserve unsupported, unfetched, unavailable, no-schema and known-zero states. No backend production changes were needed.
+
+Fixed nested Escape dismissal and restored focus. Fullscreen confirmation uses readable type and complete D-pad/A/B hints. Native screenshots verify figures, visible controls, primary prose ink, safe focus and glyph geometry.
+
+Verification passed: production build/typecheck; all 3,555 Electron component/live API tests across 178 files in 88.08 seconds; 32 original scoped .NET cases and 11 new HTTP/SQLite cases; 39 distinct native cases and six repeated immediate/settled cancellation checks. Native runs are serial and precede the full component/API suite. All interactive data is disposable.
+
+Checkpoint 65 records exact method mappings, visual evidence, fixture corrections and remaining physical-device, full .NET and packaging validation. Inventory: 1,383 ported, 636 retained backend, 32 framework-specific, 319 pending and 65 partial; 384 unresolved. Milestone commit and completion record follow. TASK-381.11 remains To Do until the user prompts continuation.
+<!-- SECTION:NOTES:END -->

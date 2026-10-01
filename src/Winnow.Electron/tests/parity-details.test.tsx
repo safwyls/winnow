@@ -25,6 +25,12 @@ const game = {
     },
   ],
 }
+const relatedGame = (workId: number, title: string) => ({
+  ...game,
+  workId,
+  title,
+  entries: [{ ...game.entries[0], ownershipId: workId * 10, releaseId: workId * 100, workId, title }],
+})
 const facts = {
   workId: 1,
   readAtUtc: '2026-09-27T00:00:00Z',
@@ -169,34 +175,51 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     setup(
       mode,
       (input) =>
-        input.route === 'library.workspace'
+        input.route === 'library.get'
           ? {
               ok: true,
               status: 200,
               data: {
-                ...workspace,
-                works: [
-                  ...workspace.works,
-                  { id: 2, name: 'Expansion' },
-                  { id: 3, name: 'Edition' },
-                  { id: 4, name: 'Demo' },
-                ],
-                identityLinks: [
-                  { id: 20, childWorkId: 2, parentWorkId: 1, kind: 'expansion_of' },
-                  { id: 30, childWorkId: 3, parentWorkId: 1, kind: 'same_game' },
-                  { id: 40, childWorkId: 4, parentWorkId: 1, kind: 'variant_of' },
+                games: [
                   {
-                    id: 50,
-                    childWorkId: 5,
-                    parentWorkId: 1,
-                    kind: 'expansion_of',
-                    retractedAt: '2026-09-01T00:00:00Z',
+                    ...game,
+                    playtimeMinutes: 100,
+                    entries: [...game.entries, ...relatedGame(3, 'Edition').entries],
                   },
-                  { id: 60, childWorkId: 6, parentWorkId: 7, kind: 'expansion_of' },
+                  relatedGame(2, 'Expansion'),
+                  relatedGame(4, 'Demo'),
                 ],
+                lists: [],
               },
             }
-          : undefined,
+          : input.route === 'library.workspace'
+            ? {
+                ok: true,
+                status: 200,
+                data: {
+                  ...workspace,
+                  works: [
+                    ...workspace.works,
+                    { id: 2, name: 'Expansion' },
+                    { id: 3, name: 'Edition' },
+                    { id: 4, name: 'Demo' },
+                  ],
+                  identityLinks: [
+                    { id: 20, childWorkId: 2, parentWorkId: 1, kind: 'expansion_of' },
+                    { id: 30, childWorkId: 3, parentWorkId: 1, kind: 'same_game' },
+                    { id: 40, childWorkId: 4, parentWorkId: 1, kind: 'variant_of' },
+                    {
+                      id: 50,
+                      childWorkId: 5,
+                      parentWorkId: 1,
+                      kind: 'expansion_of',
+                      retractedAt: '2026-09-01T00:00:00Z',
+                    },
+                    { id: 60, childWorkId: 6, parentWorkId: 7, kind: 'expansion_of' },
+                  ],
+                },
+              }
+            : undefined,
       'avalon',
     )
     await screen.findByRole('heading', { name: 'Original game' })
@@ -958,6 +981,12 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s details parity', (mode) => {
     let failed = false,
       separated = false
     const { request } = setup(mode, (input) => {
+      if (input.route === 'library.get')
+        return {
+          ok: true,
+          status: 200,
+          data: { games: [relatedGame(1, 'Expansion'), relatedGame(2, 'Base game')], lists: [] },
+        }
       if (input.route === 'library.workspace')
         return {
           ok: true,

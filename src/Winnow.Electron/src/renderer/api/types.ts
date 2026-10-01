@@ -134,6 +134,7 @@ export interface GameDetails {
     unlocked: number
     hasKnownProgress: boolean
     isStale: boolean
+    availability?: number | 'Unknown' | 'Unavailable' | 'NoSchema' | 'Available'
     percentComplete?: number | null
   }[]
   [key: string]: unknown

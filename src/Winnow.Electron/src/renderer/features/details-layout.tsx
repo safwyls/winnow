@@ -13,7 +13,7 @@ import { ArrowLeft, ChevronDown, ListPlus, X, Image, Pencil, Search, EyeOff } fr
 import { useApiQuery, useCommand, useDetails, useLibrary, useWorkspace } from '../api/hooks'
 import { dateLabel, hours, storeLabel } from '../api/client'
 import { primaryEntry, primaryAction, noActionSentence } from '../../shared/game-actions'
-import type { GameDetails, LibraryGame, Mode, Workspace } from '../api/types'
+import type { LibraryGame, Mode, Workspace } from '../api/types'
 import { Artwork } from '../components/Artwork'
 import { EntryActions, GameLinks, HideGame, ListMembership } from './Details'
 import { IgdbMatch, LibraryFacts, Screenshots, UpdateSignals } from './parity-details'
@@ -40,6 +40,7 @@ import { AvalonBackdrop } from '../themes/avalon-backdrop'
 import { restoreFocusWhenReady } from './restore-focus'
 import { AvalonAction, AvalonActions } from '../themes/avalon-actions'
 import { ChooseLaunchVersion } from './choose-launch-version'
+import { ReleaseAchievements } from './detail-achievements'
 import './details-layout.css'
 
 const desktopSections = ['Overview', 'Activity', 'Updates', 'Journal', 'Library'] as const
@@ -71,11 +72,13 @@ export function AvalonDetailsLayout({
   workId,
   mode = 'desktop',
   onClose,
+  onOpenGame,
   editText,
 }: {
   workId: number
   mode?: Mode
   onClose?: () => void
+  onOpenGame?(workId: number): void
   editText?(input: HTMLInputElement | HTMLTextAreaElement): void
 }) {
   const fullscreen = mode === 'fullscreen',
@@ -120,7 +123,8 @@ export function AvalonDetailsLayout({
   const primary = primaryEntry(game?.entries ?? [], workspace.data) ?? game?.entries[0]
   const ownerships = (details.data?.ownerships ?? []) as { id: number; installPath?: string | null }[]
   const links = game && workspace.data ? gameLinks(game, workspace.data, details.data?.events) : []
-  const hasExpansions = game && detailsRelationships(game, workspace.data, 'expansions').length > 0
+  const hasExpansions =
+    game && detailsRelationships(game, workspace.data, 'expansions', library.data?.games ?? []).length > 0
   const sessions = Object.values(details.data?.sessions ?? {})
     .flat()
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
@@ -358,7 +362,7 @@ export function AvalonDetailsLayout({
           onToggle={(event) => setRelationshipsExpanded(event.currentTarget.open)}
         >
           <summary>Expansions & base game</summary>
-          <DetailsRelationships game={game} mode={mode} scope="expansions" />
+          <DetailsRelationships game={game} mode={mode} scope="expansions" onOpenGame={onOpenGame} />
         </details>
       )}
     </section>
@@ -456,7 +460,13 @@ export function AvalonDetailsLayout({
           )}
           {game?.entries.map((entry) => (
             <div className="avalon-copy" key={entry.ownershipId}>
-              <EntryActions entry={entry} workspace={workspace.data} launchTitle={game?.title} />
+              <h3>{workspace.data?.works.find((work) => work.id === entry.workId)?.name ?? entry.title}</h3>
+              <EntryActions
+                entry={entry}
+                workspace={workspace.data}
+                launchTitle={game?.title}
+                compactPlaytime
+              />
               <p>
                 Last played{' '}
                 {entry.lastPlayedAt
@@ -467,11 +477,18 @@ export function AvalonDetailsLayout({
               </p>
             </div>
           ))}
-          <Achievements game={game} details={details.data} />
+          <ReleaseAchievements game={game} details={details.data} />
         </section>
         <ListMembership workId={workId} mode={mode} />
         <LibraryFacts game={game} details={details.data} showTechnicalFacts />
-        {game && <DetailsRelationships game={game} mode={mode} scope={fullscreen ? 'all' : 'editions'} />}
+        {game && (
+          <DetailsRelationships
+            game={game}
+            mode={mode}
+            scope={fullscreen ? 'all' : 'editions'}
+            onOpenGame={onOpenGame}
+          />
+        )}
         {game && workspace.data && (
           <GameLinks links={gameLinks(game, workspace.data, details.data?.events)} />
         )}
@@ -716,6 +733,11 @@ export function AvalonDetailsLayout({
           className="avalon-details desktop"
           aria-describedby={undefined}
           onEscapeKeyDown={(event) => {
+            const dialog = (event.target as HTMLElement).closest('[role="dialog"]')
+            if (dialog && dialog !== root.current) {
+              event.preventDefault()
+              return
+            }
             if (closeLayer()) event.preventDefault()
           }}
           onKeyDown={escape}
@@ -735,24 +757,6 @@ export function AvalonDetailsLayout({
   )
 }
 
-function Achievements({ game, details }: { game?: LibraryGame; details?: GameDetails }) {
-  if (!details?.achievements.length) return null
-  return (
-    <div className="detail-achievements" aria-label="Achievements by release">
-      {details.achievements.map((item) => (
-        <p key={item.releaseId}>
-          {storeLabel(game?.entries.find((entry) => entry.releaseId === item.releaseId)?.store ?? 'Edition')}:{' '}
-          {item.hasKnownProgress
-            ? item.total
-              ? `${item.unlocked} of ${item.total} unlocked · ${Math.round((item.unlocked / item.total) * 100)}%`
-              : 'No achievements'
-            : 'Progress unavailable'}
-          {item.isStale ? ' · last known' : ''}
-        </p>
-      ))}
-    </div>
-  )
-}
 function MoreActions({
   addToList,
   fullscreen,

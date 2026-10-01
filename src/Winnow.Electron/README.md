@@ -61,6 +61,17 @@ keeps its relationships in Library. Technical facts are visible directly in Libr
 reports progress and completion in a persistent footer outside the reading area; fullscreen
 uses its own text scale. Refreshing keeps the selected section and returns focus to More.
 
+Owned copies retain their own titles, store badges, playtime and last-played dates. Achievement
+counts and percentages belong to each release; unsupported stores, unfetched Steam progress,
+unavailable progress and games without achievements have distinct labels. Expansions and
+Extends show the visible counterpart's own figures and provide View and Separate actions.
+Expansion playtime stays separate from the base game's total. Hidden or account-scoped-away
+counterparts do not appear. Separating a relationship targets its child and leaves sibling
+links and original library records intact on both surfaces.
+Escape or controller B closes only the confirmation and restores its opener. The
+fullscreen confirmation uses its own text scale and keeps D-pad Choose, A Select and
+B Cancel hints visible inside the dialog.
+
 Controllers work on both surfaces. Desktop shoulders move among controls in the active
 dialog or flyout; fullscreen shoulders switch root pages. Accept operates the focused control
 or opens text entry. Right-stick scrolling keeps focus in place. Fullscreen Details uses

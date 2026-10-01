@@ -1882,6 +1882,7 @@ export const avalon: ThemeDefinition = {
         workId={context.selectedWorkId}
         mode={context.mode}
         onClose={context.closeGame}
+        onOpenGame={context.openGame}
       />
     ) : (
       <p>Choose a game from your library.</p>

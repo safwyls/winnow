@@ -26,6 +26,8 @@ import { ArtworkBrowser as ArtworkEditor } from './artwork-browser'
 import { AddToListButton, orderedLists } from './parity-list-prompt'
 import { DetailsRelationships } from './parity-details-identity'
 import { AvalonDetailsLayout } from './details-layout'
+import { detailPlaytime } from './details-facts'
+import { ReleaseAchievements } from './detail-achievements'
 import { noActionSentence } from '../../shared/game-actions'
 import { createGameLink } from '../../shared/external-links'
 import { useLaunchFeedback } from './LaunchFeedback'
@@ -76,12 +78,14 @@ export function EntryActions({
   primaryOnly = false,
   managementOnly = false,
   launchTitle,
+  compactPlaytime = false,
 }: {
   entry: GameEntry
   workspace?: Workspace
   primaryOnly?: boolean
   managementOnly?: boolean
   launchTitle?: string
+  compactPlaytime?: boolean
 }) {
   const feedback = useLaunchFeedback()
   const primaryCommands = usePrimaryActions()
@@ -130,7 +134,7 @@ export function EntryActions({
           <strong>{storeLabel(entry.store)}</strong>
           <span>
             {typeof entry.installed === 'boolean' && `${entry.installed ? 'Installed' : 'Not installed'} · `}
-            {hours(entry.playtimeMinutes)}
+            {compactPlaytime ? detailPlaytime(entry.playtimeMinutes) : hours(entry.playtimeMinutes)}
           </span>
           {workspace?.pluginActions[String(entry.ownershipId)]?.sourceLabel && (
             <span>{workspace.pluginActions[String(entry.ownershipId)].sourceLabel}</span>
@@ -206,6 +210,7 @@ export function Details(props: {
   editText?(input: HTMLInputElement | HTMLTextAreaElement): void
   mode?: Mode
   onClose?: () => void
+  onOpenGame?(workId: number): void
   presentation?: 'shared' | 'avalon'
 }) {
   return props.presentation === 'avalon' ? (
@@ -220,11 +225,13 @@ function SharedDetails({
   mode = 'desktop',
   onClose,
   editText,
+  onOpenGame,
 }: {
   workId: number
   mode?: Mode
   onClose?: () => void
   editText?(input: HTMLInputElement | HTMLTextAreaElement): void
+  onOpenGame?(workId: number): void
 }) {
   const library = useLibrary()
   const workspace = useWorkspace()
@@ -420,18 +427,7 @@ function SharedDetails({
               {!!details.data?.achievements.length && (
                 <section className="feature-panel">
                   <h2>Achievements by edition</h2>
-                  {details.data.achievements.map((item) => (
-                    <p key={item.releaseId}>
-                      {storeLabel(
-                        game?.entries.find((entry) => entry.releaseId === item.releaseId)?.store ?? 'Edition',
-                      )}
-                      :{' '}
-                      {item.hasKnownProgress && item.total > 0
-                        ? `${item.unlocked} of ${item.total} unlocked`
-                        : 'Progress unavailable'}
-                      {item.isStale && ' · Last known reading'}
-                    </p>
-                  ))}
+                  <ReleaseAchievements game={game} details={details.data} />
                 </section>
               )}
               <Screenshots key={workId} details={details.data} />
@@ -489,7 +485,7 @@ function SharedDetails({
           {tab === 'Library' && (
             <>
               <LibraryFacts game={game} details={details.data} />
-              {game && <DetailsRelationships game={game} mode={mode} />}
+              {game && <DetailsRelationships game={game} mode={mode} onOpenGame={onOpenGame} />}
             </>
           )}
           {tab === 'Artwork' && (

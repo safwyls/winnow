@@ -94,6 +94,20 @@ globalThis.fetch = async (input, init) => {
         ],
       }
     })
+    // Relationship rows only describe visible counterparts. Keep this presentation fixture coherent.
+    if (state.child || (state.rich && state.populated)) {
+      const workId = state.child ? 10 : 120099
+      const title = state.child
+        ? 'Base game'
+        : 'The mountain expedition: journeys beyond the abandoned observatory'
+      const source = body.games[1] ?? body.games[0]
+      state.games.push({
+        ...source,
+        workId,
+        title,
+        entries: source.entries.map((entry) => ({ ...entry, workId, title })),
+      })
+    }
     return Response.json({
       ...body,
       games: state.games,

@@ -1,10 +1,10 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 338,
+    "pending": 319,
     "partial": 65,
-    "ported": 1372,
-    "retained-backend": 628,
+    "ported": 1383,
+    "retained-backend": 636,
     "framework-specific": 32
   },
   "tests": [
@@ -5126,17 +5126,62 @@
     {
       "id": "ExpansionLinkTests.An_expansion_link_moves_no_number_anywhere",
       "source": "tests/Winnow.Tests/ExpansionLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-identity-projections.test.tsx",
+          "case": "An_expansion_link_moves_no_number_anywhere"
+        },
+        {
+          "file": "tests/electron/identity-projections.spec.ts",
+          "case": "expansion linking preserves every count bucket date and independent playtime"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IdentityProjectionParityTests.cs",
+          "case": "Expansion_link_preserves_every_library_count_bucket_store_and_play_figure_over_HTTP"
+        }
+      ],
+      "reason": "Original Civilization IV 12000 minutes / 900 days and unplayed Beyond the Sword 2007 remain two tiles. Real HTTP and native SQLite checks preserve every original ownership, work, release, date, bucket and store count; both Electron surfaces retain the independent tiles and never-played pack."
     },
     {
       "id": "ExpansionLinkTests.An_expansion_never_enters_the_coverage_sum",
       "source": "tests/Winnow.Tests/ExpansionLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-identity-projections.test.tsx",
+          "case": "An_expansion_never_enters_the_coverage_sum"
+        },
+        {
+          "file": "tests/electron/identity-projections.spec.ts",
+          "case": "expansion hours stay outside same-game coverage and its base headline"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IdentityProjectionParityTests.cs",
+          "case": "Expansion_minutes_never_enter_the_base_game_or_its_detail_ownerships_over_HTTP"
+        }
+      ],
+      "reason": "Original base 12000 minutes and pack 4000 minutes / 10 days remain independent. The base headline and owned copies exclude pack minutes; its separate expansion row displays the pack's own 66h. Component and native checks establish both surfaces' absence of same-game coverage; real API tests establish the underlying numbers."
     },
     {
       "id": "ExpansionLinkTests.The_pack_says_what_it_extends_and_the_two_sections_stay_apart",
       "source": "tests/Winnow.Tests/ExpansionLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-identity-projections.test.tsx",
+          "case": "The_pack_says_what_it_extends_and_the_two_sections_stay_apart"
+        },
+        {
+          "file": "tests/electron/identity-projections.spec.ts",
+          "case": "same-game coverage and expansions remain separate and the pack names its base"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IdentityProjectionParityTests.cs",
+          "case": "Coverage_and_expansion_relations_stay_separate_and_the_pack_names_its_base_over_HTTP"
+        }
+      ],
+      "reason": "Original Steam base 12000 minutes, GOG edition 60 minutes / 5 days and unplayed pack remain two independent games. Owned copies include only the base editions (12060 total), expansion rows name the pack, and the pack's Extends row names the base. Both surfaces preserve direction and the Separate action's pack child ID."
     },
     {
       "id": "ExpansionLinkTests.The_scan_proposes_the_base_and_its_packs_and_nothing_else",
@@ -5206,7 +5251,22 @@
     {
       "id": "ExpansionLinkTests.Re_parenting_a_base_game_keeps_its_expansions_expansions",
       "source": "tests/Winnow.Tests/ExpansionLinkTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-identity-projections.test.tsx",
+          "case": "Re_parenting_a_base_game_keeps_its_expansions_expansions"
+        },
+        {
+          "file": "tests/electron/identity-projections.spec.ts",
+          "case": "reparenting the Steam base under GOG keeps its pack an independent expansion"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IdentityProjectionParityTests.cs",
+          "case": "Reparenting_a_base_keeps_its_expansion_kind_and_independent_minutes_over_HTTP"
+        }
+      ],
+      "reason": "Reparenting the source Steam Civilization IV base under its GOG edition moves the expansion parent to the new root without changing expansion_of into same_game. HTTP, SQLite and both renderer paths retain two tiles, base 12060 minutes and pack 4000 minutes; the pack remains in its separate expansion section."
     },
     {
       "id": "ExpansionLinkTests.A_pack_that_is_already_a_parent_is_refused",
@@ -8138,32 +8198,77 @@
     {
       "id": "IdentityReadInventoryTests.Every_reader_of_works_or_ownerships_is_on_the_resolve_or_the_do_not_resolve_list",
       "source": "tests/Winnow.Tests/IdentityReadInventoryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Retains the source architecture scan over every SQL and repository reader, requiring an explicit resolve or do-not-resolve classification and reason. Application/API projections still depend on the same resolved snapshot and exact-ownership boundaries.",
+      "implementation": [
+        "src/Winnow.Application/Library/LibraryApplication.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Data/Repositories/LibraryQueryRepository.cs"
+      ]
     },
     {
       "id": "IdentityReadInventoryTests.The_inventory_names_no_reader_that_no_longer_exists",
       "source": "tests/Winnow.Tests/IdentityReadInventoryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Retains the source stale-entry check against actual readers so removed or renamed backend consumers cannot leave misleading classifications.",
+      "implementation": [
+        "src/Winnow.Application/Library/LibraryApplication.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Data/Repositories/LibraryQueryRepository.cs"
+      ]
     },
     {
       "id": "IdentityReadInventoryTests.A_new_reader_on_neither_list_is_caught_and_named",
       "source": "tests/Winnow.Tests/IdentityReadInventoryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Retains the source negative control: a new unclassified SQL reader fails with its member, file and line instead of escaping the backend identity-read inventory.",
+      "implementation": [
+        "src/Winnow.Application/Library/LibraryApplication.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Data/Repositories/LibraryQueryRepository.cs"
+      ]
     },
     {
       "id": "IdentityReadInventoryTests.A_new_repository_read_is_caught_as_well_as_a_new_query",
       "source": "tests/Winnow.Tests/IdentityReadInventoryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Retains the source negative control for IWorkRepository and IOwnershipRepository reads in addition to raw SQL. Moving the renderer to Electron does not replace this backend architecture guard.",
+      "implementation": [
+        "src/Winnow.Application/Library/LibraryApplication.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Data/Repositories/LibraryQueryRepository.cs"
+      ]
     },
     {
       "id": "IdentityReadInventoryTests.Shared_SQL_constants_and_bulk_snapshot_callers_are_caught_under_their_own_names",
       "source": "tests/Winnow.Tests/IdentityReadInventoryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Retains the original shared-SQL and bulk-snapshot negative control: StoredRows and LoadAsync are attributed to their own names, without incorrectly naming PreviousMethod. The current tree scan passes; no inventory exemptions were added for this task.",
+      "implementation": [
+        "src/Winnow.Application/Library/LibraryApplication.cs",
+        "src/Winnow.Application/Details/DetailsApplication.cs",
+        "src/Winnow.Data/Repositories/LibraryQueryRepository.cs"
+      ]
     },
     {
       "id": "IdentityReadModelTests.Linking_collapses_one_tile_and_leaves_the_store_counts_alone",
       "source": "tests/Winnow.Tests/IdentityReadModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-identity-projections.test.tsx",
+          "case": "Linking_collapses_one_tile_and_leaves_the_store_counts_alone"
+        },
+        {
+          "file": "tests/electron/identity-projections.spec.ts",
+          "case": "same-game linking collapses one tile without changing ownership facts or store counts"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IdentityProjectionParityTests.cs",
+          "case": "Same_game_link_collapses_one_game_without_changing_store_counts_or_original_rows_over_HTTP"
+        }
+      ],
+      "reason": "Source Prey Steam 300 minutes / 30 days, Prey Epic 90 minutes / 400 days and unplayed Dishonored collapse from three tiles to two. The source rows remain intact and store counts remain Steam 2 / Epic 1. Component fixtures preserve presentation; real native preload/API/SQLite and backend tests establish actual link resolution and persistence."
     },
     {
       "id": "IdentityReadModelTests.With_nothing_linked_every_work_resolves_to_itself",
@@ -8194,12 +8299,42 @@
     {
       "id": "IdentityReadModelTests.A_linked_pair_is_one_tile_under_the_primary_title_and_cover",
       "source": "tests/Winnow.Tests/IdentityReadModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-identity-projections.test.tsx",
+          "case": "A_linked_pair_is_one_tile_under_the_primary_title_and_cover"
+        },
+        {
+          "file": "tests/electron/identity-projections.spec.ts",
+          "case": "linked Prey uses the primary title cover and store chips with exact composite and per-copy dates"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IdentityProjectionParityTests.cs",
+          "case": "Linked_pair_uses_primary_title_and_art_without_crossing_each_copys_figures_over_HTTP"
+        }
+      ],
+      "reason": "Prey and Prey (2017) retain the original Steam IDs 500001/500002 and distinct pre-link art. Linked presentation uses Prey and the primary art, Steam/Epic badges, 390 total minutes and the 30-day date while entries retain 300/90 and the Epic 40-day date. Native tests compare real cached image pixels before and after linking; backend fixture URLs supplement the exact source IDs."
     },
     {
       "id": "IdentityReadModelTests.The_modal_lists_the_titles_this_game_covers_with_their_own_figures",
       "source": "tests/Winnow.Tests/IdentityReadModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-identity-projections.test.tsx",
+          "case": "The_modal_lists_the_titles_this_game_covers_with_their_own_figures"
+        },
+        {
+          "file": "tests/electron/identity-projections.spec.ts",
+          "case": "covered titles retain their own Steam and Epic playtime and last-played figures"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IdentityProjectionParityTests.cs",
+          "case": "Covered_titles_keep_their_own_store_minutes_and_dates_in_the_detail_scope_over_HTTP"
+        }
+      ],
+      "reason": "Both surfaces render the original Prey / Steam / 5h and Prey Deluxe / Epic / 1h rows from 300 and 90 minutes, with each date intact. Source coverage is represented by Owned copies plus the related-edition section; native real API and SQLite fixtures establish the same exact titles and independent ownership figures."
     },
     {
       "id": "IdentityReadModelTests.The_summed_playtime_never_pairs_with_a_foreign_last_played",
@@ -8217,22 +8352,82 @@
     {
       "id": "IdentityReadModelTests.The_modal_shows_per_release_achievement_rows_and_never_a_blended_percentage",
       "source": "tests/Winnow.Tests/IdentityReadModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-identity-projections.test.tsx",
+          "case": "The_modal_shows_per_release_achievement_rows_and_never_a_blended_percentage"
+        },
+        {
+          "file": "tests/electron/identity-projections.spec.ts",
+          "case": "per-release achievements show Steam 100 percent and Epic 30 percent without a blend"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IdentityProjectionParityTests.cs",
+          "case": "Detail_achievement_rows_keep_ten_of_ten_and_three_of_ten_without_a_blended_percentage_over_HTTP"
+        }
+      ],
+      "reason": "Both surfaces show the exact source Steam 10 of 10 / 100% and Epic 3 of 10 / 30% separately, with no 65% blend. Electron retains its count wording instead of source slash notation. Real backend and native fixtures verify per-release/account achievement projections; component simulation independently checks renderer grouping."
     },
     {
       "id": "IdentityReadModelTests.An_unsupported_release_distinguishes_unknown_progress_from_zero",
       "source": "tests/Winnow.Tests/IdentityReadModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-identity-projections.test.tsx",
+          "case": "An_unsupported_release_distinguishes_unknown_progress_from_zero"
+        },
+        {
+          "file": "tests/electron/identity-projections.spec.ts",
+          "case": "unsupported Epic achievements remain distinct from Steam known progress and zero percent"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IdentityProjectionParityTests.cs",
+          "case": "Unsupported_copy_keeps_unknown_progress_distinct_from_known_zero_over_HTTP"
+        }
+      ],
+      "reason": "Original Steam 1 of 4 and unsupported Epic with no observations produce 25% and Not supported respectively, never an invented 0%. The executed source assertion, rather than its outdated no-row comment, governs equivalence. Additional component cases distinguish unfetched, unavailable, no-schema and known-zero progress and exclude non-visible releases."
     },
     {
       "id": "IdentityReadModelTests.A_game_that_covers_nothing_draws_no_coverage_section",
       "source": "tests/Winnow.Tests/IdentityReadModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-identity-projections.test.tsx",
+          "case": "A_game_that_covers_nothing_draws_no_coverage_section"
+        },
+        {
+          "file": "tests/electron/identity-projections.spec.ts",
+          "case": "standalone Dishonored shows one own copy and no coverage relationships"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IdentityProjectionParityTests.cs",
+          "case": "Standalone_game_has_no_covered_identity_or_extra_detail_ownership_over_HTTP"
+        }
+      ],
+      "reason": "The original standalone Dishonored 40 minutes / 9 days retains one ownership. Both Electron surfaces omit the related-edition and expansion sections and any summed-entry sentence; the persistent Owned copies section describes the single original entry, not a coverage relationship."
     },
     {
       "id": "IdentityReadModelTests.Separate_retracts_one_link_and_leaves_the_rest_of_the_act",
       "source": "tests/Winnow.Tests/IdentityReadModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-identity-projections.test.tsx",
+          "case": "Separate_retracts_one_link_and_leaves_the_rest_of_the_act"
+        },
+        {
+          "file": "tests/electron/identity-projections.spec.ts",
+          "case": "Separate retracts only Prey Epic and keeps the GOG sibling and original records"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IdentityProjectionParityTests.cs",
+          "case": "Separating_one_covered_copy_keeps_its_sibling_in_the_same_act_and_restores_its_tile_over_HTTP"
+        }
+      ],
+      "reason": "Original Prey 300 / Epic 90 / GOG 20 minute entries share one identity act. Cancel preserves both links; confirming Separate for Epic retracts only its exact link, leaves GOG in the act, refreshes the open details and restores the Epic tile without moving or deleting records. Both native surfaces exercise the actual guarded API and SQLite persistence; fullscreen uses simulated Gamepad input."
     },
     {
       "id": "IdentityReadModelTests.Separate_and_link_again_is_repeatable",
@@ -14945,17 +15140,36 @@
     {
       "id": "SoftMatchRegistrationTests.The_sweep_resolves_from_the_container_and_runs",
       "source": "tests/Winnow.Tests/SoftMatchRegistrationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged source test resolves and executes LibrarySoftMatchSweep from real DI/SQLite, retaining the proposal-producing sweep. BackendServiceRegistration uses the same AddSoftMatching extension; fuzzy results remain proposals requiring confirmation.",
+      "implementation": [
+        "src/Winnow.Resolve/LibrarySoftMatchSweep.cs",
+        "src/Winnow.Resolve/SoftMatchServiceCollectionExtensions.cs",
+        "src/Winnow.Resolve/SoftMatchResolver.cs",
+        "src/Winnow.Resolve/Matching/SoftMatcher.cs"
+      ]
     },
     {
       "id": "SoftMatchRegistrationTests.The_matcher_and_the_resolver_are_reachable_and_shared",
       "source": "tests/Winnow.Tests/SoftMatchRegistrationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged source test resolves SoftMatcher and SoftMatchResolver and verifies singleton sharing. Electron uses the backend composition that calls this same registration extension; no renderer registration substitutes for it.",
+      "implementation": [
+        "src/Winnow.Resolve/SoftMatchServiceCollectionExtensions.cs",
+        "src/Winnow.Resolve/SoftMatchResolver.cs",
+        "src/Winnow.Resolve/Matching/SoftMatcher.cs"
+      ]
     },
     {
       "id": "SoftMatchRegistrationTests.Registrations_defer_to_anything_already_in_the_container",
       "source": "tests/Winnow.Tests/SoftMatchRegistrationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged source test retains pre-registered SoftMatchThresholds with QueueFloor 0.9 and Priority 0.95 through AddSoftMatching's TryAdd behavior. Backend composition uses that same implementation; the contract belongs to backend dependency injection.",
+      "implementation": [
+        "src/Winnow.Resolve/SoftMatchServiceCollectionExtensions.cs",
+        "src/Winnow.Resolve/SoftMatchResolver.cs",
+        "src/Winnow.Resolve/Matching/SoftMatcher.cs"
+      ]
     },
     {
       "id": "StartupErrorBoundaryTests.A_startup_fault_is_surfaced_and_leaves_a_nonzero_exit_code",

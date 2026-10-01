@@ -294,6 +294,9 @@
   .avalon-details .details-relationship > div:first-child {
     flex-basis: min(100%, 24em);
   }
+  .avalon-details .detail-expansions > .details-relationships {
+    margin-top: 16px;
+  }
   .avalon-details .timeline-entry {
     grid-template-columns: minmax(100px, auto) minmax(0, 1fr) auto;
   }
