@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
 import { fillLibrarySearch } from './library-controls'
+import { prebuiltActivationHelper, prebuiltBackend } from './prebuilt-backend'
 
 for (const [mode, scale] of [
   ['desktop', 1],
@@ -21,11 +22,15 @@ for (const [mode, scale] of [
         '--seed-sample',
         '--no-sync',
       ],
-      env: Object.fromEntries(
-        Object.entries(process.env).filter(
-          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-        ),
-      ) as Record<string, string>,
+      env: {
+        ...(Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+          ),
+        ) as Record<string, string>),
+        WINNOW_BACKEND_PATH: prebuiltBackend,
+        WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+      },
       chromiumSandbox: true,
     })
     try {

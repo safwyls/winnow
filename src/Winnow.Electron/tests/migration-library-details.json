@@ -102,35 +102,5 @@
       }
     ],
     "reason": "Actual Electron desktop and fullscreen tests verify horizontal wheel movement and unchanged outer details scrolling at the strip edge. Component tests additionally cover Shift-wheel, horizontal trackpad input and reverse movement."
-  },
-  "UpdateAcknowledgementCompositionTests.Production_details_marks_and_restores_only_the_displayed_group_releases": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-details.test.tsx",
-        "case": "acknowledges each captured update set and restores stored release watermarks"
-      }
-    ],
-    "reason": "Both modes send only displayed event IDs and restore only standing release acknowledgements. Original database watermarks, tile badge counts and composition assertions need a live-backend Electron test."
-  },
-  "UpdateAcknowledgementCompositionTests.A_push_arriving_after_details_open_is_not_acknowledged_and_reopening_reads_its_watermark": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-details.test.tsx",
-        "case": "keeps a new patch out of a pending acknowledgement batch"
-      }
-    ],
-    "reason": "A pending multi-release acknowledgement retains its captured observed event IDs after a new patch enters the UI cache. Original database watermark and reopening behavior remain unported."
-  },
-  "UpdateAcknowledgementCompositionTests.Patched_selection_reports_persistence_failure_and_keeps_unread_games": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-details.test.tsx",
-        "case": "reports a declined update write without claiming that no flags needed changing"
-      }
-    ],
-    "reason": "The detail action reports backend NotStored outcomes in both modes. Original multiselect library entry point and persistent unread badge assertions are not yet migrated."
   }
 }

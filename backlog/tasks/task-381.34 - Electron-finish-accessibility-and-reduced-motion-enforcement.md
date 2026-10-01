@@ -5,6 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
+updated_date: '2026-10-01 22:27'
 labels:
   - electron
   - parity
@@ -49,7 +50,7 @@ tests/Winnow.Tests/Enforcement/VisualDisciplineTests.cs
 - VisualDisciplineTests.The_numeric_text_style_tracks_the_data_face_and_tabular_figures [pending at split]
 - VisualDisciplineTests.The_mono_face_resolves_to_a_bundled_font [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Keep one implementation task active and commit each milestone. After completing this task, continue to TASK-381.35; pause for user review after TASK-381.35.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -62,5 +63,5 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.35 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->

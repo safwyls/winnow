@@ -45,14 +45,21 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [Steam capture and reported activity checkpoint](checkpoint-eighty-five.md) records
+The [update acknowledgement checkpoint](checkpoint-eighty-six.md) records fifteen
+unchanged source cases, thirteen backend cases, 203 focused renderer cases and
+thirteen distinct native journeys passing. Library actions preserve each selected
+release's displayed watermark, retain partial saves and retry only unread releases
+on desktop and fullscreen. Nine more source methods are ported, bringing the
+inventory to 1,635 ported, 705 retained-backend and 37 framework-specific methods,
+with 48 pending and ten partial. The authorized TASK-381.31–381.35 batch is in
+progress; the complete migration and release gates remain outstanding.
+
+The preceding [Steam capture and reported activity checkpoint](checkpoint-eighty-five.md) records
 24 unchanged source cases, 19 backend cases, all 4,130 component/live API cases across
 216 files, and thirteen distinct native journeys passing. Both surfaces preserve
 acquisition export outcomes, exact saved-page facts and Steam observation bounds;
-fullscreen adds separate reading and corrected typography. The inventory has 1,626
-ported, 705 retained-backend and 37 framework-specific methods, with 54 pending and
-thirteen partial. TASK-381.21–381.30 are complete; work pauses for user review before
-TASK-381.31. The complete migration and release gates remain outstanding.
+fullscreen adds separate reading and corrected typography. TASK-381.21–381.30 are
+complete.
 
 The preceding [plugin source and sign-in checkpoint](checkpoint-eighty-four.md) records eighteen
 unchanged source cases, twenty backend cases, 272 focused renderer cases, 121 Epic

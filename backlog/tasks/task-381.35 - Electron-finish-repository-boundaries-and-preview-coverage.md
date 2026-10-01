@@ -5,6 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
+updated_date: '2026-10-01 22:27'
 labels:
   - electron
   - parity
@@ -44,7 +45,7 @@ tests/Winnow.Ui.Tests/DesignTimePreviewTests.cs
 - DesignTimePreviewTests.Shell_preview_opens_and_populates_the_wall [pending at split]
 - DesignTimePreviewTests.Details_preview_renders_the_fabricated_game [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Keep one implementation task active and commit each milestone. This is the final task in that batch; verify and commit it, then pause for user review without beginning TASK-381.36.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -57,5 +58,5 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary, completing the authorized TASK-381.31 through TASK-381.35 batch. Stop for user review before beginning another task.
 <!-- DOD:END -->

@@ -5,6 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
+updated_date: '2026-10-01 22:27'
 labels:
   - electron
   - parity
@@ -56,7 +57,7 @@ tests/Winnow.Ui.Tests/DawnControlContrastTests.cs
 - DawnControlContrastTests.Fluent_templates_follow_dark_light_dark_switches_without_stale_control_brushes [pending at split]
 - DawnControlContrastTests.Fullscreen_real_action_template_keeps_focus_underline_and_labels_readable [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Keep one implementation task active and commit each milestone. After completing this task, continue to TASK-381.33; pause for user review after TASK-381.35.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -69,5 +70,5 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.33 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->

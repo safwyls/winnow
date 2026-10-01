@@ -839,7 +839,7 @@ it('applies Derelict exemptions only to the captured selected games', async () =
 
 it('marks linked releases as read without swallowing pushes newer than the displayed tile', async () => {
   const ctx = context('desktop')
-  ctx.games = [game(1, { bucket: 'active', playtimeMinutes: 60 })]
+  ctx.games = [game(1, { bucket: 'stale_but_patched', playtimeMinutes: 60 })]
   fixtures.workspace = {
     works: [],
     externalIds: [],
@@ -869,7 +869,10 @@ it('marks linked releases as read without swallowing pushes newer than the displ
         : { result: 'Stored' },
   }))
   Object.defineProperty(window, 'winnow', { value: { request }, configurable: true })
-  mount(ctx, AvalonLibrary)
+  ctx.page = 'library'
+  ctx.children = <AvalonLibrary {...ctx} />
+  mount(ctx, AvalonShell)
+  fireEvent.click(libraryRole('button', { name: /^Patched,/ }))
   fireEvent.click(
     libraryRole('button', { name: 'View Library game 1, patched since you played: 1 update' }),
     {

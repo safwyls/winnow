@@ -133,6 +133,10 @@ Mark as read preserves confirmed partial saves and retries only the remaining un
 Show it again restores their flags. The Activity timeline keeps acknowledged history in
 neutral ink and retains the selected range. Results remain visible without taking focus from
 a different control.
+Library **Mark as read** is available only for unread selections in Patched. It captures
+the selected games and each release's displayed patch timestamp before saving, so later
+pushes remain unread. Repeated activation shares the pending operation; retry skips
+releases already acknowledged and continues after a refusal on another release.
 Fullscreen More and Library options use a right-edge action panel with saved safe margins,
 independent scrolling and retained origin focus. Escape, B, right-click or the scrim closes
 it. Nested Hide starts on Cancel; a child editor returns directly to its originating page.

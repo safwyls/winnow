@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Winnow.Electron.Fixtures/UpdateAcknowledgementFixture.cs" Link="Fixtures/UpdateAcknowledgementFixture.cs" />
     <Compile Include="../Winnow.Electron.Fixtures/SteamAccountReadingFixture.cs" Link="Fixtures/SteamAccountReadingFixture.cs" />
     <Content Include="../fixtures/steam-account-pages/licenses-page1.html" Link="fixtures/steam-account-pages/licenses-page1.html" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../fixtures/steam-account-pages/purchase-history.html" Link="fixtures/steam-account-pages/purchase-history.html" CopyToOutputDirectory="PreserveNewest" />

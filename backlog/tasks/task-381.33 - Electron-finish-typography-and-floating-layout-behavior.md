@@ -5,6 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
+updated_date: '2026-10-01 22:27'
 labels:
   - electron
   - parity
@@ -49,7 +50,7 @@ tests/Winnow.Ui.Tests/ThemeTypographyRuntimeTests.cs
 - ThemeTypographyRuntimeTests.Native_fullscreen_popout_sizes_consent_hints_and_keyboard_from_stable_baselines [pending at split]
 - ThemeTypographyRuntimeTests.Fullscreen_combines_theme_and_page_scale_without_accumulation_or_scaling_icons [partial at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Keep one implementation task active and commit each milestone. After completing this task, continue to TASK-381.34; pause for user review after TASK-381.35.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -62,5 +63,5 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.34 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->

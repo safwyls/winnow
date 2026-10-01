@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 import type { ThemeContext, ThemeDefinition } from '../../shared/theme'
 import { avalonPaletteId, themeSettingValues } from '../../shared/theme'
-import type { LibraryGame, GameDetails } from '../api/types'
+import type { LibraryGame } from '../api/types'
 import { useLibrary, useWorkspace } from '../api/hooks'
 import { request, storeLabel } from '../api/client'
 import { bucketLabel } from '../components/primitives'
@@ -101,6 +101,7 @@ import { UpdateCaption } from '../features/Updates'
 import { FetchCaption } from '../features/FetchStatus'
 import { LibraryHideConfirmation } from '../features/LibraryHideConfirmation'
 import { unreadLabel } from './avalon-unread'
+import { acknowledgeReadSelection, captureReadSelection } from './avalon-acknowledgements'
 
 const destinations = [
   { id: 'discover', label: 'For you', Icon: Compass },
@@ -998,6 +999,7 @@ export function AvalonLibrary(context: ThemeContext) {
   }
   const [selectionError, setSelectionError] = useState(''),
     [selectionBusy, setSelectionBusy] = useState(false)
+  const selectionSending = useRef(false)
   const [hideTargets, setHideTargets] = useState<number[] | null>(null)
   const hideOrigin = useRef<HTMLElement | null>(null)
   function closeHide(completed: boolean) {
@@ -1157,10 +1159,14 @@ export function AvalonLibrary(context: ThemeContext) {
     )
   }
   async function selectionAction(kind: 'read' | 'derelict') {
-    if (selectionBusy) return
+    if (selectionBusy || selectionSending.current || (kind === 'read' && bucket !== 'stale_but_patched'))
+      return
     const selectedGames = games.filter((game) =>
       selection.length ? selection.includes(game.workId) : game.workId === selected,
     )
+    const readBatch = captureReadSelection(selectedGames, facts)
+    if (kind === 'read' && !readBatch.length) return
+    selectionSending.current = true
     setSelectionBusy(true)
     setSelectionError('')
     let failures = 0
@@ -1169,44 +1175,15 @@ export function AvalonLibrary(context: ThemeContext) {
         await request('library.derelict-exemptions', undefined, {
           workIds: selectedGames.filter((game) => game.bucket === 'derelict').map((game) => game.workId),
         })
-      else
-        for (const game of selectedGames) {
-          const watermarks = new Map(facts.get(game.workId)?.watermarks)
-          if (!facts.get(game.workId)?.unread) continue
-          if (!watermarks.size) {
-            failures++
-            continue
-          }
-          try {
-            const detail = await request<GameDetails>('game.details', { workId: game.workId })
-            for (const [releaseId, watermark] of watermarks) {
-              // Never acknowledge a build push newer than the library tile the user selected.
-              const observedEventIds = detail.events
-                .filter(
-                  (event) =>
-                    event.releaseId === releaseId &&
-                    (event.kind !== 'build_push' || Date.parse(event.occurredAt) <= Date.parse(watermark)),
-                )
-                .map((event) => event.id)
-              const response = await request<{ result: string }>(
-                'updates.acknowledge',
-                { releaseId },
-                { observedEventIds },
-              )
-              if (!['Stored', 'NothingToDo'].includes(response.result)) failures++
-            }
-          } catch {
-            failures++
-          }
-        }
-      if (failures)
-        setSelectionError(`${failures} update changes could not be saved. Open game details or try again.`)
+      else failures = await acknowledgeReadSelection(readBatch)
+      if (failures) setSelectionError("Couldn't mark every patch read. Try again.")
     } catch (error) {
       setSelectionError(
         error instanceof Error ? error.message : 'The selection could not be updated. Try again.',
       )
     } finally {
       await client.invalidateQueries({ queryKey: ['api'] })
+      selectionSending.current = false
       setSelectionBusy(false)
     }
   }
@@ -1402,15 +1379,16 @@ export function AvalonLibrary(context: ThemeContext) {
             mode={context.mode}
             onClosed={fullscreen ? () => setPanel(null) : undefined}
           />
-          {games.some(
-            (game) =>
-              (selection.length ? selection.includes(game.workId) : game.workId === selected) &&
-              facts.get(game.workId)?.unread,
-          ) && (
-            <button disabled={selectionBusy} onClick={() => void selectionAction('read')}>
-              Mark as read
-            </button>
-          )}
+          {bucket === 'stale_but_patched' &&
+            games.some(
+              (game) =>
+                (selection.length ? selection.includes(game.workId) : game.workId === selected) &&
+                facts.get(game.workId)?.unread,
+            ) && (
+              <button disabled={selectionBusy} onClick={() => void selectionAction('read')}>
+                Mark as read
+              </button>
+            )}
           {bucket === 'derelict' &&
             games.some(
               (game) =>
@@ -1450,7 +1428,7 @@ export function AvalonLibrary(context: ThemeContext) {
         </div>
       }
       {selectionError && (
-        <p role="alert" className="error-banner">
+        <p role="alert" className="error-banner avalon-selection-error">
           {selectionError}
         </p>
       )}

@@ -60,6 +60,11 @@
     align-self: flex-start;
     flex: none;
   }
+  .avalon-actions-panel .avalon-selection-error {
+    flex-shrink: 0;
+    font: 400 calc(28 * var(--action-unit) * var(--action-text-scale))/1.4 var(--font-body);
+    overflow-wrap: anywhere;
+  }
   .avalon-library-panel .avalon-toolbar,
   .avalon-actions-panel .avalon-toolbar {
     flex-direction: column;
