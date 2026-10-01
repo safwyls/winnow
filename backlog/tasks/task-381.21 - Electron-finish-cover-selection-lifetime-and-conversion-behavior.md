@@ -1,7 +1,7 @@
 ---
 id: TASK-381.21
 title: 'Electron: finish cover selection, lifetime and conversion behavior'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:47'
@@ -80,7 +80,7 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.30, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -99,6 +99,8 @@ All twenty frozen methods expand to forty unchanged passing source cases (17 mai
 Verification: complete Electron component/live API suite 3,904/3,904 across 194 files; 26 new native cases and 18 directly affected native regressions; 40 original cases; 194 cover-library cases; 21 HTTP cases. Build, changed-file formatting and diff checks pass. Independent review findings were corrected and rechecked. Native captures use test-only sRGB after diagnosing the monitor ICC profile; strict pixel tolerances remain. Controller input is simulated; physical devices remain a later validation task.
 
 Checkpoint76 records source scope, actual desktop/fullscreen behavior, run provenance and limitations. All twenty mappings resolved: 16 ported, 3 retained-backend, 1 framework-specific. Inventory remains 2,435 methods: 1,531 ported, 653 retained-backend, 33 framework-specific, 189 pending and 29 partial. The complete migration gate remains incomplete. Continue with TASK-381.22 after this milestone commit.
+
+Milestone committed as 70e38edf. All acceptance criteria and verification are complete. Continuing the user-authorized batch with TASK-381.22; review pause remains after TASK-381.30.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
