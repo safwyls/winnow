@@ -1,11 +1,11 @@
 ---
 id: TASK-381.30
 title: 'Electron: finish Steam account capture and reported history'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:48'
-updated_date: '2026-10-01 22:11'
+updated_date: '2026-10-01 22:12'
 labels:
   - electron
   - parity
@@ -73,7 +73,7 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Th
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary, completing the authorized TASK-381.21 through TASK-381.30 batch. Stop for user review before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary, completing the authorized TASK-381.21 through TASK-381.30 batch. Stop for user review before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -94,6 +94,8 @@ Full component/live API gate passes 4,130 cases across216 files; source24 and ba
 Final verification: 24 unchanged original cases; 19 backend cases; 4,130 component/live API cases across 216 files; 93 overlapping focused cases after final CSS; 13 distinct native journeys (10 new, 3 existing). All pass without skips. Production build, final typecheck, formatting, diff and replacement-character checks pass. Screenshots and measured text/overflow verify desktop and fullscreen separately. Final bundle index-Vknj1PPX.js. Controller input is simulated; physical devices, live provider authentication and release packaging are not claimed.
 
 All 17 assigned mappings resolved after independent source/assertion review: 15 ported, 1 retained exporter, 1 C# compatibility overload. Audit validates 1,626 ported / 705 retained-backend / 37 framework-specific / 54 pending / 13 partial. Complete migration gate still fails on the remaining 67 methods. Checkpoint85 and frontend/capture documentation updated. Milestone commit and final batch stop remain the last Definition of Done step.
+
+Milestone commit 9be9c923 contains the verified implementation, mapping and checkpoint85. TASK-381.21 through TASK-381.30 are complete with reviewable milestone commits. Native and test processes are closed. Stop for user review here; TASK-381.31 was not started.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
