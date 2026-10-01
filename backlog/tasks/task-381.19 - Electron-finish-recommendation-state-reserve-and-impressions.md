@@ -1,7 +1,7 @@
 ---
 id: TASK-381.19
 title: 'Electron: finish recommendation state, reserve and impressions'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:47'
@@ -72,7 +72,7 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -87,6 +87,8 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 Started after gameplay milestone 804c1c66 and completion 49a05be9. Ninth task in the authorized ten-task batch. Previous complete Electron gate: 3,822 cases across 188 files. The initial audit reproduced an extra primary read during a three-event invalidation burst, found modal history instead of the source body toggle, and confirmed that a FeedService without a feedback store still advertised usable verdict controls. Bounded renderer, backend-fixture and native work is underway; production scoring remains shared in the backend.
 
 Final verification: 3,851 complete Electron component/live API cases across 189 files; 116 focused renderer cases; 25 existing list transaction cases; 27 unchanged originals, 13 HTTP cases and 63 feedback/service/reserve regressions. Native evidence covers 38 distinct new cases plus two existing consumers, all passing; final changed cases used index-PxSwDjer.js. Source-exact invalidation assertions preserve the native warm-shell boundary; final-owner disposal closes the actual renderer. Captures reviewed for desktop/fullscreen history, picker and virtual keyboard. Simulated controllers do not establish physical-device coverage. Checkpoint74 records implementation, fixture adaptations and measured limits.
+
+Milestone commit: 60afaf06. All acceptance criteria are verified; continue to TASK-381.20 within the authorized batch.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
