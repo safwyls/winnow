@@ -1,8 +1,9 @@
 import { test, expect, _electron as electron, type Page } from '@playwright/test'
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
+import { prebuiltBackend, prebuiltActivationHelper } from './prebuilt-backend'
 import type { IgdbConnection } from '../../src/renderer/api/types'
 
 async function snapshot(page: Page): Promise<IgdbConnection> {
@@ -12,6 +13,9 @@ async function snapshot(page: Page): Promise<IgdbConnection> {
     return response.data as IgdbConnection
   })
 }
+test.beforeAll(async () => {
+  await Promise.all([readFile(prebuiltBackend), readFile(prebuiltActivationHelper)])
+})
 for (const [mode, scale] of [
   ['desktop', 1],
   ['fullscreen', 1],
@@ -28,11 +32,15 @@ for (const [mode, scale] of [
         '--seed-sample',
         '--no-sync',
       ],
-      env: Object.fromEntries(
-        Object.entries(process.env).filter(
-          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-        ),
-      ) as Record<string, string>,
+      env: {
+        ...(Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+          ),
+        ) as Record<string, string>),
+        WINNOW_BACKEND_PATH: prebuiltBackend,
+        WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+      },
       chromiumSandbox: true,
     })
     try {
@@ -127,7 +135,36 @@ for (const [mode, scale] of [
         expect(await secret.evaluate((node) => parseFloat(getComputedStyle(node).fontSize))).toBeCloseTo(
           24 * scale,
         )
-        expect((await secret.boundingBox())!.height).toBeGreaterThanOrEqual(72)
+        const controlGeometry = await secret.evaluate((node) => {
+          const style = getComputedStyle(node),
+            rootStyle = getComputedStyle(document.documentElement)
+          return {
+            minimumHeight: Number.parseFloat(style.minHeight),
+            logicalHeight: Number.parseFloat(style.height),
+            paintedHeight: node.getBoundingClientRect().height,
+            bodyZoom: Number.parseFloat(getComputedStyle(document.body).zoom),
+            interfaceScale: rootStyle.getPropertyValue('--interface-scale').trim(),
+            fullscreenInterfaceScale: rootStyle.getPropertyValue('--fullscreen-interface-scale').trim(),
+            fullscreenBaseScale: rootStyle.getPropertyValue('--fullscreen-base-scale').trim(),
+          }
+        })
+        expect(controlGeometry.interfaceScale).toBe('1')
+        expect(controlGeometry.fullscreenInterfaceScale).toBe('1')
+        expect(controlGeometry.fullscreenBaseScale).toBe('0.85')
+        expect(controlGeometry.bodyZoom).toBe(0.85)
+        expect(controlGeometry.minimumHeight).toBe(72)
+        // Chromium quantizes painted layout to 1/64px after the existing TV density zoom.
+        expect(Math.abs(controlGeometry.logicalHeight - controlGeometry.minimumHeight)).toBeLessThanOrEqual(
+          1 / 64 / controlGeometry.bodyZoom,
+        )
+        expect(
+          Math.abs(controlGeometry.paintedHeight - controlGeometry.minimumHeight * controlGeometry.bodyZoom),
+        ).toBeLessThanOrEqual(1 / 64)
+        expect(controlGeometry.paintedHeight).toBeGreaterThanOrEqual(44)
+        await info.attach('igdb-fullscreen-control-geometry', {
+          body: JSON.stringify(controlGeometry),
+          contentType: 'application/json',
+        })
         expect(
           await form
             .getByText('The secret is stored securely on this device. Changes take effect immediately.')
@@ -188,6 +225,13 @@ for (const [mode, scale] of [
       await expect(secret).toHaveValue('')
       expect(errors).toEqual([])
     } finally {
-      await closeFixture(application, directory)
+      try {
+        await info.attach('igdb-native-boundary', {
+          body: JSON.stringify(await application.evaluate(() => (globalThis as any).__igdbFixture)),
+          contentType: 'application/json',
+        })
+      } finally {
+        await closeFixture(application, directory)
+      }
     }
   })

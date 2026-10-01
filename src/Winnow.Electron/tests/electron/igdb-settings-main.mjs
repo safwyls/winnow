@@ -1,11 +1,24 @@
 import { app, shell } from 'electron'
+import { basename, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+const dataArgument = process.argv.indexOf('--data-dir')
+if (
+  dataArgument < 0 ||
+  !basename(resolve(process.argv[dataArgument + 1] ?? '')).startsWith('winnow-igdb-settings-')
+)
+  throw Error('IGDB verification requires its own isolated data directory.')
 app.setAppPath(fileURLToPath(new URL('../..', import.meta.url)))
-const fixture = (globalThis.__igdbFixture = { refuseSave: true, links: [] })
+const fixture = (globalThis.__igdbFixture = { refuseSave: true, links: [], requests: [] })
 const backendFetch = globalThis.fetch
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : input)
+  if (url.hostname === '127.0.0.1' && url.pathname === '/api/v1/connections/igdb')
+    fixture.requests.push({
+      method: init?.method ?? 'GET',
+      path: url.pathname,
+      simulatedProtectionRefusal: init?.method === 'PUT' && fixture.refuseSave,
+    })
   if (
     url.hostname === '127.0.0.1' &&
     url.pathname === '/api/v1/connections/igdb' &&

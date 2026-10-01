@@ -45,12 +45,14 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [ownership and snapshot checkpoint](checkpoint-eighty-one.md) records thirty
-original cases, ten API cases, 307 focused renderer cases and eight distinct native
-cases passing. Account-filter copy and cached GOG notes now preserve both surfaces;
-shared ownership, install-state and scheduler behavior retains its original tests.
-Five methods are ported, seventeen retained and one narrowly framework-specific,
-leaving 111 pending and 20 partial methods. The [native identity checkpoint](checkpoint-seventy-nine.md)
+The [runtime metadata credentials checkpoint](checkpoint-eighty-three.md) records
+nine unchanged source cases, fifteen HTTP cases and 38 component cases passing.
+The actual shared services retain credential rotation, configuration fallback and
+serialized refresh behavior. The [platform accounts checkpoint](checkpoint-eighty-two.md)
+records forty source cases, eleven API cases and 24 distinct native journeys passing,
+including controller settings pages and explicit saved-page reading on both surfaces.
+The inventory has 1,606 ported, 696 retained-backend and 35 framework-specific methods,
+with 80 pending and eighteen partial. The [native identity checkpoint](checkpoint-seventy-nine.md)
 records the most recent broad 3,992-case component/live API gate. Work continues
 through TASK-381.30.
 

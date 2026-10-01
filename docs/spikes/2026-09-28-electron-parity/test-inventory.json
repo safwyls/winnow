@@ -1,10 +1,10 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 88,
+    "pending": 80,
     "partial": 18,
     "ported": 1606,
-    "retained-backend": 688,
+    "retained-backend": 696,
     "framework-specific": 35
   },
   "tests": [
@@ -2013,22 +2013,50 @@
     {
       "id": "CredentialMetadataRefreshTests.ChangesWaitForStartupAndCoalesceIntoOnePass",
       "source": "tests/Winnow.Tests/CredentialMetadataRefreshTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/CredentialMetadataRefresh.cs",
+        "src/Winnow.Application/Services/IgdbSettingsService.cs",
+        "src/Winnow.Backend/BackendStartupService.cs",
+        "src/Winnow.Application/Services/LibraryRefreshPipeline.cs"
+      ],
+      "reason": "The unchanged executed source holds startup, sends ten requests and requires zero calls before release. It then awaits one refresh within five seconds, cancels, awaits queue completion and requires exactly one call. The same shared bounded-channel queue remains in the independent backend: BackendStartupService subscribes the actual IgdbSettingsService.CredentialsChanged to its Request method after creating the startup task. The replacement frontend does not implement its own debounce or queue. No-sync form/HTTP tests are not claimed as automatic pipeline execution."
     },
     {
       "id": "CredentialMetadataRefreshTests.ChangesDuringPassQueueOneFollowupAndDoNotOverlap",
       "source": "tests/Winnow.Tests/CredentialMetadataRefreshTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/CredentialMetadataRefresh.cs",
+        "src/Winnow.Application/Services/IgdbSettingsService.cs",
+        "src/Winnow.Backend/BackendStartupService.cs",
+        "src/Winnow.Application/Services/LibraryRefreshPipeline.cs"
+      ],
+      "reason": "The unchanged executed source starts after completed startup, holds the first pass on a cancellation-ignoring release task and sends ten additional requests. Calls remain exactly one while held; releasing the first pass permits one follow-up within five seconds. Cancellation/completion leave exactly two calls. The backend uses the same capacity-one DropWrite channel and sequential awaited passes, preserving coalescing without concurrent metadata work."
     },
     {
       "id": "CredentialMetadataRefreshTests.FailedPassDoesNotPreventLaterRefresh",
       "source": "tests/Winnow.Tests/CredentialMetadataRefreshTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/CredentialMetadataRefresh.cs",
+        "src/Winnow.Application/Services/IgdbSettingsService.cs",
+        "src/Winnow.Backend/BackendStartupService.cs",
+        "src/Winnow.Application/Services/LibraryRefreshPipeline.cs"
+      ],
+      "reason": "The unchanged executed source makes the first refresh throw InvalidOperationException, observes the failure callback within five seconds, requests again and observes a successful second pass within five seconds. It cancels and awaits completion, then requires exactly two calls. Actual backend composition consumes this same ordinary-failure boundary; no claim is made that arbitrary exception text reaches the renderer."
     },
     {
       "id": "CredentialMetadataRefreshTests.ShutdownDiscardsRefreshWaitingForStartup",
       "source": "tests/Winnow.Tests/CredentialMetadataRefreshTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/CredentialMetadataRefresh.cs",
+        "src/Winnow.Application/Services/IgdbSettingsService.cs",
+        "src/Winnow.Backend/BackendStartupService.cs",
+        "src/Winnow.Application/Services/LibraryRefreshPipeline.cs"
+      ],
+      "reason": "The unchanged executed source leaves startup permanently pending and queues work. Both the refresh callback and failure callback are forbidden to run. Canceling the queue completes within five seconds. This retains the actual pending-startup cancellation behavior; it does not claim forced termination of an arbitrary cancellation-ignoring active callback."
     },
     {
       "id": "CrossJobPlaytimeSeriesTests.A_local_tick_after_a_remote_backfill_does_not_saw_the_series",
@@ -9579,22 +9607,74 @@
     {
       "id": "IgdbRuntimeSettingsTests.Saving_activates_cached_absence_and_rotating_same_client_replaces_token",
       "source": "tests/Winnow.Tests/Igdb/IgdbRuntimeSettingsTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/IgdbSettingsService.cs",
+        "src/Winnow.Enrich.Igdb/Auth/TwitchTokenProvider.cs",
+        "src/Winnow.Enrich.Igdb/Credentials/ChainedIgdbCredentialProvider.cs",
+        "src/Winnow.Enrich.Igdb/Credentials/CredentialSources.cs",
+        "src/Winnow.Enrich.Igdb/Storage/SqliteSettingsStore.cs",
+        "src/Winnow.Enrich.Igdb/ServiceCollectionExtensions.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IgdbRuntimeHttpParityTests.cs",
+          "case": "HTTP_save_activates_cached_absence_and_rotates_the_same_client_on_the_existing_runtime_singleton"
+        }
+      ],
+      "reason": "The unchanged source uses real temporary SQLite, production AddIgdbEnrichment DI and a reversible test protector at 2026-01-01. It proves IIgdbTokenProvider and IIgdbCredentialUpdater are the same singleton, caches absent credentials, saves same-client/first-secret, mints, rotates same-client/second-secret and mints a different token. Exactly two changes/token requests and second-secret in the final form body remain asserted. The new real HTTP test sends both PUTs through the actual registered settings service to the same already-resolved singleton, verifies repeated Get reuses the second token without a third request, and checks redacted public snapshots. Only configuration, the protector, clock and named token HTTP handler are controlled."
     },
     {
       "id": "IgdbRuntimeSettingsTests.Removal_immediately_uses_configuration_fallback_or_disables_auth",
       "source": "tests/Winnow.Tests/Igdb/IgdbRuntimeSettingsTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/IgdbSettingsService.cs",
+        "src/Winnow.Enrich.Igdb/Auth/TwitchTokenProvider.cs",
+        "src/Winnow.Enrich.Igdb/Credentials/ChainedIgdbCredentialProvider.cs",
+        "src/Winnow.Enrich.Igdb/Credentials/CredentialSources.cs",
+        "src/Winnow.Enrich.Igdb/Storage/SqliteSettingsStore.cs",
+        "src/Winnow.Enrich.Igdb/ServiceCollectionExtensions.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/IgdbRuntimeHttpParityTests.cs",
+          "case": "HTTP_removal_immediately_uses_the_same_configuration_fallback_or_disables_the_warm_token_provider"
+        }
+      ],
+      "reason": "Both unchanged source rows begin with legacy saved test-client/test-secret and warm its real token provider. Configuration is either empty or external-client/external-secret. Remove then immediately RefreshAsync(oldToken) must use that external identity/secret when available, or return null with no token blob and only one total request when absent. Both new HTTP DELETE rows feed the same controlled IConfiguration to the actual settings service and credential chain, preserving legacy migration, cached old token, immediate fallback mint/no-mint, removed saved rows and untouched external configuration. No externally configured identity/secret is copied into the frontend snapshot."
     },
     {
       "id": "IgdbRuntimeSettingsTests.Failed_transaction_keeps_runtime_credentials_token_and_notifications_unchanged",
       "source": "tests/Winnow.Tests/Igdb/IgdbRuntimeSettingsTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/IgdbSettingsService.cs",
+        "src/Winnow.Enrich.Igdb/Auth/TwitchTokenProvider.cs",
+        "src/Winnow.Enrich.Igdb/Credentials/ChainedIgdbCredentialProvider.cs",
+        "src/Winnow.Enrich.Igdb/Credentials/CredentialSources.cs",
+        "src/Winnow.Enrich.Igdb/Storage/SqliteSettingsStore.cs",
+        "src/Winnow.Enrich.Igdb/ServiceCollectionExtensions.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ],
+      "reason": "The unchanged executed real SQLite fixture first mints and records the protected token blob. Its store wrapper throws specifically on RemoveAsync(TokenBlobKey) while saving new-client/new-secret. Save throws, old token and blob remain identical, current credential ID remains test-client, no change notification fires and only one token request occurred. This exact runtime rollback test remains the proof; the pre-existing HTTP rollback cases throw at TokenClientIdKey and are supplemental, not mislabeled duplicates of this gate."
     },
     {
       "id": "IgdbRuntimeSettingsTests.Removal_waits_for_inflight_token_persistence_then_clears_it",
       "source": "tests/Winnow.Tests/Igdb/IgdbRuntimeSettingsTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/IgdbSettingsService.cs",
+        "src/Winnow.Enrich.Igdb/Auth/TwitchTokenProvider.cs",
+        "src/Winnow.Enrich.Igdb/Credentials/ChainedIgdbCredentialProvider.cs",
+        "src/Winnow.Enrich.Igdb/Credentials/CredentialSources.cs",
+        "src/Winnow.Enrich.Igdb/Storage/SqliteSettingsStore.cs",
+        "src/Winnow.Enrich.Igdb/ServiceCollectionExtensions.cs",
+        "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+      ],
+      "reason": "The unchanged executed source pauses the actual store SetAsync(TokenBlobKey) after mint starts. Within the original ten-second waits it observes removal entering the real updater, requires removal still pending before releasing persistence, then awaits both operations. Token, blob and saved client ID are null afterward, with exactly one token request. Actual TwitchTokenProvider holds the same gate across mint, awaited persistence and credential updates; this is not replaced with a delay at the HTTP boundary or an early release."
     },
     {
       "id": "IgdbAssignmentModalTests.Choosing_a_candidate_rewrites_the_metadata_and_the_cover_and_preserves_the_tab",
