@@ -524,6 +524,11 @@ export function AvalonDetailsLayout({
               typeof primary.installed === 'boolean' &&
               ` · ${primary.installed ? 'Installed' : 'Not installed'}`}
           </p>
+          {primary && workspace.data?.pluginActions[String(primary.ownershipId)]?.sourceLabel && (
+            <p className="detail-support">
+              {workspace.data.pluginActions[String(primary.ownershipId)].sourceLabel}
+            </p>
+          )}
           <div className="avalon-details-actions" aria-label="Game actions">
             {primary && primaryAction(primary, workspace.data) && (
               <EntryActions

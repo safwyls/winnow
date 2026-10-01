@@ -7,6 +7,7 @@ if (directoryIndex < 0 || directoryIndex + 1 >= args.Length)
     throw new ArgumentException("Pass --data-dir <throwaway directory> to this test fixture.");
 var directory = Path.GetFullPath(args[directoryIndex + 1]);
 var visibility = Path.GetFileName(directory).StartsWith("winnow-electron-visibility-", StringComparison.Ordinal);
+var pluginActions = Path.GetFileName(directory).StartsWith("winnow-electron-plugin-actions-", StringComparison.Ordinal);
 var marker = Path.Combine(directory, ".visibility-fixture");
 if (visibility)
 {
@@ -15,12 +16,19 @@ if (visibility)
     Directory.CreateDirectory(directory);
     await File.WriteAllTextAsync(marker, "Winnow Electron visibility test fixture");
 }
-else if (!Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal)
+else if (!(pluginActions || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
     || File.Exists(Path.Combine(directory, "winnow.db")))
-    throw new ArgumentException("Ownership composition fixtures require a new test-owned directory.");
+    throw new ArgumentException("Composition fixtures require a new test-owned directory.");
 
 await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"], services =>
 {
+    if (pluginActions)
+    {
+        services.AddSingleton<PluginActionShellGuard>();
+        services.AddSingleton<IUriDispatcher>(provider => provider.GetRequiredService<PluginActionShellGuard>());
+        services.AddSingleton<PluginActionsFixture>();
+        return;
+    }
     if (visibility)
     {
         services.AddSingleton<TimeProvider>(new VisibilityFixtureClock());
@@ -41,10 +49,33 @@ await using var app = BackendApplication.Build(["--data-dir", directory, "--no-s
         provider.GetRequiredService<ILogger<OwnershipRefreshCoordinator>>()));
 });
 await app.Services.GetRequiredService<FirstRunSetupService>().SaveAsync(null);
+if (pluginActions)
+    await app.Services.GetRequiredService<PluginActionsFixture>().InitializeAsync(directory);
 
 // BackendApplication's normal loopback, authority and bearer-token middleware covers these routes.
 // Only this separately built test executable exposes fixture control; the production backend does not.
-if (visibility)
+if (pluginActions)
+{
+    app.MapPost("/__fixture/plugin-actions/sync", async (PluginObservation request, PluginActionsFixture fixture) =>
+    {
+        await fixture.SyncAsync(request.State);
+        return Results.NoContent();
+    });
+    app.MapGet("/__fixture/plugin-actions/state", (PluginActionsFixture fixture) => fixture.SnapshotAsync());
+    app.MapPost("/__fixture/plugin-actions/seed-steam", async (PluginActionsFixture fixture) =>
+    {
+        await fixture.SeedSteamAsync();
+        return Results.NoContent();
+    });
+    app.MapPost("/__fixture/plugin-actions/validate-captured", (CapturedActionCheck request, PluginActionsFixture fixture)
+        => fixture.ValidateCapturedAsync(request.AfterRemoval));
+    app.MapPost("/__fixture/plugin-actions/unload", async (PluginActionsFixture fixture) =>
+    {
+        await fixture.UnloadAsync();
+        return Results.NoContent();
+    });
+}
+else if (visibility)
 {
     app.MapPost("/__fixture/visibility/seed", async (VisibilitySeed request, LibraryVisibilityFixture fixture) =>
     {
@@ -84,3 +115,5 @@ await app.RunAsync();
 
 internal sealed record StartRefresh(bool Fail);
 internal sealed record VisibilitySeed(string Kind);
+internal sealed record PluginObservation(string State);
+internal sealed record CapturedActionCheck(bool AfterRemoval);

@@ -15,7 +15,7 @@ import { primaryAction, primaryEntry } from '../../shared/game-actions'
 import type { LibraryGame, Workspace } from '../api/types'
 import type { ExpansionMark } from '../features/parity-library-projection'
 import { storeLabel } from '../api/client'
-import { libraryIdle, libraryPlaytime } from './avalon-library-chrome'
+import { libraryBucketLabel, libraryIdle, libraryPlaytime } from './avalon-library-chrome'
 import { ownershipDescription, ownershipStores } from './avalon-store-marks'
 import { useAvalonPreview } from './avalon-preview'
 import { FeedReason } from './avalon-feed'
@@ -155,7 +155,7 @@ export function AvalonDesktopCover({
         data-work-id={game.workId}
         data-selected={selected || undefined}
         aria-label={`View ${game.title}${unreadLabel(patched, unreadCount)}${ownershipDescription(game)}${expansion ? `. ${expansion.text}` : ''}`}
-        aria-description={reason}
+        aria-description={reason ?? libraryBucketLabel(game.bucket)}
         aria-describedby={feed && reason ? reasonId : undefined}
         onMouseEnter={(event) => {
           if (!feed) hover.open(event.currentTarget)

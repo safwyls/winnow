@@ -1,13 +1,17 @@
 {
   "GameLinkRouterTests.Selects_supported_destinations_and_reports_fallbacks": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-link-policy.test.ts",
         "case": "routes %s / %s / %s / %s to %s with fallback %s"
+      },
+      {
+        "file": "tests/electron/link-action-routing.spec.ts",
+        "case": "original Steam run destination uses the authenticated action once without reader or fallback"
       }
     ],
-    "reason": "Ports the original HTTP/HTTPS, provider-view, preference and fallback matrix. The original steam://run row is deliberately rejected by the renderer URL boundary: launching remains an authenticated backend game action. This row has no equivalent URL dispatch and is not counted as ported."
+    "reason": "All eighteen original rows are covered: seventeen HTTP/HTTPS and native-view rows assert destination scheme, exact dispatcher count and fallback presence through routeLink; unavailable readers are attempted once before fallback, while native/browser choices do not open a reader. The original in-app/embedded/client=true steam://run/440 row uses the independent frontend authenticated Play API on desktop and fullscreen. Real backend services dispatch that exact URI once through an intercepted IUriDispatcher, retain ownership440 launch attribution and produce HandedOff without reader or browser fallback. The generic reading bridge still rejects executable launcher URLs. Native link-destination regressions separately exercise saved preferences and fallback notices. This preserves the source outcome at the appropriate execution boundary without weakening URL validation."
   },
   "GameLinkRouterTests.Refused_or_throwing_store_handler_falls_back_to_browser": {
     "status": "ported",
@@ -62,7 +66,10 @@
   "FullscreenBrowserInputTests.Browser_navigation_keeps_reading_and_form_input_distinct": {
     "status": "ported",
     "tests": [
-      { "file": "tests/parity-link-policy.test.ts", "case": "maps button %s reading=%s to %s with shift=%s" }
+      {
+        "file": "tests/parity-link-policy.test.ts",
+        "case": "maps button %s reading=%s to %s with shift=%s"
+      }
     ],
     "reason": "Ports all nine original pure mapping rows with Electron key names, preserving reading arrows, form Tab/Shift-Tab, Enter, Space, Backspace and PageDown. Form integration is not established by this mapping test."
   },

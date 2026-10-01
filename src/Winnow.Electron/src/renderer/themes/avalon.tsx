@@ -536,7 +536,7 @@ function AvalonFullscreenCover({
         data-selected={selected || undefined}
         style={style}
         aria-label={`View ${game.title}${unreadLabel(patched, unreadCount)}${ownershipDescription(game)}${expansion ? `. ${expansion.text}` : ''}`}
-        aria-description={reason}
+        aria-description={reason ?? libraryBucketLabel(game.bucket)}
         onMouseEnter={(event) => hover.open(event.currentTarget)}
         onMouseLeave={hover.close}
         onBlur={hover.close}
@@ -1645,6 +1645,7 @@ export function AvalonLibrary(context: ThemeContext) {
                                   data-avalon-game={game.workId}
                                   data-work-id={game.workId}
                                   aria-label={`View ${game.title}${unreadLabel(facts.get(game.workId)?.unread ?? false, facts.get(game.workId)?.unreadCount ?? 0)}${ownershipDescription(game)}${projected.marks.has(game.workId) ? `. ${projected.marks.get(game.workId)!.text}` : ''}`}
+                                  aria-description={libraryBucketLabel(game.bucket)}
                                   aria-pressed={
                                     selection.length
                                       ? selection.includes(game.workId)

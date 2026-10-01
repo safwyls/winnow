@@ -423,6 +423,19 @@ a version carries that copy's ownership through dispatch and feedback. Desktop's
 actions remain in Details' Library section. Install and management actions do not show a
 gameplay status, and uncertain retries retain their original operation ID.
 
+Desktop tile actions, fullscreen X and Details primary actions use one command per
+ownership. Concurrent requests share the pending result; changing views after an
+interrupted response retries the same operation. A completed action allows a new intent.
+Tile descriptions use the same collection names as the rail. Plugin source explanations
+appear in Details and its per-copy Library section, including after an offline refresh.
+Installation refreshes update Play/Install, Steam uninstall and the current folder while
+retaining store links and an open metadata draft.
+Pending actions retain their label and disable duplicate input. Completion and error
+messages occupy a separate row so More and its store-link hit target remain stationary.
+Fullscreen owned-copy facts and source explanations use the scaled 24px body size.
+The More panel applies viewport scaling once, retaining its reference proportions at
+4K while honoring interface scale, text size and percentage safe margins.
+
 Fullscreen Play history starts on Lifetime; Right then Accept selects Tracked sessions.
 Refreshing Details preserves its local section and an open journal draft. Expansion
 separation names both games, initially selects Keep relationship, and sends the child

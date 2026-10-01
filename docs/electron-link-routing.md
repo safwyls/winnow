@@ -40,6 +40,12 @@ navigation gates, downloads, permissions, cleanup, concurrent opening and stale 
 samples with a mocked Electron host. `parity-link-notifications.test.tsx` and
 `parity-link-settings.test.tsx` cover desktop and fullscreen feedback, retry and saved choices.
 
+The original `steam://run/440` routing case uses the authenticated game-action API in
+`tests/electron/link-action-routing.spec.ts`. Both surfaces dispatch that exact URI once
+through the real backend with an intercepted OS dispatcher, preserving launch attribution
+without opening a reader or reporting a browser fallback. The reading bridge continues
+to reject executable launcher URLs.
+
 `tests/electron/link-browser.spec.ts` bundles the production reader into an isolated native
 harness. It creates a throwaway data directory and intercepts all HTTP/HTTPS traffic with
 fixture responses. It checks HTTP-to-HTTPS navigation, Back, the visible address, OS browser

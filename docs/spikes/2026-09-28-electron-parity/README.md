@@ -45,6 +45,15 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [tile actions and installed store links checkpoint](checkpoint-sixty-three.md) records
+all 3,490 component/live API cases, 49 distinct native cases and three unchanged plugin
+backend tests passing. Tiles,
+fullscreen X and Details share pending actions and uncertain retries. Install refresh
+preserves store hit targets and editor drafts; plugin evidence remains visible, and the
+fullscreen action panel retains its reference scale at 4K. Twelve assigned methods are
+ported and two retain backend tests; 338 pending and 73 partial methods remain.
+TASK-381.8 stops for review before manual games in TASK-381.9.
+
 The [library filters, selection and lists checkpoint](checkpoint-sixty-two.md) records
 all 3,464 component/live API cases, 87 distinct native cases and six retained backend
 transaction cases passing. Fullscreen Filters restores the Browse/Refine layout and

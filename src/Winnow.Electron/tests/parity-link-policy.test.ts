@@ -38,7 +38,12 @@ describe('GameLinkRouter reading and fallback parity', () => {
       if (scheme === 'embedded') {
         expect(inApp).toHaveBeenCalledOnce()
         expect(external).not.toHaveBeenCalled()
-      } else expect(new URL(external.mock.calls[0][0] as string).protocol).toBe(`${scheme}:`)
+      } else {
+        expect(external).toHaveBeenCalledOnce()
+        expect(new URL(external.mock.calls[0][0] as string).protocol).toBe(`${scheme}:`)
+        // An unavailable reader is attempted once before the documented browser fallback.
+        expect(inApp).toHaveBeenCalledTimes(preference === 'in-app' && /^https?:/.test(String(url)) ? 1 : 0)
+      }
     },
   )
   it.each([false, true])('reports browser fallback after store refusal or throw=%s', async (throws) => {

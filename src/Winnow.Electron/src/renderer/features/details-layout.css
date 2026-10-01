@@ -105,6 +105,11 @@
   .avalon-details-actions > .entry-actions {
     display: contents;
   }
+  .avalon-details-actions > .entry-actions > :is(.status-message, .error-message, .conflict-panel) {
+    order: 1;
+    flex-basis: 100%;
+    margin: 0;
+  }
   .avalon-details-actions button {
     min-height: 32px;
     font-size: inherit;
@@ -329,6 +334,13 @@
   }
   .avalon-shell .avalon-details.fullscreen .detail-support {
     font-size: calc(clamp(15px, 1.146vw, 22px) * var(--detail-scale));
+  }
+  .avalon-shell .avalon-details.fullscreen .entry-actions > div:first-child > span {
+    font-size: calc(24px * var(--detail-scale));
+    overflow-wrap: anywhere;
+  }
+  .avalon-shell .avalon-details.fullscreen .avalon-details-actions :is(.status-message, .error-message) {
+    font-size: calc(24px * var(--detail-scale));
   }
   .avalon-shell .avalon-details.fullscreen .detail-refetch-status {
     margin-inline: 0;

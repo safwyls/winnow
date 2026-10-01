@@ -29,6 +29,7 @@ import { AvalonDetailsLayout } from './details-layout'
 import { noActionSentence } from '../../shared/game-actions'
 import { createGameLink } from '../../shared/external-links'
 import { useLaunchFeedback } from './LaunchFeedback'
+import { usePrimaryActions } from './PrimaryActions'
 
 const detailScrollPositions = new WeakMap<QueryClient, Map<string, number>>()
 const editorSections = new Set(['Metadata', 'Game match', 'Artwork'])
@@ -83,6 +84,7 @@ export function EntryActions({
   launchTitle?: string
 }) {
   const feedback = useLaunchFeedback()
+  const primaryCommands = usePrimaryActions()
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState<unknown>(null)
@@ -100,15 +102,18 @@ export function EntryActions({
     setMessage('')
     try {
       const send = () => request<number>('actions.execute', { ownershipId: entry.ownershipId }, operation)
-      const result = feedback
-        ? await feedback.track(
-            entry.ownershipId,
-            launchTitle ?? entry.title,
-            storeLabel(entry.store),
-            kind,
-            send,
-          )
-        : await send()
+      const result =
+        primaryCommands && (kind === 'Play' || kind === 'Install')
+          ? await primaryCommands.launch(entry.ownershipId)
+          : feedback
+            ? await feedback.track(
+                entry.ownershipId,
+                launchTitle ?? entry.title,
+                storeLabel(entry.store),
+                kind,
+                send,
+              )
+            : await send()
       setMessage(feedback && kind === 'Play' ? '' : launchMessage(result))
       setAttempt(null)
     } catch (failure) {
@@ -127,6 +132,9 @@ export function EntryActions({
             {typeof entry.installed === 'boolean' && `${entry.installed ? 'Installed' : 'Not installed'} · `}
             {hours(entry.playtimeMinutes)}
           </span>
+          {workspace?.pluginActions[String(entry.ownershipId)]?.sourceLabel && (
+            <span>{workspace.pluginActions[String(entry.ownershipId)].sourceLabel}</span>
+          )}
         </div>
       )}
       {action ? (
@@ -134,10 +142,11 @@ export function EntryActions({
           className="primary-button"
           data-controller-play={primaryOnly || undefined}
           disabled={pending || Boolean(attempt)}
+          aria-busy={pending || undefined}
           onClick={() => void dispatch(action)}
         >
           {action === 'Play' ? <Play size={16} /> : <Download size={16} />}
-          {pending ? 'Sending…' : action}
+          {action}
         </button>
       ) : (
         !managementOnly && unavailable && <p className="muted">{unavailable}</p>
@@ -178,6 +187,8 @@ export function EntryActions({
           <button onClick={() => void dispatch(attempt.action, true)}>Check the same action again</button>
           <button
             onClick={() => {
+              if (attempt.action === 'Play' || attempt.action === 'Install')
+                primaryCommands?.dismiss(entry.ownershipId)
               setAttempt(null)
               setError(null)
             }}

@@ -6,7 +6,7 @@ import type { ApplicationActivation, ConnectionState } from '../shared/bridge'
 import { ExtendedActivationLauncher } from './activation-launch'
 import type { ThemeContext, ThemePage } from '../shared/theme'
 import { useLibrary, useFeed, useWorkspace, useApiQuery } from './api/hooks'
-import { ApiError, primaryAction, request, storeLabel } from './api/client'
+import { primaryAction, request, storeLabel } from './api/client'
 import { Details } from './features/Details'
 import { Journal } from './features/Journal'
 import { Settings } from './features/Settings'
@@ -41,6 +41,7 @@ import { Merges } from './features/Merges'
 import { StartupPresentation, useStartupPreparation } from './startup/StartupPresentation'
 import { primarySnapshotVersions, waitForPrimarySnapshots } from './startup/readiness'
 import { LaunchFeedbackContext, LaunchFeedbackStrip, useLaunchFeedbackHost } from './features/LaunchFeedback'
+import { PrimaryActionsContext, usePrimaryActionsHost } from './features/PrimaryActions'
 
 installThemeSDK()
 const builtins = [avalon, afterglow, rift, catalogue]
@@ -185,7 +186,20 @@ export function App() {
     preferences.CoverArtMode,
     reducedMotion,
   ])
-  const launchAttempts = useRef(new Map<number, { operationId: string; action: string }>())
+  const primaryActions = usePrimaryActionsHost(
+    (ownershipId) => {
+      const game = library.data?.games.find((game) =>
+        game.entries.some((entry) => entry.ownershipId === ownershipId),
+      )
+      const entry = game?.entries.find((entry) => entry.ownershipId === ownershipId)
+      const action = entry ? primaryAction(entry, workspace.data) : null
+      return game && entry && action ? { action, title: game.title, store: storeLabel(entry.store) } : null
+    },
+    (ownershipId, target, operation) =>
+      launchFeedback.track(ownershipId, target.title, target.store, operation.action, () =>
+        request<number>('actions.execute', { ownershipId }, operation),
+      ),
+  )
   const position = positions[mode]
   useEffect(() => {
     if (position.page !== 'settings' || !['Plugins', 'Providers'].includes(settingsTab)) {
@@ -493,31 +507,8 @@ export function App() {
     renderScreen,
     actions: {
       launch: async (ownershipId) => {
-        const game = library.data?.games.find((game) =>
-          game.entries.some((entry) => entry.ownershipId === ownershipId),
-        )
-        const entry = game?.entries.find((entry) => entry.ownershipId === ownershipId)
-        const action = entry ? primaryAction(entry, workspace.data) : null
-        if (!action) throw Error('No supported launch action is available for this copy.')
-        const operation = launchAttempts.current.get(ownershipId) ?? {
-          operationId: crypto.randomUUID(),
-          action,
-        }
-        launchAttempts.current.set(ownershipId, operation)
-        try {
-          const result = await launchFeedback.track(
-            ownershipId,
-            game!.title,
-            storeLabel(entry!.store),
-            operation.action,
-            () => request<number>('actions.execute', { ownershipId }, operation),
-          )
-          launchAttempts.current.delete(ownershipId)
-          if (result === 2) throw Error('The launcher could not accept this action.')
-        } catch (error) {
-          if (!(error instanceof ApiError) || !error.uncertain) launchAttempts.current.delete(ownershipId)
-          throw error
-        }
+        const result = await primaryActions.launch(ownershipId)
+        if (result === 2) throw Error('The launcher could not accept this action.')
       },
     },
     components: { GameCard, Impression, Artwork, ArtworkEffects, GamePreview, PortalSurface },
@@ -609,148 +600,150 @@ export function App() {
   const Shell = runtime.theme.Shell ?? AvalonShell
   return (
     <LaunchFeedbackContext.Provider value={launchFeedback}>
-      <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
-        <ArtworkEffectsProvider
-          options={normalizeArtworkEffects(runtime.profile.appearance.artwork)}
-          reducedMotion={reducedMotion}
-        >
-          <div
-            className="prepared-surfaces"
-            inert={startup.visible || undefined}
-            aria-hidden={startup.visible || undefined}
+      <PrimaryActionsContext.Provider value={primaryActions}>
+        <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
+          <ArtworkEffectsProvider
+            options={normalizeArtworkEffects(runtime.profile.appearance.artwork)}
+            reducedMotion={reducedMotion}
           >
-            <a className="skip-link" href="#main-content">
-              Skip to content
-            </a>
-            <div className="host-status">
-              {setupSuspended && typeof setupProgress.data?.step === 'number' && (
-                <div className="status-banner">
-                  Setup is paused. Your place is saved.
-                  <button
-                    onClick={() => {
-                      setInstallationPage(false)
-                      setFollowInstallation(false)
-                      setInstalledPluginPage(null)
-                      setSetupSuspended(false)
-                    }}
-                  >
-                    Resume setup
-                  </button>
-                </div>
-              )}
-              {!connection.connected && (
-                <div className="connection-banner" role="status">
-                  <WifiOff size={16} />
-                  <span>{connection.message}</span>
-                  <button onClick={() => void client.invalidateQueries()}>Retry</button>
-                </div>
-              )}
-              {library.isError && (
-                <div className="error-banner" role="alert">
-                  <AlertCircle size={16} />
-                  {library.error.message}
-                  <button onClick={() => void library.refetch()}>Try again</button>
-                </div>
-              )}
-              {feed.isError && position.page === 'discover' && (
-                <div className="error-banner" role="alert">
-                  <AlertCircle size={16} />
-                  Recommendations could not be loaded. {feed.error.message}
-                  <button onClick={() => void feed.refetch()}>Retry recommendations</button>
-                </div>
-              )}
-              {(notice || runtime.notice) && (
-                <div className="status-banner" role="status">
-                  {notice || runtime.notice}
-                </div>
-              )}
-            </div>
-            <div className="theme-viewport">
-              <ThemeBoundary
-                resetKey={runtime.theme.id}
-                onError={runtime.recoverTheme}
-                fallback={
-                  <div className="theme-recovery">
-                    <h1>Let’s get you back.</h1>
-                    <p>The selected theme could not display this screen.</p>
+            <div
+              className="prepared-surfaces"
+              inert={startup.visible || undefined}
+              aria-hidden={startup.visible || undefined}
+            >
+              <a className="skip-link" href="#main-content">
+                Skip to content
+              </a>
+              <div className="host-status">
+                {setupSuspended && typeof setupProgress.data?.step === 'number' && (
+                  <div className="status-banner">
+                    Setup is paused. Your place is saved.
                     <button
-                      className="primary"
                       onClick={() => {
-                        runtime.resetProfile()
-                        setNotice('')
-                        navigate('discover')
+                        setInstallationPage(false)
+                        setFollowInstallation(false)
+                        setInstalledPluginPage(null)
+                        setSetupSuspended(false)
                       }}
                     >
-                      <RotateCcw size={18} />
-                      Restore Avalon
+                      Resume setup
                     </button>
                   </div>
-                }
-              >
-                {readsStarted && <Shell {...context}>{content}</Shell>}
-              </ThemeBoundary>
-            </div>
-          </div>
-          <Setup
-            mode={mode}
-            suspended={setupSuspended || startup.visible}
-            onOpenChange={setSetupOpen}
-            appearance={
-              <label className="field">
-                Winnow design
-                <select
-                  value={runtime.profile.themeId}
-                  onChange={(event) => runtime.selectTheme(event.target.value)}
+                )}
+                {!connection.connected && (
+                  <div className="connection-banner" role="status">
+                    <WifiOff size={16} />
+                    <span>{connection.message}</span>
+                    <button onClick={() => void client.invalidateQueries()}>Retry</button>
+                  </div>
+                )}
+                {library.isError && (
+                  <div className="error-banner" role="alert">
+                    <AlertCircle size={16} />
+                    {library.error.message}
+                    <button onClick={() => void library.refetch()}>Try again</button>
+                  </div>
+                )}
+                {feed.isError && position.page === 'discover' && (
+                  <div className="error-banner" role="alert">
+                    <AlertCircle size={16} />
+                    Recommendations could not be loaded. {feed.error.message}
+                    <button onClick={() => void feed.refetch()}>Retry recommendations</button>
+                  </div>
+                )}
+                {(notice || runtime.notice) && (
+                  <div className="status-banner" role="status">
+                    {notice || runtime.notice}
+                  </div>
+                )}
+              </div>
+              <div className="theme-viewport">
+                <ThemeBoundary
+                  resetKey={runtime.theme.id}
+                  onError={runtime.recoverTheme}
+                  fallback={
+                    <div className="theme-recovery">
+                      <h1>Let’s get you back.</h1>
+                      <p>The selected theme could not display this screen.</p>
+                      <button
+                        className="primary"
+                        onClick={() => {
+                          runtime.resetProfile()
+                          setNotice('')
+                          navigate('discover')
+                        }}
+                      >
+                        <RotateCcw size={18} />
+                        Restore Avalon
+                      </button>
+                    </div>
+                  }
                 >
-                  {runtime.builtins.map((theme) => (
-                    <option key={theme.id} value={theme.id}>
-                      {theme.name}
-                    </option>
-                  ))}
-                </select>
-                <small>You can adjust colors and typography in Theme Studio.</small>
-              </label>
-            }
-          />
-          {readsStarted && (
-            <SessionNotifications
+                  {readsStarted && <Shell {...context}>{content}</Shell>}
+                </ThemeBoundary>
+              </div>
+            </div>
+            <Setup
               mode={mode}
-              suspended={setupOpen || startup.visible}
-              editText={setKeyboardInput}
+              suspended={setupSuspended || startup.visible}
+              onOpenChange={setSetupOpen}
+              appearance={
+                <label className="field">
+                  Winnow design
+                  <select
+                    value={runtime.profile.themeId}
+                    onChange={(event) => runtime.selectTheme(event.target.value)}
+                  >
+                    {runtime.builtins.map((theme) => (
+                      <option key={theme.id} value={theme.id}>
+                        {theme.name}
+                      </option>
+                    ))}
+                  </select>
+                  <small>You can adjust colors and typography in Theme Studio.</small>
+                </label>
+              }
             />
-          )}
-          {!setupOpen && runtime.profile.themeId !== 'avalon' && <UpdateStatus />}
-          <LinkNotifications />
-          {quickMenu && (
-            <QuickMenu
-              atRoot={quickMenuAtRoot.current}
-              close={() => setQuickMenu(false)}
-              navigate={navigate}
-              exit={toggleFullscreen}
-            />
-          )}
-          <FullscreenFilePicker />
-          {keyboardInput && (
-            <OnScreenKeyboard input={keyboardInput} close={() => setKeyboardInput(null)} mode={mode} />
-          )}
-          <button
-            className="recovery-shortcut"
-            disabled={startup.visible}
-            title="Restore default theme (Ctrl+Shift+T)"
-            aria-label="Restore default theme"
-            onClick={() => {
-              runtime.resetProfile()
-              navigate('studio')
-            }}
-          >
-            <RotateCcw size={14} />
-          </button>
-          {startup.visible && (
-            <StartupPresentation mode={mode} preparation={startup} exit={toggleFullscreen} />
-          )}
-          <LaunchFeedbackStrip feedback={launchFeedback} mode={mode} />
-        </ArtworkEffectsProvider>
-      </MotionConfig>
+            {readsStarted && (
+              <SessionNotifications
+                mode={mode}
+                suspended={setupOpen || startup.visible}
+                editText={setKeyboardInput}
+              />
+            )}
+            {!setupOpen && runtime.profile.themeId !== 'avalon' && <UpdateStatus />}
+            <LinkNotifications />
+            {quickMenu && (
+              <QuickMenu
+                atRoot={quickMenuAtRoot.current}
+                close={() => setQuickMenu(false)}
+                navigate={navigate}
+                exit={toggleFullscreen}
+              />
+            )}
+            <FullscreenFilePicker />
+            {keyboardInput && (
+              <OnScreenKeyboard input={keyboardInput} close={() => setKeyboardInput(null)} mode={mode} />
+            )}
+            <button
+              className="recovery-shortcut"
+              disabled={startup.visible}
+              title="Restore default theme (Ctrl+Shift+T)"
+              aria-label="Restore default theme"
+              onClick={() => {
+                runtime.resetProfile()
+                navigate('studio')
+              }}
+            >
+              <RotateCcw size={14} />
+            </button>
+            {startup.visible && (
+              <StartupPresentation mode={mode} preparation={startup} exit={toggleFullscreen} />
+            )}
+            <LaunchFeedbackStrip feedback={launchFeedback} mode={mode} />
+          </ArtworkEffectsProvider>
+        </MotionConfig>
+      </PrimaryActionsContext.Provider>
     </LaunchFeedbackContext.Provider>
   )
 }
