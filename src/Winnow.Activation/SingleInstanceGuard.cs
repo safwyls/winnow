@@ -4,7 +4,7 @@ using System.Text;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// Activates the existing Avalonia frontend for this data directory. Other
+/// Activates the existing named frontend for this data directory. Other
 /// frontend applications can connect alongside it. The backend owns a separate
 /// guard for database access and background workers.
 /// </summary>
@@ -18,7 +18,7 @@ internal static class SingleInstanceGuard
     /// cref="Mutex"/>'s finalizer would close the handle and release the mutex
     /// while the process was still running.
     /// </summary>
-    public static Mutex? TryAcquire(string dataDirectory)
+    public static Mutex? TryAcquire(string dataDirectory, string frontend = "Avalonia")
     {
         ArgumentNullException.ThrowIfNull(dataDirectory);
 
@@ -32,8 +32,8 @@ internal static class SingleInstanceGuard
         // process, so the next launch finds no name and starts clean.
         bool createdNew;
         var mutex = OperatingSystem.IsWindows()
-            ? WindowsActivationSecurity.CreateMutex(NameFor(dataDirectory), out createdNew)
-            : new Mutex(initiallyOwned: true, NameFor(dataDirectory), out createdNew);
+            ? WindowsActivationSecurity.CreateMutex(NameFor(dataDirectory, frontend), out createdNew)
+            : new Mutex(initiallyOwned: true, NameFor(dataDirectory, frontend), out createdNew);
         if (!createdNew)
         {
             // Another copy created it first: this process is the second one.
@@ -44,16 +44,19 @@ internal static class SingleInstanceGuard
         return mutex;
     }
 
-    internal static string ActivationNameFor(string dataDirectory) => NameFor(dataDirectory).Replace("Local\\", "") + ".Activate";
+    internal static string ActivationNameFor(string dataDirectory, string frontend = "Avalonia")
+        => NameFor(dataDirectory, frontend).Replace("Local\\", "") + ".Activate";
 
-    private static string NameFor(string dataDirectory)
+    internal static string NameFor(string dataDirectory, string frontend = "Avalonia")
     {
+        if (frontend is not ("Avalonia" or "Electron"))
+            throw new ArgumentException("Unknown frontend activation namespace.", nameof(frontend));
         // Local\, not Global\: the two copies that happen are one user's, in
         // one login session, and a machine-wide mutex would also pin a second
         // user's unrelated %LOCALAPPDATA% behind fast-user-switching.
         var hash = Convert.ToHexString(SHA256.HashData(
             Encoding.UTF8.GetBytes(Normalized(dataDirectory))));
-        return $"Local\\Winnow.Avalonia.{hash}";
+        return $"Local\\Winnow.{frontend}.{hash}";
     }
 
     private static string Normalized(string dataDirectory)

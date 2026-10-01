@@ -14,12 +14,20 @@
     "reason": "Typed provider/release fields survive real second-process delivery, preserve ordering with fullscreen/game/show requests, and are retained until the renderer drains the queue."
   },
   "SingleInstanceActivationTests.Oversized_or_empty_plugin_frame_is_rejected_without_waiting_for_payload": {
-    "status": "framework-specific",
-    "reason": "The retired custom named-pipe protocol used a three-byte command/length header and an acknowledgement byte. Electron owns its single-instance transport and delivers complete structured messages; Winnow no longer reads frame headers or waits for a declared payload. Replacement input-boundary checks reject empty or oversized structured plugin fields without dispatch in parity-activation.test.ts and the native activation suite."
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Activation/SingleInstanceActivation.cs",
+      "src/Winnow.Activation/FrontendActivationHost.cs"
+    ],
+    "reason": "The Windows frontend uses the original bounded binary pipe protocol through a shared native companion in the backend executable. The unchanged source method executes all three empty/oversized length fixtures against the extracted implementation: a header alone earns rejection without waiting for its declared payload, and no activation dispatches. The companion runs before HTTP hosting or database ownership. This retained shared native policy is not an Avalonia-specific mechanism."
   },
   "SingleInstanceActivationTests.Listener_accepts_next_launch_while_previous_client_keeps_its_handle_open": {
-    "status": "framework-specific",
-    "reason": "The retired protocol exposed a client pipe handle that could remain open after acknowledgement. Electron owns and closes its single-instance transport; no application listener or client stream remains to hold open. Consecutive real Electron launches and repeated ready-session delivery are tested natively."
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Activation/SingleInstanceActivation.cs",
+      "src/Winnow.Activation/FrontendActivationHost.cs"
+    ],
+    "reason": "The unchanged source test executes against the extracted shared listener used by Electron's Windows companion. It keeps the acknowledged client handle open while the next client connects and activates successfully. The server retires its completed exchange and accepts the next connection independently of the old client handle. The original assertion now covers retained companion behavior rather than a retired frontend transport."
   },
   "SingleInstanceActivationTests.Invalid_payload_is_rejected_without_dispatch": {
     "status": "ported",
@@ -33,7 +41,7 @@
         "case": "native dispatch rejects malformed payloads without showing the window and bounds then recovers its queue"
       }
     ],
-    "reason": "Invalid command kinds, missing fields, nonpositive/fractional/unsafe numeric IDs, and malformed plugin fields return no activation. Native event dispatch verifies that malformed messages do not restore a hidden window and do not enter its queue; a subsequent valid request still succeeds."
+    "reason": "Node boundary tests retain malformed structured-object rejection. Windows native tests send actual invalid binary opcodes, nonpositive Int64 values and malformed plugin frames through the protected pipe, asserting refusal without restoring the hidden window or entering its queue; subsequent valid requests still succeed. Raw JavaScript objects are no longer accepted as Windows second-instance transport."
   },
   "SingleInstanceActivationTests.Startup_queue_is_bounded_and_recovers_after_handler_is_ready": {
     "status": "ported",
@@ -47,7 +55,7 @@
         "case": "native dispatch rejects malformed payloads without showing the window and bounds then recovers its queue"
       }
     ],
-    "reason": "The original 64 accepted/65th refused boundary runs against the production queue and integrated native dispatcher. The complete ordered queue drains at readiness and later requests dispatch successfully."
+    "reason": "The original 64 admitted/65th refused boundary runs against the production queue and integrated native dispatcher. All 64 ordered requests drain at renderer readiness and subsequent requests succeed. The native helper acknowledges delivery to Node rather than renderer queue admission; the retained C# protocol queue and the renderer-facing queue are verified separately."
   },
   "SingleInstanceActivationTests.Shell_arguments_allow_only_one_typed_command": {
     "status": "ported",
@@ -62,7 +70,10 @@
   "SingleInstanceActivationTests.Launches_queue_until_ready_and_repeated_requests_reach_the_same_session": {
     "status": "ported",
     "tests": [
-      { "file": "tests/parity-activation-queue.test.ts", "case": "coalesces only adjacent identical" },
+      {
+        "file": "tests/parity-activation-queue.test.ts",
+        "case": "coalesces only adjacent identical"
+      },
       {
         "file": "tests/electron/activation.spec.ts",
         "case": "early handoff restores a background window and queues real second-process launches in order"
@@ -88,6 +99,6 @@
         "case": "a real secondary launch waits while the primary has not registered its listener or become ready"
       }
     ],
-    "reason": "A real child process calls Electron's single-instance API while the primary is deliberately held before listener registration and app readiness. A marker written immediately before the child's lock request confirms that ordering. Once the primary resumes, the child exits successfully and its fullscreen request is retained for renderer readiness."
+    "reason": "A real secondary launch begins while the primary helper output is held before frontend ownership completes, any BrowserWindow is created, or its renderer/backend becomes ready. Electron app.isReady is already true. Once the primary resumes, the secondary exits successfully and its fullscreen request remains queued for renderer readiness. The direct Node pipe adapter retries listener recreation within the original bounded connection deadline."
   }
 }

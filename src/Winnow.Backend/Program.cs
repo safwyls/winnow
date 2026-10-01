@@ -4,6 +4,10 @@ using System.Text.Json;
 
 try
 {
+    if (args.Contains(Winnow.Activation.FrontendActivationHost.Argument))
+        return await Winnow.Activation.FrontendActivationHost.RunAsync(
+            WinnowDataLocation.ResolveFrom(args).Root,
+            Winnow.Activation.FrontendActivationHost.ParentProcessIdFrom(args));
     if (args.Contains("--resolve-data-location"))
     {
         var location = WinnowDataLocation.ResolveFrom(args);

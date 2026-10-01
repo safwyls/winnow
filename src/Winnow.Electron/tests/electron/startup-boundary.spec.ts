@@ -17,10 +17,12 @@ import { DEFAULT_PROFILE } from '../../src/shared/theme'
 import { profileDirectory } from '../../src/main/storage'
 import { closeFixture } from './fixture-cleanup'
 import { libraryAction } from './library-controls'
+import {
+  prebuiltBackend as backend,
+  prebuiltFixture as fixture,
+  prebuiltActivationHelper,
+} from './prebuilt-backend'
 
-const artifacts = resolve('../..', '.tmp/task38123-fixture-artifacts/bin')
-const fixture = join(artifacts, 'Winnow.Electron.Fixtures/debug/Winnow.Electron.Fixtures.exe')
-const backend = join(artifacts, 'Winnow.Backend/debug/Winnow.Backend.exe')
 const main = resolve('tests/electron/startup-boundary-main.mjs')
 const execute = promisify(execFile)
 const environment = (path: string, report?: string) => ({
@@ -30,6 +32,7 @@ const environment = (path: string, report?: string) => ({
     ),
   ) as Record<string, string>),
   WINNOW_BACKEND_PATH: path,
+  WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
   ...(report ? { WINNOW_STARTUP_REPORT: report } : {}),
 })
 type Lease = {

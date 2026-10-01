@@ -1,5 +1,11 @@
 import { app, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
+import {
+  observeActivationHelper,
+  sendActivationPipe,
+  gamePayload,
+  pluginPayload,
+} from './activation-observer.mjs'
 
 app.setAppPath(fileURLToPath(new URL('../..', import.meta.url)))
 const state = { waiting: false, ready: false, forward: false, drained: [], delivered: [], actionPaths: [] }
@@ -13,7 +19,22 @@ let release
 const pending = new Promise((resolve) => {
   release = resolve
 })
-globalThis.__activationFixture = { state, release }
+const helper = observeActivationHelper(
+  globalThis.__holdActivationPrimary ??
+    (process.env.WINNOW_FIXTURE_EARLY_ACTIVATION === '1'
+      ? (frame) => sendActivationPipe(frame.pipeName, Buffer.from([1]))
+      : undefined),
+)
+globalThis.__activationFixture = {
+  state,
+  release,
+  helper,
+  send: (kind, value) =>
+    sendActivationPipe(
+      helper.primary.pipeName,
+      kind === 'game' ? gamePayload(value) : kind === 'plugin' ? pluginPayload(value) : Buffer.from(value),
+    ),
+}
 app.on('web-contents-created', (_event, contents) => {
   const send = contents.send.bind(contents)
   contents.send = (channel, ...args) => {
@@ -24,8 +45,6 @@ app.on('web-contents-created', (_event, contents) => {
     return send(channel, ...args)
   }
 })
-if (process.env.WINNOW_FIXTURE_EARLY_ACTIVATION === '1')
-  app.once('ready', () => app.emit('second-instance', {}, [], '', { activation: { kind: 'show' } }))
 const register = ipcMain.handle.bind(ipcMain)
 ipcMain.handle = (channel, listener) =>
   register(

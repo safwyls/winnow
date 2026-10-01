@@ -81,6 +81,9 @@ Each one is load-bearing for an install that predates the 2026-08-28 rename.
 - `src/Winnow.Application` — backend use cases, repository composition and background workers.
 - `src/Winnow.Backend` — independent loopback HTTP/JSON API, authentication, discovery and SSE.
   Owns the data directory and database lifecycle; has no Avalonia dependency.
+- `src/Winnow.Activation` — shared native frontend ownership and activation. Windows Electron
+  uses a parent-bound helper in the backend executable, before HTTP hosting or database locking.
+  Frontend activation guards remain separate from backend ownership.
 - `src/Winnow.Api.Contracts`, `src/Winnow.Api.Client` — versioned contracts and HTTP/event client.
 - `src/Winnow.Electron` — independent Electron/TypeScript frontend. Main owns API credentials;
   the sandboxed renderer uses a named preload bridge. Build/test with npm from this directory.

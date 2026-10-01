@@ -1,43 +1,35 @@
-import { app } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const directory = process.argv[process.argv.indexOf('--data-dir') + 1]
-const marker = join(directory, 'secondary-requesting.json')
-globalThis.__preReady = { requestedBeforeReady: false, exitCode: null }
-const acquire = app.requestSingleInstanceLock.bind(app)
-app.requestSingleInstanceLock = (data) => {
-  const owns = acquire(data)
-  if (owns) {
-    const child = spawn(
-      process.execPath,
-      [
-        fileURLToPath(new URL('./activation-pre-ready-child.mjs', import.meta.url)),
-        '--data-dir',
-        directory,
-        '--jump-list-fullscreen',
-      ],
-      {
-        windowsHide: true,
-        stdio: 'ignore',
-        env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined },
-      },
-    )
+globalThis.__preReady = { requestedBeforeFrontendReady: false, platformReady: false, exitCode: null }
+globalThis.__holdActivationPrimary = async () => {
+  globalThis.__preReady.platformReady = app.isReady()
+  globalThis.__preReady.requestedBeforeFrontendReady = BrowserWindow.getAllWindows().length === 0
+  const child = spawn(
+    process.execPath,
+    [fileURLToPath(new URL('../..', import.meta.url)), '--data-dir', directory, '--jump-list-fullscreen'],
+    {
+      windowsHide: true,
+      stdio: 'pipe',
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined },
+    },
+  )
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      child.kill()
+      reject(Error('Pre-listener secondary timed out'))
+    }, 15000)
     child.once('error', (error) => {
-      globalThis.__preReady.error = error.message
+      clearTimeout(timeout)
+      reject(error)
     })
     child.once('exit', (code) => {
+      clearTimeout(timeout)
       globalThis.__preReady.exitCode = code
+      code === 0 ? resolve() : reject(Error(`Secondary exited ${code}`))
     })
-    const deadline = Date.now() + 5000
-    const wait = new Int32Array(new SharedArrayBuffer(4))
-    // Hold the owner before its listener registration and before app readiness.
-    while (!existsSync(marker) && Date.now() < deadline) Atomics.wait(wait, 0, 0, 20)
-    globalThis.__preReady.requestedBeforeReady = existsSync(marker) && !app.isReady()
-    Atomics.wait(wait, 0, 0, 200)
-  }
-  return owns
+  })
 }
 await import('./activation-main.mjs')

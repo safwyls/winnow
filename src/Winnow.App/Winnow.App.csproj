@@ -92,6 +92,7 @@
     <ProjectReference Include="..\Winnow.Auth.WebView\Winnow.Auth.WebView.csproj" />
     <ProjectReference Include="..\Winnow.Core\Winnow.Core.csproj" />
     <ProjectReference Include="..\Winnow.Api.Client\Winnow.Api.Client.csproj" />
+    <ProjectReference Include="..\Winnow.Activation\Winnow.Activation.csproj" />
     <ProjectReference Include="..\Winnow.Update\Winnow.Update.csproj" />
     <ProjectReference Include="..\Winnow.Covers.Avalonia\Winnow.Covers.Avalonia.csproj" />
     <ProjectReference Include="..\..\plugins\Winnow.Plugin.SteamGridDb\Winnow.Plugin.SteamGridDb.csproj" ReferenceOutputAssembly="false" />

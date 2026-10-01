@@ -37,6 +37,7 @@ function fixture(initial: Record<string, string> = {}) {
   let directory: string | null = null
   const info: ApplicationInfo = {
     version: '1.0.0',
+    commit: 'fixture-commit',
     platform: 'win32',
     packaged: true,
     autostartSupported: true,
@@ -261,7 +262,9 @@ describe('fullscreen Application uses the shared native and saved preferences', 
     f.setDirectory(directory)
     render(<ApplicationPreferences mode="fullscreen" />, { wrapper: f.wrapper })
     await screen.findByText(logs)
-    await screen.findByText('Winnow 1.0.0')
+    expect(
+      within(await screen.findByRole('region', { name: 'About Winnow' })).getByText('1.0.0'),
+    ).toBeTruthy()
     expect((await ready('Start with Windows', 'switch')).disabled).toBe(false)
   })
   it.each(['desktop', 'fullscreen'] as const)(

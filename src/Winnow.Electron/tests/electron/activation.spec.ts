@@ -4,6 +4,26 @@ import { mkdtemp, readFile, readdir } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
+import { build } from 'esbuild'
+import { prebuiltBackend as backend, prebuiltActivationHelper } from './prebuilt-backend'
+
+const helperModule = resolve('../..', '.tmp/task38124-activation-native/host.mjs')
+const hostEnvironment = {
+  WINNOW_BACKEND_PATH: backend,
+  WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+  WINNOW_ACTIVATION_MODULE: helperModule,
+}
+test.beforeAll(async () => {
+  await readFile(backend)
+  await build({
+    entryPoints: ['src/main/activation-host.ts'],
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    packages: 'external',
+    outfile: helperModule,
+  })
+})
 
 async function directory() {
   return mkdtemp(join(resolve('../..', '.tmp'), 'winnow-native-activation-'))
@@ -32,6 +52,7 @@ async function launch(
         ),
       ),
       WINNOW_FIXTURE_EARLY_ACTIVATION: early ? '1' : '0',
+      ...hostEnvironment,
     } as Record<string, string>,
     chromiumSandbox: true,
   })
@@ -66,7 +87,7 @@ async function secondary(directory: string, args: string[]) {
   const child = spawn(electronPath as unknown as string, [resolve('.'), '--data-dir', directory, ...args], {
     windowsHide: true,
     stdio: 'pipe',
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined },
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined, ...hostEnvironment },
   })
   let diagnostics = ''
   child.stderr?.on('data', (chunk) => {
@@ -132,25 +153,24 @@ test('native dispatch rejects malformed payloads without showing the window and 
   const profile = await directory(),
     application = await launch(profile)
   try {
-    await application.evaluate(({ app }) => {
-      for (const activation of [
-        null,
-        [],
-        {},
-        { kind: 'game', ownershipId: -1 },
-        { kind: 'game', ownershipId: '042' },
-        { kind: 'plugin', pluginId: '', releaseTag: '' },
-        { kind: 'plugin', pluginId: 'x'.repeat(65535), releaseTag: 'v1.2.3' },
-      ])
-        app.emit('second-instance', {}, [], '', { activation })
-      app.emit('open-url', { preventDefault() {} }, 'winnow://plugins/install?id=unknown&release=v1.2.3')
+    const rejected = await application.evaluate(async () => {
+      const { send } = (globalThis as any).__activationFixture
+      return [
+        await send('bytes', [0]),
+        await send('bytes', [255]),
+        await send('game', '-1'),
+        await send('game', '0'),
+        await send('plugin', 'winnow://plugins/install?id=&release='),
+        await send('plugin', 'x'.repeat(65535)),
+        await send('plugin', 'winnow://plugins/install?id=unknown&release=v1.2.3'),
+      ]
     })
+    expect(rejected.map((value) => value.accepted)).toEqual(Array(7).fill(false))
     expect(
       await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()),
     ).toBe(false)
-    await application.evaluate(({ app }) => {
-      for (let id = 1; id <= 65; id++)
-        app.emit('second-instance', {}, [], '', { activation: { kind: 'game', ownershipId: id } })
+    await application.evaluate(async () => {
+      for (let id = 1; id <= 65; id++) await (globalThis as any).__activationFixture.send('game', id)
     })
     expect(await release(application)).toEqual(
       Array.from({ length: 64 }, (_, i) => ({ kind: 'game', ownershipId: i + 1 })),
@@ -188,7 +208,10 @@ test('a real secondary launch waits while the primary has not registered its lis
   const profile = await directory(),
     application = await launch(profile, false, [], 'activation-pre-ready-main.mjs')
   try {
-    expect(await application.evaluate(() => (globalThis as any).__preReady.requestedBeforeReady)).toBe(true)
+    expect(
+      await application.evaluate(() => (globalThis as any).__preReady.requestedBeforeFrontendReady),
+    ).toBe(true)
+    expect(await application.evaluate(() => (globalThis as any).__preReady.platformReady)).toBe(true)
     await expect.poll(() => application.evaluate(() => (globalThis as any).__preReady.exitCode)).toBe(0)
     expect(await release(application)).toEqual([{ kind: 'fullscreen' }])
   } finally {
@@ -266,11 +289,14 @@ test('secondary startup exits before creating a database and an invalid installa
   const application = await electron.launch({
     executablePath: electronPath as unknown as string,
     args: [resolve('tests/electron/activation-owner-main.mjs'), '--data-dir', profile],
-    env: Object.fromEntries(
-      Object.entries(process.env).filter(
-        ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-      ),
-    ) as Record<string, string>,
+    env: {
+      ...(Object.fromEntries(
+        Object.entries(process.env).filter(
+          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+        ),
+      ) as Record<string, string>),
+      ...hostEnvironment,
+    },
     chromiumSandbox: true,
   })
   try {

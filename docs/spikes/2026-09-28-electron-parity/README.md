@@ -45,7 +45,15 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [startup and first-run setup checkpoint](checkpoint-seventy-eight.md) records
+The [native activation and installation identity checkpoint](checkpoint-seventy-nine.md)
+records all 3,992 component/live API cases passing across the full run and two corrected
+test files, thirteen helper/API cases, 44 fully executed source cases and 31 distinct
+native cases. Secure Windows ownership, exact cover icons, legacy theme precedence
+and About values preserve both presentations. Eighteen assigned methods are ported and
+two earlier framework dispositions now identify retained shared native policy, leaving
+145 pending and 22 partial methods. Work continues through TASK-381.30.
+
+The preceding [startup and first-run setup checkpoint](checkpoint-seventy-eight.md) records
 3,958 component/live API cases, twenty-five unchanged source cases, five HTTP cases
 and twenty-four distinct native cases passing. Later picker hints and scrolling pass
 focused checks and the two fullscreen native cases again. Fatal startup boundaries,

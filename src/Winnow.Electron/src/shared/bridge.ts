@@ -84,6 +84,7 @@ export interface SteamSignInResult extends SteamCaptureResult {
 }
 export interface ApplicationInfo {
   version: string
+  commit: string
   platform: string
   packaged: boolean
   autostartSupported: boolean

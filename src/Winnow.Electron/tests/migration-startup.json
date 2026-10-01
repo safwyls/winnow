@@ -177,9 +177,5 @@
     "status": "retained-backend",
     "implementation": ["src/Winnow.Application/Services/WinnowDataLocation.cs"],
     "reason": "These tests execute WinnowDataLocation/SQLite directly. Winnow.Backend/Program.cs still calls the same ResolveFrom implementation before constructing the host; Electron passes --data-dir to that backend. No Avalonia control or presentation policy is involved."
-  },
-  "DataDirectoryOverrideTests.The_composition_root_puts_the_database_covers_and_themes_in_the_override": {
-    "status": "partial",
-    "reason": "The original test resolves LegacyTestServices and UserThemeStore. Electron uses an independent backend plus AvalonThemeStore. Native tests isolate backend and Chromium in a throwaway root, but an exact combined assertion over database, covers, authored themes and profile roots remains to be added."
   }
 }

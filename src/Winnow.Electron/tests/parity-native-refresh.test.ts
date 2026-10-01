@@ -56,6 +56,11 @@ describe('native shell snapshots', () => {
       2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
     ])
     expect(recentGames(games, workspace)[0].title).toBe('Game 2')
+    expect(recentGames([{ ...games[1], workId: 1, headerWorkId: 2 }], workspace)[0]).toMatchObject({
+      ownershipId: 2,
+      workId: 1,
+      coverWorkId: 2,
+    })
     expect(recentGames(games.slice(13), workspace)).toEqual([])
   })
 })

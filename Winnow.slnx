@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Winnow.Activation/Winnow.Activation.csproj" />
     <Project Path="src/Winnow.Api.Client/Winnow.Api.Client.csproj" />
     <Project Path="src/Winnow.Api.Contracts/Winnow.Api.Contracts.csproj" />
     <Project Path="src/Winnow.App/Winnow.App.csproj" />

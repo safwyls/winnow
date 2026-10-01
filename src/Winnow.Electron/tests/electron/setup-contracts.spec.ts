@@ -12,15 +12,12 @@ import { join, resolve } from 'node:path'
 import { DEFAULT_PROFILE } from '../../src/shared/theme'
 import { profileDirectory } from '../../src/main/storage'
 import { closeFixture } from './fixture-cleanup'
+import {
+  prebuiltBackend as backend,
+  prebuiltFixture as fixture,
+  prebuiltActivationHelper,
+} from './prebuilt-backend'
 
-const fixture = resolve(
-  '../..',
-  '.tmp/task38123-fixture-artifacts/bin/Winnow.Electron.Fixtures/debug/Winnow.Electron.Fixtures.exe',
-)
-const backend = resolve(
-  '../..',
-  '.tmp/task38123-fixture-artifacts/bin/Winnow.Backend/debug/Winnow.Backend.exe',
-)
 let app: ElectronApplication, page: Page, directory: string
 const errors: string[] = []
 const wizard = () => page.locator('.setup-dialog')
@@ -128,6 +125,7 @@ test.beforeEach(async ({}, info) => {
         ),
       ) as Record<string, string>),
       WINNOW_BACKEND_PATH: cold ? fixture : backend,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
       WINNOW_SETUP_HOLD_PREFERENCES: cold ? '1' : '0',
     },
     chromiumSandbox: true,
@@ -258,6 +256,14 @@ for (const mode of ['desktop', 'fullscreen'])
       mode === 'fullscreen',
     )
     expect((await progress()).step).toBe(0)
+    const build = await page.evaluate(() => window.winnow.applicationInfo!())
+    expect(build.packaged).toBe(false)
+    expect(build.version).toBe(JSON.parse(await readFile(resolve('package.json'), 'utf8')).version)
+    expect(build.commit).toMatch(/^[a-f0-9]{40}$/)
+    await test.info().attach('actual-unpackaged-frontend-build', {
+      body: JSON.stringify(build),
+      contentType: 'application/json',
+    })
     await expect(wizard().getByRole('button', { name: 'Get started', exact: true })).toBeFocused()
     await capture(`cold-selected-${mode}`)
     await activate(wizard().getByRole('button', { name: 'Skip setup', exact: true }), mode === 'fullscreen')
@@ -545,7 +551,9 @@ for (const [width, height, textScale] of [
               }
             })
             await test.info().attach('font-picker-initial-option-bounds', {
-              body: Buffer.from(JSON.stringify({ width, height, textScale, ...visibleOption })),
+              body: Buffer.from(
+                JSON.stringify({ viewportWidth: width, viewportHeight: height, textScale, ...visibleOption }),
+              ),
               contentType: 'application/json',
             })
             expect(visibleOption.topmost).toBe(true)

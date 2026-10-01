@@ -36,6 +36,15 @@ Other frontends should handle the disconnect and reread discovery when the servi
 Before replacing frontend binaries, close any other frontend running from that installation;
 the updater does not terminate unrelated client processes.
 
+Frontend activation has a separate lifetime and namespace from backend ownership. Avalonia
+and Windows Electron share `Winnow.Activation` for current-user mutexes and activation pipes.
+Electron starts the backend executable's activation-helper branch, which resolves the data
+directory but never builds the HTTP host, opens the database or starts workers. The helper
+validates and watches its actual parent process and releases its guard on parent exit or
+stdin closure. Unexpected helper loss terminates the frontend through its startup-failure
+boundary; it cannot continue without an activation owner. Linux retains Electron's native
+single-instance mechanism. See the Electron README for helper discovery and build options.
+
 ## Transport and contracts
 
 Every request, including images, events and OpenAPI, requires `Authorization: Bearer <token>`.

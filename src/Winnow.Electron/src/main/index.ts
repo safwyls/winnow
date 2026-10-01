@@ -10,21 +10,24 @@ import {
   Tray,
   Notification,
   nativeTheme,
+  nativeImage,
   type IpcMainInvokeEvent,
 } from 'electron'
 import { mkdirSync } from 'node:fs'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createHash } from 'node:crypto'
 import { release as osRelease } from 'node:os'
 import { WindowAppearanceController } from './window-appearance'
 import { WindowTrayController } from './window-tray'
 import { appearanceSession } from '../shared/appearance-session'
 import { SessionAppearance } from './appearance-session'
 import { AvalonThemeStore } from './avalon-theme-store'
-import type { LibraryResponse, Workspace } from '../renderer/api/types'
-import { recentGames } from './jump-list'
+import type { ArtworkState, LibraryResponse, Workspace } from '../renderer/api/types'
+import { recentGames, jumpListAppId, jumpListArguments, JumpListPublisher } from './jump-list'
+import { JumpListIcons } from './jump-list-icons'
+import { applicationBuildInfo } from './application-build-info'
+import { startActivationHost, resolveBackendDataDirectory, type ActivationHost } from './activation-host'
 import { SnapshotRefresh } from '../shared/snapshot-refresh'
 import { FontCatalogue } from './fonts'
 import { inspectExecutable } from './executable-facts'
@@ -47,7 +50,6 @@ import type { ApiRequest, ApplicationActivation, BackendEvent, ConnectionState }
 import {
   pluginInstallLink,
   registersGlobalProtocol,
-  quoteArgument,
   readActivation,
   validateActivationArguments,
   validatedActivation,
@@ -95,6 +97,8 @@ import {
 const here = fileURLToPath(new URL('.', import.meta.url))
 const rendererRoot = resolve(here, '../renderer')
 let dataDirectory: string | undefined
+let explicitDataDirectory: string | undefined
+let activationHost: ActivationHost | undefined
 let startupArgumentError: Error | undefined
 let startupArgs = [...process.argv]
 const resumeFile = updateResumeFile(app.getPath('appData'), app.getName())
@@ -108,6 +112,7 @@ try {
     }).args
   delete process.env.WINNOW_APPIMAGE_UPDATED
   dataDirectory = dataDirectoryArgument(startupArgs)
+  explicitDataDirectory = dataDirectory
   if (!app.isPackaged && !dataDirectory)
     throw new Error('Pass --data-dir <throwaway directory> to run the frontend in development.')
   if (dataDirectory) {
@@ -163,20 +168,25 @@ function activatePrimary(activation: ApplicationActivation | null) {
   showPrimary()
   if (deliver) window!.webContents.send('winnow:activation', activation)
 }
-const ownsInstance = startupArgumentError
-  ? true
-  : app.requestSingleInstanceLock({ activation: readActivation(process.argv.slice(app.isPackaged ? 1 : 2)) })
-app.on('second-instance', (_event, argv, _cwd, additionalData) =>
-  activatePrimary(
-    additionalData && typeof additionalData === 'object' && 'activation' in additionalData
-      ? validatedActivation(additionalData.activation)
-      : readActivation(argv.slice(app.isPackaged ? 1 : 2)),
-  ),
-)
-app.on('open-url', (event, url) => {
-  event.preventDefault()
-  activatePrimary(pluginInstallLink(url))
-})
+const ownsInstance =
+  startupArgumentError || process.platform === 'win32'
+    ? true
+    : app.requestSingleInstanceLock({
+        activation: readActivation(process.argv.slice(app.isPackaged ? 1 : 2)),
+      })
+if (process.platform !== 'win32')
+  app.on('second-instance', (_event, argv, _cwd, additionalData) =>
+    activatePrimary(
+      additionalData && typeof additionalData === 'object' && 'activation' in additionalData
+        ? validatedActivation(additionalData.activation)
+        : readActivation(argv.slice(app.isPackaged ? 1 : 2)),
+    ),
+  )
+if (process.platform !== 'win32')
+  app.on('open-url', (event, url) => {
+    event.preventDefault()
+    activatePrimary(pluginInstallLink(url))
+  })
 
 function emit(
   channel: string,
@@ -195,7 +205,7 @@ function emit(
 async function initialize(): Promise<void> {
   const profileRoot = profileDirectory(
     app.getPath('userData'),
-    dataDirectory ?? join(defaultDataRoot(), 'Winnow'),
+    explicitDataDirectory ?? join(defaultDataRoot(), 'Winnow'),
   )
   const preferencesFile = join(profileRoot, 'preferences.json')
   const themesRoot = join(profileRoot, 'themes')
@@ -205,21 +215,17 @@ async function initialize(): Promise<void> {
     for (const value of JSON.parse(await readFile(removedJumpListFile, 'utf8')))
       if (typeof value === 'string') excludedJumpItems.add(value)
   } catch {}
-  const jumpListRefresh = new SnapshotRefresh(async () => {
-    if (!app.isPackaged || process.platform !== 'win32') return
-    try {
-      const [library, workspace] = await Promise.all([
-        transport!.request<LibraryResponse>({ route: 'library.get' }),
-        transport!.request<Workspace>({ route: 'library.workspace' }),
-      ])
-      if (!library.ok || !library.data || !workspace.ok || !workspace.data) return
-      for (const item of app.getJumpListSettings().removedItems)
-        if (item.args) excludedJumpItems.add(item.args)
-      await mkdir(profileRoot, { recursive: true })
-      await writeFile(removedJumpListFile, JSON.stringify([...excludedJumpItems]), 'utf8')
-      const suffix = dataDirectory ? ` --data-dir ${quoteArgument(dataDirectory)}` : ''
-      const items = recentGames(library.data.games, workspace.data).flatMap((game) => {
-        const args = `--jump-list-game ${game.ownershipId}${suffix}`
+  const argumentsFor = (action: string) =>
+    jumpListArguments(explicitDataDirectory, action, app.isPackaged ? undefined : process.argv[1])
+  const icons = new JumpListIcons(
+    dataDirectory!,
+    (key, signal) => transport!.artwork(key.provider, key.id, 128, signal),
+    nativeImage.createFromDataURL,
+  )
+  const jumpList = new JumpListPublisher({
+    publish(games) {
+      const items = games.flatMap((game) => {
+        const args = argumentsFor(`--jump-list-game ${game.ownershipId}`)
         return excludedJumpItems.has(args)
           ? []
           : [
@@ -228,7 +234,7 @@ async function initialize(): Promise<void> {
                 title: game.title,
                 program: process.execPath,
                 args,
-                iconPath: join(process.resourcesPath, 'icon.ico'),
+                iconPath: game.iconPath ?? join(process.resourcesPath, 'icon.ico'),
                 iconIndex: 0,
               },
             ]
@@ -242,21 +248,50 @@ async function initialize(): Promise<void> {
               type: 'task',
               title: 'Switch to Fullscreen Mode',
               program: process.execPath,
-              args: `--jump-list-fullscreen${suffix}`,
+              args: argumentsFor('--jump-list-fullscreen'),
               iconPath: join(process.resourcesPath, 'icon.ico'),
               iconIndex: 0,
             },
           ],
         },
       ])
+    },
+    async loadIcon(game, signal) {
+      for (const slot of ['Icon', 'Cover']) {
+        const response = await transport!.request<ArtworkState>(
+          { route: 'artwork.get', params: { workId: game.coverWorkId, slot } },
+          signal,
+        )
+        signal.throwIfAborted()
+        if (response.ok && response.data?.current) {
+          const path = await icons.get(response.data.current.previewKey, signal)
+          if (path) return path
+        }
+      }
+      return null
+    },
+  })
+  startupLifetime.signal.addEventListener('abort', () => jumpList.dispose(), { once: true })
+  const jumpListRefresh = new SnapshotRefresh(async () => {
+    if (!app.isPackaged || process.platform !== 'win32') return
+    try {
+      const [library, workspace] = await Promise.all([
+        transport!.request<LibraryResponse>({ route: 'library.get' }),
+        transport!.request<Workspace>({ route: 'library.workspace' }),
+      ])
+      if (!library.ok || !library.data || !workspace.ok || !workspace.data) return
+      for (const item of app.getJumpListSettings().removedItems)
+        if (item.args) excludedJumpItems.add(item.args)
+      await mkdir(profileRoot, { recursive: true })
+      await writeFile(removedJumpListFile, JSON.stringify([...excludedJumpItems]), 'utf8')
+      void jumpList.refresh(recentGames(library.data.games, workspace.data))
     } catch {
-      /* Jump List privacy settings can disallow custom destinations. The app remains usable. */
+      /* Windows privacy settings can disallow custom destinations. */
     }
   })
   if (app.isPackaged && process.platform === 'win32') {
-    const scope = createHash('sha256').update(profileRoot.toLowerCase()).digest('hex').slice(0, 16)
-    app.setAppUserModelId(`Winnow.Electron.${scope}`)
-    if (registersGlobalProtocol(app.isPackaged, process.platform, dataDirectory))
+    app.setAppUserModelId(jumpListAppId(dataDirectory!, defaultDataRoot(), app.getPath('userData')))
+    if (registersGlobalProtocol(app.isPackaged, process.platform, explicitDataDirectory))
       app.setAsDefaultProtocolClient('winnow', process.execPath, ['--uri'])
   }
   const developmentOrigin = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
@@ -378,10 +413,10 @@ async function initialize(): Promise<void> {
     args: startupArgs,
   })
   updater = new ApplicationUpdater({
-    version: app.getVersion(),
+    version: applicationBuildInfo(app.isPackaged, app.getVersion()).version,
     packaged: app.isPackaged,
     driver: electronUpdateDriver({
-      version: app.getVersion(),
+      version: applicationBuildInfo(app.isPackaged, app.getVersion()).version,
       packaged: app.isPackaged,
       appName: app.getName(),
       quit: () => {
@@ -413,7 +448,7 @@ async function initialize(): Promise<void> {
     async prepareRestart(version) {
       prepareUpdateResume(resumeFile, {
         version,
-        dataDirectory,
+        dataDirectory: explicitDataDirectory,
         noSync: startupArgs.includes('--no-sync') || startupArgs.includes('--seed-sample'),
       })
     },
@@ -722,7 +757,7 @@ async function initialize(): Promise<void> {
     captureSteamPages(window!, options),
   )
   handle('winnow:application:info', () => ({
-    version: app.getVersion(),
+    ...applicationBuildInfo(app.isPackaged, app.getVersion()),
     platform: process.platform,
     packaged: app.isPackaged,
     steamStoreAvailable: Boolean(app.getApplicationNameForProtocol('steam://')),
@@ -734,7 +769,7 @@ async function initialize(): Promise<void> {
       throw new Error('Start at sign-in is available in packaged Windows builds.')
     app.setLoginItemSettings({
       openAtLogin: enabled,
-      args: ['--background', ...(dataDirectory ? ['--data-dir', dataDirectory] : [])],
+      args: ['--background', ...(explicitDataDirectory ? ['--data-dir', explicitDataDirectory] : [])],
     })
   })
   const journalNotifications = new Map<number, Notification>()
@@ -962,6 +997,7 @@ function failStartup(error: unknown): void {
   if (isStartupCancellation(error)) return
   transport?.stop()
   windowTray?.dispose()
+  activationHost?.dispose()
   startupLifetime.abort(new DOMException('Startup closed', 'AbortError'))
   app.exit(
     reportStartupFailure(error, {
@@ -980,7 +1016,33 @@ else if (startupArgumentError) {
       surface: dialog.showErrorBox,
     }),
   )
-} else app.whenReady().then(initialize).catch(failStartup)
+} else
+  app
+    .whenReady()
+    .then(async () => {
+      const location = { appPath: app.getAppPath(), resourcesPath: process.resourcesPath }
+      if (process.platform === 'win32') {
+        activationHost = await startActivationHost({
+          ...location,
+          dataDirectory,
+          activation: initialActivation,
+          signal: startupLifetime.signal,
+          onActivation: activatePrimary,
+          onLost: failStartup,
+        })
+        if (!activationHost.primary) {
+          app.quit()
+          return
+        }
+        dataDirectory = activationHost.root!
+      } else if (!dataDirectory) {
+        dataDirectory = await resolveBackendDataDirectory({ ...location, signal: startupLifetime.signal })
+      }
+      startupLifetime.signal.throwIfAborted()
+      await initialize()
+    })
+    .catch(failStartup)
+app.on('will-quit', () => activationHost?.dispose())
 const drainUpdates = quitDrain(
   () => updater?.dispose() ?? Promise.resolve(),
   () => app.quit(),

@@ -1,8 +1,17 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { buildInformationalVersion } from './build/application-metadata'
 export default defineConfig({
-  main: { plugins: [externalizeDepsPlugin()] },
+  main: {
+    plugins: [externalizeDepsPlugin()],
+    define: {
+      __WINNOW_BUILD_INFORMATIONAL_VERSION__: JSON.stringify(
+        buildInformationalVersion(fileURLToPath(new URL('.', import.meta.url))),
+      ),
+    },
+  },
   preload: {
     plugins: [externalizeDepsPlugin()],
     build: {

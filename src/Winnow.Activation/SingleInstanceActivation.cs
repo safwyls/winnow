@@ -11,12 +11,16 @@ internal sealed class SingleInstanceActivation : IDisposable
     private readonly CancellationTokenSource _stop = new();
     private readonly object _gate = new();
     private readonly Task _listener;
+    private readonly int _activationProcessId;
+    internal Task Completion => _listener;
     private Action<AppActivationRequest>? _activate;
     private readonly Queue<AppActivationRequest> _pending = new();
 
-    public SingleInstanceActivation(string directory)
+    public SingleInstanceActivation(string directory, string frontend = "Avalonia", int? activationProcessId = null)
     {
-        var name = SingleInstanceGuard.ActivationNameFor(directory);
+        _activationProcessId = activationProcessId ?? Environment.ProcessId;
+        if (_activationProcessId <= 0) throw new ArgumentOutOfRangeException(nameof(activationProcessId));
+        var name = SingleInstanceGuard.ActivationNameFor(directory, frontend);
         var pipe = CreatePipe(name);
         _listener = Task.Run(() => ListenAsync(name, pipe));
     }
@@ -64,7 +68,7 @@ internal sealed class SingleInstanceActivation : IDisposable
                     await pipe.WaitForConnectionAsync(_stop.Token);
                     using var exchange = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
                     exchange.CancelAfter(TimeSpan.FromSeconds(2));
-                    await pipe.WriteAsync(BitConverter.GetBytes(Environment.ProcessId), exchange.Token);
+                    await pipe.WriteAsync(BitConverter.GetBytes(_activationProcessId), exchange.Token);
                     var request = new byte[1];
                     await pipe.ReadExactlyAsync(request, exchange.Token);
                     AppActivationRequest? action = request[0] switch
@@ -105,12 +109,13 @@ internal sealed class SingleInstanceActivation : IDisposable
     public static Task<bool> RequestAsync(string directory, TimeSpan? timeout = null)
         => RequestAsync(directory, AppActivationRequest.Activate, timeout);
 
-    public static async Task<bool> RequestAsync(string directory, AppActivationRequest request, TimeSpan? timeout = null)
+    public static async Task<bool> RequestAsync(string directory, AppActivationRequest request, TimeSpan? timeout = null,
+        string frontend = "Avalonia")
     {
         using var deadline = new CancellationTokenSource(timeout ?? TimeSpan.FromSeconds(3));
         try
         {
-            using var pipe = new NamedPipeClientStream(".", SingleInstanceGuard.ActivationNameFor(directory),
+            using var pipe = new NamedPipeClientStream(".", SingleInstanceGuard.ActivationNameFor(directory, frontend),
                 PipeDirection.InOut, PipeOptions.Asynchronous |
                     (OperatingSystem.IsWindows() ? PipeOptions.None : PipeOptions.CurrentUserOnly));
             await pipe.ConnectAsync(deadline.Token);

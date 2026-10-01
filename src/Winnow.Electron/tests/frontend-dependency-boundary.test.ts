@@ -10,12 +10,14 @@ const root = resolve(import.meta.dirname, '..')
 const production = resolve(root, 'src')
 const renderer = resolve(production, 'renderer')
 const shared = resolve(production, 'shared')
+const main = resolve(production, 'main')
+const packageManifest = resolve(root, 'package.json')
 const inside = (file: string, directory: string) => file === directory || file.startsWith(directory + sep)
 const backend =
   /(?:^|[/\\])Winnow\.(?:Backend|Data|Application|Ingest|Enrich|Monitor|Plugins|Resolve|Recommend)(?:[./\\]|$)/i
 const storagePackages = /^(?:better-sqlite3|sqlite3?|sql\.js|@libsql\/client|node:sqlite)(?:\/|$)/
 const builtins = new Set(builtinModules.map((name) => name.replace(/^node:/, '')))
-const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
+const manifest = JSON.parse(readFileSync(packageManifest, 'utf8'))
 const packageName = (specifier: string) =>
   specifier
     .split('/')
@@ -128,6 +130,7 @@ describe('FrontendDependencyGraphContainsNoBackendImplementationAssemblies', () 
     expect(graphs[0].visited.has(resolve(renderer, 'features/ManualEditor.tsx'))).toBe(true)
     expect(graphs[0].visited.has(resolve(renderer, 'startup/dragon.worker.ts'))).toBe(true)
     expect(graphs[1].visited.has(resolve(production, 'main/backend-service.ts'))).toBe(true)
+    expect(graphs[1].visited.has(packageManifest)).toBe(true)
     for (const { edges } of graphs)
       for (const edge of edges) {
         const identity = `${relative(root, edge.from)} → ${edge.specifier}`
@@ -135,7 +138,12 @@ describe('FrontendDependencyGraphContainsNoBackendImplementationAssemblies', () 
           false,
         )
         expect(storagePackages.test(edge.specifier), identity).toBe(false)
-        if (edge.to) expect(inside(edge.to, production), identity).toBe(true)
+        if (edge.to)
+          // Main may read its own package identity; other files outside src remain forbidden.
+          expect(
+            inside(edge.to, production) || (edge.to === packageManifest && inside(edge.from, main)),
+            identity,
+          ).toBe(true)
         else
           expect(
             edge.specifier === 'electron' ||

@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 162,
-    "partial": 23,
-    "ported": 1553,
-    "retained-backend": 663,
-    "framework-specific": 34
+    "pending": 145,
+    "partial": 22,
+    "ported": 1571,
+    "retained-backend": 665,
+    "framework-specific": 32
   },
   "tests": [
     {
@@ -885,12 +885,46 @@
     {
       "id": "ApplicationBuildInfoTests.Preserves_release_identity_and_handles_builds_without_git",
       "source": "tests/Winnow.Tests/ApplicationBuildInfoTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/application-build-info.test.ts",
+          "case": "Preserves_release_identity_and_handles_builds_without_git (%s)"
+        },
+        {
+          "file": "tests/application-build-info.test.ts",
+          "case": "uses embedded frontend identity in development and the installed package version after packaging"
+        },
+        {
+          "file": "tests/application-build-info.test.ts",
+          "case": "builds source archives without Git using their package version and an unavailable commit"
+        }
+      ],
+      "reason": "Executed all five literal frozen source fixtures: 0.1.0-beta.1+abc123, 0.1.0-ci.42+abc123, 0.1.0-dev, 1.2.3 and null. Exact version/commit outputs preserve prerelease identity and Unknown/Unavailable fallbacks. Build metadata captures the independent frontend package version and Git revision at build time; packaged version comes from the installed package, while development ignores Electron runtime 44.4.5. A real temporary source archive without Git retains its package version and reports Unavailable."
     },
     {
       "id": "ApplicationBuildInfoTests.Settings_reads_the_application_assembly_identity",
       "source": "tests/Winnow.Tests/ApplicationBuildInfoTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-application-build-info.test.tsx",
+          "case": "Settings_reads_the_application_assembly_identity (%s)"
+        },
+        {
+          "file": "tests/application-build-info.test.ts",
+          "case": "keeps the real frontend package version when imported without bundler metadata"
+        },
+        {
+          "file": "tests/electron/native-host.spec.ts",
+          "case": "the house legacy alias"
+        },
+        {
+          "file": "tests/electron/native-host.spec.ts",
+          "case": "authored legacy theme precedence"
+        }
+      ],
+      "reason": "Both desktop and fullscreen Application settings consume the actual named sandbox preload applicationInfo bridge. The About Winnow Version and Source commit values exactly equal the frontend build identity, are not Unknown and do not use Electron runtime 44.4.5. The assembly-based source identity becomes the independent frontend package/build identity; source Version.props remains the separate Avalonia/backend version until release entry points migrate. Both surfaces also execute the real native handler with frontend package metadata loaded by Electron. The guarded fixture enables the packaged branch; installed executable verification remains the release-package milestone. Cold setup separately verifies actual unpackaged frontend identity on both surfaces."
     },
     {
       "id": "ApplicationSettingsViewModelTests.Tray_preferences_are_off_when_absent_and_round_trip",
@@ -2072,8 +2106,26 @@
     {
       "id": "DataDirectoryOverrideTests.The_composition_root_puts_the_database_covers_and_themes_in_the_override",
       "source": "tests/Winnow.Tests/DataDirectoryOverrideTests.cs",
-      "status": "partial",
-      "reason": "The original test resolves LegacyTestServices and UserThemeStore. Electron uses an independent backend plus AvalonThemeStore. Native tests isolate backend and Chromium in a throwaway root, but an exact combined assertion over database, covers, authored themes and profile roots remains to be added."
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/DataDirectoryCompositionParityTests.cs",
+          "case": "The_backend_composition_and_authenticated_folder_route_share_the_selected_library_root"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/FrontendActivationParityTests.cs",
+          "case": "Shared_data_location_operation_resolves_the_isolated_root_without_constructing_a_backend"
+        },
+        {
+          "file": "tests/electron/native-host.spec.ts",
+          "case": "the house legacy alias"
+        },
+        {
+          "file": "tests/electron/native-host.spec.ts",
+          "case": "authored legacy theme precedence"
+        }
+      ],
+      "reason": "The original real DI assertion is preserved through BackendApplication: LifecycleSyncService and ILifecycleRepository resolve, the connection factory uses selectedRoot/winnow.db, and CoverCacheOptions uses selectedRoot/covers. The real authenticated plugins-directory route supplies the same selected root to Electron AvalonThemeStore; desktop/fullscreen native cases load authored theme files from selectedRoot/themes and verify the database/cache/theme paths. This replaces the Avalonia-only UserThemeStore type while retaining its actual filesystem behavior. Default-root resolution uses the shared WinnowDataLocation migration/fallback operation, while explicit override identity remains separate for Chromium profile, restart, autostart and shell arguments. Linux/macOS package runtime is deferred to the cross-platform milestone; the shared resolver process operation is executed on Windows."
     },
     {
       "id": "DataDirectoryOverrideTests.An_override_leaves_a_legacy_directory_completely_alone",
@@ -10428,12 +10480,30 @@
     {
       "id": "JumpListIconsTests.Icon_contains_six_square_png_frames_from_the_center_of_the_cover",
       "source": "tests/Winnow.Tests/JumpListIconsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/jump-list-native.spec.ts",
+          "case": "source 80 by 160 cover encodes six square PNG ICO frames from its 80 by 80 green center"
+        }
+      ],
+      "reason": "Executed in native Electron with the exact 80 by 160 red image and 80 by 80 Lime center at y=40. The production encoder produces ICO reserved=0, type=1 and six PNG frames at 16, 24, 32, 48, 64 and 128 pixels. Assertions preserve planes=1, bits=32, contiguous offsets, PNG signatures, square decoded dimensions and exact Lime center pixels in every frame. Chromium nativeImage replaces Skia while retaining the original pixel fixture and ICO contract."
     },
     {
       "id": "JumpListIconsTests.Icons_are_cached_in_the_selected_directory_and_missing_art_falls_back",
       "source": "tests/Winnow.Tests/JumpListIconsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/jump-list-native.spec.ts",
+          "case": "source 64 by 96 blue test game icon is content addressed once under the selected root and missing art returns null"
+        },
+        {
+          "file": "tests/parity-jump-list.test.ts",
+          "case": "publishes generic tasks before a held image and uses the known existing icon on the next immediate snapshot"
+        }
+      ],
+      "reason": "Executed in native Electron with the original 64 by 96 Blue image and test/game key. The production cache returns the same path twice under the selected root/jump-list-icons, stores one ICO, verifies its SHA-256 filename and returns null for null or missing artwork. A supplemental changed image creates a new stable content path while the old file remains readable. The isolated encoder injects the image loader; four full application cases separately exercise real API artwork. Generic or known-icon tasks publish immediately while artwork is pending."
     },
     {
       "id": "LibraryChromeTests.The_density_slider_binds_the_mirrored_value_over_the_view_models_own_range",
@@ -16158,14 +16228,22 @@
     {
       "id": "SingleInstanceActivationTests.Oversized_or_empty_plugin_frame_is_rejected_without_waiting_for_payload",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "framework-specific",
-      "reason": "The retired custom named-pipe protocol used a three-byte command/length header and an acknowledgement byte. Electron owns its single-instance transport and delivers complete structured messages; Winnow no longer reads frame headers or waits for a declared payload. Replacement input-boundary checks reject empty or oversized structured plugin fields without dispatch in parity-activation.test.ts and the native activation suite."
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Activation/SingleInstanceActivation.cs",
+        "src/Winnow.Activation/FrontendActivationHost.cs"
+      ],
+      "reason": "The Windows frontend uses the original bounded binary pipe protocol through a shared native companion in the backend executable. The unchanged source method executes all three empty/oversized length fixtures against the extracted implementation: a header alone earns rejection without waiting for its declared payload, and no activation dispatches. The companion runs before HTTP hosting or database ownership. This retained shared native policy is not an Avalonia-specific mechanism."
     },
     {
       "id": "SingleInstanceActivationTests.Listener_accepts_next_launch_while_previous_client_keeps_its_handle_open",
       "source": "tests/Winnow.Tests/SingleInstanceActivationTests.cs",
-      "status": "framework-specific",
-      "reason": "The retired protocol exposed a client pipe handle that could remain open after acknowledgement. Electron owns and closes its single-instance transport; no application listener or client stream remains to hold open. Consecutive real Electron launches and repeated ready-session delivery are tested natively."
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Activation/SingleInstanceActivation.cs",
+        "src/Winnow.Activation/FrontendActivationHost.cs"
+      ],
+      "reason": "The unchanged source test executes against the extracted shared listener used by Electron's Windows companion. It keeps the acknowledged client handle open while the next client connects and activates successfully. The server retires its completed exchange and accepts the next connection independently of the old client handle. The original assertion now covers retained companion behavior rather than a retired frontend transport."
     },
     {
       "id": "SingleInstanceActivationTests.Typed_requests_preserve_order_until_ready_including_cold_start",
@@ -16209,7 +16287,7 @@
           "case": "native dispatch rejects malformed payloads without showing the window and bounds then recovers its queue"
         }
       ],
-      "reason": "Invalid command kinds, missing fields, nonpositive/fractional/unsafe numeric IDs, and malformed plugin fields return no activation. Native event dispatch verifies that malformed messages do not restore a hidden window and do not enter its queue; a subsequent valid request still succeeds."
+      "reason": "Node boundary tests retain malformed structured-object rejection. Windows native tests send actual invalid binary opcodes, nonpositive Int64 values and malformed plugin frames through the protected pipe, asserting refusal without restoring the hidden window or entering its queue; subsequent valid requests still succeed. Raw JavaScript objects are no longer accepted as Windows second-instance transport."
     },
     {
       "id": "SingleInstanceActivationTests.Startup_queue_is_bounded_and_recovers_after_handler_is_ready",
@@ -16225,7 +16303,7 @@
           "case": "native dispatch rejects malformed payloads without showing the window and bounds then recovers its queue"
         }
       ],
-      "reason": "The original 64 accepted/65th refused boundary runs against the production queue and integrated native dispatcher. The complete ordered queue drains at readiness and later requests dispatch successfully."
+      "reason": "The original 64 admitted/65th refused boundary runs against the production queue and integrated native dispatcher. All 64 ordered requests drain at renderer readiness and subsequent requests succeed. The native helper acknowledges delivery to Node rather than renderer queue admission; the retained C# protocol queue and the renderer-facing queue are verified separately."
     },
     {
       "id": "SingleInstanceActivationTests.Shell_arguments_allow_only_one_typed_command",
@@ -16285,7 +16363,7 @@
           "case": "a real secondary launch waits while the primary has not registered its listener or become ready"
         }
       ],
-      "reason": "A real child process calls Electron's single-instance API while the primary is deliberately held before listener registration and app readiness. A marker written immediately before the child's lock request confirms that ordering. Once the primary resumes, the child exits successfully and its fullscreen request is retained for renderer readiness."
+      "reason": "A real secondary launch begins while the primary helper output is held before frontend ownership completes, any BrowserWindow is created, or its renderer/backend becomes ready. Electron app.isReady is already true. Once the primary resumes, the secondary exits successfully and its fullscreen request remains queued for renderer readiness. The direct Node pipe adapter retries listener recreation within the original bounded connection deadline."
     },
     {
       "id": "SingleInstanceActivationTests.Other_directories_and_stopped_sessions_do_not_activate",
@@ -16302,22 +16380,78 @@
     {
       "id": "SingleInstanceGuardTests.A_first_copy_acquires_and_a_second_copy_on_the_same_directory_is_refused",
       "source": "tests/Winnow.Tests/SingleInstanceGuardTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/FrontendActivationParityTests.cs",
+          "case": "Real_helper_owns_only_the_frontend_and_forwards_exact_Int64_requests_then_EOF_releases_the_guard"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "profile locks isolate active libraries and a stopped profile can become primary again"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "secondary startup exits before creating a database and an invalid installation URI never activates its owner"
+        }
+      ],
+      "reason": "The unchanged source first-owner/non-null and same-root second-owner/null assertions execute against the extracted shared guard. Electron now obtains its Windows ownership from that exact policy through a direct prebuilt companion before starting the API or constructing a window. The helper has a distinct Electron namespace; the source Avalonia namespace remains compatible. The real process test additionally proves the helper creates no database or discovery file and the secondary forwards then exits."
     },
     {
       "id": "SingleInstanceGuardTests.Releasing_the_guard_lets_the_next_launch_through",
       "source": "tests/Winnow.Tests/SingleInstanceGuardTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/FrontendActivationParityTests.cs",
+          "case": "Real_helper_owns_only_the_frontend_and_forwards_exact_Int64_requests_then_EOF_releases_the_guard"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "profile locks isolate active libraries and a stopped profile can become primary again"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/FrontendActivationParityTests.cs",
+          "case": "Loss_of_the_real_parent_releases_the_helper_and_allows_a_new_owner"
+        },
+        {
+          "file": "tests/activation-host.test.ts",
+          "case": "keeps established ownership through a canceled startup or held quit drain until explicit disposal"
+        }
+      ],
+      "reason": "The unchanged source Dispose/reacquire assertion runs against the shared guard. The replacement real helper process closes its stdin-bound lease, exits, and a new helper acquires the same root; a separate process case kills the actual parent and proves the helper exits and a replacement can own the root. Main retains established ownership through an asynchronous quit drain until will-quit or explicit fatal exit."
     },
     {
       "id": "SingleInstanceGuardTests.A_second_copy_against_a_different_data_directory_is_not_the_failure",
       "source": "tests/Winnow.Tests/SingleInstanceGuardTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/FrontendActivationParityTests.cs",
+          "case": "Real_helper_owns_only_the_frontend_and_forwards_exact_Int64_requests_then_EOF_releases_the_guard"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "profile locks isolate active libraries and a stopped profile can become primary again"
+        }
+      ],
+      "reason": "The unchanged source two-fresh-directory assertions run against the shared guard. The real helper process test keeps both root owners alive concurrently, while native Electron starts separate isolated libraries and verifies requests reach only their owner and different backends/profiles are retained."
     },
     {
       "id": "SingleInstanceGuardTests.Two_spellings_of_one_directory_are_still_one_instance",
       "source": "tests/Winnow.Tests/SingleInstanceGuardTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/FrontendActivationParityTests.cs",
+          "case": "Real_helper_owns_only_the_frontend_and_forwards_exact_Int64_requests_then_EOF_releases_the_guard"
+        },
+        {
+          "file": "tests/electron/activation.spec.ts",
+          "case": "profile locks isolate active libraries and a stopped profile can become primary again"
+        }
+      ],
+      "reason": "The unchanged source trailing-separator refusal runs against the shared guard. The real process test forwards through an upper-case spelling plus trailing separator to the first helper, preserving the exact positive Int64 request as a decimal string. The helper uses the original full-path/trailing-separator/case normalization, not Chromium profile ownership."
     },
     {
       "id": "SnapshotSchedulerHistoryTests.A_tick_captures_a_playtime_delta_as_one_snapshot_and_one_play_record",
@@ -23217,27 +23351,82 @@
     {
       "id": "WindowsActivationSecurityTests.Activation_objects_belong_to_user_and_exclude_other_accounts_and_network_logons",
       "source": "tests/Winnow.Tests/WindowsActivationSecurityTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/FrontendActivationParityTests.cs",
+          "case": "Actual_helper_kernel_objects_have_current_SID_owner_protected_network_deny_and_only_current_user_allow"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/FrontendActivationParityTests.cs",
+          "case": "Spoofed_parent_is_refused_before_ownership_or_database_creation"
+        },
+        {
+          "file": "tests/activation-host.test.ts",
+          "case": "fails visibly on helper loss after ownership and rejects a mismatched root before ownership"
+        },
+        {
+          "file": "tests/electron/native-host.spec.ts",
+          "case": "the house legacy alias"
+        },
+        {
+          "file": "tests/electron/native-host.spec.ts",
+          "case": "authored legacy theme precedence"
+        }
+      ],
+      "reason": "The unchanged WindowsActivationSecurity implementation is now shared by Avalonia and the secure Electron helper. Both original and new actual-process tests inspect real mutex/pipe security: current SID owner, protected DACL, exactly two entries in order (deny NETWORK, allow current SID). The pipe reports the actual Electron parent PID for foreground permission; the helper validates this PID against its real OS parent and binds ownership to both the parent handle and stdin EOF. Chromium second-instance/open-url events cannot bypass the Windows channel. The native inspector also verifies those protected objects created by a running Electron frontend in both presentations; no framework-specific security waiver applies."
     },
     {
       "id": "WindowsJumpListTests.Isolated_directories_have_distinct_stable_taskbar_identities",
       "source": "tests/Winnow.Tests/WindowsJumpListTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-jump-list.test.ts",
+          "case": "isolated directories have distinct stable taskbar identities and preserve the existing Electron profile identity"
+        }
+      ],
+      "reason": "Executed unit assertions preserve trailing-separator identity, different-directory isolation and canonical Winnow/legacy Hoard equivalence. The Electron runtime retains Winnow.Electron plus its existing 16-digit profile-root hash, preserving canonical and isolated taskbar identities. Only the legacy Hoard root aliases its canonical Winnow sibling. The installer namespace app.winnow.afterglow remains unchanged. These independent frontend names replace the literal Avalonia identity prefix without replacing existing Electron taskbar pins."
     },
     {
       "id": "WindowsJumpListTests.Windows_arguments_preserve_spaces_quotes_and_trailing_backslashes",
       "source": "tests/Winnow.Tests/WindowsJumpListTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-jump-list.test.ts",
+          "case": "preserves source Windows argument %j as %j"
+        }
+      ],
+      "reason": "All three original input/output fixtures passed: a b, C:\\data\\, and a\"b. The existing quoteArgument implementation preserves spaces, embedded quotes and doubled trailing backslashes."
     },
     {
       "id": "WindowsJumpListTests.Every_destination_carries_its_isolated_data_directory",
       "source": "tests/Winnow.Tests/WindowsJumpListTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-jump-list.test.ts",
+          "case": "every game and fullscreen destination carries its isolated directory in development and packaged arguments"
+        },
+        {
+          "file": "tests/electron/jump-list-native.spec.ts",
+          "case": "actual Windows Jump List publishes then clears only its isolated source smoke identity"
+        }
+      ],
+      "reason": "Unit and actual native publication assertions preserve --jump-list-game 42 and the fully quoted absolute Winnow jump list test directory. Fullscreen tasks carry the same isolated data root. The development smoke task includes the actual wrapper script path; packaged tasks omit that script prefix. Normal default-profile tasks omit --data-dir so they retain the established frontend profile. Every isolated destination still includes it."
     },
     {
       "id": "WindowsJumpListTests.Native_publish_smoke_uses_only_an_isolated_app_id",
       "source": "tests/Winnow.Tests/WindowsJumpListTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/jump-list-native.spec.ts",
+          "case": "actual Windows Jump List publishes then clears only its isolated source smoke identity"
+        }
+      ],
+      "reason": "Executed actual Windows shell publication under a guarded throwaway root and its unique profile-hash AppUserModelID. The original 32 by 32 Lime icon, ownership 42, Jump List smoke game title and fullscreen task are published, followed by the empty-game task list and removal of only that identity. Publication, empty/task publication and clear each returned ok on this host. The test retains the original permitted custom-category privacy refusal, but no refusal occurred. No global Jump List or privacy setting was changed."
     },
     {
       "id": "WinnowDataLocationTests.Old_only_moves_the_whole_tree_and_renames_the_database",
@@ -23395,22 +23584,62 @@
     {
       "id": "LegacyThemeIdTests.The_pre_rename_theme_id_still_resolves_to_the_house_theme",
       "source": "tests/Winnow.Tests/WinnowDataLocationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-legacy-theme-id.test.tsx",
+          "case": "The_pre_rename_theme_id_still_resolves_to_the_house_theme"
+        },
+        {
+          "file": "tests/electron/native-host.spec.ts",
+          "case": "the house legacy alias"
+        }
+      ],
+      "reason": "The original persisted Theme value hoard resolves through the migration path to the exact registered Winnow house palette object without an unavailable-theme warning. Production alias behavior was already present and remains unchanged."
     },
     {
       "id": "LegacyThemeIdTests.The_alias_resolves_through_the_service_catalogue_too",
       "source": "tests/Winnow.Tests/WinnowDataLocationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-legacy-theme-id.test.tsx",
+          "case": "The_alias_resolves_through_the_service_catalogue_too"
+        },
+        {
+          "file": "tests/electron/native-host.spec.ts",
+          "case": "the house legacy alias"
+        }
+      ],
+      "reason": "The real theme runtime hydrates the original public Theme preference hoard, resolves through the registered palette catalogue to id winnow, and persists that resulting frontend profile. This exercises catalogue/runtime composition in addition to the direct migration function."
     },
     {
       "id": "LegacyThemeIdTests.A_user_theme_that_claims_the_old_id_wins_it",
       "source": "tests/Winnow.Tests/WinnowDataLocationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-legacy-theme-id.test.tsx",
+          "case": "A_user_theme_that_claims_the_old_id_wins_it"
+        },
+        {
+          "file": "tests/electron/native-host.spec.ts",
+          "case": "authored legacy theme precedence"
+        }
+      ],
+      "reason": "A real temporary hoard.json preserves the source schemaVersion 1, id hoard, name My Hoard, reason and all eight exact source seeds. AvalonThemeStore loads the authored file and the actual runtime registers it before migrating Theme=hoard. The resolved palette retains id hoard and name My Hoard with no warning, proving authored catalogue precedence over the legacy alias."
     },
     {
       "id": "LegacyThemeIdTests.An_id_that_is_neither_still_falls_through_to_the_default",
       "source": "tests/Winnow.Tests/WinnowDataLocationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-legacy-theme-id.test.tsx",
+          "case": "An_id_that_is_neither_still_falls_through_to_the_default"
+        }
+      ],
+      "reason": "Both literal frozen source inputs phosphor and null produce the unchanged default frontend profile and resolve to the registered Winnow house palette. Unknown authored-theme warnings remain available without changing fallback identity."
     },
     {
       "id": "WorkImageMetadataWriterTests.Metadata_only_changes_are_saved_and_unchanged_runs_are_noops",

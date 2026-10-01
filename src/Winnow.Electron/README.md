@@ -387,6 +387,7 @@ From this directory:
 
 ```powershell
 npm ci
+dotnet build ../Winnow.Backend/Winnow.Backend.csproj
 npm run dev -- --data-dir C:\Temp\winnow-electron-demo --seed-sample
 ```
 
@@ -405,6 +406,24 @@ npm run preview -- --data-dir C:\Temp\winnow-electron-demo --no-sync
 Set `WINNOW_BACKEND_PATH` to an absolute backend executable or DLL to use another build.
 Startup switches configure a newly started backend, not one already running. Closing the
 frontend leaves the backend running, as described in the [API guide](../../docs/frontend-api.md).
+
+On Windows, a companion helper owns Electron's current-user activation mutex and pipe.
+It runs before HTTP hosting or database locking and exits when the frontend closes. A
+second Electron process forwards its typed activation and exits; Avalonia can remain open
+beside Electron. The shared activation module sets a protected ACL owned by the current
+user, denies network logons, and rejects activation from other accounts.
+
+The helper uses an existing configured backend, the bundled companion, or a development
+Debug/Release backend apphost. It never starts `dotnet run`. Set
+`WINNOW_ACTIVATION_HELPER_PATH` to an absolute executable or DLL to select it independently,
+including when testing a missing backend. An explicit unusable helper path is refused.
+Without any usable helper host, Windows startup reports a fatal error with build guidance;
+with a helper available, an unavailable backend retains the recoverable connection screen.
+
+Application settings on desktop and fullscreen show the frontend package version and the
+source commit embedded when the bundle was built. Development uses `package.json`, and a
+packaged application uses its installed version. Builds outside a Git checkout show
+`Unavailable` for the commit. Electron's runtime version is not the application version.
 
 An invalid startup argument or unusable frontend data directory exits with code 2. A newly
 started companion's refusal preserves exit 2 or 3, including malformed configuration,
@@ -444,6 +463,15 @@ folder. An unavailable logger or native alert does not replace the original exit
   a Windows recent-games Jump List and in-app browsing for external links.
 - Developer themes that replace the shell and individual screens, with versioned contracts,
   declared settings, contained package assets and recovery to the bundled appearance.
+
+Isolated Windows Jump List tasks carry their library directory in every activation. Existing
+profile-based taskbar identities are preserved, and the legacy default `Hoard` directory
+shares the canonical default identity. Recent games appear immediately with a fallback or
+previously cached icon, then receive cover artwork as it becomes available. Icons contain
+six square PNG frames from 16px through 128px, cropped from the cover's center. Their content
+hash names keep unchanged artwork stable and retain old files that Windows may still use.
+The cache lives in the selected library's `jump-list-icons` folder. Superseded or canceled
+artwork requests cannot republish an old list.
 
 Desktop and fullscreen have separate destinations and library filters. Editing drafts and
 their original revisions survive navigation and mode changes for this frontend session;
@@ -624,6 +652,15 @@ presentation paths at fixed viewport sizes; actual display fullscreen and physic
 still require native checks. `test:migration` is a separate completion gate and fails while
 the source-method inventory contains pending or partial contracts. Passing the current
 Electron suite does not mean every original test has been migrated.
+
+The native activation, host and startup-contract suites require prebuilt backend and
+fixture apphosts. From this directory, build
+`dotnet build ../../tests/Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj`
+before running them. Their default paths use the ordinary Debug output. For scratch
+builds, set `WINNOW_BACKEND_PATH`, `WINNOW_ACTIVATION_HELPER_PATH` and
+`WINNOW_ELECTRON_FIXTURE_PATH` to the corresponding absolute apphost paths. A separate
+helper path lets startup-recovery tests deliberately remove the backend while retaining
+frontend ownership. These suites never use `dotnet run` for the parent-bound helper.
 
 `package` builds the renderer and preload, publishes a self-contained backend for the current
 OS/architecture, then produces an unpacked application. On Windows, run:

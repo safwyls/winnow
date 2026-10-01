@@ -8,10 +8,24 @@ using Winnow.Core.Repositories;
 using Winnow.Enrich.GamesDb;
 using Winnow.Enrich.Igdb;
 
+if (args.Contains(Winnow.Activation.FrontendActivationHost.Argument))
+{
+    Environment.ExitCode = await Winnow.Activation.FrontendActivationHost.RunAsync(
+        WinnowDataLocation.ResolveFrom(args).Root,
+        Winnow.Activation.FrontendActivationHost.ParentProcessIdFrom(args));
+    return;
+}
+
 var directoryIndex = Array.IndexOf(args, "--data-dir");
 if (directoryIndex < 0 || directoryIndex + 1 >= args.Length)
     throw new ArgumentException("Pass --data-dir <throwaway directory> to this test fixture.");
 var directory = Path.GetFullPath(args[directoryIndex + 1]);
+if (args.Contains("--inspect-frontend-activation"))
+{
+    if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Windows activation inspection only.");
+    await NativeActivationInspector.InspectAsync(directory);
+    return;
+}
 var visibility = Path.GetFileName(directory).StartsWith("winnow-electron-visibility-", StringComparison.Ordinal);
 var pluginActions = Path.GetFileName(directory).StartsWith("winnow-electron-plugin-actions-", StringComparison.Ordinal);
 var editions = Path.GetFileName(directory).StartsWith("winnow-electron-editions-", StringComparison.Ordinal);
@@ -27,6 +41,7 @@ var recommendationPreview = Path.GetFileName(directory).StartsWith("winnow-elect
 var coverBehavior = Path.GetFileName(directory).StartsWith("winnow-electron-cover-behavior-", StringComparison.Ordinal);
 var artworkState = Path.GetFileName(directory).StartsWith("winnow-electron-artwork-state-", StringComparison.Ordinal);
 var startupBoundary = Path.GetFileName(directory).StartsWith("winnow-electron-startup-boundary-", StringComparison.Ordinal);
+var nativeHost = Path.GetFileName(directory).StartsWith("winnow-electron-native-host-", StringComparison.Ordinal);
 var marker = Path.Combine(directory, ".visibility-fixture");
 if (visibility)
 {
@@ -35,12 +50,20 @@ if (visibility)
     Directory.CreateDirectory(directory);
     await File.WriteAllTextAsync(marker, "Winnow Electron visibility test fixture");
 }
-else if (!(pluginActions || editions || merges || matching || metadataEditing || detailsReading || activityRemaining || journalActivity || gameplayStats || recommendationState || recommendationPreview || coverBehavior || artworkState || startupBoundary || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
+else if (!(pluginActions || editions || merges || matching || metadataEditing || detailsReading || activityRemaining || journalActivity || gameplayStats || recommendationState || recommendationPreview || coverBehavior || artworkState || startupBoundary || nativeHost || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
     || File.Exists(Path.Combine(directory, "winnow.db")))
     throw new ArgumentException("Composition fixtures require a new test-owned directory.");
 
 await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"], services =>
 {
+    if (nativeHost)
+    {
+        NativeHostFixture.Register(services);
+        services.AddSingleton<PluginActionShellGuard>();
+        services.AddSingleton<IUriDispatcher>(provider => provider.GetRequiredService<PluginActionShellGuard>());
+        services.AddSingleton<IHttpMessageHandlerBuilderFilter, MatchingOfflineHttp>();
+        return;
+    }
     if (startupBoundary)
     {
         StartupBoundaryFixture.Register(services, directory);
@@ -189,6 +212,7 @@ await using var app = BackendApplication.Build(["--data-dir", directory, "--no-s
         provider.GetRequiredService<ILogger<OwnershipRefreshCoordinator>>()));
 });
 await app.Services.GetRequiredService<FirstRunSetupService>().SaveAsync(null);
+if (nativeHost) await app.Services.GetRequiredService<NativeHostFixture>().InitializeAsync(directory);
 if (startupBoundary)
 {
     await app.Services.GetRequiredService<StartupBoundaryFixture>().InitializeAsync(
@@ -201,7 +225,9 @@ if (pluginActions)
 
 // BackendApplication's normal loopback, authority and bearer-token middleware covers these routes.
 // Only this separately built test executable exposes fixture control; the production backend does not.
-if (startupBoundary)
+if (nativeHost)
+    NativeHostFixture.Map(app);
+else if (startupBoundary)
     StartupBoundaryFixture.Map(app);
 else if (artworkState)
     ArtworkStateFixture.Map(app);

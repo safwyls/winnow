@@ -16,6 +16,9 @@ for (const file of (await readdir(evidenceDirectory))
 }
 const records = []
 const reviewedBackendFiles = new Set([
+  // The backend executable also hosts the shared native activation companion before HTTP startup.
+  'src/Winnow.Activation/SingleInstanceActivation.cs',
+  'src/Winnow.Activation/FrontendActivationHost.cs',
   'src/Winnow.Diagnostics/DiagnosticLogging.cs',
   'src/Winnow.Enrich.Stores/StorefrontClient.cs',
   'src/Winnow.Enrich.Stores/StorefrontCache.cs',

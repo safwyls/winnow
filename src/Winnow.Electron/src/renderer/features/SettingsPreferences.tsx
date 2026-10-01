@@ -10,6 +10,7 @@ import { parseExpansionGrouping } from './parity-library-grain'
 import { usePluginInstallation } from './plugin-installation'
 import { PluginInstallStatus } from './PluginInstallStatus'
 import { useViewState } from '../viewState'
+import './application-info.css'
 import {
   FullscreenAdjustment,
   FullscreenSettingsAction,
@@ -294,7 +295,21 @@ export function ApplicationPreferences({
             )}
           </div>
         ))}
-      {!setup && info.data && <p className="muted">Winnow {info.data.version}</p>}
+      {!setup && info.data && (
+        <section className={`application-build-info mode-${mode}`} aria-label="About Winnow">
+          <h2 className={fullscreen ? 'fullscreen-settings-group' : undefined}>About Winnow</h2>
+          <dl>
+            <div>
+              <dt>Version</dt>
+              <dd>{info.data.version}</dd>
+            </div>
+            <div>
+              <dt>Source commit</dt>
+              <dd>{info.data.commit ?? 'Unavailable'}</dd>
+            </div>
+          </dl>
+        </section>
+      )}
       {!setup && <ApplicationUpdates mode={mode} />}
       <Notice error={preferences.error || command.error || nativeError || info.error} />
     </section>
