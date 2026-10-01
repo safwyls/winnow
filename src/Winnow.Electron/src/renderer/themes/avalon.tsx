@@ -66,7 +66,6 @@ import {
   MINIMUM_TILE_WIDTH,
   MAXIMUM_TILE_WIDTH,
 } from './avalon-library-chrome'
-import { useAvalonPreview } from './avalon-preview'
 import { AvalonCoverWorkspace, AvalonDesktopCover, type AvalonCoverProps } from './avalon-desktop-cover'
 import './avalon.css'
 import { useAvalonAppearance } from './avalon-appearance'
@@ -516,7 +515,6 @@ function AvalonFullscreenCover({
   patched,
   unreadCount,
 }: AvalonCoverProps & { patched: boolean; unreadCount: number }) {
-  const hover = useAvalonPreview(context, game, reason)
   const { Artwork } = context.components
   const dim = themeSettingValues(avalon, context.profile).dimCovers
   const { saturation, brightness, hue } = dormancy(game.lastPlayedAt)
@@ -536,11 +534,7 @@ function AvalonFullscreenCover({
         style={style}
         aria-label={`View ${game.title}${unreadLabel(patched, unreadCount)}${ownershipDescription(game)}${expansion ? `. ${expansion.text}` : ''}`}
         aria-description={reason ?? libraryBucketLabel(game.bucket)}
-        onMouseEnter={(event) => hover.open(event.currentTarget)}
-        onMouseLeave={hover.close}
-        onBlur={hover.close}
         onClick={(event) => {
-          hover.close()
           if (onClick) onClick(event)
           else context.openGame(game.workId)
         }}
@@ -586,7 +580,6 @@ function AvalonFullscreenCover({
           </span>
         </span>
       </button>
-      {hover.preview}
     </>
   )
 }

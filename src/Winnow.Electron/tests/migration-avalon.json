@@ -101,16 +101,6 @@
     ],
     "reason": "Immediate content begins metadata retrieval. Compact attributed ratings omit Steam percentage/count and nested tooltip/buttons."
   },
-  "LibraryHoverPreviewTests.Exit_or_recycle_closes_preview_and_cancels_pending_metadata": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/avalon-preview.test.tsx",
-        "case": "ignores late metadata after preview %s"
-      }
-    ],
-    "reason": "Exit/recycle close and invalidate pending metadata so late results cannot reopen. The preload bridge does not abort the underlying request, unlike the original CancellationToken assertion."
-  },
   "LibraryHoverPreviewTests.Opening_feed_preview_closes_library_preview_even_without_a_pointer_exit": {
     "status": "ported",
     "tests": [

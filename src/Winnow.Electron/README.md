@@ -21,8 +21,12 @@ feedback only after it is saved.
 Desktop recommendations keep feedback in a 48px strip inside the portrait cover, with
 the title and reason below it. A saved verdict preserves the card's size and offers Undo
 in place. Hover previews stay inside the window and close when their tile is rebound;
-Escape keeps them closed until the pointer leaves the card. Fullscreen retains its
-separate hero actions.
+Escape keeps them closed until the pointer leaves the card. Their artwork, outline
+and pointer share one shape, and delayed ratings reposition the measured bubble
+inside the window. Compact ratings identify each population; accessible text retains
+counts and Steam's percentage. Closing a preview cancels its unfinished metadata and
+releases its artwork consumer. Fullscreen keeps this information in its selected-game
+hero without opening a pointer-hover bubble.
 
 Desktop keeps five cards per recommendation shelf and promotes replacements in place.
 Fullscreen exposes the complete scored shelf through horizontal navigation. Only cards

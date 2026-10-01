@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Winnow.Electron.Fixtures/RecommendationPreviewFixture.cs" Link="Fixtures/RecommendationPreviewFixture.cs" />
     <Compile Include="../Winnow.Electron.Fixtures/RecommendationStateFixture.cs" Link="Fixtures/RecommendationStateFixture.cs" />
     <Compile Include="../Winnow.Electron.Fixtures/GameplayStatsFixture.cs" Link="Fixtures/GameplayStatsFixture.cs" />
     <Compile Include="../../src/Winnow.App/Design/PreviewLibrary.cs" Link="SourceFixtures/PreviewLibrary.cs" />

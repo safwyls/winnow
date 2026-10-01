@@ -45,12 +45,21 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [recommendation state checkpoint](checkpoint-seventy-four.md) records all 3,851
+The [recommendation preview checkpoint](checkpoint-seventy-five.md) records all 3,859
+component/live API cases, fifteen new native cases, thirteen existing native preview
+regressions and nine HTTP cases passing. Thirteen source cases pass with visual
+capture enabled after correcting a dormant count assertion to match its unchanged
+two-by-five fixture. Pixel checks preserve the continuous artwork pointer, and both
+surfaces retain their own layout and navigation. All ten assigned methods are ported;
+208 pending and 30 partial methods remain. This ends the authorized batch through
+TASK-381.20 and stops for review.
+
+The preceding [recommendation state checkpoint](checkpoint-seventy-four.md) records all 3,851
 component/live API cases, 38 distinct new native cases, two existing native consumers,
 27 unchanged original cases, thirteen HTTP cases and 63 feedback regressions passing.
 Both surfaces preserve reserve, impression, feedback and cancellation boundaries;
 history owns the feed body, and fullscreen action and keyboard hints remain visible.
-All eighteen assigned methods are ported; 217 pending and 31 partial methods remain.
+All eighteen assigned methods were ported at that checkpoint.
 
 The preceding [gameplay statistics checkpoint](checkpoint-seventy-three.md) records all 3,822
 component/live API cases, 28 distinct native cases, 23 unchanged original cases, eleven HTTP cases and 63

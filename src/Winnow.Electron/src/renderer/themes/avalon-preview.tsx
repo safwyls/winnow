@@ -1,28 +1,116 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import {
+  forwardRef,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+} from 'react'
 import { createPortal } from 'react-dom'
 import type { ThemeContext } from '../../shared/theme'
 import { request, storeLabel } from '../api/client'
 import type { GameDetails, LibraryGame } from '../api/types'
-import { hours } from '../components/primitives'
+import { detailIdle, detailPlaytime, receptionFigures } from '../features/details-facts'
 
 const openedEvent = 'winnow:avalon-preview-opened'
 type Rating = GameDetails['ratings'][number]
 
 export function compactAvalonRatings(ratings: Rating[]): string {
-  return [
-    ['igdb_users', 'IGDB'],
-    ['igdb_critics', 'IGDB critics'],
-    ['steam', 'Steam'],
-  ]
-    .flatMap(([source, label]) => {
-      const rating = ratings.find((item) => item.source === source && item.hasFigure)
-      if (!rating || rating.score == null || rating.ratingCount == null) return []
-      return `${label}: ${source === 'steam' ? rating.label?.trim() || 'Unclassified' : Math.round(rating.score).toLocaleString()}`
-    })
+  return receptionFigures(ratings)
+    .map((figure) => `${figure.compactSource}: ${figure.compactValue}`)
     .join(' · ')
 }
 
-export function useAvalonPreview(context: ThemeContext, game: LibraryGame, reason?: string) {
+/** Artwork, surface and outline share the same geometry, including the pointer. */
+export function previewBubbleOutline(width: number, height: number, arrowOnRight = false, offset = 40) {
+  if (width <= 23 || height <= 13) return ''
+  const left = arrowOnRight ? 0.5 : 10.5,
+    right = width - (arrowOnRight ? 10.5 : 0.5)
+  const top = 0.5,
+    bottom = height - 0.5,
+    radius = 6
+  const half = Math.min(9, Math.max(0, (bottom - top - 2 * radius) / 2))
+  const arrow = Math.max(
+    top + radius + half,
+    Math.min(bottom - radius - half, Number.isFinite(offset) ? offset : 40),
+  )
+  return [
+    `M ${left + radius} ${top}`,
+    `L ${right - radius} ${top}`,
+    `Q ${right} ${top} ${right} ${top + radius}`,
+    ...(arrowOnRight
+      ? [`L ${right} ${arrow - half}`, `L ${width - 0.5} ${arrow}`, `L ${right} ${arrow + half}`]
+      : []),
+    `L ${right} ${bottom - radius}`,
+    `Q ${right} ${bottom} ${right - radius} ${bottom}`,
+    `L ${left + radius} ${bottom}`,
+    `Q ${left} ${bottom} ${left} ${bottom - radius}`,
+    ...(!arrowOnRight ? [`L ${left} ${arrow + half}`, `L 0.5 ${arrow}`, `L ${left} ${arrow - half}`] : []),
+    `L ${left} ${top + radius}`,
+    `Q ${left} ${top} ${left + radius} ${top}`,
+    'Z',
+  ].join(' ')
+}
+
+export const AvalonPreviewBubble = forwardRef<
+  HTMLElement,
+  ComponentPropsWithoutRef<'aside'> & {
+    artwork?: ReactNode
+    arrowOnRight?: boolean
+    arrowOffset?: number
+  }
+>(function AvalonPreviewBubble(
+  { artwork, arrowOnRight = false, arrowOffset = 40, children, className = '', ...props },
+  ref,
+) {
+  const root = useRef<HTMLElement>(null)
+  useImperativeHandle(ref, () => root.current!, [])
+  const clip = useId().replaceAll(':', '')
+  const [size, setSize] = useState({ width: 0, height: 0 })
+  useLayoutEffect(() => {
+    const measure = () => {
+      const node = root.current
+      if (!node) return
+      const width = node.offsetWidth,
+        height = node.offsetHeight
+      setSize((previous) =>
+        previous.width === width && previous.height === height ? previous : { width, height },
+      )
+    }
+    measure()
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
+    if (root.current) observer?.observe(root.current)
+    return () => observer?.disconnect()
+  }, [])
+  const outline = previewBubbleOutline(size.width, size.height, arrowOnRight, arrowOffset)
+  return (
+    <aside
+      {...props}
+      ref={root}
+      className={`avalon-hover-preview ${className}`}
+      data-arrow-side={arrowOnRight ? 'right' : 'left'}
+    >
+      <svg className="avalon-preview-shape" width="100%" height="100%" aria-hidden="true">
+        <defs>
+          <clipPath id={clip}>
+            <path d={outline} />
+          </clipPath>
+        </defs>
+        <path d={outline} className="avalon-preview-fill" />
+        <foreignObject x="0" y="0" width="100%" height="100%" clipPath={`url(#${clip})`}>
+          <div className="avalon-preview-art">{artwork}</div>
+        </foreignObject>
+        <path d={outline} className="avalon-preview-outline" />
+      </svg>
+      <div className="avalon-preview-copy">{children}</div>
+    </aside>
+  )
+})
+
+export function useAvalonPreview(context: ThemeContext, game: LibraryGame, _reason?: string) {
   const identity = useId(),
     [target, setTarget] = useState<HTMLButtonElement | null>(null)
   const currentWork = useRef(game)
@@ -51,7 +139,6 @@ export function useAvalonPreview(context: ThemeContext, game: LibraryGame, reaso
           key={game.workId}
           context={context}
           game={game}
-          reason={reason}
           target={target}
           close={() => setTarget(null)}
         />
@@ -62,13 +149,11 @@ export function useAvalonPreview(context: ThemeContext, game: LibraryGame, reaso
 function AvalonPreview({
   context,
   game,
-  reason,
   target,
   close,
 }: {
   context: ThemeContext
   game: LibraryGame
-  reason?: string
   target: HTMLButtonElement
   close(): void
 }) {
@@ -114,7 +199,11 @@ function AvalonPreview({
   }, [target, id])
   const bubble = useRef<HTMLElement>(null)
   const zoom = Number.parseFloat(getComputedStyle(document.body).zoom) || 1
-  const width = Math.min(context.mode === 'fullscreen' ? 420 : 340, innerWidth / zoom - 16)
+  const anchor = target.getBoundingClientRect()
+  const rightSpace = innerWidth / zoom - anchor.right / zoom
+  const available = rightSpace < 362 && anchor.left / zoom > rightSpace ? anchor.left / zoom : rightSpace
+  const width =
+    Math.min(Math.max(180, Math.min(320, available - 46)), Math.max(1, innerWidth / zoom - 58)) + 42
   const [placement, setPlacement] = useState({ left: 8, top: 8, onLeft: false, arrow: 24 })
   useLayoutEffect(() => {
     const place = () => {
@@ -125,16 +214,17 @@ function AvalonPreview({
         viewportHeight = innerHeight / zoom
       const actualWidth = measured.width / zoom,
         actualHeight = measured.height / zoom
-      const onLeft = bounds.right / zoom + actualWidth + 20 > viewportWidth
+      const rightSpace = viewportWidth - bounds.right / zoom
+      const onLeft = rightSpace < actualWidth + 8 && bounds.left / zoom > rightSpace
       const left = Math.max(
         8,
         Math.min(
           viewportWidth - actualWidth - 8,
-          onLeft ? bounds.left / zoom - actualWidth - 12 : bounds.right / zoom + 12,
+          onLeft ? bounds.left / zoom - actualWidth : bounds.right / zoom,
         ),
       )
       const top = Math.max(8, Math.min(bounds.top / zoom, viewportHeight - actualHeight - 8))
-      const arrow = Math.max(16, Math.min(actualHeight - 24, bounds.top / zoom + 40 - top))
+      const arrow = (bounds.top + bounds.height / 2) / zoom - top
       setPlacement((previous) =>
         previous.left === left &&
         previous.top === top &&
@@ -154,34 +244,41 @@ function AvalonPreview({
   const compact = compactAvalonRatings(ratings)
   const { Artwork } = context.components
   return createPortal(
-    <aside
+    <AvalonPreviewBubble
       ref={bubble}
       role="tooltip"
       id={id}
-      className="avalon-hover-preview"
-      data-arrow-side={onLeft ? 'right' : 'left'}
-      style={
-        {
-          width,
-          maxHeight: innerHeight / zoom - 16,
-          left,
-          top,
-          '--preview-arrow-top': `${arrow}px`,
-        } as CSSProperties
-      }
+      arrowOnRight={onLeft}
+      arrowOffset={arrow}
+      artwork={<Artwork workId={game.workId} hero />}
+      style={{
+        width,
+        maxHeight: innerHeight / zoom - 16,
+        left,
+        top,
+      }}
     >
-      <Artwork workId={game.workId} hero />
-      <div className="avalon-preview-copy" style={{ maxHeight: innerHeight / zoom - 50, overflow: 'hidden' }}>
-        <h3>{game.title}</h3>
-        <p className="avalon-preview-meta">
-          {[...new Set(game.entries.map((entry) => storeLabel(entry.store)))].join(' / ')}
-          {` · ${hours(game.playtimeMinutes)} played`}
+      <h3>{game.title}</h3>
+      <p className="avalon-preview-meta">
+        {[...new Set(game.entries.map((entry) => storeLabel(entry.store)))].join(', ')}
+        {' · '}
+        {game.playtimeMinutes <= 0
+          ? 'never opened'
+          : `${detailPlaytime(game.playtimeMinutes)}${game.lastPlayedAt ? ` · idle ${detailIdle(game.lastPlayedAt)}` : ''}`}
+      </p>
+      {compact && (
+        <p
+          className="avalon-preview-ratings"
+          role="group"
+          aria-label={receptionFigures(ratings)
+            .map((figure) => figure.automationName)
+            .join(' ')}
+        >
+          {compact}
         </p>
-        {compact && <p className="avalon-preview-ratings">{compact}</p>}
-        {reason && <p className="avalon-preview-reason">{reason}</p>}
-        {game.summary && <p className="avalon-preview-summary">{game.summary}</p>}
-      </div>
-    </aside>,
+      )}
+      {game.summary && <p className="avalon-preview-summary">{game.summary}</p>}
+    </AvalonPreviewBubble>,
     document.body,
   )
 }
