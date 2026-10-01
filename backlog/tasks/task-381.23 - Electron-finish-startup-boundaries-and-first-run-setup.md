@@ -1,11 +1,11 @@
 ---
 id: TASK-381.23
 title: 'Electron: finish startup boundaries and first-run setup'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:47'
-updated_date: '2026-10-01 18:29'
+updated_date: '2026-10-01 18:30'
 labels:
   - electron
   - parity
@@ -73,7 +73,7 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -98,6 +98,8 @@ The final native matrix now has 24 distinct passing cases, including source cons
 Full component/live API regression gate passes: 3,958 cases across 198 files in 356.13 seconds (.tmp/task38123-components-final2.log). Native evidence is consolidated in .tmp/task38123-native-evidence.json. The remaining change is limited to local controller hints and readable field labels inside the nested fullscreen font picker; verify it with focused tests and the two existing fullscreen native cases before committing.
 
 Final verification complete: 25 unchanged original cases, 5 authenticated HTTP cases, 3,958 component/live API cases, and 24 distinct native cases pass. The final picker delta passes 46 focused cases, then 15 CSS-focused cases and both fullscreen native cases with measured unclipped font choices and real Y/A/B keyboard focus restoration. Final build index-DJJXOwe4.js, TypeScript, formatting and diff checks pass. All 17 assigned methods are resolved: 16 ported and 1 framework-specific C# scanner with Electron error-boundary coverage. Inventory: 1,553 ported, 663 retained-backend, 34 framework-specific, 162 pending, 23 partial. Checkpoint78 records fixtures, adapters, screenshots, the non-reproduced initial process timeout and simulated-input limitation.
+
+Reviewable implementation milestone: 6d8186d1 (Complete Electron startup boundaries and first-run setup). All acceptance criteria are verified; continuing within the authorized batch to TASK-381.24.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
