@@ -223,11 +223,48 @@ function SessionPromptCard({
       role={mode === 'fullscreen' ? 'dialog' : undefined}
       aria-label={`Journal after playing ${prompt.title}`}
       key={prompt.sessionId}
+      onKeyDown={(event) => {
+        if (
+          mode !== 'fullscreen' ||
+          event.defaultPrevented ||
+          !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)
+        )
+          return
+        const target = event.target as HTMLElement
+        if (target.matches('input, textarea, select')) return
+        const rows = ['.journal-edit-note', '.journal-rating button', 'form > .form-actions button'].map(
+          (selector) =>
+            [...event.currentTarget.querySelectorAll<HTMLButtonElement>(selector)].filter(
+              (button) => !button.disabled,
+            ),
+        )
+        const row = rows.findIndex((controls) => controls.includes(target as HTMLButtonElement))
+        if (row < 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        if (sending) return
+        const column = rows[row]!.indexOf(target as HTMLButtonElement)
+        const vertical = event.key === 'ArrowUp' || event.key === 'ArrowDown'
+        const delta = event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1
+        const nextRow = vertical ? Math.max(0, Math.min(rows.length - 1, row + delta)) : row
+        const nextColumn = Math.max(0, Math.min(rows[nextRow]!.length - 1, column + (vertical ? 0 : delta)))
+        const next = rows[nextRow]?.[nextColumn]
+        next?.focus({ preventScroll: true })
+        next?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
+      }}
     >
-      <header className="feature-heading">
+      <header
+        className={`feature-heading${mode === 'fullscreen' ? ' journal-prompt-group journal-session-group' : ''}`}
+      >
         <div>
-          {mode === 'fullscreen' && <p className="eyebrow">Your last session</p>}
-          <h2>{prompt.title}</h2>
+          {mode === 'fullscreen' ? (
+            <>
+              <h2 className="journal-group-title">YOUR LAST SESSION</h2>
+              <h3 className="journal-game-title">{prompt.title}</h3>
+            </>
+          ) : (
+            <h2>{prompt.title}</h2>
+          )}
           <p className="journal-duration">{sessionDuration(prompt.durationSeconds)}</p>
         </div>
         <button disabled={sending} onClick={dismiss} aria-label="Dismiss journal prompt">

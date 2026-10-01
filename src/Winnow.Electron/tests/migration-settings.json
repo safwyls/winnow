@@ -198,16 +198,6 @@
     ],
     "reason": "Old notification activation is ignored after replacement or dismissal."
   },
-  "JournalNotificationTests.A_headless_or_missing_native_window_reports_unavailable_without_an_application_error": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-settings-notifications.test.tsx",
-        "case": "falls back without taking focus when the native notification fails"
-      }
-    ],
-    "reason": "Renderer fallback after unavailable or failed native notification is covered. The Electron Notification support check requires a main-process test."
-  },
   "JournalNotificationTests.Bundled_dragon_decodes_to_an_owned_native_notification_icon": {
     "status": "framework-specific",
     "tests": [],

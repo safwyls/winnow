@@ -434,8 +434,11 @@ for (const targetMode of ['desktop', 'fullscreen'] as const) {
     await activate(details().getByRole('tab', { name: 'Journal', exact: true }))
     const originalEntry = await details().locator('.timeline-entry').elementHandle()
     await activate(details().getByRole('button', { name: 'Edit note', exact: true }))
-    const journal = page.getByRole('dialog', { name: 'Remember this session', exact: true }),
-      note = journal.getByRole('textbox', { name: 'Your note', exact: true })
+    const journal =
+        mode === 'desktop'
+          ? details().locator('.details-journal-editor')
+          : page.getByRole('dialog', { name: 'Remember this session', exact: true }),
+      note = journal.getByRole('textbox', { name: 'Journal note', exact: true })
     await expect(note).toHaveValue('Old saved note')
     await note.fill('My unfinished note')
     await note.focus()
@@ -462,7 +465,12 @@ for (const targetMode of ['desktop', 'fullscreen'] as const) {
     )!
     expect(game).toMatchObject({ playtimeMinutes: 180, lastPlayedAt: '2026-09-05T12:00:00Z' })
     await shot('focused-journal-refresh', note)
-    await activate(journal.getByRole('button', { name: 'Close journal editor', exact: true }))
+    await activate(
+      journal.getByRole('button', {
+        name: mode === 'desktop' ? 'Cancel' : 'Close journal editor',
+        exact: true,
+      }),
+    )
     await expect(details().getByRole('tab', { name: 'Journal', exact: true })).toHaveAttribute(
       'aria-selected',
       'true',

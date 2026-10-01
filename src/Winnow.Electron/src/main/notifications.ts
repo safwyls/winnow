@@ -4,6 +4,32 @@ interface Delivery {
   show(): void
   close(): void
 }
+
+interface JournalWindow {
+  isDestroyed(): boolean
+  isFocused(): boolean
+  getNativeWindowHandle(): Uint8Array
+}
+
+/** A notification needs a live activation target, including when the app is hidden in the tray. */
+export function canNotifyJournal(
+  window: JournalWindow | null | undefined,
+  supported: () => boolean,
+): boolean {
+  try {
+    return Boolean(
+      window &&
+      !window.isDestroyed() &&
+      !window.isFocused() &&
+      window.getNativeWindowHandle().some((byte) => byte !== 0) &&
+      supported(),
+    )
+  } catch {
+    // The native window can disappear between the lifecycle check and handle lookup.
+    return false
+  }
+}
+
 /** Native notification submission can fail asynchronously when OS notifications are disabled. */
 export function deliverNotification(notification: Delivery, timeoutMs = 5000): Promise<boolean> {
   return new Promise((resolve) => {

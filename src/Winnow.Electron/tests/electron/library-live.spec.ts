@@ -199,7 +199,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await expect(page.getByRole('heading', { name: 'Journal game', exact: true })).toBeVisible()
       await page.getByRole('button', { name: 'Add selected note', exact: true }).click()
       const dialog = page.getByRole('dialog', { name: 'Remember this session' })
-      await dialog.getByRole('textbox', { name: 'Your note', exact: true }).fill('Saved through the API')
+      await dialog.getByRole('textbox', { name: 'Journal note', exact: true }).fill('Saved through the API')
       await dialog.getByRole('button', { name: 'Save note', exact: true }).click()
       await expect(dialog).toHaveCount(0)
       expect((await api<JournalResponse>(page, { route: 'journal.get', params: { sessionId } })).note).toBe(
@@ -215,7 +215,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await expect(
         page.getByText('Spending and licences from your captured Steam account pages.'),
       ).toBeVisible()
-      await expect(page.getByText('Loading captured spending…')).toHaveCount(0)
+      await expect(page.getByText('Reading your account statistics…')).toHaveCount(0)
       await expect(page.getByText(/^No Steam spending has been captured\./)).toBeVisible()
       await expect(page.locator('[role="alert"]')).toHaveCount(0)
       await page.screenshot({ path: info.outputPath(`${mode}-api-spending.png`) })

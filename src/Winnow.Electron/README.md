@@ -468,6 +468,16 @@ fullscreen uses a larger editor with controller keyboard support. An untouched p
 after two minutes. A draft or pending save stays open and cannot be replaced by another session.
 Dismissal writes nothing. Save failures keep the draft, and an unchanged stored revision lets
 the same Save button retry. An accepted save finishes in the backend even if the frontend closes.
+Native notification delivery requires a usable window handle; missing or destroyed windows
+return unavailable, while a valid window hidden in the tray remains eligible. Spending reads
+show a loading message and a retry action on failure. Leaving that screen cancels its read;
+late results cannot repopulate the cancelled query.
+
+Desktop Details edits notes inline and retains the draft when switching its section tabs.
+Fullscreen uses its separate journal editor. A pending save blocks duplicate submissions
+and closing the editor or its enclosing Details view. Activity preserves loaded pages and
+the selected session when saving an older note. Rapid week changes queue the latest scope;
+leaving the last reader cancels the request and late results cannot restore the old page.
 
 Library and Details share an ambient launch status across desktop and fullscreen. A launcher
 handoff shows Starting; a matching watcher observation confirms that the game is running.

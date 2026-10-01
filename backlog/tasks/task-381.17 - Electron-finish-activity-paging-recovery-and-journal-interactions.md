@@ -1,10 +1,11 @@
 ---
 id: TASK-381.17
 title: 'Electron: finish activity paging, recovery and journal interactions'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
+updated_date: '2026-10-01 11:12'
 labels:
   - electron
   - parity
@@ -64,18 +65,44 @@ tests/Winnow.Ui.Tests/SessionNoteParityTests.cs
 tests/Winnow.Ui.Tests/SessionRecoveryParityTests.cs
 - SessionRecoveryParityTests.Recovered_sitting_keeps_one_note_and_one_activity_record [partial at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Keep one implementation task active, verify and commit each milestone, then continue to the next task. Pause for review after TASK-381.20.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original paging, recovery and fullscreen Activity behaviors preserve loaded pages, ordered records, retry outcomes and selection.
-- [ ] #2 Session notes, ratings, journal notifications and Details editors preserve original save/cancel/recovery semantics and focus on both surfaces, without fabricated history.
-- [ ] #3 All 18 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original paging, recovery and fullscreen Activity behaviors preserve loaded pages, ordered records, retry outcomes and selection.
+- [x] #2 Session notes, ratings, journal notifications and Details editors preserve original save/cancel/recovery semantics and focus on both surfaces, without fabricated history.
+- [x] #3 All 18 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit all 18 frozen paging, recovery, journal and notification contracts against current Electron/API behavior and exact original fixtures. 2. Correct demonstrated lifecycle, focus, edit, retry and recovery gaps on desktop and fullscreen. 3. Execute original and equivalent component/API/native tests with exact edge cases, inspect visual evidence, and record checkpoint72 plus per-method migration evidence. 4. Commit the verified milestone and proceed to TASK-381.18.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started after activity tracker milestone a871eaf9. Seventh task in the authorized sequential batch.
+
+Audit confirms all nine assigned source files still match frozen revision; original matrix is 30 cases. Native notification availability now requires a usable activation window, preserving valid tray-hidden windows and returning unavailable for missing/headless/destroyed targets. Five focused notification cases pass. Paging fixtures retain exact one-row responses and cursor/session identities; native process and lifecycle evidence is being added separately from component Promise tests.
+
+Source30 and HTTP17 pass. Renderer now serializes Activity reads to the latest scope, cancels physical requests on disposal, edits desktop Details journal inline while preserving drafts across tabs, guards pending journal writes, and restores fullscreen prompt grouping/rating text. Build/typecheck pass; 149 focused renderer cases and final28 source-contract cases pass, plus49 account checks. Native40-case matrix is running, with existing journal consumers queued for regression checks. Initial desktop paging, account cancellation/retry focus, recovery and notification IPC cases pass; a rating-control harness assumption is being aligned with the restored inline buttons.
+
+Native verification identified and fixed intermittent Chromium retry focus loss, outer Details dismissal during a pending journal save, and misleading local Activity trigger badges. Global LB/RB and prompt Y Keyboard hints remain. Final production build passes; 127 affected renderer cases, 8 account recovery cases, and the repeated 17-case HTTP gate pass. The 40-case native matrix is being completed with focused reruns, plus 13 earlier native journal consumers. Shared activity observer lifetime is covered separately; all 18 migration mappings remain provisional until final native evidence.
+
+Final verification: all3789 component/live API cases across187 files pass in99.33s; original30 and finalHTTP17 pass; all40 new source native cases plus13 earlier consumers pass, with4 Account focus repeats and5 final typography reruns. Build/typecheck, formatting, diff check and migration audit pass. Eighteen screenshots reviewed. All18 assigned methods are ported; inventory1476 ported/650 retained/32 framework/238 pending/39 partial. See checkpoint72 and .tmp/task38117-native-evidence.json. Native input is simulated standard Gamepad API, not physical-controller validation.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Finished Activity paging, cancellation and recovery; inline desktop journal editing; focus-preserving account retry; pending-write dismissal guards; and fullscreen prompt grouping, controller navigation, typography and hints. Verified 3,789 component/live API cases, 30 unchanged source cases, 17 HTTP cases and 53 distinct native cases, plus focused repeats. Checkpoint 72 records fixtures, adaptations and visual evidence. All 18 source methods are now ported. Continue to TASK-381.18 within the authorized batch.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -34,7 +34,7 @@ export function JournalRating({
           {fullscreen ? `${rating} / 5` : <span aria-hidden="true" />}
         </button>
       ))}
-      {fullscreen && <p className="journal-current-rating">Rating: {value} / 5</p>}
+      {fullscreen && <p className="journal-current-rating">{value ? `Rating: ${value} / 5` : 'No rating'}</p>}
     </div>
   )
 }

@@ -140,7 +140,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       }
       await trigger.click()
       const dialog = page.getByRole('dialog', { name: 'Remember this session' })
-      const note = dialog.getByRole('textbox', { name: 'Your note', exact: true })
+      const note = dialog.getByRole('textbox', { name: 'Journal note', exact: true })
       await expect(note).toBeVisible()
       if (mode === 'fullscreen') {
         await expect(note).toHaveCSS('font-size', '28px')

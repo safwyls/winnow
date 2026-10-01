@@ -13,7 +13,7 @@ import {
 } from '../api/client'
 import { useApiQuery, useCommand, useDetails, useLibrary, useWorkspace } from '../api/hooks'
 import type { GameEntry, Metadata, Mode, Workspace } from '../api/types'
-import { JournalEditor, SessionRows } from './Journal'
+import { DetailsJournal, JournalEditor, SessionRows, useJournalSending } from './Journal'
 import { Empty, Notice } from './shared'
 import { Artwork } from '../components/Artwork'
 import { useViewState } from '../viewState'
@@ -267,8 +267,17 @@ function SharedDetails({
     `${mode}:details:${workId}:editing-section`,
     'Journal',
   )
+  const [inlineEditing, setInlineEditing] = useViewState<{ id: number; deleting: boolean } | null>(
+    `${mode}:details:${workId}:journal-inline`,
+    null,
+  )
+  const inlineSending = useJournalSending(inlineEditing?.id)
+  const modalSending = useJournalSending(editing)
+  const journalSending = inlineSending || modalSending
   // An unfinished editor resumes its originating section; an ordinary opening starts at Overview.
-  const [tab, setTab] = useState(() => (editing == null ? 'Overview' : editingSection))
+  const [tab, setTab] = useState(() =>
+    inlineEditing ? 'Journal' : editing == null ? 'Overview' : editingSection,
+  )
   const [matchNote, setMatchNote] = useState('')
   const [previousSection, setPreviousSection] = useState('Overview')
   const page = useRef<HTMLElement>(null),
@@ -315,6 +324,8 @@ function SharedDetails({
     setEditing(sessionId)
   }
   function closeDetails() {
+    if (journalSending) return
+    setInlineEditing(null)
     setEditing(null)
     onClose?.()
   }
@@ -327,6 +338,11 @@ function SharedDetails({
       ref={page}
       className={`feature-page details-page mode-${mode}`}
       onKeyDown={(event) => {
+        if (journalSending && event.key === 'Escape') {
+          event.preventDefault()
+          event.stopPropagation()
+          return
+        }
         if (
           event.key === 'Escape' &&
           editorSections.has(tab) &&
@@ -340,7 +356,7 @@ function SharedDetails({
       }}
     >
       {onClose && (
-        <button className="back-button" onClick={closeDetails}>
+        <button className="back-button" disabled={journalSending} onClick={closeDetails}>
           <ArrowLeft size={16} /> Back to your library
         </button>
       )}
@@ -466,29 +482,13 @@ function SharedDetails({
           )}
           {tab === 'Updates' && <UpdateSignals details={details.data} game={game} />}
           {tab === 'Journal' && (
-            <section className="feature-panel">
-              <h2>Your notes</h2>
-              {!details.data?.journalEntries.length ? (
-                <Empty>
-                  {journalPreferences.data?.promptAfterPlay === false
-                    ? 'Journal prompts are off. Turn them on in Display preferences after a game.'
-                    : journalPreferences.data?.promptAfterPlay
-                      ? 'No notes yet. After you play, Winnow will ask how it went.'
-                      : 'No notes yet. Add one to a recorded session from History.'}
-                </Empty>
-              ) : (
-                details.data.journalEntries.map((note) => (
-                  <article className="timeline-entry" key={note.sessionId}>
-                    <time>{dateLabel(note.sessionAt)}</time>
-                    <div>
-                      <blockquote>{note.note || 'A session to remember.'}</blockquote>
-                      {note.rating && <p>{note.rating} / 5</p>}
-                    </div>
-                    <button onClick={() => editSession(note.sessionId)}>Edit note</button>
-                  </article>
-                ))
-              )}
-            </section>
+            <DetailsJournal
+              notes={details.data?.journalEntries ?? []}
+              promptAfterPlay={journalPreferences.data?.promptAfterPlay}
+              onEdit={editSession}
+              mode={mode}
+              scopeKey={`${mode}:details:${workId}`}
+            />
           )}
           {tab === 'Metadata' && metadata.data?.available !== false && (
             <MetadataEditor key={workId} workId={workId} mode={mode} />

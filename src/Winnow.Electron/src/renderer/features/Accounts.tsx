@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQuery } from '@tanstack/react-query'
 import { request } from '../api/client'
@@ -473,6 +473,8 @@ function SpendingDetails({ value, mode }: { value: AccountStats; mode: Mode }) {
 }
 
 export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
+  const refreshButton = useRef<HTMLButtonElement>(null)
+  const restoreRefreshFocus = useRef(false)
   const stats = useQuery({
     queryKey: ['api', 'statistics.account', { source: 'steam' }],
     queryFn: ({ signal }) =>
@@ -481,6 +483,22 @@ export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
     refetchOnMount: 'always',
     staleTime: 30_000,
   })
+  useEffect(() => {
+    const preserveUserFocus = (event: FocusEvent) => {
+      if (event.target !== refreshButton.current && event.target !== document.body)
+        restoreRefreshFocus.current = false
+    }
+    document.addEventListener('focusin', preserveUserFocus)
+    return () => document.removeEventListener('focusin', preserveUserFocus)
+  }, [])
+  useEffect(() => {
+    if (stats.isFetching || !restoreRefreshFocus.current) return
+    restoreRefreshFocus.current = false
+    // Chromium can blur a newly disabled button. Restore only that lost focus;
+    // a user who moved to another control keeps their chosen position.
+    if (document.activeElement === document.body || document.activeElement === refreshButton.current)
+      refreshButton.current?.focus({ preventScroll: true })
+  }, [stats.isFetching])
   const [error, setError] = useState<unknown>(null)
   const [message, setMessage] = useState('')
   const [selected, setSelected] = useViewState<string | null>(`${mode}:stats:currency`, null)
@@ -510,7 +528,14 @@ export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
           <p className="reading-prose">Spending and licences from your captured Steam account pages.</p>
         </div>
         <div className="account-actions">
-          <button disabled={stats.isFetching} onClick={() => void stats.refetch()}>
+          <button
+            ref={refreshButton}
+            disabled={stats.isFetching}
+            onClick={() => {
+              restoreRefreshFocus.current = document.activeElement === refreshButton.current
+              void stats.refetch()
+            }}
+          >
             {stats.isFetching
               ? 'Reading Steam spending…'
               : stats.isError
@@ -534,9 +559,14 @@ export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
           )}
         </div>
       </header>
-      <Notice error={stats.error || error} message={message} />
+      {stats.isError && (
+        <p className="error-message" role="alert">
+          Couldn't read Steam spending. Try again.
+        </p>
+      )}
+      <Notice error={error} message={message} />
       {stats.isPending ? (
-        <p role="status">Loading captured spending…</p>
+        <p role="status">Reading your account statistics…</p>
       ) : data?.hasAnything ? (
         <>
           <p>

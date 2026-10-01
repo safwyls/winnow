@@ -278,7 +278,7 @@ describe('activity browsing parity', () => {
             : undefined,
       )
       host(<Journal mode={mode} />)
-      fireEvent.click(await screen.findByRole('button', { name: 'Earlier activity' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Load more' }))
       await waitFor(() => expect(screen.getAllByRole('button', { name: 'Add note' })).toHaveLength(2))
       fireEvent.click(screen.getAllByRole('button', { name: 'Add note' })[1]!)
       fireEvent.change(await screen.findByLabelText('Your note'), {
@@ -308,7 +308,7 @@ describe('activity browsing parity', () => {
         : undefined,
     )
     host(<Journal />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Earlier activity' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Load more' }))
     await screen.findByText("Couldn't read your activity. Try again.")
     expect(screen.getAllByRole('article')).toHaveLength(1)
     fail = false
@@ -326,11 +326,12 @@ describe('activity browsing parity', () => {
     host(<Journal mode="fullscreen" />)
     await waitFor(() => expect(pending).toHaveLength(1))
     fireEvent.click(screen.getByRole('button', { name: 'Previous week' }))
-    await waitFor(() => expect(pending).toHaveLength(2))
+    expect(pending).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: 'Updates' }))
-    await waitFor(() => expect(pending).toHaveLength(3))
+    await act(async () => pending[0]!(ok({ rows: [row(101)], next: null })))
+    await waitFor(() => expect(pending).toHaveLength(2))
     await act(async () =>
-      pending[2]!(
+      pending[1]!(
         ok({
           rows: [
             {
@@ -350,10 +351,7 @@ describe('activity browsing parity', () => {
         }),
       ),
     )
-    await act(async () => {
-      pending[0]!(ok({ rows: [row(101)], next: null }))
-      pending[1]!(ok({ rows: [row(102)], next: null }))
-    })
+    expect(pending).toHaveLength(2)
     expect(screen.getByRole('button', { name: 'Updates' }).getAttribute('aria-pressed')).toBe('true')
     await waitFor(() => expect(screen.getAllByText('Current patch')).toHaveLength(2))
     expect(screen.queryByRole('button', { name: 'Add note' })).toBeNull()

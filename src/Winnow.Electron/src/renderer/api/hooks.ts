@@ -1,5 +1,11 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
-import { useCallback, useLayoutEffect, useRef } from 'react'
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+  type QueryClient,
+} from '@tanstack/react-query'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { z } from 'zod'
 import { request } from './client'
 import { prepareLibrary } from './prepare-library'
@@ -153,19 +159,81 @@ export function useCommand<T = unknown>() {
     },
   })
 }
+interface ActivityRead {
+  controller: AbortController
+  owner: { active: boolean }
+  queryKey: readonly unknown[]
+}
+const activityReads = new WeakMap<QueryClient, Set<ActivityRead>>()
+
+function cancelDetachedActivityReads(client: QueryClient) {
+  for (const read of activityReads.get(client) ?? []) {
+    // A changed scope still owns its serialized read; an unmounted owner may have
+    // handed the same cached query to another observer. Only detached reads stop.
+    if (
+      !read.owner.active &&
+      !client.getQueryCache().find({ queryKey: read.queryKey, exact: true })?.getObserversCount()
+    )
+      read.controller.abort()
+  }
+}
+
 export function useActivity(fromUtc: string, untilUtc: string, section: number, workId?: number) {
+  // A reader may ignore cancellation. Wait for it before starting the newest scope,
+  // and discard intermediate week/section requests whose signals are already aborted.
+  const reading = useRef<Promise<unknown>>(Promise.resolve())
+  const client = useQueryClient()
+  const owner = useRef({ active: true })
+  useEffect(() => {
+    owner.current.active = true
+    const stop = client.getQueryCache().subscribe((event) => {
+      if (event.type === 'observerRemoved') queueMicrotask(() => cancelDetachedActivityReads(client))
+    })
+    return () => {
+      owner.current.active = false
+      stop()
+      // useSyncExternalStore releases query observers during this same teardown.
+      queueMicrotask(() => cancelDetachedActivityReads(client))
+    }
+  }, [client])
+  const queryKey = ['api', 'activity.query', fromUtc, untilUtc, section, workId] as const
   return useInfiniteQuery({
-    queryKey: ['api', 'activity.query', fromUtc, untilUtc, section, workId],
+    queryKey,
     initialPageParam: null as ActivityCursor | null,
-    queryFn: ({ pageParam }) =>
-      request<ActivityPage>('activity.query', undefined, {
-        fromUtc,
-        untilUtc,
-        section,
-        workId,
-        pageSize: 50,
-        after: pageParam,
-      }),
+    queryFn: ({ pageParam, signal }) => {
+      const next = reading.current.then(async () => {
+        signal.throwIfAborted()
+        const controller = new AbortController()
+        let reads = activityReads.get(client)
+        if (!reads) {
+          reads = new Set()
+          activityReads.set(client, reads)
+        }
+        const read: ActivityRead = { controller, owner: owner.current, queryKey }
+        reads.add(read)
+        try {
+          const result = await request<ActivityPage>(
+            'activity.query',
+            undefined,
+            {
+              fromUtc,
+              untilUtc,
+              section,
+              workId,
+              pageSize: 50,
+              after: pageParam,
+            },
+            controller.signal,
+          )
+          signal.throwIfAborted()
+          return result
+        } finally {
+          reads.delete(read)
+        }
+      })
+      reading.current = next.catch(() => undefined)
+      return next
+    },
     getNextPageParam: (last) => last.next ?? undefined,
     retry: false,
     staleTime: 30_000,
@@ -174,13 +242,18 @@ export function useActivity(fromUtc: string, untilUtc: string, section: number, 
 export function useStatistics(fromUtc: string, untilUtc: string) {
   return useQuery({
     queryKey: ['api', 'statistics.gameplay', fromUtc, untilUtc],
-    queryFn: () =>
-      request<GameplayStats>('statistics.gameplay', undefined, {
-        fromUtc,
-        untilUtc,
-        asOfUtc: untilUtc,
-        timeBins: [{ fromUtc, untilUtc }],
-      }),
+    queryFn: ({ signal }) =>
+      request<GameplayStats>(
+        'statistics.gameplay',
+        undefined,
+        {
+          fromUtc,
+          untilUtc,
+          asOfUtc: untilUtc,
+          timeBins: [{ fromUtc, untilUtc }],
+        },
+        signal,
+      ),
     retry: false,
     staleTime: 30_000,
   })

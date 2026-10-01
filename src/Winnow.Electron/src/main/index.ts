@@ -65,7 +65,7 @@ import { dataDirectoryRefusalCode, reportStartupFailure } from './startup-failur
 import { openLinkBrowser } from './link-browser'
 import { routeLink } from './link-routing'
 import { openInstallFolder, type InstallationWorkspace } from './install-folder'
-import { deliverNotification } from './notifications'
+import { canNotifyJournal, deliverNotification } from './notifications'
 import type { SteamSignInOptions } from '../shared/bridge'
 import {
   backendProcessIsRunning,
@@ -737,7 +737,7 @@ async function initialize(): Promise<void> {
       value.title.length > 1024
     )
       throw new Error('Invalid session notification')
-    if (window?.isFocused() || !Notification.isSupported()) return false
+    if (!canNotifyJournal(window, () => Notification.isSupported())) return false
     journalNotifications.get(value.sessionId)?.close()
     const notification = new Notification({
       title: 'Remember this session',

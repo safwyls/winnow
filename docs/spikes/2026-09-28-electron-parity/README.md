@@ -45,13 +45,21 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [activity tracker and large-history checkpoint](checkpoint-seventy-one.md) records
+The [activity recovery and journal checkpoint](checkpoint-seventy-two.md) records
+all 3,789 component/live API cases, 53 distinct native cases, 30 original cases and
+17 HTTP cases passing. Paging, cancellation, retry focus, inline desktop notes,
+pending-save dismissal guards and fullscreen prompt navigation retain the source
+contracts. Controller and keyboard hints remain visible, with source typography
+verified at both prompt sizes and 140% text. All eighteen assigned methods are ported;
+238 pending and 39 partial methods remain.
+
+The preceding [activity tracker and large-history checkpoint](checkpoint-seventy-one.md) records
 all 3,741 component/live API cases, 22 distinct native cases, ten original source cases
 and five new HTTP cases passing. Both surfaces preserve original plot geometry,
 selection, sparse evidence and acknowledgement. At the original large-history volume,
 Details readiness improves from about 3.9 seconds to 0.8 seconds; remaining measured
 cold-render pauses and machine-specific limits are documented. All eight assigned
-methods are ported; 244 pending and 51 partial methods remain.
+methods were ported at that checkpoint.
 The preceding [Details reading and lightbox checkpoint](checkpoint-seventy.md) records
 achievement availability, reading positions, matching results and lightbox focus.
 Desktop explanations share the 410px reading measure; fullscreen prose keeps its

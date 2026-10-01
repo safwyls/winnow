@@ -3,6 +3,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
+import { expectFullscreenJournalTypography } from './journal-typography'
 
 for (const [mode, scale] of [
   ['desktop', 1],
@@ -107,7 +108,7 @@ for (const [mode, scale] of [
       })
       await publish(9001)
       const prompt = page.locator('.session-prompt'),
-        note = prompt.getByLabel('Your note', { exact: true })
+        note = prompt.getByRole('textbox', { name: 'Journal note', exact: true })
       await expect(note).toBeVisible()
       await expect(prompt.getByText('47m', { exact: true })).toBeVisible()
       if (mode === 'desktop') {
@@ -118,6 +119,7 @@ for (const [mode, scale] of [
         expect(await note.evaluate((node) => node.tagName)).toBe('INPUT')
         await expect(prompt.locator('.journal-rating button span')).toHaveCount(5)
       } else {
+        await expectFullscreenJournalTypography(prompt, scale)
         await expect(prompt).toHaveAttribute('role', 'dialog')
         expect(await note.evaluate((node) => node.tagName)).toBe('TEXTAREA')
         const bounds = await prompt.boundingBox()
@@ -162,7 +164,9 @@ for (const [mode, scale] of [
       await publish(9002)
       await expect(note).toHaveValue('  Keep this exact sitting.  ')
       await prompt.getByRole('button', { name: 'Save', exact: true }).click()
-      await expect(prompt.getByRole('alert')).toContainText('Could not save your note.')
+      await expect(prompt.getByRole('alert')).toContainText(
+        "Couldn't save that. Your changes are still here — try again.",
+      )
       await expect(prompt.getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
       await expect(note).toHaveValue('  Keep this exact sitting.  ')
       await expect(prompt.getByRole('button', { name: '5 out of 5', exact: true })).toHaveAttribute(
@@ -173,14 +177,7 @@ for (const [mode, scale] of [
       const saveButton = prompt.getByRole('button', { name: 'Save', exact: true })
       await saveButton.scrollIntoViewIfNeeded()
       if (mode === 'fullscreen') {
-        expect(
-          await prompt.getByRole('alert').evaluate((node) => parseFloat(getComputedStyle(node).fontSize)),
-        ).toBeCloseTo(20 * scale)
-        expect(
-          await prompt
-            .locator('.journal-current-rating')
-            .evaluate((node) => parseFloat(getComputedStyle(node).fontSize)),
-        ).toBeCloseTo(20 * scale)
+        await expectFullscreenJournalTypography(prompt, scale, true)
         const action = await saveButton.boundingBox(),
           hints = await prompt.locator('.journal-controller-hints').boundingBox()
         expect(action!.y + action!.height).toBeLessThanOrEqual(hints!.y)

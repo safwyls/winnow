@@ -1,12 +1,12 @@
 import { Fragment, memo, useEffect, useId, useRef, useState } from 'react'
-import { SectionLabel, SectionNavigation } from '../components/SectionNavigation'
+import { SectionLabel } from '../components/SectionNavigation'
 import { FullscreenNoteReading } from './FullscreenNoteReading'
 import * as Dialog from '@radix-ui/react-dialog'
 import { BookOpen, X } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ApiError, dateLabel, hours, request, storeLabel, openExternal } from '../api/client'
 import { useActivity, useApiQuery, useLibrary, useStatistics } from '../api/hooks'
-import type { JournalResponse, Mode, Session } from '../api/types'
+import type { GameDetails, JournalResponse, Mode, Session } from '../api/types'
 import { Empty, Notice } from './shared'
 import { clearViewState, useViewState } from '../viewState'
 import { journalPeriod } from '../api/journalPeriod'
@@ -17,6 +17,116 @@ import { Artwork } from '../components/Artwork'
 import './activity.css'
 import { JournalRating } from './journal-prompt-controls'
 import { activityDateLabel, activityHours } from './activity-format'
+import { restoreFocusWhenReady } from './restore-focus'
+
+export function DetailsJournal({
+  notes,
+  promptAfterPlay,
+  onEdit,
+  mode,
+  scopeKey,
+}: {
+  notes: GameDetails['journalEntries']
+  promptAfterPlay?: boolean
+  onEdit(sessionId: number): void
+  mode: Mode
+  scopeKey: string
+}) {
+  const [editing, setEditing] = useViewState<{ id: number; deleting: boolean } | null>(
+    `${scopeKey}:journal-inline`,
+    null,
+  )
+  const list = useRef<HTMLElement>(null)
+  const returning = useRef<number | null>(null)
+  useEffect(() => {
+    if (editing || returning.current === null) return
+    const target =
+      list.current?.querySelector<HTMLElement>(`[data-journal-edit="${returning.current}"]`) ??
+      list.current?.querySelector<HTMLElement>('[data-journal-edit]') ??
+      list.current
+    returning.current = null
+    if (target) return restoreFocusWhenReady(target)
+  }, [editing, notes])
+  const edit = (id: number, deleting = false) => {
+    if (mode === 'fullscreen') onEdit(id)
+    else setEditing({ id, deleting })
+  }
+  return (
+    <section ref={list} className="feature-panel details-journal" tabIndex={-1} aria-label="Journal">
+      <h2>Journal</h2>
+      {!notes.length ? (
+        <Empty>
+          {promptAfterPlay === false
+            ? 'Journal prompts are off. Turn them on in Display preferences after a game.'
+            : promptAfterPlay
+              ? 'No notes yet. After you play, Winnow will ask how it went.'
+              : 'No notes yet. Add one to a recorded session from Activity.'}
+        </Empty>
+      ) : (
+        notes.map((note) => (
+          <article className="timeline-entry" key={note.sessionId}>
+            <time>{activityDateLabel(note.sessionAt)}</time>
+            {mode === 'desktop' && editing?.id === note.sessionId ? (
+              <InlineJournalEditor
+                sessionId={note.sessionId}
+                deleting={editing.deleting}
+                onClose={() => {
+                  returning.current = note.sessionId
+                  setEditing(null)
+                }}
+              />
+            ) : (
+              <>
+                <div>
+                  {note.note && <blockquote>{note.note}</blockquote>}
+                  {note.rating && <p>{note.rating} / 5</p>}
+                </div>
+                <div className="journal-entry-actions">
+                  <button data-journal-edit={note.sessionId} onClick={() => edit(note.sessionId)}>
+                    Edit note
+                  </button>
+                  {mode === 'desktop' && (
+                    <button onClick={() => edit(note.sessionId, true)}>Delete note</button>
+                  )}
+                </div>
+              </>
+            )}
+          </article>
+        ))
+      )}
+    </section>
+  )
+}
+
+function InlineJournalEditor({
+  sessionId,
+  deleting,
+  onClose,
+}: {
+  sessionId: number
+  deleting: boolean
+  onClose(): void
+}) {
+  const query = useApiQuery<JournalResponse>('journal.get', { sessionId })
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (query.data)
+      root.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus({ preventScroll: true })
+  }, [query.data?.sessionId])
+  return (
+    <div ref={root} className="details-journal-editor">
+      {query.isPending ? (
+        <p role="status">Loading your note…</p>
+      ) : query.error ? (
+        <Notice error={query.error} />
+      ) : (
+        query.data && (
+          <JournalDraft initial={query.data} initialDelete={deleting} inlineRatings onClose={onClose} />
+        )
+      )}
+    </div>
+  )
+}
 
 const activeEditors = new Map<number, { close: () => void }>()
 interface JournalDraftState {
@@ -28,6 +138,11 @@ interface JournalDraftState {
   sending: boolean
   error?: unknown
   needsRead?: boolean
+}
+
+export function useJournalSending(sessionId: number | null | undefined) {
+  const [draft] = useViewState<JournalDraftState | null>(`draft:journal:${sessionId ?? 'none'}`, null)
+  return Boolean(draft?.sending)
 }
 
 export function JournalEditor({
@@ -101,12 +216,16 @@ export function JournalDraft({
   promptMode,
   editText,
   showKeyboardAction = promptMode === 'fullscreen',
+  initialDelete = false,
+  inlineRatings = false,
 }: {
   initial: JournalResponse
   onClose: () => void
   promptMode?: Mode
   editText?(input: HTMLInputElement | HTMLTextAreaElement): void
   showKeyboardAction?: boolean
+  initialDelete?: boolean
+  inlineRatings?: boolean
 }) {
   const client = useQueryClient()
   const noteInput = useRef<HTMLTextAreaElement>(null)
@@ -129,18 +248,25 @@ export function JournalDraft({
     sending: false,
   })
   const { note, rating, revision, current, uncertain, sending: pending, error, needsRead } = draft
-  const setNote = (value: string) => setDraft((previous) => ({ ...previous, note: value }))
-  const setRating = (value: number) => setDraft((previous) => ({ ...previous, rating: value }))
+  const saving = useRef(pending)
+  saving.current = pending
+  const setNote = (value: string) => {
+    if (!saving.current) setDraft((previous) => ({ ...previous, note: value }))
+  }
+  const setRating = (value: number) => {
+    if (!saving.current) setDraft((previous) => ({ ...previous, rating: value }))
+  }
   const setRevision = (value: string) => setDraft((previous) => ({ ...previous, revision: value }))
   const setCurrent = (value: JournalResponse | null) =>
     setDraft((previous) => ({ ...previous, current: value }))
   const setUncertain = (value: boolean) => setDraft((previous) => ({ ...previous, uncertain: value }))
   const setPending = (value: boolean) => setDraft((previous) => ({ ...previous, sending: value }))
   const close = () => {
+    if (saving.current) return
     clearViewState(key)
     onClose()
   }
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(initialDelete)
   const setError = (error: unknown) => setDraft((previous) => ({ ...previous, error }))
   async function readCurrent() {
     try {
@@ -156,11 +282,12 @@ export function JournalDraft({
     }
   }
   async function save(remove = false) {
-    if (pending || current || needsRead) return
+    if (saving.current || current || needsRead) return
     if (!remove && !note.trim() && !(rating >= 1 && rating <= 5)) {
       setError(new Error('Add a note or rating, or delete this entry.'))
       return
     }
+    saving.current = true
     setPending(true)
     setError(null)
     try {
@@ -179,11 +306,16 @@ export function JournalDraft({
       clearViewState(key)
       activeEditors.get(initial.sessionId)?.close()
     } catch (failure) {
-      setError(failure)
+      setError(
+        failure instanceof ApiError && failure.conflict
+          ? failure
+          : new Error("Couldn't save that. Your changes are still here — try again."),
+      )
       if (failure instanceof ApiError && (failure.conflict || failure.uncertain)) {
         setUncertain(failure.uncertain)
         await readCurrent()
       }
+      saving.current = false
       setPending(false)
     }
   }
@@ -195,73 +327,90 @@ export function JournalDraft({
       }}
       className={`editor-form${promptMode ? ` journal-prompt-form prompt-${promptMode}` : ''}`}
     >
-      <label className="field journal-note-field">
-        <span id={noteLabel} className="journal-note-label">
-          Your note
-        </span>
-        {promptMode === 'desktop' ? (
-          <input
-            name="note"
-            aria-labelledby={noteLabel}
-            type="text"
+      <div
+        className={
+          promptMode === 'fullscreen' ? 'journal-prompt-group journal-note-group' : 'journal-note-group'
+        }
+      >
+        {promptMode === 'fullscreen' && <h2>JOURNAL</h2>}
+        <label className="field journal-note-field">
+          <span id={noteLabel} className="journal-note-label">
+            Your note
+          </span>
+          {promptMode === 'desktop' ? (
+            <input
+              name="note"
+              aria-label="Journal note"
+              type="text"
+              disabled={pending}
+              maxLength={10000}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="How was it?"
+            />
+          ) : (
+            <textarea
+              ref={noteInput}
+              name="note"
+              aria-label="Journal note"
+              disabled={pending}
+              rows={7}
+              maxLength={10000}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Where did you leave off?"
+            />
+          )}
+        </label>
+        {showKeyboardAction && (
+          <button
+            className="journal-edit-note"
+            type="button"
+            data-controller-context
+            data-controller-initial
             disabled={pending}
-            maxLength={10000}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="How was it?"
+            onClick={() => {
+              if (noteInput.current) editText?.(noteInput.current)
+            }}
+          >
+            Edit note
+          </button>
+        )}
+      </div>
+      <div
+        className={
+          promptMode === 'fullscreen' ? 'journal-prompt-group journal-rating-group' : 'journal-rating-group'
+        }
+      >
+        {promptMode === 'fullscreen' && <h2>RATING</h2>}
+        {promptMode || inlineRatings ? (
+          <JournalRating
+            value={rating}
+            disabled={pending}
+            fullscreen={promptMode === 'fullscreen'}
+            change={setRating}
           />
         ) : (
-          <textarea
-            ref={noteInput}
-            name="note"
-            aria-labelledby={noteLabel}
-            disabled={pending}
-            rows={7}
-            maxLength={10000}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="Where did you leave off?"
-          />
+          <label className="field">
+            Your rating
+            <select
+              name="rating"
+              disabled={pending}
+              value={rating}
+              onChange={(event) => setRating(Number(event.target.value))}
+            >
+              <option value={0}>No rating</option>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <option key={value} value={value}>
+                  {value} / 5
+                </option>
+              ))}
+            </select>
+          </label>
         )}
-      </label>
-      {showKeyboardAction && (
-        <button
-          className="journal-edit-note"
-          type="button"
-          data-controller-context
-          data-controller-initial
-          disabled={pending}
-          onClick={() => {
-            if (noteInput.current) editText?.(noteInput.current)
-          }}
-        >
-          Edit note
-        </button>
-      )}
-      {promptMode ? (
-        <JournalRating
-          value={rating}
-          disabled={pending}
-          fullscreen={promptMode === 'fullscreen'}
-          change={setRating}
-        />
-      ) : (
-        <label className="field">
-          Your rating
-          <select
-            name="rating"
-            disabled={pending}
-            value={rating}
-            onChange={(event) => setRating(Number(event.target.value))}
-          >
-            <option value={0}>No rating</option>
-            {[1, 2, 3, 4, 5].map((value) => (
-              <option key={value} value={value}>
-                {value} / 5
-              </option>
-            ))}
-          </select>
-        </label>
+      </div>
+      {showKeyboardAction && !promptMode && (
+        <p className="journal-current-rating">{rating ? `Rating: ${rating} / 5` : 'No rating'}</p>
       )}
       <Notice error={error} />
       {needsRead && (
@@ -451,6 +600,19 @@ export function Journal({
       tabIndex={mode === 'fullscreen' ? 0 : undefined}
       onKeyDown={(event) => {
         if (
+          mode === 'fullscreen' &&
+          panel === 'history' &&
+          event.key === 'ArrowUp' &&
+          event.target === event.currentTarget &&
+          !rows.length
+        ) {
+          event.preventDefault()
+          event.currentTarget
+            .querySelector<HTMLElement>('[aria-label="Activity type"] [aria-pressed="true"]')
+            ?.focus({ preventScroll: true })
+          return
+        }
+        if (
           panel !== 'history' ||
           event.defaultPrevented ||
           (event.target as HTMLElement).closest('nav, input, select, textarea, [role="dialog"]')
@@ -498,7 +660,7 @@ export function Journal({
           </label>
         )}
       </header>
-      <SectionNavigation fullscreen={mode === 'fullscreen'}>
+      <>
         <nav className="tabs" aria-label="Activity pages">
           <button data-controller-tab aria-pressed={panel === 'history'} onClick={() => setPanel('history')}>
             {mode === 'fullscreen' ? <SectionLabel>History</SectionLabel> : 'History'}
@@ -516,7 +678,7 @@ export function Journal({
             </button>
           )}
         </nav>
-      </SectionNavigation>
+      </>
       {panel === 'summary' ? (
         <GameplayDashboard mode={mode} onOpenGame={onOpenGame} />
       ) : panel === 'steam' ? (
@@ -579,7 +741,22 @@ export function Journal({
               </select>
             </label>
           </div>
-          <nav className="tabs" aria-label="Activity type">
+          <nav
+            className="tabs"
+            aria-label="Activity type"
+            data-controller-page={mode === 'fullscreen' ? '' : undefined}
+            onKeyDown={(event) => {
+              if (event.key === 'PageUp' || event.key === 'PageDown') {
+                event.preventDefault()
+                event.stopPropagation()
+                const next = (section + (event.key === 'PageUp' ? 2 : 1)) % 3
+                setSection(next)
+                event.currentTarget
+                  .querySelectorAll<HTMLButtonElement>('button')
+                  [next]?.focus({ preventScroll: true })
+              }
+            }}
+          >
             {['Sessions', 'Updates', 'Journal'].map((name, index) => (
               <button
                 data-controller-tab
@@ -615,14 +792,18 @@ export function Journal({
           ) : !rows.length && !activity.error ? (
             <Empty>
               {section === 2
-                ? preferences.data?.promptAfterPlay === false
-                  ? 'Journal prompts are off. Turn them on in Display preferences after a game.'
-                  : 'Your notes will live here. Open a recorded session to add your first one.'
+                ? mode === 'fullscreen' && days === 0
+                  ? 'No journal entries this week'
+                  : preferences.data?.promptAfterPlay === false
+                    ? 'Journal prompts are off. Turn them on in Display preferences after a game.'
+                    : 'Your notes will live here. Open a recorded session to add your first one.'
                 : section === 1
                   ? mode === 'fullscreen' && days === 0
                     ? 'No updates this week'
                     : 'No updates in this period. Updates from your games will appear here.'
-                  : 'No recorded sessions in this period. Sessions appear after Winnow observes you playing.'}
+                  : mode === 'fullscreen' && days === 0
+                    ? 'No sessions this week'
+                    : 'No recorded sessions in this period. Sessions appear after Winnow observes you playing.'}
             </Empty>
           ) : (
             !!rows.length && (
@@ -681,10 +862,11 @@ export function Journal({
                                 ? row.session.durationSeconds == null
                                   ? row.session.endedAt
                                     ? 'Duration unavailable'
-                                    : 'Session in progress'
+                                    : 'Duration not recorded'
                                   : hours(row.session.durationSeconds / 60)
                                 : (row.update?.title ?? row.update?.kind ?? 'Journal entry')}
                             </p>
+                            {row.note && <p className="activity-journal-badge">Journal entry</p>}
                             {row.note?.note && <blockquote>{row.note.note}</blockquote>}
                             {row.note?.rating && <p>{row.note.rating} / 5</p>}
                           </div>
@@ -717,7 +899,7 @@ export function Journal({
                       {chosen.session.durationSeconds == null
                         ? chosen.session.endedAt
                           ? 'Duration unavailable'
-                          : 'Session in progress'
+                          : 'Duration not recorded'
                         : hours(chosen.session.durationSeconds / 60)}{' '}
                       · {chosen.session.detectionMethod.replaceAll('_', ' ')}
                     </p>
@@ -759,7 +941,7 @@ export function Journal({
           )}
           {activity.hasNextPage && (
             <button disabled={activity.isFetchingNextPage} onClick={() => void activity.fetchNextPage()}>
-              {activity.isFetchingNextPage ? 'Loading…' : 'Earlier activity'}
+              {activity.isFetchingNextPage ? 'Loading…' : 'Load more'}
             </button>
           )}
         </>

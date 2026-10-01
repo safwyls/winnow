@@ -6,7 +6,7 @@ import { SessionNotifications } from '../src/renderer/features/SessionNotificati
 import { JournalPromptPreference } from '../src/renderer/features/SettingsPreferences'
 import { clearViewState } from '../src/renderer/viewState'
 import type { ApiRequest, BackendEvent } from '../src/shared/bridge'
-import { controllerActivationTarget } from '../src/renderer/controller'
+import { controllerActivationTarget, moveControllerFocus } from '../src/renderer/controller'
 import { sessionDuration } from '../src/renderer/features/journal-prompt-controls'
 
 afterEach(() => {
@@ -99,6 +99,72 @@ function fixture(native: Record<string, unknown> = {}, handler?: (input: ApiRequ
     ),
   }
 }
+
+it('keeps the source fullscreen journal groups and Edit note to first rating to Save route independent of geometry', async () => {
+  const title = "The Long Journey Home — Definitive Collector's Edition"
+  const { send, wrapper, client } = fixture({}, (input) =>
+    input.route === 'journal.prompt'
+      ? { ok: true, status: 200, data: { sessionId: 10, ownershipId: 1, durationSeconds: 7800 } }
+      : undefined,
+  )
+  client.setQueryData(['api', 'library.get'], {
+    games: [
+      {
+        workId: 1,
+        title,
+        bucket: 'never_played',
+        playtimeMinutes: 0,
+        entries: [
+          {
+            ownershipId: 1,
+            releaseId: 1,
+            workId: 1,
+            title,
+            installed: true,
+            store: 'steam',
+            playtimeMinutes: 0,
+          },
+        ],
+      },
+    ],
+    lists: [],
+  })
+  const editText = vi.fn()
+  render(<SessionNotifications mode="fullscreen" editText={editText} />, { wrapper })
+  await send('session.ended', 'sessions/10')
+  const note = (await screen.findByRole('textbox', { name: 'Journal note' })) as HTMLTextAreaElement
+  fireEvent.change(note, {
+    target: { value: 'Return to the mountain camp before exploring the next valley.' },
+  })
+  expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
+    'YOUR LAST SESSION',
+    'JOURNAL',
+    'RATING',
+  ])
+  expect(screen.getByRole('heading', { name: title })).toBeTruthy()
+  expect(screen.getByText('2h 10m')).toBeTruthy()
+  expect(document.querySelectorAll('.journal-prompt-group')).toHaveLength(3)
+  const edit = screen.getByRole('button', { name: 'Edit note' })
+  edit.focus()
+  fireEvent.click(edit)
+  expect(editText).toHaveBeenCalledWith(note)
+  moveControllerFocus('down')
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: '1 out of 5' }))
+  moveControllerFocus('down')
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Save' }))
+  moveControllerFocus('up')
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: '1 out of 5' }))
+  for (let step = 0; step < 5; step++) moveControllerFocus('right')
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: '5 out of 5' }))
+  for (let step = 0; step < 4; step++) moveControllerFocus('left')
+  moveControllerFocus('up')
+  expect(document.activeElement).toBe(edit)
+  note.focus()
+  const arrow = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true })
+  note.dispatchEvent(arrow)
+  expect(arrow.defaultPrevented).toBe(false)
+  expect(note.value).toBe('Return to the mountain camp before exploring the next valley.')
+})
 
 describe.each(['desktop', 'fullscreen'] as const)('%s session notification parity', (mode) => {
   it('opens only the current native notification and never resurrects dismissed sessions', async () => {

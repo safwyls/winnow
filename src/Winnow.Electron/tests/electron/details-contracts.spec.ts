@@ -148,7 +148,10 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     const detail = await details()
     await detail.getByRole('tab', { name: 'Journal', exact: true }).click()
     await detail.getByRole('button', { name: 'Edit note', exact: true }).click()
-    const editor = page.getByRole('dialog', { name: 'Remember this session', exact: true })
+    const editor =
+      mode === 'desktop'
+        ? detail.locator('.details-journal-editor')
+        : page.getByRole('dialog', { name: 'Remember this session', exact: true })
     await editor.getByRole('textbox').fill('Open draft survives the replacement')
     await application.evaluate(() => {
       ;(globalThis as any).detailsContractsFixture.revision = 'After'
@@ -156,7 +159,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await publish('library.changed', 'library')
     await expect(detail.locator('h1')).toContainText('After')
     await expect(editor.getByRole('textbox')).toHaveValue('Open draft survives the replacement')
-    await editor.getByRole('button', { name: 'Close journal editor', exact: true }).click()
+    await editor
+      .getByRole('button', { name: mode === 'desktop' ? 'Cancel' : 'Close journal editor', exact: true })
+      .click()
     await expect(detail.getByRole('tab', { name: 'Journal', exact: true })).toHaveAttribute(
       'aria-selected',
       'true',

@@ -30,7 +30,7 @@ import { DetailsRelationships, detailsRelationships } from './parity-details-ide
 import { AddToListButton, AddToListDialog } from './parity-list-prompt'
 import { ActivityTimeline } from './activity-timeline'
 import { SteamReportedActivity } from './activity-steam'
-import { JournalEditor, SessionRows } from './Journal'
+import { DetailsJournal, JournalEditor, SessionRows, useJournalSending } from './Journal'
 import { Empty, Notice } from './shared'
 import { gameLinks, type GameLink } from '../api/gameLinks'
 import { useViewState } from '../viewState'
@@ -44,7 +44,6 @@ import { ChooseLaunchVersion } from './choose-launch-version'
 import { ReleaseAchievements } from './detail-achievements'
 import type { IgdbState } from './igdb-match'
 import './details-layout.css'
-import { activityDateLabel } from './activity-format'
 
 const desktopSections = ['Overview', 'Activity', 'Updates', 'Journal', 'Library'] as const
 const televisionSections = ['Overview', 'Updates', 'Journal', 'Library'] as const
@@ -95,7 +94,18 @@ export function AvalonDetailsLayout({
   const refresh = useMetadataRefresh(workId)
   const game = detailsGame(workId, library.data?.games ?? [], workspace.data)
   const provisionalTitle = workspace.data?.works.find((work) => work.id === game?.workId)?.nameIsProvisional
-  const [section, setSection] = useState<string>('Overview')
+  const [inlineEditing, setInlineEditing] = useViewState<{ id: number; deleting: boolean } | null>(
+    `${mode}:details:${workId}:journal-inline`,
+    null,
+  )
+  const [section, setSection] = useState<string>(inlineEditing ? 'Journal' : 'Overview')
+  const closing = useRef(false)
+  const closeDetails = () => {
+    if (journalSending || closing.current) return
+    closing.current = true
+    setInlineEditing(null)
+    onClose?.()
+  }
   const [listPrompt, setListPrompt] = useState(false)
   const [reading, setReading] = useState<Reading | null>(null),
     [tool, setTool] = useState<Tool | null>(null)
@@ -106,6 +116,9 @@ export function AvalonDetailsLayout({
   const [metadataOpen, setMetadataOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [editing, setEditing] = useViewState<number | null>(`${mode}:details:${workId}:editing`, null)
+  const inlineSending = useJournalSending(inlineEditing?.id)
+  const modalSending = useJournalSending(editing)
+  const journalSending = inlineSending || modalSending
   const body = useRef<HTMLDivElement>(null),
     root = useRef<HTMLDivElement>(null),
     more = useRef<HTMLButtonElement>(null)
@@ -222,6 +235,7 @@ export function AvalonDetailsLayout({
     setReading(next)
   }
   function closeLayer() {
+    if (journalSending) return true
     if (moreOpen) {
       setMoreOpen(false)
       more.current?.focus()
@@ -328,7 +342,13 @@ export function AvalonDetailsLayout({
     </>
   )
   const journal = (
-    <DetailsJournal notes={notes} promptAfterPlay={preferences.data?.promptAfterPlay} onEdit={setEditing} />
+    <DetailsJournal
+      notes={notes}
+      promptAfterPlay={preferences.data?.promptAfterPlay}
+      onEdit={setEditing}
+      mode={mode}
+      scopeKey={`${mode}:details:${workId}`}
+    />
   )
   const about = (
     <section className="avalon-about feature-panel">
@@ -490,7 +510,7 @@ export function AvalonDetailsLayout({
         {game && workspace.data && (
           <GameLinks links={gameLinks(game, workspace.data, details.data?.events)} />
         )}
-        <HideGame workId={workId} onHidden={onClose} />
+        <HideGame workId={workId} onHidden={closeDetails} />
       </>
     )
   else
@@ -587,12 +607,12 @@ export function AvalonDetailsLayout({
               workId={workId}
               refresh={refresh}
               gameTitle={game?.title ?? 'this game'}
-              onHidden={onClose}
+              onHidden={closeDetails}
               links={links}
               management={
                 primary && <EntryActions entry={primary} workspace={workspace.data} managementOnly />
               }
-              hide={<HideGame workId={workId} onHidden={onClose} compact />}
+              hide={<HideGame workId={workId} onHidden={closeDetails} compact />}
               folder={
                 primary && (
                   <InstallFolderButton
@@ -613,7 +633,12 @@ export function AvalonDetailsLayout({
           )}
         </div>
         {!fullscreen && (
-          <button className="avalon-details-close" aria-label="Close game details" onClick={onClose}>
+          <button
+            className="avalon-details-close"
+            aria-label="Close game details"
+            disabled={journalSending}
+            onClick={closeDetails}
+          >
             <X size={20} />
           </button>
         )}
@@ -726,7 +751,7 @@ export function AvalonDetailsLayout({
     <Dialog.Root
       open
       onOpenChange={(open) => {
-        if (!open) onClose?.()
+        if (!open) closeDetails()
       }}
     >
       <Dialog.Portal>
@@ -736,6 +761,10 @@ export function AvalonDetailsLayout({
           className="avalon-details desktop"
           aria-describedby={undefined}
           onEscapeKeyDown={(event) => {
+            if (journalSending) {
+              event.preventDefault()
+              return
+            }
             const dialog = (event.target as HTMLElement).closest('[role="dialog"]')
             if (dialog && dialog !== root.current) {
               event.preventDefault()
@@ -744,6 +773,9 @@ export function AvalonDetailsLayout({
             if (closeLayer()) event.preventDefault()
           }}
           onKeyDown={escape}
+          onInteractOutside={(event) => {
+            if (journalSending) event.preventDefault()
+          }}
           onOpenAutoFocus={(event) => {
             event.preventDefault()
             root.current?.querySelector<HTMLElement>('[data-controller-play], .avalon-details-close')?.focus()
@@ -757,42 +789,6 @@ export function AvalonDetailsLayout({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-  )
-}
-
-function DetailsJournal({
-  notes,
-  promptAfterPlay,
-  onEdit,
-}: {
-  notes: GameDetails['journalEntries']
-  promptAfterPlay?: boolean
-  onEdit(sessionId: number): void
-}) {
-  return (
-    <section className="feature-panel">
-      <h2>Journal</h2>
-      {!notes.length ? (
-        <Empty>
-          {promptAfterPlay === false
-            ? 'Journal prompts are off. Turn them on in Display preferences after a game.'
-            : promptAfterPlay
-              ? 'No notes yet. After you play, Winnow will ask how it went.'
-              : 'No notes yet. Add one to a recorded session from Activity.'}
-        </Empty>
-      ) : (
-        notes.map((note) => (
-          <article className="timeline-entry" key={note.sessionId}>
-            <time>{activityDateLabel(note.sessionAt)}</time>
-            <div>
-              {note.note && <blockquote>{note.note}</blockquote>}
-              {note.rating && <p>{note.rating} / 5</p>}
-            </div>
-            <button onClick={() => onEdit(note.sessionId)}>Edit note</button>
-          </article>
-        ))
-      )}
-    </section>
   )
 }
 
