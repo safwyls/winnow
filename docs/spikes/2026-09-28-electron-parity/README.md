@@ -45,6 +45,15 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [theme colors and persistence checkpoint](checkpoint-eighty-seven.md) records
+31 unchanged source cases, 270 focused renderer cases and eleven distinct native
+journeys passing. Exact original palette comparisons corrected intermediate HSV
+rounding; bundled warnings, current actions, contrast and saved appearance now
+retain their contracts on both surfaces. The inventory contains 1,646 ported,
+705 retained-backend and 40 framework-specific methods, with 37 pending and seven
+partial. TASK-381.31–381.35 remains in progress; complete migration and release
+gates remain outstanding.
+
 The [update acknowledgement checkpoint](checkpoint-eighty-six.md) records fifteen
 unchanged source cases, thirteen backend cases, 203 focused renderer cases and
 thirteen distinct native journeys passing. Library actions preserve each selected

@@ -5,7 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
-updated_date: '2026-10-01 22:27'
+updated_date: '2026-10-01 23:25'
 labels:
   - electron
   - parity
@@ -65,3 +65,9 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.34 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Visual observation from TASK-381.32 to assess in this typography task: the actual fullscreen Theme Studio capture at1920x1080 retains compact desktop-sized labels and authored/typography buttons while the fullscreen shell headings/footer use their own scale. Capture: .tmp/task38132-native-final2-results/appearance-contracts-fulls-c2643-stored-scroll-across-reload/fullscreen-dawn-default-collapsed-notes.png. Verify both Theme Studio and the separate Settings/Appearance path against the fullscreen typography rules and original runtime/control contracts; do not infer coverage for one from the other.
+<!-- SECTION:NOTES:END -->

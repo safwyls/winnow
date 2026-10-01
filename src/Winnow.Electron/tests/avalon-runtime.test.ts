@@ -33,4 +33,26 @@ describe('Avalon portal palette', () => {
     expect(root.style.getPropertyValue('--font-body')).not.toContain('Avalon')
     expect(root.style.getPropertyValue('--bg')).toBe('#18191b')
   })
+  it('updates the existing root declaration and mounted controls without extending its palette variable schema', () => {
+    const root = document.createElement('div')
+    const control = document.createElement('button')
+    control.textContent = 'Keep this control'
+    root.append(control)
+    root.style.setProperty('--private-view-value', 'retained')
+    const profile = selectThemeProfile(structuredClone(DEFAULT_PROFILE), 'avalon', avalon)
+    profile.settings.avalon = { palette: 'winnow' }
+    applyThemeProfile(profile, root)
+    const declaration = root.style
+    const variables = Array.from({ length: declaration.length }, (_, index) => declaration.item(index)).sort()
+    profile.settings.avalon.palette = 'box-art'
+    applyThemeProfile(profile, root)
+    expect(root.style).toBe(declaration)
+    expect(root.querySelector('button')).toBe(control)
+    expect(declaration.getPropertyValue('--surface')).toBe('#202429')
+    expect(declaration.getPropertyValue('--avalon-flare')).toBe('#FF4D9E')
+    expect(declaration.getPropertyValue('--private-view-value')).toBe('retained')
+    expect(Array.from({ length: declaration.length }, (_, index) => declaration.item(index)).sort()).toEqual(
+      variables,
+    )
+  })
 })

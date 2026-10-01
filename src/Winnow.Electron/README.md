@@ -307,6 +307,8 @@ reconnection. Canceling a queued request prevents it from being sent later.
 Avalon reads existing authored Winnow JSON palettes from the library's `themes` folder,
 including their fonts and opening preferences. Theme Studio provides reload, diagnostics,
 folder access and safe export; saved file edits update the active palette automatically.
+File errors stay visible, while bundled and local legibility warnings start collapsed.
+A local replacement overrides the bundled palette and its audit findings together.
 Palette files use the original data-only format and are separate from executable developer
 themes. See [Electron themes](../../docs/electron-themes.md) for the validation limits.
 

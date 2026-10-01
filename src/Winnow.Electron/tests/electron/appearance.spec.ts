@@ -3,6 +3,7 @@ import { test, expect, _electron as electron, type ElectronApplication, type Pag
 import { access, mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
+import { prebuiltActivationHelper, prebuiltBackend } from './prebuilt-backend'
 
 let application: ElectronApplication
 let page: Page
@@ -20,7 +21,11 @@ test.beforeAll(async () => {
   application = await electron.launch({
     executablePath: electronPath as unknown as string,
     args: [resolve('.'), '--data-dir', directory, '--seed-sample', '--no-sync'],
-    env: environment,
+    env: {
+      ...environment,
+      WINNOW_BACKEND_PATH: prebuiltBackend,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+    },
     chromiumSandbox: true,
     timeout: 60000,
   })

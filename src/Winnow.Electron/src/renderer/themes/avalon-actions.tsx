@@ -171,6 +171,7 @@ export function AvalonAction({
   description,
   icon: Icon = ChevronRight,
   disabled = false,
+  current = false,
   onChoose,
   closeOnChoose = true,
 }: {
@@ -178,6 +179,7 @@ export function AvalonAction({
   description?: string
   icon?: LucideIcon
   disabled?: boolean
+  current?: boolean
   closeOnChoose?: boolean
   onChoose(): void
 }) {
@@ -185,6 +187,7 @@ export function AvalonAction({
   return (
     <button
       className="avalon-action"
+      aria-current={current || undefined}
       aria-label={label}
       aria-description={description}
       disabled={disabled}

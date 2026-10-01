@@ -14,6 +14,7 @@ import { avalonPalette, registerAvalonThemes } from '../src/renderer/themes/aval
 import { AvalonTypographyControls } from '../src/renderer/themes/avalon-typography'
 import { AvalonJsonControls } from '../src/renderer/themes/avalon-json-controls'
 import { useThemeRuntime } from '../src/renderer/theming/runtime'
+import { ThemeStudio } from '../src/renderer/theming/ThemeStudio'
 
 const custom: AvalonThemeDocument = {
   schemaVersion: 1,
@@ -206,6 +207,11 @@ it('shows file diagnostics, opens the library themes folder and exports effectiv
   render(<TestControls />)
   await waitFor(() => expect(screen.getByText(custom.reason)).toBeTruthy())
   expect(screen.getByText(/broken.json.*seeds.danger/)).toBeTruthy()
+  expect(screen.getByText(/broken.json.*seeds.danger/).closest('details')).toBeNull()
+  const warning = screen.getByText('Some themes may affect legibility.')
+  expect(warning.closest('details')!.open).toBe(false)
+  fireEvent.click(warning)
+  expect(warning.closest('details')!.open).toBe(true)
   fireEvent.click(screen.getByText('Open themes folder'))
   await waitFor(() => expect(window.winnow.openDataFolder).toHaveBeenCalledWith('themes'))
   await waitFor(() =>
@@ -225,4 +231,18 @@ it('keeps independent typography for every bounded catalog entry in a valid prof
     ]),
   )
   expect(parseThemeProfile(profile).appearance.typography).toEqual(profile.appearance.typography)
+})
+
+it('omits the authored folder controls without a configured theme store and reports no folder problem', async () => {
+  delete window.winnow.listAvalonThemes
+  delete window.winnow.openDataFolder
+  function Studio() {
+    const runtime = useThemeRuntime(builtins)
+    return runtime.loading ? null : <ThemeStudio runtime={runtime} />
+  }
+  render(<Studio />)
+  await screen.findByRole('heading', { name: 'Your Winnow' })
+  expect(screen.queryByRole('heading', { name: 'Authored palettes' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Open themes folder' })).toBeNull()
+  expect(screen.queryByRole('alert')).toBeNull()
 })

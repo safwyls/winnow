@@ -10,6 +10,7 @@ import { DEFAULT_TYPOGRAPHY } from '../src/shared/typography'
 import {
   AVALON_PALETTES,
   avalonPalette,
+  avalonPaletteStyle,
   deriveAvalonPalette,
   registerAvalonThemes,
 } from '../src/renderer/themes/avalon-palettes'
@@ -48,9 +49,13 @@ it.each(AVALON_PALETTES)('round trips all 24 colors and every surface token for 
   for (const wall of [true, false])
     for (const layout of ['floating', 'flush'] as const)
       for (let percentage = 0; percentage <= 100; percentage += 5)
-        expect(avalonSurfaceTokens(loaded, percentage, wall, layout)).toEqual(
-          avalonSurfaceTokens(palette, percentage, wall, layout),
-        )
+        expect({
+          ...avalonPaletteStyle(loaded),
+          ...avalonSurfaceTokens(loaded, percentage, wall, layout),
+        }).toEqual({
+          ...avalonPaletteStyle(palette),
+          ...avalonSurfaceTokens(palette, percentage, wall, layout),
+        })
 })
 it('exports fitted structural proportions and only necessary residual overrides', () => {
   expect(JSON.parse(exportAvalonPalette(AVALON_PALETTES[1])).structure.edge).toBe(2.46)

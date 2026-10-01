@@ -1,11 +1,18 @@
 import {
   AVALON_DERIVED,
   AVALON_SCALARS,
+  type AvalonThemeCatalogue,
   type AvalonThemeDiagnostic,
   type AvalonThemeDocument,
 } from '../../shared/avalonThemeDocument'
 import { DEFAULT_TYPOGRAPHY, type ThemeTypography } from '../../shared/typography'
-import { avalonPaletteStyle, deriveAvalonPalette, hsv, type AvalonPalette } from './avalon-palettes'
+import {
+  AVALON_PALETTES,
+  avalonPaletteStyle,
+  deriveAvalonPalette,
+  hsv,
+  type AvalonPalette,
+} from './avalon-palettes'
 import {
   aaCeiling,
   alpha,
@@ -252,4 +259,18 @@ export function inspectAvalonTheme(palette: AvalonPalette): AvalonThemeDiagnosti
       'The chrome is darker than the art field; the cover wall can read as a lid rather than a recess.',
     )
   return diagnostics
+}
+
+export function avalonThemeDiagnostics(catalogue?: AvalonThemeCatalogue): AvalonThemeDiagnostic[] {
+  const local = new Set(catalogue?.themes.map(({ document }) => document.id))
+  return [
+    // Local authored copies replace the bundled palette and its audit findings together.
+    ...AVALON_PALETTES.filter((palette) => palette.document && !local.has(palette.id)).flatMap(
+      inspectAvalonTheme,
+    ),
+    ...(catalogue?.diagnostics ?? []),
+    ...(catalogue?.themes.flatMap(({ file, document }) =>
+      inspectAvalonTheme({ ...deriveAvalonPalette(document), sourceFile: file }),
+    ) ?? []),
+  ]
 }

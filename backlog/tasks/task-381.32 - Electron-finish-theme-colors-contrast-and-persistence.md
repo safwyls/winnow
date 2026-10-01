@@ -1,11 +1,11 @@
 ---
 id: TASK-381.32
 title: 'Electron: finish theme colors, contrast and persistence'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
-updated_date: '2026-10-01 22:27'
+updated_date: '2026-10-01 23:31'
 labels:
   - electron
   - parity
@@ -62,13 +62,33 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original bundled/JSON/user-theme and appearance preference contracts preserve catalogue precedence, legacy hoard compatibility and saved authored theme behavior.
-- [ ] #2 Original dark/Dawn text/control contrast matrices pass for desktop and fullscreen, including translucency/accessibility fallbacks and interactive state colors.
-- [ ] #3 All 14 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original bundled/JSON/user-theme and appearance preference contracts preserve catalogue precedence, legacy hoard compatibility and saved authored theme behavior.
+- [x] #2 Original dark/Dawn text/control contrast matrices pass for desktop and fullscreen, including translucency/accessibility fallbacks and interactive state colors.
+- [x] #3 All 14 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.33 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Compare all fourteen frozen source methods with existing theme/catalogue/appearance coverage and execute the unchanged source fixtures. 2. Preserve original bundled and authored palette precedence, legacy IDs, token matrices, backdrop fallbacks and saved choices; repair only demonstrated Electron gaps. 3. Verify actual desktop/fullscreen controls and all interactive contrast states in serialized native journeys, with persistence and restore-focus behavior. 4. Integrate exact executed method mappings, review screenshots and measured contrast, update checkpoint eighty-seven and domain documentation, then commit and continue to TASK-381.33.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-381.31 completed at a256cf60. Starting task two of the authorized five-task batch. Root owns official mapping, docs, Backlog, review and commits. Source/API and native test lanes remain serialized; focused Electron tests precede a frozen production build and native verification. Broad component/API gate is reserved for the batch end unless new failures justify earlier execution.
+
+All fourteen original methods expand to 31 cases and pass unchanged (main23, UI8). Underlying theme implementation and source files match frozen revision; eleven original captures retained. A reusable test-only exporter records61color tokens across9themes and756states, after46116 original round-trip comparisons. Renderer review found bundled audit warnings missing without local themes and fullscreen pressed/current underline states missing; fixes and native contrast checks are underway. No AC checked yet.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed theme colors, contrast and persistence on desktop and fullscreen. Fixed chained HSV rounding, bundled audit warnings and fullscreen current-action styling. Verification: 31 unchanged source cases, 270 focused renderer cases, 9 final markup cases, 22 current-state cases, 11 distinct native journeys, TypeScript and build pass. Golden fixture preserves 61 original colors across 756 states; native minimum enabled action text contrast is 4.807:1. Eleven methods ported; three narrow framework-specific methods concern sparse mutable brushes and actual compositor feedback. Audit validates 1646 ported, 705 retained-backend, 40 framework-specific, 37 pending and 7 partial; complete gate still fails as expected. Evidence: checkpoint-eighty-seven.md. Continue to TASK-381.33 after the milestone commit.
+<!-- SECTION:FINAL_SUMMARY:END -->

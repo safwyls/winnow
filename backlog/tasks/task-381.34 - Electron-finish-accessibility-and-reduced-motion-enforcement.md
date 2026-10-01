@@ -5,7 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
-updated_date: '2026-10-01 22:27'
+updated_date: '2026-10-01 22:59'
 labels:
   - electron
   - parity
@@ -65,3 +65,9 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.35 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Observation from TASK-381.31 native review to assess during accessibility work: Avalon fullscreen root footer always renders keyboard wording even while Controller connected and simulated Y/A operate correctly (avalon.tsx root footer). Existing LB/RB root hints remain visible. Verify the intended keyboard/controller guidance against the visual spec and existing input-hint components; do not describe the current footer as modality-sensitive before it is implemented and checked.
+<!-- SECTION:NOTES:END -->

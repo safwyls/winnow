@@ -8,7 +8,7 @@ import { DEFAULT_PROFILE, type ThemeProfile } from '../src/shared/theme'
 import type { WindowAppearanceResult } from '../src/shared/windowAppearance'
 import { AvalonAppearanceControls, useAvalonAppearance } from '../src/renderer/themes/avalon-appearance'
 import { AVALON_PALETTES, registerAvalonThemes } from '../src/renderer/themes/avalon-palettes'
-import { avalonSeeds } from '../src/renderer/themes/avalon-json'
+import { avalonSeeds, avalonThemeDiagnostics } from '../src/renderer/themes/avalon-json'
 
 let values: Record<string, string | null>
 let writes: [string, string][]
@@ -269,6 +269,56 @@ it('applies a newly selected palette opening position once but preserves saved c
   expect(writes.filter(([key]) => key === 'Transparency')).toHaveLength(1)
   await waitFor(() => expect(hook.result.current.appearance.transparency).toBe(0))
 })
+
+it.each(['silkcircuit-dawn', 'rose-pine-dawn'])(
+  'selecting %s from 70 percent applies its solid default and retains bundled audit findings',
+  async (palette) => {
+    values.Transparency = '70'
+    const hook = renderHook(({ selected }) => useAvalonAppearance(profile(selected), false), {
+      wrapper,
+      initialProps: { selected: 'winnow' },
+    })
+    await waitFor(() => expect(hook.result.current.appearance.transparency).toBe(70))
+    hook.rerender({ selected: palette })
+    await waitFor(() => expect(hook.result.current.appearance.transparency).toBe(0))
+    expect(writes).toEqual([['Transparency', '0']])
+    expect(avalonThemeDiagnostics()).toContainEqual(
+      expect.objectContaining({ file: `${palette}.json`, severity: 'warning' }),
+    )
+  },
+)
+
+it.each([
+  ['desktop', 'win32', 30],
+  ['fullscreen', 'win32', 30],
+  ['desktop', 'linux', 0],
+  ['fullscreen', 'linux', 0],
+] as const)(
+  'fresh %s Appearance on %s uses the first original choices and %i percent without saving',
+  async (mode, platform, transparency) => {
+    values = {}
+    vi.mocked(window.winnow.applicationInfo!).mockResolvedValue({ platform } as Awaited<
+      ReturnType<NonNullable<WinnowBridge['applicationInfo']>>
+    >)
+    render(
+      <div className={mode}>
+        <AvalonAppearanceControls profile={profile()} />
+      </div>,
+      { wrapper },
+    )
+    const slider = screen.getByRole<HTMLInputElement>('slider', { name: 'Transparency' })
+    await waitFor(() => {
+      expect(slider.disabled).toBe(false)
+      expect(slider.value).toBe(String(transparency))
+    })
+    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Backdrop' }).selectedIndex).toBe(0)
+    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Pane layout' }).selectedIndex).toBe(0)
+    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: /Include content panes/ }).checked).toBe(
+      true,
+    )
+    expect(writes).toEqual([])
+  },
+)
 
 it('writes each appearance choice once and exposes the original light-desktop contrast consequence', async () => {
   render(<AvalonAppearanceControls profile={profile()} />, { wrapper })

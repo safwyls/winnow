@@ -107,7 +107,13 @@
   .avalon-actions-panel .avalon-actions-body button:disabled {
     opacity: 0.45;
   }
+  .avalon-actions-panel .avalon-actions-body button[aria-current='true'] {
+    color: var(--text);
+    font-weight: 700;
+    border-bottom-color: var(--muted);
+  }
   .avalon-actions-panel .avalon-actions-body button:focus-visible,
+  .avalon-actions-panel .avalon-actions-body button:active:not(:disabled),
   :root[data-controller='true'] .avalon-actions-panel .avalon-actions-body button:focus {
     color: var(--accent-foreground, var(--accent));
     border-bottom-color: var(--accent-foreground, var(--accent));

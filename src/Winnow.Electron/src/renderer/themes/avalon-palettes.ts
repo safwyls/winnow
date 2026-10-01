@@ -115,19 +115,20 @@ export function deriveAvalonPalette(raw: string | AvalonThemeDocument): AvalonPa
   const surface = hsv(seed.surface),
     ground = hsv(seed.ground),
     depth = Math.max(0.001, Math.min(1, shape.wellDepth ?? 0.55))
-  const dim = hsv(
-    override.TextDim ?? hex([surface[0], surface[1] * (shape.dimChroma ?? 0.41), shape.dimValue ?? 0.68]),
-  )
-  const faint = hsv(
-    override.TextFaint ??
-      hex([surface[0], surface[1] * (shape.faintChroma ?? 0.65), shape.faintValue ?? 0.5]),
-  )
+  // Chained derivations retain HSV precision unless an authored byte color
+  // replaces the intermediate role, as in ThemeDerivation.Effective.
+  const dim: Hsv = override.TextDim
+    ? hsv(override.TextDim)
+    : [surface[0], surface[1] * (shape.dimChroma ?? 0.41), shape.dimValue ?? 0.68]
+  const faint: Hsv = override.TextFaint
+    ? hsv(override.TextFaint)
+    : [surface[0], surface[1] * (shape.faintChroma ?? 0.65), shape.faintValue ?? 0.5]
   const volt = hsv(seed.volt),
     danger = hsv(seed.danger)
   const groundInk = Math.max(0.001, Math.min(1, file.translucency?.groundInk ?? 0.44))
-  const raised = hsv(
-    override.SurfaceRaised ?? hex([surface[0], surface[1], surface[2] + (shape.elevation ?? 0.05)]),
-  )
+  const raised: Hsv = override.SurfaceRaised
+    ? hsv(override.SurfaceRaised)
+    : [surface[0], surface[1], surface[2] + (shape.elevation ?? 0.05)]
   return {
     id: file.id,
     name: file.name,

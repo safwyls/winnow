@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { profileDirectory } from '../../src/main/storage'
 import { DEFAULT_PROFILE } from '../../src/shared/theme'
+import { prebuiltActivationHelper, prebuiltBackend } from './prebuilt-backend'
 
 test('development appearance overrides remain live on both surfaces without changing either saved appearance store', async () => {
   const directory = await mkdtemp(join(resolve('../..', '.tmp'), 'winnow-electron-session-'))
@@ -33,11 +34,15 @@ test('development appearance overrides remain live on both surfaces without chan
         '--transparency=60',
         '--layout=flush',
       ],
-      env: Object.fromEntries(
-        Object.entries(process.env).filter(
-          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-        ),
-      ) as Record<string, string>,
+      env: {
+        ...(Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+          ),
+        ) as Record<string, string>),
+        WINNOW_BACKEND_PATH: prebuiltBackend,
+        WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+      },
       chromiumSandbox: true,
       timeout: 60_000,
     })

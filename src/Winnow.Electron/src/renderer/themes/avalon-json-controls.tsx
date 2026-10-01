@@ -1,24 +1,36 @@
 import { useMemo, useState } from 'react'
 import { resolvedTypography } from '../../shared/theme'
 import type { ThemeRuntime } from '../theming/runtime'
-import { avalonPalette, deriveAvalonPalette } from './avalon-palettes'
-import { avalonThemeReport, exportAvalonPalette, inspectAvalonTheme } from './avalon-json'
+import type { AvalonThemeDiagnostic } from '../../shared/avalonThemeDocument'
+import { avalonPalette } from './avalon-palettes'
+import { avalonThemeReport, avalonThemeDiagnostics, exportAvalonPalette } from './avalon-json'
+
+function ThemeProblems({ items }: { items: AvalonThemeDiagnostic[] }) {
+  return (
+    <ul>
+      {items.map((item, index) => (
+        <li key={`${item.file}:${item.field}:${index}`}>
+          <strong>
+            {item.file}
+            {item.field ? ` · ${item.field}` : ''}
+          </strong>
+          : {item.severity === 'error' ? 'Could not load. ' : ''}
+          {item.message}
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 export function AvalonJsonControls({ runtime }: { runtime: ThemeRuntime }) {
   const [busy, setBusy] = useState(false),
     [notice, setNotice] = useState('')
   const palette = avalonPalette(String(runtime.profile.settings.avalon?.palette ?? 'winnow'))
   const catalogue = runtime.avalonCatalogue
-  const diagnostics = useMemo(
-    () => [
-      ...(catalogue?.diagnostics ?? []),
-      ...(catalogue?.themes.flatMap(({ file, document }) =>
-        inspectAvalonTheme({ ...deriveAvalonPalette(document), sourceFile: file }),
-      ) ?? []),
-    ],
-    [catalogue],
-  )
+  const diagnostics = useMemo(() => avalonThemeDiagnostics(catalogue), [catalogue])
   const report = useMemo(() => (palette ? avalonThemeReport(palette) : null), [palette])
+  const errors = diagnostics.filter((item) => item.severity === 'error')
+  const warnings = diagnostics.filter((item) => item.severity === 'warning')
   const run = async (action: () => Promise<void>) => {
     setBusy(true)
     setNotice('')
@@ -84,23 +96,15 @@ export function AvalonJsonControls({ runtime }: { runtime: ThemeRuntime }) {
         </button>
       </div>
       {notice && <p role="status">{notice}</p>}
-      {!!diagnostics.length && (
+      {!!errors.length && (
+        <section aria-label="Theme file errors">
+          <ThemeProblems items={errors} />
+        </section>
+      )}
+      {!!warnings.length && (
         <details>
-          <summary>
-            {diagnostics.length} palette {diagnostics.length === 1 ? 'note' : 'notes'}
-          </summary>
-          <ul>
-            {diagnostics.map((item, index) => (
-              <li key={`${item.file}:${item.field}:${index}`}>
-                <strong>
-                  {item.file}
-                  {item.field ? ` · ${item.field}` : ''}
-                </strong>
-                : {item.severity === 'error' ? 'Could not load. ' : ''}
-                {item.message}
-              </li>
-            ))}
-          </ul>
+          <summary>Some themes may affect legibility.</summary>
+          <ThemeProblems items={warnings} />
         </details>
       )}
     </section>

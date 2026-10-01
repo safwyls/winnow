@@ -631,16 +631,6 @@
       }
     ]
   },
-  "ThemeContrastTests.The_field_opens_only_when_the_desktop_is_actually_arriving": {
-    "reason": "Explicit source sequence now covers zero transparency, a positive slider before an answer, accepted material, then refusal; panes stay solid until accepted and stored choices remain unchanged. Electron lacks an actual compositor-material getter, so successful native request cannot prove visible OS effect.",
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/avalon-appearance.test.tsx",
-        "case": "opens content panes only for positive transparency with a current accepted native request"
-      }
-    ]
-  },
   "ThemeContrastTests.Picking_a_new_material_forgets_the_old_ones_answer": {
     "reason": "Changing Acrylic to Mica immediately clears the old capability answer and restores solid panes. A delayed old Acrylic response cannot reopen transparency; only the current Mica response activates it.",
     "status": "ported",
@@ -770,16 +760,6 @@
       }
     ],
     "reason": "All nine bundled palettes export and parse with exact equality for eight seeds and sixteen derived colors plus light/dark variant."
-  },
-  "ThemeJsonTests.Every_token_matches_at_every_slider_position": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/avalon-json.test.ts",
-        "case": "round trips all 24 colors and every surface token for $id"
-      }
-    ],
-    "reason": "Every implemented shell/pane/field/metadata surface token round trips at all original 5-percent increments, both layouts and both pane reach values. The original token dictionary also includes renderer-specific art and control primitives outside this subset."
   },
   "ThemeJsonTests.Export_states_the_themes_own_structure": {
     "status": "ported",
@@ -1190,16 +1170,6 @@
       }
     ],
     "reason": "The trusted main store prepares a missing directory without a diagnostic; the Studio button uses the resolved backend data folder."
-  },
-  "UserThemeStoreTests.Preparing_the_theme_folder_reports_nothing_when_there_is_no_folder": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/avalon-theme-store.test.ts",
-        "case": "loads an absent folder without a problem and reports unavailable backend directory discovery"
-      }
-    ],
-    "reason": "An absent disk directory loads without diagnostics. The original no-UserThemeStore dependency-injection host branch is not exercised by this native catalog test; Studio hides this section without the optional bridge."
   },
   "UserThemeStoreTests.A_local_copy_of_a_bundled_theme_keeps_its_edits_and_saved_selection": {
     "status": "ported",

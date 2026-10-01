@@ -180,8 +180,11 @@ copy's ID before using it as another palette. The same files work in Avalonia.
 
 The catalog reads up to 64 top-level JSON files, each at most 256 KB. It supports comments
 and trailing commas, validates schema, IDs, colors, proportions, fonts and defaults, and
-reports file-specific errors without disabling other palettes. Contrast and color-role
-warnings are advisory. File changes reload after a short debounce; **Reload authored
+reports file-specific errors without disabling other palettes. File errors remain visible;
+advisory contrast and color-role warnings start collapsed under **Some themes may affect
+legibility.** Bundled authored palettes retain their warnings even without local files.
+A local replacement supplies both the palette and its audit findings.
+File changes reload after a short debounce; **Reload authored
 palettes** is available if file watching is unavailable. Reloading preserves selection by
 ID and explicit font overrides. Removing the selected custom palette restores Winnow.
 A local copy may replace an authored bundled palette with the same ID; the four calibrated
