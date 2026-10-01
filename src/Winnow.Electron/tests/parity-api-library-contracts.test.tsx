@@ -385,6 +385,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s source API library contrac
     }
     const { client, request } = mount(<LibraryTools mode={mode} />, ({ route }) => {
       if (route === 'library.get') return ok({ games: [], lists: [] })
+      if (route === 'library.workspace') return ok({ ...workspace, works: [] })
       if (route === 'hidden.get') return ok(hidden)
       if (route === 'manual.get') return ok([manual])
       throw new Error(`Unexpected settings API route: ${route}`)
@@ -401,8 +402,10 @@ describe.each(['desktop', 'fullscreen'] as const)('%s source API library contrac
       hiddenAt,
     )
     expect(new Set(request.mock.calls.map(([input]) => input.route))).toEqual(
-      new Set(['library.get', 'hidden.get', 'manual.get']),
+      new Set(['library.get', 'library.workspace', 'hidden.get', 'manual.get']),
     )
+    expect(request.mock.calls.filter(([input]) => input.route === 'library.workspace')).toHaveLength(1)
+    expect(client.getQueryState(['api', 'library.workspace', undefined])?.status).toBe('success')
   })
 
   it('RemoteManualIdentifierConflictRemainsAnInlineFieldError: create-time MappingChanged stays on IGDB', async () => {

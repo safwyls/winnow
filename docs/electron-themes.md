@@ -382,7 +382,7 @@ Each optional screen is a React component receiving the same `ThemeContext`:
 | --- | --- |
 | `mode` | `desktop` or `fullscreen`; themes must make both usable. |
 | `page`, `selectedWorkId` | Current destination and selected game, if any. |
-| `games` | Current `LibraryGame[]` from the public backend. IDs are numbers. |
+| `games` | Current `LibraryGame[]` with saved group-header presentation applied. IDs are numbers. |
 | `feed`, `loading` | Recommendation snapshot, if available, and library loading state. |
 | `profile` | Validated appearance, layout, and theme-specific settings. |
 | `setPage(page)` | Navigate to Discover, Library, Search, Journal, Settings, Studio, or Details. |
@@ -400,6 +400,11 @@ Each optional screen is a React component receiving the same `ThemeContext`:
 | `components.ArtworkEffects` | Reusable material and depth surface around artwork; takes `children`, optional `className`, `effects`, and `interactionRef`. |
 | `components.GamePreview` | Game information flyout around a theme-owned trigger; takes `game`, `children`, optional `reason`, `disabled`, and `className`. |
 | `components.PortalSurface?` | Reusable fixed-plane reveal with optional cached artwork, shape/activity options, cursor origin and full-view expansion. Older API-1 hosts may omit it. |
+
+`game.workId` remains the canonical identity for navigation and edits. A saved group header
+can supply a different title, first store entry and optional `headerWorkId`. Use
+`game.headerWorkId ?? game.workId` for cover artwork; hero metadata keeps `game.workId`.
+The shared GameCard already makes this choice. Older hosts may omit `headerWorkId`.
 
 A definition can replace `Shell`, `Discover`, `Library`, `Search`, `Details`, `Journal`,
 `Merges`, and `Settings`. The `merges` page and optional `Merges` component expose the
@@ -499,7 +504,7 @@ function Cover({ context, game, reason }) {
       onClick: () => context.openGame(game.workId)
     },
       h(ArtworkEffects, { interactionRef: trigger, effects: { foilMetal: 'gold' } },
-        h(Artwork, { workId: game.workId }))));
+        h(Artwork, { workId: game.headerWorkId ?? game.workId }))));
 }
 ```
 

@@ -360,7 +360,7 @@ export function AfterglowDiscover(context: ThemeContext) {
         <div className="returning-grid">
           {returning.map((game) => (
             <button key={game.workId} onClick={() => context.openGame(game.workId)}>
-              <Artwork workId={game.workId} />
+              <Artwork workId={game.headerWorkId ?? game.workId} />
               <span>
                 <strong>{game.title}</strong>
                 <small>
@@ -684,7 +684,7 @@ export function AfterglowLibrary({ quietCards = true, ...context }: ThemeContext
                           key={game.workId}
                           onClick={() => context.openGame(game.workId)}
                         >
-                          <Artwork workId={game.workId} />
+                          <Artwork workId={game.headerWorkId ?? game.workId} />
                           <span className="record-title">
                             <strong>{game.title}</strong>
                             <small>{game.entries.map((entry) => entry.store).join(' / ')}</small>

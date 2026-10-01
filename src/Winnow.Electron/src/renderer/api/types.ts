@@ -12,6 +12,7 @@ export interface GameEntry {
 }
 export interface LibraryGame {
   workId: number
+  headerWorkId?: number
   title: string
   firstReleaseYear?: number | null
   summary?: string | null

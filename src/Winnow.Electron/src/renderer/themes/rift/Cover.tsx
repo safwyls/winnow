@@ -18,7 +18,7 @@ export function RiftCover({
       aria-label={props['aria-label'] ?? `View ${game.title}`}
     >
       <ArtworkEffects interactionRef={interaction}>
-        <Artwork workId={game.workId} />
+        <Artwork workId={game.headerWorkId ?? game.workId} />
         <span className="rift-cover-fallback" aria-hidden="true">
           {game.title}
         </span>

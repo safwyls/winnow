@@ -1,0 +1,272 @@
+{
+  "GroupHeaderPreferenceTests.Saved_store_changes_header_and_primary_route_but_preserves_metadata_and_identity": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "saved header choice and Automatic preserve identity and refresh mounted tiles"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/NameAndHeaderParityTests.cs",
+        "case": "Saved_header_choice_survives_reload_and_ingest_without_changing_canonical_metadata_or_identity_over_HTTP"
+      }
+    ],
+    "reason": "Steam title/GOG title, year 2011, no platform, play records or external IDs. API mutation saves gog, fresh client reload and ownership upsert retain it, Automatic clears it; canonical metadata, underlying records and link history stay unchanged."
+  },
+  "GroupHeaderPreferenceTests.Further_links_inherit_preference_and_undo_retains_original_identity_history": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "further links inherit the choice and undo restores the original group projection"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/NameAndHeaderParityTests.cs",
+        "case": "Header_choice_follows_regrouping_and_undo_restores_the_original_anchor_over_HTTP"
+      }
+    ],
+    "reason": "Original Steam/GOG group, Gog preference, new Epic title root. HTTP regroup inherits gog; old Steam child refuses choice; clearing new root preserves history; undo restores original Steam-root preference and Gog-to-Steam/Epic-to-self resolution."
+  },
+  "GroupHeaderPreferenceTests.Unavailable_preference_falls_back_and_can_be_reset_without_losing_the_saved_choice": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "unavailable preferences fall back without losing the saved choice and restore when ownership returns"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/NameAndHeaderParityTests.cs",
+        "case": "Unavailable_header_choice_is_retained_refused_and_restored_when_ownership_returns_over_HTTP"
+      }
+    ],
+    "reason": "Original saved gog choice; DELETE of GOG ownership exactly matches source. Choice remains persisted while API exposes only Steam ownership, selecting absent gog returns Changed=false, restoring ownership restores availability and Automatic clears preference."
+  },
+  "GroupHeaderPreferenceTests.Latest_explicit_choice_wins_when_groups_join_and_pending_queue_default_is_independent": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "joined groups use the inherited explicit choice independently of pending platform defaults"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/NameAndHeaderParityTests.cs",
+        "case": "Latest_group_header_wins_after_join_and_pending_platform_preference_does_not_replace_it_over_HTTP"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps expansion bases and previously saved directions fixed when a preferred platform changes"
+      }
+    ],
+    "reason": "Original Steam/GOG and Epic/Manual groups. gog then manual explicit choice; joining under Steam retains latest manual. Real presentation preference PUT sets pending platform steam without replacing saved manual choice or mutating history/records."
+  },
+  "GroupHeaderPreferenceTests.Expansion_relations_and_unlinked_works_cannot_receive_group_preferences": {
+    "status": "retained-backend",
+    "reason": "The original method directly exercises GroupHeaderPreferenceRepository without a frontend. It rejects expansion children, unlinked works and absent stores. The unchanged original case and the supplemental HTTP refusal case passed at checkpoint 66; HTTP also verifies unchanged revision, history and records.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/GroupHeaderPreferenceRepository.cs",
+      "src/Winnow.Application/Identity/IdentityReviewApplication.cs"
+    ],
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/NameAndHeaderParityTests.cs",
+        "case": "Expansion_children_single_games_and_absent_stores_refuse_header_preferences_over_HTTP"
+      }
+    ]
+  },
+  "UserSetNameTests.A_user_set_name_reaches_the_grid_tile": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "A_user_set_name_reaches_the_grid_tile"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/NameAndHeaderParityTests.cs",
+        "case": "User_name_reaches_the_library_and_survives_automatic_metadata_refresh_over_HTTP"
+      }
+    ],
+    "reason": "Automatic Name work / Storefront Title release, Windows, Steam ID 700001, zero-minute steam_localconfig observation at 2026-09-05T12:00:00Z. Real metadata PUT My Own Name reaches library. Supplemental actual enrichment attempt cannot overwrite it; fresh client reload retains user provenance."
+  },
+  "UserSetNameTests.A_user_set_name_reaches_the_details_modal_headline": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "A_user_set_name_reaches_the_details_modal_headline"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/NameAndHeaderParityTests.cs",
+        "case": "User_name_reaches_details_and_clears_the_provisional_flag_over_HTTP"
+      }
+    ],
+    "reason": "Same exact seed and rename. Game detail data and metadata both say My Own Name; workspace work is not provisional."
+  },
+  "UserSetNameTests.A_user_set_name_reaches_search_and_the_title_sort": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "A_user_set_name_reaches_search_and_the_title_sort"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/NameAndHeaderParityTests.cs",
+        "case": "User_name_orders_the_library_while_preserving_the_distinct_storefront_title_over_HTTP"
+      }
+    ],
+    "reason": "Original Automatic Name/Storefront Title plus Almanac. Rename Zenith; HTTP library returns Almanac then Zenith and workspace preserves distinct old release title."
+  },
+  "UserSetNameTests.A_user_set_name_reaches_the_merges_queue": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "A_user_set_name_reaches_the_merges_queue"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/NameAndHeaderParityTests.cs",
+        "case": "User_name_reaches_the_real_soft_match_review_without_rewriting_candidate_evidence_over_HTTP"
+      }
+    ],
+    "reason": "Original two Prey works/releases, Steam and GOG IDs 700001/700002. Real SoftMatcher generates score and serialized signals; metadata PUT renames left Prey (2017). Identity-review workspace updates that name without rewriting candidate evidence or linking either work."
+  },
+  "UserSetNameTests.A_game_the_user_has_not_named_keeps_the_title_it_had": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "A_game_the_user_has_not_named_keeps_the_title_it_had"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/NameAndHeaderParityTests.cs",
+        "case": "Unedited_name_keeps_the_automatic_title_over_HTTP"
+      }
+    ],
+    "reason": "Original Automatic Name/Storefront Title seed stays Automatic Name in library and metadata, retains Storefront Title release and has no field sources."
+  },
+  "UserSetNameTests.Handing_the_name_back_to_automatic_marks_it_provisional_again": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "Handing_the_name_back_to_automatic_marks_it_provisional_again"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/NameAndHeaderParityTests.cs",
+        "case": "Reset_name_retains_text_as_provisional_until_automatic_enrichment_promotes_it_over_HTTP"
+      }
+    ],
+    "reason": "Original My Own Name rename followed by real metadata reset. Library retains My Own Name, workspace provisional=true, sources empty. Supplemental later automatic enrichment promotes replacement and clears provisional flag."
+  },
+  "MergeMemberLabelTests.A_title_that_names_one_member_is_the_whole_label": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "A_title_that_names_one_member_is_the_whole_label"
+      }
+    ],
+    "reason": "Prey 2017 Bethesda Softworks Steam; Bastion 2011 Supergiant Games Steam; labels exactly Prey and Bastion."
+  },
+  "MergeMemberLabelTests.Two_members_with_one_title_take_their_stores": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "Two_members_with_one_title_take_their_stores"
+      }
+    ],
+    "reason": "Two Prey 2017 Bethesda Softworks entries retain storefront disambiguation on both surfaces. Electron uses its established provider wording Epic Games, giving Prey (Steam) and Prey (Epic Games); the source uses Epic. The qualifier, collision and no-entry-number rules remain identical."
+  },
+  "MergeMemberLabelTests.Two_members_with_one_title_and_one_store_take_their_years": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "Two_members_with_one_title_and_one_store_take_their_years"
+      }
+    ],
+    "reason": "Prey Steam 2017 Bethesda Softworks vs Prey Steam 2006 3D Realms; labels exactly Prey (Steam, 2017), Prey (Steam, 2006)."
+  },
+  "MergeMemberLabelTests.Members_a_storefront_describes_identically_take_a_position": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "Members_a_storefront_describes_identically_take_a_position"
+      }
+    ],
+    "reason": "Three identical Prey 2017 Bethesda Softworks Steam; three distinct labels, each contains of 3."
+  },
+  "MergeMemberLabelTests.No_label_carries_an_entry_number": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "No_label_carries_an_entry_number"
+      }
+    ],
+    "reason": "Prey 2017 Bethesda Softworks Steam vs Prey with null year, publisher and store; two distinct labels and no #. Source Face work ID is 1 for both, so labels must not depend on database identity."
+  },
+  "GroupHeaderPreferenceUiTests.Desktop_header_selector_saves_and_automatic_restores_without_relinking": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/names-editions.spec.ts",
+        "case": "exact Steam GOG header selection persists and Automatic restores without relinking"
+      },
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "saved header choice and Automatic preserve identity and refresh mounted tiles"
+      },
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "header refusal retains the saved choice and exposes a focused recovery"
+      },
+      {
+        "file": "tests/electron/names-editions.spec.ts",
+        "case": "an unowned stale GOG header choice preserves Automatic and offers focused recovery"
+      },
+      {
+        "file": "tests/electron/names-editions.spec.ts",
+        "case": "preferred GOG automatic cover reaches tile and Details while canonical metadata stays Steam"
+      }
+    ],
+    "reason": "The native desktop path uses the source Steam title/GOG title fixture with year 2011, saves GOG and resets Automatic through the real API, checks retained identity history and records, verifies library/Details titles and focus, and reloads the saved choice. Component cases additionally hold the save and verify refused writes preserve the selection and expose recovery. A real ownership deletion with unchanged review revision also exercises HTTP 200 changed:false refusal and focused recovery."
+  },
+  "GroupHeaderPreferenceUiTests.Fullscreen_saved_group_offers_equivalent_store_choices_and_reset": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/names-editions.spec.ts",
+        "case": "exact Steam GOG header selection persists and Automatic restores without relinking"
+      },
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "saved header choice and Automatic preserve identity and refresh mounted tiles"
+      },
+      {
+        "file": "tests/parity-names-headers.test.tsx",
+        "case": "header refusal retains the saved choice and exposes a focused recovery"
+      },
+      {
+        "file": "tests/electron/names-editions.spec.ts",
+        "case": "an unowned stale GOG header choice preserves Automatic and offers focused recovery"
+      },
+      {
+        "file": "tests/electron/names-editions.spec.ts",
+        "case": "preferred GOG automatic cover reaches tile and Details while canonical metadata stays Steam"
+      }
+    ],
+    "reason": "The native fullscreen path uses the source Steam title/GOG title fixture with year 2011, saves GOG and resets Automatic through the real API, checks retained identity history and records, verifies library/Details titles and focus, and reloads the saved choice. Component cases additionally hold the save and verify refused writes preserve the selection and expose recovery. A real ownership deletion with unchanged review revision also exercises HTTP 200 changed:false refusal and focused recovery."
+  },
+  "EditionIdentityPresentationTests.Acquired_native_evidence_updates_library_queue_and_details_and_can_be_separated": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/names-editions.spec.ts",
+        "case": "acquired native edition evidence updates library queue and details and separation prevents relinking"
+      }
+    ],
+    "reason": "Both native surfaces run the source external-service substitutes through production ReleaseEditionEvidenceAcquirer and GamesDbIdentitySyncService in the guarded test backend. The exact Epic/Steam identities yield one eligible link and no pending candidate; one tile and two owned-copy rows expose Epic edition, queue separation restores two tiles, re-sync is protected, coverage disappears and both original external IDs and records remain."
+  }
+}

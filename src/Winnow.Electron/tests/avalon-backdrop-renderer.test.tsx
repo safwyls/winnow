@@ -193,3 +193,64 @@ it('measures on attachment and window resize when ResizeObserver is unavailable'
   )
   expect(view.container.querySelector('[data-fitted]')).toBeNull()
 })
+
+it.each([false, true])(
+  'keeps canonical hero metadata while a saved header changes the cover fallback, fullscreen %s',
+  async (fullscreen) => {
+    vi.mocked(window.winnow.request).mockImplementation(
+      async (input: ApiRequest) =>
+        ({
+          ok: true,
+          status: 200,
+          data:
+            input.route === 'artwork.get'
+              ? { current: { previewKey: { provider: 'igdb', id: `cover-${input.params?.workId}` } } }
+              : {
+                  candidates: [
+                    {
+                      key: { provider: 'igdb-backdrop', id: 'canonical-hero' },
+                      aspectRatio: 16 / 9,
+                      fitWholeHero: false,
+                    },
+                  ],
+                  coverKey: { provider: 'steam', id: 'canonical-cover' },
+                },
+        }) as never,
+    )
+    let heroAvailable = true
+    vi.mocked(loadBackdropImage).mockImplementation(async (key) =>
+      key.id === 'canonical-hero' && !heroAvailable
+        ? null
+        : {
+            source: `blob:${key.id}`,
+            width: 1920,
+            height: 1080,
+            dispose: vi.fn(),
+          },
+    )
+    const view = render(<AvalonBackdrop workId={1} coverWorkId={2} fullscreen={fullscreen} />)
+    await waitFor(() =>
+      expect(view.container.querySelector('img')?.getAttribute('src')).toBe('blob:canonical-hero'),
+    )
+    expect(
+      vi
+        .mocked(window.winnow.request)
+        .mock.calls.filter(([input]) => input.route === 'artwork.backdrop')
+        .every(([input]) => input.params?.workId === 1),
+    ).toBe(true)
+
+    heroAvailable = false
+    // Reopening with an unavailable hero uses the preferred cover.
+    view.unmount()
+    const fallback = render(<AvalonBackdrop workId={1} coverWorkId={3} fullscreen={fullscreen} />)
+    await waitFor(() =>
+      expect(fallback.container.querySelector('img')?.getAttribute('src')).toBe('blob:cover-3'),
+    )
+    expect(fallback.container.querySelector('[data-fallback]')).not.toBeNull()
+    fallback.rerender(<AvalonBackdrop workId={1} coverWorkId={2} fullscreen={fullscreen} />)
+    await waitFor(() =>
+      expect(fallback.container.querySelector('img')?.getAttribute('src')).toBe('blob:cover-2'),
+    )
+    expect(vi.mocked(loadBackdropImage).mock.calls.some(([key]) => key.id === 'canonical-cover')).toBe(false)
+  },
+)

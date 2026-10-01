@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
-import { useLayoutEffect, useRef } from 'react'
+import { useCallback, useLayoutEffect, useRef } from 'react'
 import { z } from 'zod'
 import { request } from './client'
 import { prepareLibrary } from './prepare-library'
 import { waitForLibraryWrites } from './library-write-barrier'
+import { projectLibraryHeaders } from './library-headers'
 export { librarySchema } from './prepare-library'
 import type {
   ActivityCursor,
@@ -12,6 +13,7 @@ import type {
   GameDetails,
   GameplayStats,
   Workspace,
+  LibraryResponse,
 } from './types'
 
 const feedItemSchema = z.object({
@@ -61,6 +63,11 @@ export function useApiQuery<T>(route: string, params?: Record<string, string | n
 }
 export function useLibrary(enabled = true) {
   const client = useQueryClient()
+  const workspace = useWorkspace(enabled)
+  const select = useCallback(
+    (response: LibraryResponse) => projectLibraryHeaders(response, workspace.data),
+    [workspace.data],
+  )
   return useQuery({
     queryKey: ['api', 'library.get'],
     queryFn: async ({ signal }) => {
@@ -70,6 +77,7 @@ export function useLibrary(enabled = true) {
     enabled,
     retry: false,
     staleTime: 30_000,
+    select,
   })
 }
 export function useFeed(enabled = true) {

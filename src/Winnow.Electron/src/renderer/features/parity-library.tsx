@@ -686,6 +686,7 @@ export function IdentityTools({
             <label className="field" key={workId}>
               Header edition for {title(workId)}
               <select
+                className="group-header-select"
                 disabled={command.isPending || queueBusy}
                 value={facts?.workspace.preferredHeaderStores?.[String(workId)] ?? ''}
                 onChange={(e) => void mutate('identity.header', { workId, store: e.target.value || null })}

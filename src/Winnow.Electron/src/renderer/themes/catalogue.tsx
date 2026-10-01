@@ -89,7 +89,7 @@ function CatalogueDiscover(context: ThemeContext) {
               >
                 <button className="ledger-entry" onClick={() => context.openGame(game.workId)}>
                   <span className="ledger-number">{String(index + 1).padStart(2, '0')}</span>
-                  {showArt && <Artwork workId={game.workId} />}
+                  {showArt && <Artwork workId={game.headerWorkId ?? game.workId} />}
                   <span className="ledger-game">
                     <small>{shelf.title}</small>
                     <strong>{game.title}</strong>

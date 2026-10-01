@@ -45,6 +45,14 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [names, editions and header preferences checkpoint](checkpoint-sixty-six.md) records
+all 3,595 component/live API cases, 14 distinct native cases, 17 original source cases and
+11 new HTTP cases passing. Saved header titles and covers now reach all theme consumers;
+canonical metadata stays intact, and refused writes retain the saved choice with focused
+recovery. Eighteen assigned methods are ported and one retains its backend test; 301 pending
+and 64 partial methods remain. Shared fullscreen merge-sheet typography is still assigned
+to TASK-381.12. The user authorized continuing this batch through TASK-381.20.
+
 The [tile actions and installed store links checkpoint](checkpoint-sixty-three.md) records
 all 3,490 component/live API cases, 49 distinct native cases and three unchanged plugin
 backend tests passing. Tiles,

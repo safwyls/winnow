@@ -1,10 +1,11 @@
 ---
 id: TASK-381.11
 title: 'Electron: finish names, editions and group-header preferences'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:45'
+updated_date: '2026-10-01 06:59'
 labels:
   - electron
   - parity
@@ -57,18 +58,36 @@ tests/Winnow.Ui.Tests/GroupHeaderPreferenceUiTests.cs
 - GroupHeaderPreferenceUiTests.Desktop_header_selector_saves_and_automatic_restores_without_relinking [pending at split]
 - GroupHeaderPreferenceUiTests.Fullscreen_saved_group_offers_equivalent_store_choices_and_reset [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Keep one implementation task active, verify and commit each milestone, then continue to the next task. Pause for review after TASK-381.20.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original user-name, edition/member-label and automatic/preferred-header rules survive reload, regrouping and metadata refresh without overwriting user intent.
-- [ ] #2 Desktop and fullscreen group-header controls show the current choice, preserve unrelated records and restore the correct focus after save or refusal.
-- [ ] #3 All 19 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original user-name, edition/member-label and automatic/preferred-header rules survive reload, regrouping and metadata refresh without overwriting user intent.
+- [x] #2 Desktop and fullscreen group-header controls show the current choice, preserve unrelated records and restore the correct focus after save or refusal.
+- [x] #3 All 19 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit the nineteen frozen name, member-label, edition and group-header contracts against current backend and Electron behavior. 2. Close demonstrated gaps and add exact-fixture backend, component and native desktop/fullscreen evidence. 3. Run focused regressions and production build, record per-method migration evidence and checkpoint results. 4. Commit this milestone and continue to 381.12 under the user-authorized ten-task batch, ending after 381.20.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+The user authorized the next ten tasks, 381.11 through 381.20, sequentially without intermediate pauses. Verification: 3595 component/live API cases across 179 files, 14 distinct native cases (seven per surface), 17 original source cases, 11 HTTP/SQLite cases, production build/typecheck and formatting all pass. Native evidence spans final2/final4/final5 reports; original fixture data and viewport sizes are retained. Eighteen contracts ported and one retained backend, leaving 365 unresolved overall. Checkpoint 66 records exact evidence and limitations. Shared fullscreen merge-sheet typography is explicitly carried into the immediately following 381.12 task.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Saved header preferences now update visible titles and covers while preserving canonical identity and metadata. Save/refusal recovery retains focus, and native edition acquisition/separation and user-name workflows pass on desktop and fullscreen. All 19 assigned source contracts have complete evidence. See docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-six.md. Continuing the authorized batch with 381.12 after the milestone commit.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -235,7 +235,7 @@ export function FullscreenSettingsPreview({
                 : `saturate(${ramp.saturation}) hue-rotate(${ramp.hue}deg) brightness(${ramp.brightness})`,
           }}
         >
-          <Artwork workId={sample.workId} />
+          <Artwork workId={sample.headerWorkId ?? sample.workId} />
         </div>
       )}
       <h3>{sample?.title ?? 'Your next game is already here.'}</h3>

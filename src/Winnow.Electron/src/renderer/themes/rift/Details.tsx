@@ -5,6 +5,7 @@ import { PortalSurface } from '../../components/portal-effects'
 import { useJourney } from './journey'
 
 export function RiftDetails(context: ThemeContext) {
+  const game = context.games.find((entry) => entry.workId === context.selectedWorkId)
   const journey = useJourney(),
     root = useRef<HTMLDivElement>(null)
   const [expansion, setExpansion] = useState<{ x: number; y: number; width: number; height: number } | null>(
@@ -49,7 +50,9 @@ export function RiftDetails(context: ThemeContext) {
         >
           <div className="rift-details-scroll" aria-busy={!expanded} inert={!expanded}>
             <div className="rift-detail-poster" aria-hidden="true">
-              {context.selectedWorkId !== null && <Artwork workId={context.selectedWorkId} eager />}
+              {context.selectedWorkId !== null && (
+                <Artwork workId={game?.headerWorkId ?? context.selectedWorkId} eager />
+              )}
             </div>
             {context.renderScreen('details')}
           </div>

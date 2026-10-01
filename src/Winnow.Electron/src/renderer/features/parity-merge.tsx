@@ -39,9 +39,10 @@ import {
   type MergeUndo,
 } from './parity-merge-model'
 import './parity-merge.css'
+import { restoreFocusWhenReady } from './restore-focus'
 
 type Choice = Pick<MergeCard, 'parent' | 'included' | 'selected'>
-type Mutation = { revision: string; actId?: number }
+type Mutation = { revision: string; actId?: number; changed?: boolean }
 
 export function MergeQueueLoading() {
   return (
@@ -439,18 +440,38 @@ export function MergeQueue({
       setBusy(false)
     }
   }
-  async function saveHeader(card: MergeCard, store: string) {
-    if (!card.header || store === card.header.store) return
-    await action(async (revision) => {
+  async function recheck() {
+    setBusy(true)
+    try {
+      const fresh = await refresh()
+      setUndo((current) => current && { ...current, revision: fresh.revision })
+      setMustRefresh(false)
+      setProblem(undefined)
+      return true
+    } catch (error) {
+      setProblem(error)
+      return false
+    } finally {
+      if (mounted.current) setBusy(false)
+    }
+  }
+  async function saveHeader(card: MergeCard, store: string, origin?: HTMLElement) {
+    if (!card.header || store === card.header.store) return true
+    const saved = await action(async (revision) => {
       const result = await execute(
         'identity.header',
         { workId: card.header!.root, store: store || null },
         revision,
       )
+      if (result.changed === false)
+        throw new Error('This group changed. Check the saved review before choosing its header again.')
       setUndo((current) =>
         current && current.revision === revision ? { ...current, revision: result.revision } : current,
       )
     })
+    if (origin && (document.activeElement === origin || document.activeElement === document.body))
+      restoreFocusWhenReady(saved ? origin : (root.current?.querySelector('[data-merge-recheck]') ?? null))
+    return saved
   }
   return (
     <div
@@ -584,22 +605,7 @@ export function MergeQueue({
       </p>
       <Notice error={problem} message={busy ? 'Saving your review…' : notice} />
       {mustRefresh && (
-        <button
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true)
-            try {
-              const fresh = await refresh()
-              setUndo((current) => current && { ...current, revision: fresh.revision })
-              setMustRefresh(false)
-              setProblem(undefined)
-            } catch (error) {
-              setProblem(error)
-            } finally {
-              if (mounted.current) setBusy(false)
-            }
-          }}
-        >
+        <button data-merge-recheck disabled={busy} onClick={() => void recheck()}>
           {mergeScreenCopy.checkSaved}
         </button>
       )}
@@ -686,10 +692,13 @@ export function MergeQueue({
                           <label>
                             {mergeScreenCopy.headerStore}
                             <select
+                              className="group-header-select"
                               aria-label={`Header store for ${mergeTitle(card)}`}
                               value={card.header.store}
                               disabled={blocked}
-                              onChange={(event) => void saveHeader(card, event.target.value)}
+                              onChange={(event) =>
+                                void saveHeader(card, event.target.value, event.currentTarget)
+                              }
                             >
                               {card.header.options.map((option) => (
                                 <option key={option.value} value={option.value}>
@@ -879,7 +888,10 @@ export function MergeQueue({
               onLink={() => void link([card])}
               onDismiss={() => void dismiss(card)}
               onSeparate={() => void reverse(card.actId)}
-              onHeader={(store) => void saveHeader(card, store)}
+              onHeader={(store) => saveHeader(card, store)}
+              headerProblem={problem}
+              headerBusy={busy}
+              onRecheck={mustRefresh ? recheck : undefined}
               onOpenGame={onOpenGame ? (workId) => openGame(card, workId) : undefined}
               onReview={() =>
                 onReview(card.parent, mergeAnswer(card).childWorkIds, card.kind, card.label ?? '')

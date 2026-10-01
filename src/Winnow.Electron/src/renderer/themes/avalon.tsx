@@ -303,6 +303,7 @@ export function AvalonShell(context: ThemeContext) {
           <div className="avalon-library-backdrop" aria-hidden="true">
             <AvalonBackdrop
               workId={librarySelected}
+              coverWorkId={context.games.find((game) => game.workId === librarySelected)?.headerWorkId}
               reducedMotion={context.profile.appearance.reducedMotion}
             />
           </div>
@@ -550,7 +551,7 @@ function AvalonFullscreenCover({
         onKeyDown={onKeyDown}
       >
         <Artwork
-          workId={game.workId}
+          workId={game.headerWorkId ?? game.workId}
           className={context.mode === 'fullscreen' ? 'artwork-edge-padding' : undefined}
         />
         <span className="avalon-cover-fallback" aria-hidden="true">
@@ -830,6 +831,7 @@ export function AvalonDiscover(context: ThemeContext) {
       <div className="avalon-home-backdrop" aria-hidden="true">
         <AvalonBackdrop
           workId={picked.game.workId}
+          coverWorkId={picked.game.headerWorkId}
           reducedMotion={context.profile.appearance.reducedMotion}
         />
       </div>
@@ -1656,7 +1658,7 @@ export function AvalonLibrary(context: ThemeContext) {
                                   onFocus={() => setSelected(game.workId)}
                                   onKeyDown={(event) => key(event, row.index * columns + index)}
                                 >
-                                  <Artwork workId={game.workId} />
+                                  <Artwork workId={game.headerWorkId ?? game.workId} />
                                   <strong className="avalon-record-title">
                                     {game.title}
                                     {projected.marks.has(game.workId) && (

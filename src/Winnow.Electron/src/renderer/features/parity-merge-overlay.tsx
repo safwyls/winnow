@@ -4,6 +4,10 @@ import { mergeAnswer, mergeMemberLabels, mergeTitle, type MergeCard } from './pa
 import { mergeIdle, mergePlaytime } from './parity-merge-facts'
 import { storeLabel } from '../api/client'
 import { mergeActionCopy, mergeActionNames } from './parity-merge-copy'
+import { Notice } from './shared'
+import { restoreFocusWhenReady } from './restore-focus'
+import acceptGlyph from './assets/xbox_button_a_outline.svg?raw'
+import backGlyph from './assets/xbox_button_b_outline.svg?raw'
 
 function move(event: KeyboardEvent<HTMLDivElement>) {
   if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
@@ -33,6 +37,9 @@ export function MergeMemberSheet({
   onDismiss,
   onSeparate,
   onHeader,
+  headerProblem,
+  headerBusy,
+  onRecheck,
   onOpenGame,
   onReview,
 }: {
@@ -45,7 +52,10 @@ export function MergeMemberSheet({
   onLink(): void
   onDismiss(): void
   onSeparate(): void
-  onHeader(store: string): void
+  onHeader(store: string): Promise<boolean>
+  headerProblem?: unknown
+  headerBusy?: boolean
+  onRecheck?(): Promise<boolean>
   onOpenGame?: (workId: number) => void
   onReview(): void
 }) {
@@ -53,14 +63,24 @@ export function MergeMemberSheet({
   const [confirm, setConfirm] = useState(false)
   const [header, setHeader] = useState(false)
   const content = useRef<HTMLDivElement>(null)
+  const headerOrigin = useRef<HTMLButtonElement>(null)
+  const recovery = useRef<HTMLButtonElement>(null)
+  const headerVersion = useRef(0)
+  const restoreHeader = useRef(false)
   const origin = useRef(document.activeElement as HTMLElement | null)
   const row = card.rows.find((entry) => entry.workId === member)
   const labels = mergeMemberLabels(card)
   const answerable = !disabled && mergeAnswer(card).childWorkIds.length > 0
   useLayoutEffect(() => {
+    if (restoreHeader.current && !header) {
+      restoreHeader.current = false
+      restoreFocusWhenReady(headerOrigin.current)
+      return
+    }
     content.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
   }, [member, confirm, header])
   function back() {
+    headerVersion.current++
     if (confirm) setConfirm(false)
     else if (header) setHeader(false)
     else if (member !== null) setMember(null)
@@ -120,15 +140,38 @@ export function MergeMemberSheet({
                     key={option.value}
                     disabled={disabled}
                     aria-pressed={card.header!.store === option.value}
-                    onClick={() => {
-                      onHeader(option.value)
-                      setHeader(false)
+                    onClick={async () => {
+                      const version = ++headerVersion.current
+                      const saved = await onHeader(option.value)
+                      if (version !== headerVersion.current || !content.current) return
+                      if (saved) {
+                        restoreHeader.current = true
+                        setHeader(false)
+                      } else restoreFocusWhenReady(recovery.current)
                     }}
                   >
                     {option.label}
                   </button>
                 ))}
-                <button onClick={() => setHeader(false)}>Back to proposal</button>
+                {onRecheck && (
+                  <button
+                    ref={recovery}
+                    disabled={headerBusy}
+                    onClick={async () => {
+                      if (await onRecheck())
+                        restoreFocusWhenReady(
+                          content.current?.querySelector('button[aria-pressed="true"]') ?? null,
+                        )
+                    }}
+                  >
+                    Check saved review
+                  </button>
+                )}
+                <Notice
+                  error={headerProblem}
+                  message={headerBusy ? 'Saving your header choice…' : undefined}
+                />
+                <button onClick={back}>Back to proposal</button>
               </>
             ) : confirm ? (
               <>
@@ -171,7 +214,7 @@ export function MergeMemberSheet({
             ) : (
               <>
                 {card.header && (
-                  <button disabled={disabled} onClick={() => setHeader(true)}>
+                  <button ref={headerOrigin} disabled={disabled} onClick={() => setHeader(true)}>
                     Header store ·{' '}
                     {card.header.options.find((option) => option.value === card.header!.store)?.label}
                   </button>
@@ -242,6 +285,24 @@ export function MergeMemberSheet({
               </>
             )}
           </div>
+          {header && (
+            <div className="merge-header-hints">
+              {[
+                [acceptGlyph, 'A', 'Choose'],
+                [backGlyph, 'B', 'Back'],
+              ].map(([art, key, label]) => (
+                <span key={key}>
+                  <span
+                    aria-hidden="true"
+                    data-merge-header-glyph={key}
+                    dangerouslySetInnerHTML={{ __html: art.replace('<svg ', '<svg viewBox="8 8 48 48" ') }}
+                  />
+                  <span className="sr-only">{key} </span>
+                  {label}
+                </span>
+              ))}
+            </div>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

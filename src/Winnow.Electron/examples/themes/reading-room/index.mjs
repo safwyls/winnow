@@ -9,7 +9,7 @@ const pages = [
 function BookCover({ context, game, reason }) {
   const interactionRef = React.useRef(null)
   const { Artwork, ArtworkEffects, GamePreview } = context.components
-  const artwork = h(Artwork, { workId: game.workId, className: 'rr-book-art' })
+  const artwork = h(Artwork, { workId: game.headerWorkId ?? game.workId, className: 'rr-book-art' })
   const cover = h(
     'button',
     {

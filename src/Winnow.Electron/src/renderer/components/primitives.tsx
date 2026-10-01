@@ -53,7 +53,7 @@ export function GameCard({
         aria-label={`View ${game.title}`}
       >
         <ArtworkEffects interactionRef={interaction} effects={presentation === 'record' ? false : effects}>
-          <Artwork workId={game.workId} />
+          <Artwork workId={game.headerWorkId ?? game.workId} />
         </ArtworkEffects>
         {(preview === 'inline' || preview === 'overlay') && (
           <div className="card-content">

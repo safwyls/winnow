@@ -210,7 +210,7 @@ export function RiftDiscover(context: ThemeContext) {
                 setIndexOpen(false)
               }}
             >
-              <Artwork workId={item.workId} />
+              <Artwork workId={item.headerWorkId ?? item.workId} />
               <span>
                 <strong>{item.title}</strong>
                 <small>

@@ -40,6 +40,13 @@ Up/Down moves the row cursor, Space chooses the header, S or Enter accepts the g
 D keeps its games separate. Other keys remain with the focused control. Fullscreen
 continues through Manage library → Identity review with its member and confirmation sheets.
 
+Saved same-game groups offer **Header store** on both surfaces. The chosen store supplies
+the title, cover and first store entry; Automatic restores the canonical header, falling
+back to a visible member. Unavailable choices stay saved until that store returns.
+Metadata and editing still belong to the canonical game, and an installed, reachable copy
+keeps priority for Play. Header saves retain focus and show refusals beside the choices.
+Fullscreen keeps its choice sheet open while saving and returns to Header store after success.
+
 Desktop Library and Merges share a compact sort menu. Its button states the selected order;
 choosing a row closes the menu and returns focus. Arrow keys, Home/End and typed initials
 move within it; Escape returns to the button and Tab continues to the next control.

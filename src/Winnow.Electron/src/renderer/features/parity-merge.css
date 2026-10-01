@@ -23,6 +23,9 @@
     min-width: 160px;
     flex: 1;
   }
+  .mode-desktop .group-header-select {
+    min-width: 160px;
+  }
   .merge-section {
     display: grid;
     gap: 12px;
@@ -359,4 +362,22 @@
 }
 .merge-sheet-member .merge-store {
   font-size: calc(16px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}
+.merge-header-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: calc(20px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}
+.merge-header-hints > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.merge-header-hints svg {
+  display: block;
+  width: 28px;
+  height: 28px;
 }

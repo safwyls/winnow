@@ -17,12 +17,14 @@ const emptyFrame: BackdropFrame = { current: null, outgoing: null, progress: 1, 
 
 export function AvalonBackdrop({
   workId,
+  coverWorkId,
   fullscreen = true,
   cinematic = false,
   reducedMotion = false,
   className = '',
 }: {
   workId: number
+  coverWorkId?: number
   fullscreen?: boolean
   cinematic?: boolean
   reducedMotion?: boolean
@@ -44,8 +46,9 @@ export function AvalonBackdrop({
     update()
     return () => observer.disconnect()
   }, [])
-  const current = useRef({ workId, size })
-  current.current = { workId, size: { ...size, fullscreen } }
+  const current = useRef({ workId, coverWorkId, size })
+  const previousCover = useRef(coverWorkId)
+  current.current = { workId, coverWorkId, size: { ...size, fullscreen } }
   useLayoutEffect(() => {
     const node = element.current!
     const resize = () => {
@@ -71,8 +74,29 @@ export function AvalonBackdrop({
   }, [fullscreen])
   useEffect(() => {
     const value = new AvalonBackdropController({
-      resolve: (id, ratio, signal) =>
-        request<BackdropSelection>('artwork.backdrop', { workId: id, aspectRatio: ratio }, undefined, signal),
+      resolve: async (id, ratio, signal) => {
+        const coverId = current.current.coverWorkId
+        const selection = await request<BackdropSelection>(
+          'artwork.backdrop',
+          { workId: id, aspectRatio: ratio },
+          undefined,
+          signal,
+        )
+        if (coverId === undefined || coverId === id) return selection
+        // Header preferences change the cover fallback; hero metadata belongs to the canonical work.
+        try {
+          const cover = await request<{ current: { previewKey: BackdropSelection['coverKey'] } | null }>(
+            'artwork.get',
+            { workId: coverId, slot: 'Cover' },
+            undefined,
+            signal,
+          )
+          return { ...selection, coverKey: cover.current?.previewKey ?? null }
+        } catch {
+          signal.throwIfAborted()
+          return selection
+        }
+      },
       image: loadBackdropImage,
       publish: setFrame,
       requestFrame: (callback) => requestAnimationFrame(callback),
@@ -97,8 +121,9 @@ export function AvalonBackdrop({
     controller.current?.setReducedMotion(reducedMotion || systemReduced || appReduced || !fullscreen)
   }, [reducedMotion, systemReduced, appReduced, fullscreen])
   useEffect(() => {
-    controller.current?.select(workId, { ...size, fullscreen })
-  }, [workId, size, fullscreen])
+    controller.current?.select(workId, { ...size, fullscreen }, previousCover.current !== coverWorkId)
+    previousCover.current = coverWorkId
+  }, [workId, coverWorkId, size, fullscreen])
 
   function layer(value: BackdropLayer | null, outgoing: boolean) {
     if (!value) return null

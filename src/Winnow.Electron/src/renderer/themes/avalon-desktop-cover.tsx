@@ -169,7 +169,7 @@ export function AvalonDesktopCover({
         onContextMenu={onContextMenu}
         onKeyDown={onKeyDown}
       >
-        <Artwork workId={game.workId} />
+        <Artwork workId={game.headerWorkId ?? game.workId} />
         <span className="avalon-cover-fallback" aria-hidden="true">
           {game.title}
         </span>

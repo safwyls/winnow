@@ -161,20 +161,6 @@
     ],
     "reason": "The original method records an ungroup callback for child 99 after Down and Accept confirm the safe-first dialog. Native Electron reproduces that child-end interaction through the real preload/action route, records DELETE identity/links/99 with the expected link ID, and verifies opening dispatches nothing. The desktop interaction, cancellation and retained failure are also covered. This method's recording seam does not claim new database-persistence evidence; repository and broader identity workflows remain separate tests."
   },
-  "EditionIdentityPresentationTests.Acquired_native_evidence_updates_library_queue_and_details_and_can_be_separated": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-library.test.tsx",
-        "case": "reviews and confirms expansion relationships without merging their identity"
-      },
-      {
-        "file": "tests/parity-library.test.tsx",
-        "case": "requires a named confirmation before separating an existing relationship"
-      }
-    ],
-    "reason": "User-confirmed relationship writes, undo, and separation are covered in both Electron modes. Native identity evidence ingestion and simultaneous library/queue/detail projection assertions remain in the original .NET test."
-  },
   "MergeSuggestionRefreshTests.Desktop_pointer_and_keyboard_refresh_report_busy_failure_and_recovery_within_minimum_pane": {
     "status": "partial",
     "tests": [

@@ -506,12 +506,15 @@ export function AvalonDetailsLayout({
     <>
       <AvalonBackdrop
         workId={game?.workId ?? workId}
+        coverWorkId={game?.headerWorkId}
         fullscreen={fullscreen}
         cinematic={fullscreen}
         className="avalon-detail-backdrop"
       />
       <header className="avalon-details-header" aria-label="Game identity">
-        {!fullscreen && <Artwork workId={workId} eager className="avalon-detail-cover" />}
+        {!fullscreen && (
+          <Artwork workId={game?.headerWorkId ?? workId} eager className="avalon-detail-cover" />
+        )}
         <div className="avalon-details-identity">
           {fullscreen ? (
             <h1

@@ -38,7 +38,7 @@ describe('Rift details journey', () => {
     ))
     render(
       <JourneyContext.Provider value={journey}>
-        <RiftDetails {...({ selectedWorkId: 1, renderScreen } as unknown as ThemeContext)} />
+        <RiftDetails {...({ selectedWorkId: 1, games: [], renderScreen } as unknown as ThemeContext)} />
       </JourneyContext.Provider>,
     )
     const back = screen.getByRole('button', { name: 'Back to library' })
