@@ -14,7 +14,32 @@ import './avalon-library-chrome.css'
 
 export const MINIMUM_TILE_WIDTH = 108
 export const MAXIMUM_TILE_WIDTH = 200
-export const libraryBucketLabel = (key: string) => (key === 'bounced' ? 'Started' : bucketLabel(key))
+export const LIBRARY_COLLECTIONS = [
+  { key: 'all', label: 'All games', description: 'Every title you own.' },
+  {
+    key: 'stale_but_patched',
+    label: 'Patched',
+    description: 'Games with unread updates after a long break from playing.',
+  },
+  {
+    key: 'never_played',
+    label: 'Never played',
+    description: 'Games with no recorded playtime or last-played date.',
+  },
+  { key: 'bounced', label: 'Started', description: "Games you've played beyond a brief trial." },
+  { key: 'retired', label: 'Invested', description: "Games you've spent a lot of time playing." },
+  {
+    key: 'derelict',
+    label: 'Derelict',
+    description: 'Games with evidence of closure, delisting or abandoned development.',
+  },
+] as const
+export const libraryBucketLabel = (key: string) =>
+  LIBRARY_COLLECTIONS.find((collection) => collection.key === key)?.label ??
+  (key === 'installed' ? 'Installed' : bucketLabel(key))
+export const libraryBucketDescription = (key: string) =>
+  LIBRARY_COLLECTIONS.find((collection) => collection.key === key)?.description ??
+  (key === 'installed' ? 'Games installed on this computer.' : undefined)
 export function reflectedDensity(value: number) {
   return Math.max(
     MINIMUM_TILE_WIDTH,
@@ -38,7 +63,15 @@ const columns = {
   Playtime: ['time', 'time-low'],
   Idle: ['dormant', 'recent'],
 } as const
-export function LibraryColumnHeaders({ sort, change, width }: { sort: string; change(sort: string): void; width: number }) {
+export function LibraryColumnHeaders({
+  sort,
+  change,
+  width,
+}: {
+  sort: string
+  change(sort: string): void
+  width: number
+}) {
   function header(name: keyof typeof columns) {
     const [first, second] = columns[name]
     const active = sort === first || sort === second

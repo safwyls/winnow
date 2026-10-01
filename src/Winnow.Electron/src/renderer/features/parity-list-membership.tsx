@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { ApiError, request } from '../api/client'
+import { beginLibraryWrite } from '../api/library-write-barrier'
 import type { GameList, LibraryGame, LibraryResponse } from '../api/types'
 
 interface MembershipState {
@@ -59,8 +60,6 @@ class MembershipController {
     if (list.id !== this.list.id || !Array.isArray(list.releaseIds) || !list.revision)
       throw new Error('The saved list could not be checked.')
     this.list = list
-    // A snapshot that started before this write cannot replace the returned committed result.
-    await this.client.cancelQueries({ queryKey: ['api', 'library.get'] })
     this.client.setQueryData<LibraryResponse>(
       ['api', 'library.get'],
       (previous) =>
@@ -79,6 +78,7 @@ class MembershipController {
   }
   check = async () => {
     if (this.state.busy) return
+    const complete = beginLibraryWrite(this.client)
     this.publish({ busy: true })
     try {
       await this.readSaved()
@@ -90,9 +90,11 @@ class MembershipController {
       })
     } finally {
       this.publish({ busy: false })
+      complete()
     }
   }
   private async flush() {
+    const complete = beginLibraryWrite(this.client)
     this.publish({ busy: true, problem: null })
     try {
       while (this.state.wanted !== this.state.committed) {
@@ -128,6 +130,7 @@ class MembershipController {
       })
     } finally {
       this.publish({ busy: false })
+      complete()
     }
   }
 }

@@ -177,13 +177,29 @@ export function MergeMemberSheet({
                   </button>
                 )}
                 {card.rows.map((entry, index) => (
-                  <button key={entry.workId} onClick={() => setMember(entry.workId)}>
-                    {labels[index]} ·{' '}
-                    {entry.workId === card.parent
-                      ? 'Header'
-                      : card.included.includes(entry.workId)
-                        ? 'Included'
-                        : 'Left out'}
+                  <button
+                    className="merge-sheet-member"
+                    data-merge-member={entry.workId}
+                    aria-label={`${labels[index]} · ${entry.workId === card.parent ? 'Header' : card.included.includes(entry.workId) ? 'Included' : 'Left out'}`}
+                    aria-description={`Owned on ${entry.stores.map(storeLabel).join(', ')}`}
+                    key={entry.workId}
+                    onClick={() => setMember(entry.workId)}
+                  >
+                    <span>
+                      {labels[index]} ·{' '}
+                      {entry.workId === card.parent
+                        ? 'Header'
+                        : card.included.includes(entry.workId)
+                          ? 'Included'
+                          : 'Left out'}
+                    </span>
+                    <span className="merge-row-stores">
+                      {entry.stores.map((store) => (
+                        <span className="merge-store" key={store}>
+                          {store === 'epic' ? 'EPIC' : storeLabel(store).toLocaleUpperCase()}
+                        </span>
+                      ))}
+                    </span>
                   </button>
                 ))}
                 {card.actId ? (

@@ -33,6 +33,7 @@ export { IgdbForm } from './IgdbSettings'
 import { useSteamModal } from './SteamModals'
 import { FullscreenAppearance, FullscreenSettingsPreview } from './FullscreenAppearance'
 import { FullscreenLibrarySettings } from './FullscreenLibrarySettings'
+import { ExplicitVisibility } from './ExplicitVisibility'
 import { LibraryTools } from './LibraryTools'
 import { ControllerGuide } from './ControllerGuide'
 import { FullscreenSettingsAction } from './FullscreenSettingRows'
@@ -736,6 +737,7 @@ export function LibraryPreferenceForm({ initial }: { initial: LibraryPreferences
         />
         Show explicit content
       </label>
+      <ExplicitVisibility />
       <p className="muted">
         Unrated games remain visible. These preferences apply to every frontend attached to this library.
       </p>

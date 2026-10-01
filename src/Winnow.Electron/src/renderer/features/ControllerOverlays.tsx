@@ -176,6 +176,13 @@ function KeyboardSession({
   const closeCurrent = useRef(close)
   closeCurrent.current = close
   const lastValue = useRef(input.value)
+  // Some fullscreen fields keep their editor input hidden behind a named button.
+  const origin = useRef(document.activeElement as HTMLElement | null)
+  const restoreFocus = useCallback(() => {
+    if (!input.isConnected || input.disabled || input.readOnly) return
+    input.focus()
+    if (document.activeElement !== input && origin.current?.isConnected) origin.current.focus()
+  }, [input])
   const multiline = input instanceof HTMLTextAreaElement
   const finish = useCallback(
     (submit = false) => {
@@ -184,7 +191,7 @@ function KeyboardSession({
       setClosed(true)
       closeCurrent.current()
       if (!input.isConnected || input.disabled || input.readOnly) return
-      input.focus()
+      restoreFocus()
       try {
         input.setSelectionRange(selection.current.start, selection.current.end)
       } catch {
@@ -197,7 +204,7 @@ function KeyboardSession({
         if (unhandled) input.form?.requestSubmit()
       }
     },
-    [input],
+    [input, restoreFocus],
   )
   useEffect(() => {
     let frame = 0
@@ -368,7 +375,7 @@ function KeyboardSession({
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault()
-            if (input.isConnected && !input.disabled) input.focus()
+            restoreFocus()
           }}
         >
           <Dialog.Title>Enter text</Dialog.Title>

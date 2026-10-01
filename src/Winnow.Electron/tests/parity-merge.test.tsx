@@ -204,7 +204,9 @@ for (const mode of ['desktop', 'fullscreen'] as const)
         expect((within(card).getAllByRole('radio')[1] as HTMLInputElement).checked).toBe(true)
       else {
         expect(
-          within(card).getAllByRole('button', { name: / · (Header|Included|Left out)$/ })[1]!.textContent,
+          within(card)
+            .getAllByRole('button', { name: / · (Header|Included|Left out)$/ })[1]!
+            .getAttribute('aria-label'),
         ).toMatch(/Header$/)
         fireEvent.click(screen.getByRole('button', { name: 'Back to proposals' }))
       }

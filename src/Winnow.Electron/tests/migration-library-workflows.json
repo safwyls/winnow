@@ -1,36 +1,52 @@
 {
   "ListPromptParityTests.Existing_choices_and_new_list_action_remain_available_after_a_failed_save": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
         "case": "preserves existing choices and new-list text after failure from %s"
+      },
+      {
+        "file": "tests/electron/list-transactions.spec.ts",
+        "case": "${mode} ${origin} list prompt retains Second list and original choice after SQLite create failure"
       }
     ],
-    "reason": "Desktop/fullscreen library, details and feed entry points preserve the failed draft and existing choices, then retry with only the target primary release. Original database failure injection and controller routing remain to be exercised with Electron."
+    "reason": "All six desktop/fullscreen by Library/Details/Feed routes open the production prompt at 1920x1080 using Seed(2), the sole existing Try next [2,1], selected Game 1 and draft Second list. The feed fixture contains only Game 1 in Ready, matching the source single-card fixture. A real BEFORE INSERT lists abort preserves the prompt, draft and original choice and creates nothing; retry stores exactly one Second list with release 1, leaving Try next unchanged. Desktop accepts through Enter and fullscreen through a standard Gamepad API Accept event. Unlike an in-process SQLite exception, an HTTP 500 cannot prove whether the response was lost after commit: Electron therefore keeps choices disabled until Check saved lists and an explicit Create another anyway action confirm retry, then restores both original actions. The existing definite-error component rows additionally prove immediate re-enablement when the transport reports a definite rejected save."
   },
   "ListPromptParityTests.Pending_prompt_disables_conflicting_actions_and_disposed_pages_do_not_navigate": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
         "case": "disables conflicting prompt actions while pending and avoids navigating disposed content"
+      },
+      {
+        "file": "tests/parity-list-transactions.test.tsx",
+        "case": "locks every pending prompt action, ignores duplicate submission, and closes only a live page (disposed=%s)"
+      },
+      {
+        "file": "tests/electron/controller-modal-accessibility.spec.ts",
+        "case": "${mode} combined list prompt keeps accessible names and controller routes through empty busy and error states"
       }
     ],
-    "reason": "The real dialog blocks buttons and Escape during pending saves, submits once, and cannot navigate disposed content. Native controller Back and original SQLite assertions remain."
+    "reason": "Both source dispose-before-completion rows run in fullscreen and are also assessed in desktop. A gated save of Later disables every dialog button and the named input; Escape cannot navigate and an explicit duplicate form submission produces only one write. Resolving the save updates committed membership and closes a live owner once, while an unmounted owner receives no close/navigation callback. The existing native regression supplies the missing controller event path: standard-gamepad B cannot dismiss the busy dialog, every control is disabled in Chromium's AX tree, and the completed error state restores names/routes before B can dismiss. No physical-controller claim is made."
   },
   "ListWriteParityTests.A_failed_list_action_keeps_the_open_list_and_shows_a_retry_message": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-workflows.test.tsx",
         "case": "moves and removes handpicked games with boundary guards and keeps the list open after a failed write"
+      },
+      {
+        "file": "tests/electron/list-transactions.spec.ts",
+        "case": "${mode} failed removal leaves Try next open with both original members and a retry message"
       }
     ],
-    "reason": "Both Electron library modes retain the open manual list and unchanged members after a failed remove, then allow a successful action. The original real SQLite failure fixture remains under the .NET test."
+    "reason": "The native desktop/fullscreen pair preserves Seed(3), opens Try next [3,1], selects its first visible Game 3, and aborts the actual DELETE list_items through the source-style injected SQLite trigger. Production removal exposes Couldn't save list changes. Try again., retains the same open list ID, both visible games and their order, and the saved API membership [3,1]. Existing focused workflows supplement this exact failure fixture with successful retry and boundary behavior."
   },
   "ListWriteParityTests.Pending_membership_preserves_latest_intent_and_reports_the_committed_result": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-membership.test.tsx",
@@ -39,9 +55,29 @@
       {
         "file": "tests/parity-library-membership.test.tsx",
         "case": "retains pending intent across a mode remount and continues the compensating write"
+      },
+      {
+        "file": "tests/parity-list-transactions.test.tsx",
+        "case": "holds Game 2 membership intent, refresh, committed row identity and retry after %s"
+      },
+      {
+        "file": "tests/electron/list-transactions.spec.ts",
+        "case": "${mode} Game 2 membership preserves queued intent and SQLite result after ${scenario}"
+      },
+      {
+        "file": "tests/parity-list-transactions.test.tsx",
+        "case": "waits for both independent membership writers before publishing a library refresh"
+      },
+      {
+        "file": "tests/parity-list-transactions.test.tsx",
+        "case": "cancels a queued refresh on disposal while the write completes and later reads still run"
+      },
+      {
+        "file": "tests/parity-list-transactions.test.tsx",
+        "case": "releases the refresh barrier when both a write and its saved-state recovery fail"
       }
     ],
-    "reason": "Both modes cover held writes, latest intent, failures, intervening refresh and compensation failures with committed revisions. Renderer/cache behavior is verified; native controller input and the original held SQLite trigger are not yet ported."
+    "reason": "Both modes preserve all four source scenarios latest/failure/refresh/compensation_failure, Game 2, Seed(3), and Try next [3,1]. Native gates the append before the production HTTP request reaches SQLite, proves Game 2 is not yet stored, then exercises real insertion/deletion abort triggers and controller Accept or desktop Space. Component rows prove the refresh promise remains pending while writes are held, strict checkbox identity, response-revision use for compensation, and matching UI/cache/committed membership. Native rows independently prove the same checkbox survives and SQLite agrees, with explicit retry clearing failures and toggling membership. Additional tests bound the new QueryClient-scoped library-only barrier across multiple writers, disposal/abort and failed recovery, without blocking unrelated queries or deadlocking internal saved-state recovery."
   },
   "ListsViewModelTests.Feed_card_adds_only_its_game_to_an_existing_or_new_manual_list": {
     "status": "ported",

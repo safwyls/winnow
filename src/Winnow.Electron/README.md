@@ -349,6 +349,22 @@ and a recommendation filmstrip. Gamepad API navigation supports directional move
 page and tab switching, actions, a quick menu and an on-screen keyboard. Physical-controller
 and TV-distance validation remain outstanding.
 
+Avalon fullscreen **Filter & sort** separates Browse from Refine games. Collection,
+sort, installation and facet choices open their own pages; release-year buttons open
+the controller keyboard. The count reflects staged changes. Apply, Clear and Cancel
+stay visible, with A/B/Y hints: B returns from a choice page or discards the draft at
+the overview, and Y applies the valid draft. Desktop keeps its immediate filter panel.
+Built-in collections expose their explanations on both surfaces, including empty
+collections. Missing selected facets remain removable and restrictive.
+
+Library selection can hide every picked game after confirmation, and **Remove from
+Derelict** appears only within that collection. Hidden games retain their history and
+can be restored individually from Library tools. Desktop list rows show each distinct
+store in its own chip. **STATS**, between Merges and Library, opens Spending directly;
+fullscreen reaches it through Activity's Library summary.
+Fullscreen Library tools uses a single column of list editors with larger labels,
+fields and actions; the page scrolls to keep the focused controller target visible.
+
 The shared text keyboard uses five QWERTY rows, a wide Space key and an inverted-T
 caret cluster. Case changes the letters and symbols; X deletes backward and RT invokes
 Enter. Fullscreen shows the bundled D-pad, A, X, RT and B glyphs beside their action labels;
@@ -519,6 +535,9 @@ cannot replace the next page's data or focus.
 Library, workspace and Details query hooks also consume cancellation. A refresh retires
 earlier reads before starting new ones, and late results cannot publish after cancellation
 or unmount. Both surfaces close Details when its ownerships leave the published library.
+Library refreshes wait for pending membership writes and their compensating changes,
+so a reload cannot replace the latest list choice with an intermediate result. Cancelling
+the waiting query remains immediate; unrelated queries continue normally.
 
 `src/shared/theme.ts` is the theme contract; `src/renderer/theming` hosts packages and Studio;
 `src/renderer/features` holds reusable backend feature screens. Theme packages can reuse

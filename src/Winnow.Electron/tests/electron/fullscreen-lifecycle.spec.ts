@@ -207,9 +207,7 @@ for (const nested of [false, true])
     let origin = page.locator('.avalon-cover').first()
     if (nested) {
       await page.getByRole('button', { name: 'Filter & sort', exact: true }).click()
-      origin = page
-        .getByRole('dialog', { name: 'Library filters' })
-        .getByRole('combobox', { name: 'Sort', exact: true })
+      origin = page.getByRole('dialog', { name: 'Library filters' }).getByRole('button', { name: /^Sort ·/ })
     }
     await origin.focus()
     for (const resume of [false, true]) {

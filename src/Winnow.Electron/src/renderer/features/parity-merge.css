@@ -346,3 +346,17 @@
     }
   }
 }
+.merge-sheet-member {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.merge-sheet-member > span:first-child {
+  min-width: 0;
+  flex: 1 1 220px;
+}
+.merge-sheet-member .merge-store {
+  font-size: calc(16px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}

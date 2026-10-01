@@ -1,10 +1,10 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 368,
-    "partial": 81,
-    "ported": 1329,
-    "retained-backend": 625,
+    "pending": 351,
+    "partial": 74,
+    "ported": 1352,
+    "retained-backend": 626,
     "framework-specific": 32
   },
   "tests": [
@@ -9787,27 +9787,62 @@
     {
       "id": "LibrarySettingsViewModelTests.Hiding_a_game_removes_its_tile_and_its_bucket_count",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-visibility.spec.ts",
+          "case": "${mode} hiding removes the tile and bucket count then restores the hidden row one at a time"
+        }
+      ],
+      "reason": "Kept and Hidden, zero minutes, no maturity evidence, real SQLite ownership/play records. UI hides Hidden; Never played count and All games count fall from two to one; only Kept remains. The fixture state verifies persisted hidden work ID 2 and both ownership rows retained. Both Electron presentations run."
     },
     {
       "id": "LibrarySettingsViewModelTests.The_context_menu_hides_every_picked_tile",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-visibility.spec.ts",
+          "case": "${mode} context Hide acts on every picked game and leaves the unselected game"
+        }
+      ],
+      "reason": "One/Two/Three fixture; Ctrl-pick One and Three then right-click One on desktop, or focus One and press controller Y on fullscreen, retain selected count two, confirm Hide 2 games. Only Two remains, exact persisted hidden IDs [1,3], all three ownership records remain. Desktop pointer and fullscreen controller confirmation, including AX names and D-pad reachability."
     },
     {
       "id": "LibrarySettingsViewModelTests.A_hidden_game_is_listed_and_can_be_put_back_one_at_a_time",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-visibility.spec.ts",
+          "case": "${mode} hiding removes the tile and bucket count then restores the hidden row one at a time"
+        }
+      ],
+      "reason": "Same Kept/Hidden source fixture; real Hidden games UI lists one Hidden row with one edition and hidden date. Restore to library operates on that row; empty state appears, both games return, persisted live-hidden IDs become empty. Desktop and fullscreen."
     },
     {
       "id": "LibrarySettingsViewModelTests.The_explicit_toggle_persists_and_reaches_the_library",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-visibility.spec.ts",
+          "case": "${mode} explicit preference starts off, leaves unrated games visible and survives fresh backend services"
+        }
+      ],
+      "reason": "Unrated Anything fixture with zero playtime. Initial preference false, authoritative visibility explicitHidden=0, pending/no-evidence note visible; toggle true persists exact settings value true and API preference true. Anything remains visible; this does not assume missing maturity data is explicit. Both surfaces."
     },
     {
       "id": "LibrarySettingsViewModelTests.The_explicit_preference_survives_a_reload",
       "source": "tests/Winnow.Tests/LibrarySettingsViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-visibility.spec.ts",
+          "case": "${mode} explicit preference starts off, leaves unrated games visible and survives fresh backend services"
+        }
+      ],
+      "reason": "After true is saved through UI, terminate Electron and authenticated backend, then launch fresh backend/application instances over the same test-owned database. Fresh library settings are checked true and Anything remains visible. Stronger lifecycle boundary than a view-model refresh; both surfaces."
     },
     {
       "id": "LibrarySettingsViewModelTests.A_hand_added_game_appears_in_the_library",
@@ -10578,12 +10613,34 @@
     {
       "id": "ListAtomicWriteTests.A_failed_bulk_change_leaves_no_partial_list_even_when_an_outer_transaction_commits",
       "source": "tests/Winnow.Tests/ListAtomicWriteTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Data/Repositories/GameListRepository.cs",
+        "src/Winnow.Data/RepositoryWriteBatch.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Tests/ListAtomicWriteTests.cs",
+          "case": "A_failed_bulk_change_leaves_no_partial_list_even_when_an_outer_transaction_commits"
+        }
+      ],
+      "reason": "This method has no presentation dependency and directly exercises the retained SQLite GameListRepository. The source method is unchanged from the frozen revision. All six create/append/remove by ambient/no-ambient rows ran against a fresh scratch build: Seed(4), Try next ordered [4,1], failure on the second addition or removal, outer transaction explicitly committed after catching the failure, one list and all original item positions unchanged. Migrating its ambient-transaction guarantee to a mocked renderer would lose the behavior under test."
     },
     {
       "id": "ListAtomicWriteTests.Failed_mutations_keep_the_last_committed_model_and_open_context",
       "source": "tests/Winnow.Tests/ListAtomicWriteTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-list-transactions.test.tsx",
+          "case": "failed %s retains the exact committed model object and open context"
+        },
+        {
+          "file": "tests/electron/list-transactions.spec.ts",
+          "case": "${mode} failed ${action} retains the committed open list, name, rules and ordered SQLite rows"
+        }
+      ],
+      "reason": "Eight component rows (desktop/fullscreen by rename/filter/delete/reorder) prove strict identity of the open list, retained list in the published collection/cache, unchanged name/filter reference/member order, visible failure, enabled retry, and retained Rejected or YearFrom=2020 draft. Eight real-backend rows preserve the exact Seed(4) fixture and SQL failure points: Try next [4,1], Saved rules YearFrom=2000, UPDATE lists/DELETE lists triggers, and reorder failure at position 1. They invoke production controls, compare the complete saved list and SQLite item/position rows, and reopen the same retained context. Source IsBusy is represented by enabled post-failure actions; API errors retain the transport-specific reconciliation message."
     },
     {
       "id": "ListsViewModelTests.Feed_card_adds_only_its_game_to_an_existing_or_new_manual_list",
@@ -18681,12 +18738,30 @@
     {
       "id": "StoreChipLayoutTests.The_list_store_column_holds_three_chips",
       "source": "tests/Winnow.Tests/StoreChipLayoutTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-filter-options.test.tsx",
+          "case": "shows each owned store for a title with Steam, Epic and GOG copies"
+        },
+        {
+          "file": "tests/electron/library-labels.spec.ts",
+          "case": "fits three owned store chips and draws every merge member store without clipping"
+        }
+      ],
+      "reason": "The source parses the desktop header and row XAML and requires both store columns to fit 123.1 pixels of Steam, Epic and GOG chips plus an eight-pixel margin. The Electron equivalent creates one real backend work with those three owned storefront copies, renders desktop list view at 1200x800, checks all three discrete chips, measures a store column at least 131.1 pixels wide in both header and row, and verifies their alignment, trailing margin and separation from the next column. Fullscreen retains its source grid presentation: the same work has three visible store initials and an accessible name identifying Steam, Epic and GOG. Component tests exercise both presentation branches independently of native measurements."
     },
     {
       "id": "StoreChipLayoutTests.Every_merges_row_draws_the_store",
       "source": "tests/Winnow.Tests/StoreChipLayoutTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-labels.spec.ts",
+          "case": "fits three owned store chips and draws every merge member store without clipping"
+        }
+      ],
+      "reason": "The source checks that the one desktop merge-row template binds StoreChips in an Auto column while the title yields star-sized space. Native Electron instead measures all four rendered member rows from a fixed two-proposal identity-review response: one long-titled work owns Steam, Epic and GOG and the other three have their individual stores. Every desktop row must display exactly its owned chips without clipping or overlapping the title. Fullscreen opens both real proposal sheets and verifies the same four member rows and all their store chips. Only the review response is substituted at the main-process HTTP boundary; production routing, preload, shell, renderer and layout remain real. The long title makes the source title-yields-space constraint observable instead of checking implementation markup."
     },
     {
       "id": "StorefrontTests.Namespace_lookup_fills_a_bulk_map_miss_without_guessing_from_the_title",
@@ -22540,7 +22615,18 @@
     {
       "id": "CollectionExplanationTests.Built_in_collections_expose_explanations_on_desktop_and_fullscreen",
       "source": "tests/Winnow.Ui.Tests/CollectionExplanationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-filter-options.test.tsx",
+          "case": "explains every built-in collection with the original description and Invested label"
+        },
+        {
+          "file": "tests/electron/library-labels.spec.ts",
+          "case": "exposes original collection explanations, Invested and visible fullscreen choice descriptions"
+        }
+      ],
+      "reason": "Both presentations preserve all six literal source descriptions for All games, Patched, Never played, Started, Invested and Derelict, including the retired bucket's Invested label. Desktop collection buttons expose the descriptions as native title tooltips and accessible descriptions at the source 1200x800 window size. Fullscreen opens Filter & sort and its Collection child at 1920x1080; every choice retains the exact collection accessible name, separate accessible description and tooltip, and visibly renders the description below its label. DOM title and accessible-description properties replace Avalonia ToolTip and AutomationProperties.HelpText; native visibility and hover checks complement the component assertions."
     },
     {
       "id": "CoverCancellationFailureTests.A_throwing_source_callback_does_not_replace_the_last_waiters_cancellation",
@@ -22749,22 +22835,50 @@
     {
       "id": "DerelictOverrideCompositionTests.Desktop_context_menu_removes_selected_group_only_in_Derelict",
       "source": "tests/Winnow.Ui.Tests/DerelictOverrideCompositionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-visibility.spec.ts",
+          "case": "${mode} Derelict removal updates every grouped copy and both surfaces, surviving later evidence and new services"
+        }
+      ],
+      "reason": "Frozen grouped work1/release1 Steam/release2 Epic and unselected work2/release3 GOG, each official shutdown 2025-01-01 observed 2026-09-01. Actual desktop action absent outside Derelict and absent without selection in Derelict. Select grouped tile and activate via Enter: only unselected work2 remains in Derelict, group1 remains in All with NeverPlayed and both release IDs [1,2], exact exemptions persisted for both copies. The isolated fixture injects 2026-09-30T12:00:00Z so the original September 1 observations remain within the production 30-day freshness policy; later evidence uses that same clock. Production classification is unchanged."
     },
     {
       "id": "DerelictOverrideCompositionTests.Fullscreen_library_options_activate_removal_for_selected_group",
       "source": "tests/Winnow.Ui.Tests/DerelictOverrideCompositionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-visibility.spec.ts",
+          "case": "${mode} Derelict removal updates every grouped copy and both surfaces, surviving later evidence and new services"
+        }
+      ],
+      "reason": "Same grouped fixture. Focus group1 cover, inject standard controller Y through navigator.getGamepads to open actual Library options, focus enabled Remove from Derelict and controller A to execute. Fullscreen projection updates, then desktop entry shows same single unselected Derelict work. Backend snapshot retains both copies in NeverPlayed. The isolated fixture injects 2026-09-30T12:00:00Z so the original September 1 observations remain within the production 30-day freshness policy; later evidence uses that same clock. Production classification is unchanged."
     },
     {
       "id": "DerelictOverrideCompositionTests.Persistence_failure_keeps_group_in_Derelict_and_reports_the_problem",
       "source": "tests/Winnow.Ui.Tests/DerelictOverrideCompositionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-visibility.spec.ts",
+          "case": "${mode} failed Derelict persistence keeps the grouped game and reports the storage problem"
+        }
+      ],
+      "reason": "Both original theory surfaces; exact SQLite refuse_exemption BEFORE INSERT trigger raises simulated storage failure. Real UI command returns nonempty alert; no exemptions are committed; both grouped work and unselected work remain Derelict with visible count two. The isolated fixture injects 2026-09-30T12:00:00Z so the original September 1 observations remain within the production 30-day freshness policy; later evidence uses that same clock. Production classification is unchanged."
     },
     {
       "id": "DerelictOverrideCompositionTests.Removal_survives_new_services_and_later_evidence_for_every_grouped_copy",
       "source": "tests/Winnow.Ui.Tests/DerelictOverrideCompositionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-visibility.spec.ts",
+          "case": "${mode} Derelict removal updates every grouped copy and both surfaces, surviving later evidence and new services"
+        }
+      ],
+      "reason": "Both original theory surfaces. Real API persists exemptions for grouped release IDs 1 and 2; authenticated test control appends newer official shutdown observations for both. State verifies counts {1:2,2:2,3:1}; completely fresh backend services over same DB retain group1 NeverPlayed and both copies, unselected work2 still Derelict. Fixed clock keeps newer evidence eligible, not future or stale. The isolated fixture injects 2026-09-30T12:00:00Z so the original September 1 observations remain within the production 30-day freshness policy; later evidence uses that same clock. Production classification is unchanged."
     },
     {
       "id": "DesignTimePreviewTests.Preview_library_loads_a_tile_for_every_fabricated_game",
@@ -26179,7 +26293,14 @@
     {
       "id": "HideBrowsingPositionTests.Hiding_keeps_viewport_and_search_still_resets_it",
       "source": "tests/Winnow.Ui.Tests/HideBrowsingPositionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/library-visibility.spec.ts",
+          "case": "hide preserves the 100-game viewport and search resets it: grid=${grid} selection=${selection} bottom=${atBottom}"
+        }
+      ],
+      "reason": "Exact frozen source fixture is 100 games (not 250), 1024×600 window, same source SQL including Steam external IDs and Try next list. Select sorted visible item20, plus last item for bulk cases; scroll to 600 or actual bottom; hide through actual UI. Visible count becomes 99 or 98, target no longer in authoritative library; actual DOM scrollTop equals min(previousOffset,scrollHeight-clientHeight), then Search games=Game 1 resets scrollTop to zero. All six original grid/list×single/bulk×middle/bottom rows."
     },
     {
       "id": "IgdbMappingRefreshTests.Correcting_the_mapping_refreshes_open_details_and_removes_old_visibility_evidence",
@@ -26429,7 +26550,7 @@
     {
       "id": "LibraryMultiSelectionTests.Context_action_updates_every_selected_game_and_leaves_unselected_game",
       "source": "tests/Winnow.Ui.Tests/LibraryMultiSelectionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/avalon-theme.test.tsx",
@@ -26438,9 +26559,13 @@
         {
           "file": "tests/avalon-theme.test.tsx",
           "case": "marks linked releases as read without swallowing pushes newer than the displayed tile"
+        },
+        {
+          "file": "tests/electron/library-visibility.spec.ts",
+          "case": "grid=${grid} bulk ${derelict ? 'Derelict removal' : 'Mark as read'} updates both picked games and preserves the unselected game after reload"
         }
       ],
-      "reason": "Captured selected IDs and safe observed-event requests are covered. Both-action/both-view persisted bucket changes, refresh and unselected-game retention need integration coverage."
+      "reason": "Exact Alpha/Bravo/Charlie fixture: each Steam ownership600minutes,lastplayed2024-01-01, observed2026-09-01; each release build_push2026-06-01 plus announcement2026-06-02; Derelict rows additionally official shutdown2025-01-01. Ctrl-click1, Ctrl-click2, right-click1 retains two selected. Actual selected command updates both, clears selection, leaves Charlie in source bucket. API confirms selected buckets moved; Mark as read additionally verifies authoritative unread counts zero for both. Page reload and bucket selection still show only Charlie. All four original grid/list×read/Derelict rows. The isolated fixture injects 2026-09-30T12:00:00Z so the original September 1 observations remain within the production 30-day freshness policy; later evidence uses that same clock. Production classification is unchanged."
     },
     {
       "id": "LibraryPreparationResponsivenessTests.Input_runs_during_preparation_without_publishing_partial_or_stale_tiles",
@@ -26713,31 +26838,43 @@
     {
       "id": "ListPromptParityTests.Existing_choices_and_new_list_action_remain_available_after_a_failed_save",
       "source": "tests/Winnow.Ui.Tests/ListPromptParityTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-library-workflows.test.tsx",
           "case": "preserves existing choices and new-list text after failure from %s"
+        },
+        {
+          "file": "tests/electron/list-transactions.spec.ts",
+          "case": "${mode} ${origin} list prompt retains Second list and original choice after SQLite create failure"
         }
       ],
-      "reason": "Desktop/fullscreen library, details and feed entry points preserve the failed draft and existing choices, then retry with only the target primary release. Original database failure injection and controller routing remain to be exercised with Electron."
+      "reason": "All six desktop/fullscreen by Library/Details/Feed routes open the production prompt at 1920x1080 using Seed(2), the sole existing Try next [2,1], selected Game 1 and draft Second list. The feed fixture contains only Game 1 in Ready, matching the source single-card fixture. A real BEFORE INSERT lists abort preserves the prompt, draft and original choice and creates nothing; retry stores exactly one Second list with release 1, leaving Try next unchanged. Desktop accepts through Enter and fullscreen through a standard Gamepad API Accept event. Unlike an in-process SQLite exception, an HTTP 500 cannot prove whether the response was lost after commit: Electron therefore keeps choices disabled until Check saved lists and an explicit Create another anyway action confirm retry, then restores both original actions. The existing definite-error component rows additionally prove immediate re-enablement when the transport reports a definite rejected save."
     },
     {
       "id": "ListPromptParityTests.Pending_prompt_disables_conflicting_actions_and_disposed_pages_do_not_navigate",
       "source": "tests/Winnow.Ui.Tests/ListPromptParityTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-library-workflows.test.tsx",
           "case": "disables conflicting prompt actions while pending and avoids navigating disposed content"
+        },
+        {
+          "file": "tests/parity-list-transactions.test.tsx",
+          "case": "locks every pending prompt action, ignores duplicate submission, and closes only a live page (disposed=%s)"
+        },
+        {
+          "file": "tests/electron/controller-modal-accessibility.spec.ts",
+          "case": "${mode} combined list prompt keeps accessible names and controller routes through empty busy and error states"
         }
       ],
-      "reason": "The real dialog blocks buttons and Escape during pending saves, submits once, and cannot navigate disposed content. Native controller Back and original SQLite assertions remain."
+      "reason": "Both source dispose-before-completion rows run in fullscreen and are also assessed in desktop. A gated save of Later disables every dialog button and the named input; Escape cannot navigate and an explicit duplicate form submission produces only one write. Resolving the save updates committed membership and closes a live owner once, while an unmounted owner receives no close/navigation callback. The existing native regression supplies the missing controller event path: standard-gamepad B cannot dismiss the busy dialog, every control is disabled in Chromium's AX tree, and the completed error state restores names/routes before B can dismiss. No physical-controller claim is made."
     },
     {
       "id": "ListWriteParityTests.Pending_membership_preserves_latest_intent_and_reports_the_committed_result",
       "source": "tests/Winnow.Ui.Tests/ListWriteParityTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-library-membership.test.tsx",
@@ -26746,21 +26883,45 @@
         {
           "file": "tests/parity-library-membership.test.tsx",
           "case": "retains pending intent across a mode remount and continues the compensating write"
+        },
+        {
+          "file": "tests/parity-list-transactions.test.tsx",
+          "case": "holds Game 2 membership intent, refresh, committed row identity and retry after %s"
+        },
+        {
+          "file": "tests/electron/list-transactions.spec.ts",
+          "case": "${mode} Game 2 membership preserves queued intent and SQLite result after ${scenario}"
+        },
+        {
+          "file": "tests/parity-list-transactions.test.tsx",
+          "case": "waits for both independent membership writers before publishing a library refresh"
+        },
+        {
+          "file": "tests/parity-list-transactions.test.tsx",
+          "case": "cancels a queued refresh on disposal while the write completes and later reads still run"
+        },
+        {
+          "file": "tests/parity-list-transactions.test.tsx",
+          "case": "releases the refresh barrier when both a write and its saved-state recovery fail"
         }
       ],
-      "reason": "Both modes cover held writes, latest intent, failures, intervening refresh and compensation failures with committed revisions. Renderer/cache behavior is verified; native controller input and the original held SQLite trigger are not yet ported."
+      "reason": "Both modes preserve all four source scenarios latest/failure/refresh/compensation_failure, Game 2, Seed(3), and Try next [3,1]. Native gates the append before the production HTTP request reaches SQLite, proves Game 2 is not yet stored, then exercises real insertion/deletion abort triggers and controller Accept or desktop Space. Component rows prove the refresh promise remains pending while writes are held, strict checkbox identity, response-revision use for compensation, and matching UI/cache/committed membership. Native rows independently prove the same checkbox survives and SQLite agrees, with explicit retry clearing failures and toggling membership. Additional tests bound the new QueryClient-scoped library-only barrier across multiple writers, disposal/abort and failed recovery, without blocking unrelated queries or deadlocking internal saved-state recovery."
     },
     {
       "id": "ListWriteParityTests.A_failed_list_action_keeps_the_open_list_and_shows_a_retry_message",
       "source": "tests/Winnow.Ui.Tests/ListWriteParityTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-library-workflows.test.tsx",
           "case": "moves and removes handpicked games with boundary guards and keeps the list open after a failed write"
+        },
+        {
+          "file": "tests/electron/list-transactions.spec.ts",
+          "case": "${mode} failed removal leaves Try next open with both original members and a retry message"
         }
       ],
-      "reason": "Both Electron library modes retain the open manual list and unchanged members after a failed remove, then allow a successful action. The original real SQLite failure fixture remains under the .NET test."
+      "reason": "The native desktop/fullscreen pair preserves Seed(3), opens Try next [3,1], selects its first visible Game 3, and aborts the actual DELETE list_items through the source-style injected SQLite trigger. Production removal exposes Couldn't save list changes. Try again., retains the same open list ID, both visible games and their order, and the saved API membership [3,1]. Existing focused workflows supplement this exact failure fixture with successful retry and boundary behavior."
     },
     {
       "id": "LoadingDragonTests.Every_closed_contour_has_a_full_circuit_and_continuous_trail_at_the_seam",
@@ -27044,7 +27205,7 @@
     {
       "id": "MissingFilterOptionsParityTests.Xbox_import_appears_in_store_filters_and_selects_its_titles",
       "source": "tests/Winnow.Ui.Tests/MissingFilterOptionsParityTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/avalon-theme.test.tsx",
@@ -27057,14 +27218,22 @@
         {
           "file": "tests/avalon-filters.test.tsx",
           "case": "counts games once per option and removes only that option group for residual counts"
+        },
+        {
+          "file": "tests/parity-filter-options.test.tsx",
+          "case": "adds Xbox only after its imported snapshot arrives and preserves both residual title counts"
+        },
+        {
+          "file": "tests/electron/library-labels.spec.ts",
+          "case": "adds Xbox after the initial Steam-only snapshot and preserves both residual counts"
         }
       ],
-      "reason": "Both surfaces accept a refreshed plugin:xbox title, expose Xbox with accessible matching-title counts, select its titles, and retain residual counts. The original controller-button path and database import setup still need composed integration coverage."
+      "reason": "Each surface starts with the source Game 1 and Game 2 both owned on Steam and verifies the universal store group is absent. The fixture changes only Game 2's ownership to plugin:xbox after that initial snapshot, then refreshes through the production API/event boundary. Xbox appears with the exact label Xbox, 1 matching title and is enabled; selecting it leaves only Game 2. Reopening the group retains one-title residual counts for both Xbox and Steam. The native desktop case uses its checkbox; fullscreen enters PLATFORM and uses a simulated standard controller's Accept and Y actions to toggle and apply from the child page. This records simulated input rather than claiming a physical-controller check."
     },
     {
       "id": "MissingFilterOptionsParityTests.Saved_and_current_rules_remain_restrictive_when_matching_choices_disappear",
       "source": "tests/Winnow.Ui.Tests/MissingFilterOptionsParityTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/avalon-filters.test.tsx",
@@ -27073,9 +27242,17 @@
         {
           "file": "tests/avalon-filters.test.tsx",
           "case": "exposes and clears a missing saved facet"
+        },
+        {
+          "file": "tests/parity-filter-options.test.tsx",
+          "case": "keeps current and fresh saved rules restrictive after %s removes matching choices, then clears only RPG"
+        },
+        {
+          "file": "tests/electron/library-labels.spec.ts",
+          "case": "keeps current and freshly opened saved rules restrictive after ${change}, then clears only the missing RPG choice"
         }
       ],
-      "reason": "Missing store/facet rules remain restrictive and clearable. Account/hide/remove/facet changes, saved-live-list persistence and edited-state matrix require composed API tests."
+      "reason": "The complete source matrix runs for desktop and fullscreen across account, hide, remove and facets. The real isolated backend starts with Steam Game 1 dated 2010 carrying RPG, undated GOG Game 2, and saved Steam RPGs rules selecting Steam, RPG and yearFrom 2000. RPG uses a deterministic fixture ID 7 instead of the source repository-generated ID. Native mutations reproduce another-account membership 10002 versus a completed empty owned-account inventory 10001, explicit hiding, ownership deletion, and removal of the work-to-RPG association while retaining its vocabulary. The existing view and a fresh renderer that never saw the vanished choices both retain the saved restrictive rules, zero results, zero persisted live-list membership and an unedited state. An unchanged revision-checked list.filter API save replaces the source's unconditional UpdateLiveList command because Electron omits that no-op button. The selected, enabled RPG, 0 matching titles choice remains visible; clearing it through the real desktop checkbox or fullscreen simulated Accept/Y removes only the genre rule, preserves Steam and yearFrom 2000, marks the draft edited, leaves the persisted list unchanged, and yields one title only for the facets case. Component tests also assert the exact current filter fingerprint and dirty state through the production query/list-state boundary."
     },
     {
       "id": "MissingFilterOptionsParityTests.Unknown_saved_facet_retains_an_explicit_clearable_zero_count_rule",
@@ -27498,12 +27675,30 @@
     {
       "id": "RailListControlsTests.Statistics_sits_with_screens_and_stays_reachable_on_both_surfaces",
       "source": "tests/Winnow.Ui.Tests/RailListControlsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/list-transactions.spec.ts",
+          "case": "desktop STATS sits between Merges and All games and opens account statistics through Enter at 1200x900"
+        },
+        {
+          "file": "tests/electron/list-transactions.spec.ts",
+          "case": "fullscreen Library summary remains keyboard reachable from Activity at 1920x1080"
+        }
+      ],
+      "reason": "The restored desktop STATS row is measured at the source 1200x900 geometry: For you (the current feed label) < Merges < STATS < All games, with no ACCOUNT divider. Enter opens real account spending and marks STATS current; All games exits the statistics page. Additional Stats-to-Activity-to-Stats assertions ensure Activity restores History and correct navigation labels. The fullscreen source route is independently tested at 1920x1080: focus and Enter on Activity's Library summary reaches the real summary region. This reuses existing journal/summary/spending state without expanding the public ThemePage API."
     },
     {
       "id": "RailListControlsTests.Context_menu_offers_removal_only_for_a_static_list_selection",
       "source": "tests/Winnow.Ui.Tests/RailListControlsTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-list-transactions.test.tsx",
+          "case": "offers contextual removal only for a static list with a selected game"
+        }
+      ],
+      "reason": "The production Avalon shell and list controls cover the source desktop four-state matrix: no open list plus selection -> absent; live list plus selection -> absent; static list plus selection -> enabled; static list plus empty selection -> absent. The enabled control invokes the actual list.member.remove route with the static list ID, selected primary release and displayed revision, replacing the source command-identity assertion with its public effect. Fullscreen is assessed through its options panel: it has the same no-list/live/static gates, but clearing explicit selection leaves the nonempty cover grid's focused Game 1 selected; the test asserts that actual selected tile and keeps removal enabled. It does not falsely claim an empty-selection fullscreen fixture or a native context-menu widget."
     },
     {
       "id": "RailListControlsTests.Sections_collapse_independently_and_footer_creates_either_kind",

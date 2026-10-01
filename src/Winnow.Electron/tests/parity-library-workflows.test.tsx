@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { libraryRole, libraryLabel, returnToLibrary, setLibrarySort } from './library-controls'
+import {
+  libraryRole,
+  libraryLabel,
+  returnToLibrary,
+  setLibrarySort,
+  chooseFilterSelect,
+  openFilterGroup,
+} from './library-controls'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AvalonDiscover, AvalonLibrary, AvalonShell, avalon } from '../src/renderer/themes/avalon'
@@ -271,8 +278,9 @@ it('fullscreen Store options save changed GOG rules and restore that saved cut a
   const changeStore = async (from: string, to: string) => {
     fireEvent.click(libraryRole('button', { name: 'Filter & sort' }))
     const panel = within(screen.getByRole('dialog', { name: 'Library filters' }))
-    fireEvent.click(await panel.findByRole('checkbox', { name: new RegExp(`^${from},`) }))
-    fireEvent.click(panel.getByRole('checkbox', { name: new RegExp(`^${to},`) }))
+    openFilterGroup('PLATFORM')
+    fireEvent.click(await panel.findByRole('button', { name: new RegExp(`^${from},`) }))
+    fireEvent.click(panel.getByRole('button', { name: new RegExp(`^${to},`) }))
     fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
   }
   await changeStore('Steam', 'GOG')
@@ -306,7 +314,7 @@ function chooseBucket(mode: Mode, key: string, label: string) {
   if (selectedCollection() !== 'all') openList('all')
   fireEvent.click(libraryRole('button', { name: 'Filters' }))
   const panel = within(libraryRole('dialog', { name: 'Library filters' }))
-  fireEvent.change(panel.getByLabelText('Collection'), { target: { value: key } })
+  chooseFilterSelect('Collection', key)
   fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
 }
 
@@ -346,7 +354,13 @@ function chromeLibrary() {
 async function genre(mode: Mode, name: string) {
   const filters = libraryRole('button', { name: 'Filters' })
   if (filters.getAttribute('aria-expanded') !== 'true') fireEvent.click(filters)
-  fireEvent.click(await screen.findByRole('checkbox', { name: new RegExp(`^${name},`) }))
+  if (mode === 'fullscreen') {
+    await screen.findByRole('button', { name: /^GENRE ·/ })
+    openFilterGroup('GENRE')
+  }
+  fireEvent.click(
+    await screen.findByRole(mode === 'fullscreen' ? 'button' : 'checkbox', { name: new RegExp(`^${name},`) }),
+  )
   fireEvent.click(libraryRole('button', { name: mode === 'fullscreen' ? 'Apply filters' : 'Close filters' }))
 }
 
@@ -745,10 +759,12 @@ describe.each(['desktop', 'fullscreen'] as const)('list browsing in %s', (mode) 
       expect(libraryRole('button', { name: label })).toBeTruthy()
     fireEvent.click(libraryRole('button', { name: 'Filters' }))
     const panel = libraryRole(mode === 'fullscreen' ? 'dialog' : 'region', { name: 'Library filters' })
-    fireEvent.click(within(panel).getByText('Stores', { exact: true }))
-    expect(within(panel).getByRole('checkbox', { name: 'Steam, 2 matching titles' })).toBeTruthy()
-    expect(within(panel).getByRole('checkbox', { name: 'GOG, 1 matching title' })).toBeTruthy()
-    fireEvent.click(within(panel).getByRole('checkbox', { name: 'Epic Games, 1 matching title' }))
+    if (mode === 'fullscreen') openFilterGroup('PLATFORM')
+    else fireEvent.click(within(panel).getByText('Stores', { exact: true }))
+    const role = mode === 'fullscreen' ? 'button' : 'checkbox'
+    expect(within(panel).getByRole(role, { name: 'Steam, 2 matching titles' })).toBeTruthy()
+    expect(within(panel).getByRole(role, { name: 'GOG, 1 matching title' })).toBeTruthy()
+    fireEvent.click(within(panel).getByRole(role, { name: 'Epic Games, 1 matching title' }))
     if (mode === 'fullscreen') fireEvent.click(within(panel).getByRole('button', { name: 'Apply filters' }))
     else fireEvent.click(within(panel).getByRole('button', { name: 'Close filters' }))
     expect(cards()).toEqual([1])

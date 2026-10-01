@@ -45,6 +45,14 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [library filters, selection and lists checkpoint](checkpoint-sixty-two.md) records
+all 3,464 component/live API cases, 87 distinct native cases and six retained backend
+transaction cases passing. Fullscreen Filters restores the Browse/Refine layout and
+controller hints; Hide, list writes, explanations and disappearing filter choices retain
+source-equivalent behavior. Twenty-three assigned methods are ported and one retains its
+backend test; 351 pending and 74 partial methods remain. TASK-381.7 stops for review before
+tile actions in TASK-381.8. The merge-review task records a separate typography gap.
+
 The [library loading checkpoint](checkpoint-sixty-one.md) records all 3,414 component/live
 API cases and 19 distinct native cases passing. Library validation yields between batches
 and publishes only complete, current responses. Independent clients, restart recovery,

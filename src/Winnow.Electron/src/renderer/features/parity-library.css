@@ -72,3 +72,63 @@
     flex-basis: 100%;
   }
 }
+
+@layer themes {
+  .library-tools.mode-fullscreen {
+    --library-tools-text-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+    max-width: 1320px;
+    padding: 20px;
+    font: calc(24px * var(--library-tools-text-scale)) / 1.4 var(--font-body);
+    overflow-x: hidden;
+    scroll-padding-block: 24px;
+  }
+  .library-tools.mode-fullscreen .feature-grid {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  .library-tools.mode-fullscreen .feature-panel {
+    padding: 24px;
+  }
+  .library-tools.mode-fullscreen.feature-page :is(h2, h3) {
+    font: 700 calc(32px * var(--library-tools-text-scale)) / 1.25 var(--font-body);
+  }
+  .library-tools.mode-fullscreen :is(p, summary, legend, button, input, select, textarea, .check-field) {
+    font-size: calc(24px * var(--library-tools-text-scale));
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  .library-tools.mode-fullscreen :is(.field, small, .muted) {
+    font-size: calc(20px * var(--library-tools-text-scale));
+    line-height: 1.4;
+  }
+  .library-tools.mode-fullscreen :is(button, summary, input, select, textarea) {
+    max-width: 100%;
+    scroll-margin-block: 24px;
+  }
+  .library-tools.mode-fullscreen :is(button, summary, input:not([type='checkbox']), select) {
+    min-height: 64px;
+  }
+  .library-tools.mode-fullscreen :is(button, summary) {
+    white-space: normal;
+  }
+  .library-tools.mode-fullscreen :is(input, textarea, select) {
+    min-width: 0;
+  }
+  .library-tools.mode-fullscreen input[type='checkbox'] {
+    width: 24px;
+    height: 24px;
+  }
+  .library-tools.mode-fullscreen .check-field {
+    min-height: 64px;
+  }
+  .library-tools.mode-fullscreen .form-row {
+    flex-wrap: wrap;
+  }
+  .library-tools.mode-fullscreen .form-row > .field {
+    flex: 1 1 360px;
+    min-width: min(100%, 360px);
+  }
+  .library-tools.mode-fullscreen .error-message {
+    color: var(--avalon-amber-foreground, var(--text));
+  }
+}

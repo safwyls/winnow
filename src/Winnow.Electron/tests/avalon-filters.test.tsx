@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { LibraryGame } from '../src/renderer/api/types'
 import { AvalonFilterPanel } from '../src/renderer/themes/avalon-filter-panel'
+import { openFilterGroup, libraryRole } from './library-controls'
 import {
   avalonFacts,
   avalonRuleOptions,
@@ -81,6 +82,45 @@ const facts = avalonFacts(games, workspace)
 afterEach(cleanup)
 
 describe('Avalon library filters', () => {
+  it('compacts lone fullscreen refine rows before moving to Apply and clamps upward rows while paired arrows stay horizontal', () => {
+    const matrix: AvalonWorkspace = {
+      facets: ['genre', 'theme', 'game_mode', 'tag', 'feature', 'controller'].map((kind, index) => ({
+        id: index + 1,
+        kind,
+        slug: kind === 'game_mode' ? 'co_op' : kind,
+        name: kind,
+      })),
+      releaseFacets: [{ releaseId: 10, facetIds: [1, 2, 3, 4, 5, 6], gameModes: ['co_op'] }],
+    }
+    render(
+      <AvalonFilterPanel
+        filter={{}}
+        games={games}
+        facts={avalonFacts(games, matrix)}
+        workspace={matrix}
+        fullscreen
+        apply={vi.fn()}
+        close={vi.fn()}
+      />,
+    )
+    const disk = screen.getByRole('button', { name: 'ON DISK · Any' })
+    expect(disk.dataset.filterRow).toBe('7')
+    disk.focus()
+    fireEvent.keyDown(disk, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Apply filters' }))
+    const cancel = screen.getByRole('button', { name: 'Cancel' })
+    cancel.focus()
+    fireEvent.keyDown(cancel, { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(disk)
+    for (let i = 0; i < 4; i++) fireEvent.keyDown(document.activeElement!, { key: 'ArrowUp' })
+    const year = screen.getByRole('button', { name: 'Release year to · Any' })
+    expect(document.activeElement).toBe(year)
+    fireEvent.keyDown(year, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'STORE TAG · Any' }))
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(year)
+  })
+
   it('uses authoritative unread facts independently of the derived bucket', () => {
     expect(facts.get(1)?.unread).toBe(true)
     expect(facts.get(2)?.unread).toBe(false)
@@ -155,6 +195,13 @@ describe('Avalon library filters', () => {
 })
 
 describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) => {
+  function option(name: string | RegExp, group = 'GENRE') {
+    if (fullscreen && !screen.queryByRole('button', { name })) openFilterGroup(group)
+    return screen.getByRole(fullscreen ? 'button' : 'checkbox', { name }) as HTMLInputElement
+  }
+  function checked(element: HTMLInputElement) {
+    return fullscreen ? element.getAttribute('aria-pressed') === 'true' : element.checked
+  }
   it.each([
     ['gog', 'GOG'],
     ['plugin:xbox', 'Xbox'],
@@ -183,7 +230,11 @@ describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) =
     expect(screen.queryByText('Stores')).toBeNull()
     expect(screen.queryByRole('textbox', { name: 'From this year' })).toBeNull()
     expect(screen.getByText('No game metadata is available to filter yet.')).toBeDefined()
-    expect(screen.getByRole('combobox', { name: 'Installation' })).toBeDefined()
+    expect(
+      screen.getByRole(fullscreen ? 'button' : 'combobox', {
+        name: fullscreen ? /^ON DISK ·/ : 'Installation',
+      }),
+    ).toBeDefined()
     expect(screen.queryByRole('combobox', { name: 'Update status' })).toBeNull()
     expect(screen.queryByText('Library status')).toBeNull()
     const next = [
@@ -193,8 +244,8 @@ describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) =
     view.rerender(
       <AvalonFilterPanel {...props} games={next} allGames={next} facts={avalonFacts(next, workspace)} />,
     )
-    fireEvent.click(screen.getByRole('checkbox', { name: `${label}, 1 matching title` }))
-    expect(screen.getByRole('checkbox', { name: 'Steam, 1 matching title' })).toBeDefined()
+    fireEvent.click(option(`${label}, 1 matching title`, 'PLATFORM'))
+    expect(option('Steam, 1 matching title', 'PLATFORM')).toBeDefined()
     if (fullscreen) fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
     expect(apply.mock.lastCall?.[0].stores).toEqual([store])
     const nextFacts = avalonFacts(next, workspace)
@@ -218,8 +269,8 @@ describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) =
         close={vi.fn()}
       />,
     )
-    const rpg = screen.getByRole('checkbox', { name: 'RPG, 0 matching titles' }) as HTMLInputElement
-    expect(rpg.checked).toBe(true)
+    const rpg = option('RPG, 0 matching titles')
+    expect(checked(rpg)).toBe(true)
     expect(rpg.disabled).toBe(false)
     fireEvent.click(rpg)
     if (fullscreen) fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
@@ -252,25 +303,29 @@ describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) =
         close={vi.fn()}
       />,
     )
-    const genreOrder = () =>
-      [...document.querySelectorAll('details')]
+    const genreOrder = () => {
+      if (fullscreen) {
+        if (document.querySelector('[data-filter-page]')?.getAttribute('data-filter-page') !== 'genreIds')
+          openFilterGroup('GENRE')
+        return document.querySelectorAll(
+          '.fullscreen-filter-choices button[aria-pressed] > span:nth-child(2)',
+        )
+      }
+      return [...document.querySelectorAll('details')]
         .find((group) => group.querySelector('summary')?.textContent.startsWith('Genres'))!
         .querySelectorAll('.avalon-filter-options label > span')
+    }
     const before = [...genreOrder()].map((node) => node.textContent)
     expect(before).toEqual(['Shooter', 'RPG'])
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Co-op, 1 matching title' }))
-    expect(
-      (screen.getByRole('checkbox', { name: 'Shooter, 0 matching titles' }) as HTMLInputElement).disabled,
-    ).toBe(true)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'RPG, 1 matching title' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Co-op, 1 matching title' }))
+    fireEvent.click(option('Co-op, 1 matching title', 'GAME MODE'))
+    expect(option('Shooter, 0 matching titles').disabled).toBe(true)
+    fireEvent.click(option('RPG, 1 matching title'))
+    fireEvent.click(option('Co-op, 1 matching title', 'GAME MODE'))
     // Select the other mode before RPG so its selected zero remains a way out.
-    fireEvent.click(screen.getByRole('checkbox', { name: 'RPG, 1 matching title' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Single player, 2 matching titles' }))
+    fireEvent.click(option('RPG, 1 matching title'))
+    fireEvent.click(option('Single player, 2 matching titles', 'GAME MODE'))
     expect([...genreOrder()].map((node) => node.textContent)).toEqual(before)
-    expect(
-      (screen.getByRole('checkbox', { name: 'RPG, 0 matching titles' }) as HTMLInputElement).disabled,
-    ).toBe(true)
+    expect(option('RPG, 0 matching titles').disabled).toBe(true)
   })
   it('keeps a checked zero-count option enabled so a restored empty cut can be widened', () => {
     const apply = vi.fn()
@@ -285,8 +340,8 @@ describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) =
         close={vi.fn()}
       />,
     )
-    const selected = screen.getByRole('checkbox', { name: 'RPG, 0 matching titles' }) as HTMLInputElement
-    expect(selected.checked).toBe(true)
+    const selected = option('RPG, 0 matching titles')
+    expect(checked(selected)).toBe(true)
     expect(selected.disabled).toBe(false)
     fireEvent.click(selected)
     if (fullscreen) fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
@@ -319,8 +374,8 @@ describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) =
         close={close}
       />,
     )
-    fireEvent.change(screen.getByRole('textbox', { name: 'From this year' }), { target: { value: from } })
-    fireEvent.change(screen.getByRole('textbox', { name: 'Up to this year' }), { target: { value: to } })
+    fireEvent.change(libraryRole('textbox', { name: 'From this year' }), { target: { value: from } })
+    fireEvent.change(libraryRole('textbox', { name: 'Up to this year' }), { target: { value: to } })
     if (fullscreen) fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
     if (valid) {
       expect(apply.mock.lastCall?.[0]).toEqual(avalonYearRange(String(from), String(to)))
@@ -344,7 +399,7 @@ describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) =
         close={close}
       />,
     )
-    fireEvent.change(screen.getByRole('textbox', { name: 'From this year' }), { target: { value: '2030' } })
+    fireEvent.change(libraryRole('textbox', { name: 'From this year' }), { target: { value: '2030' } })
     expect(screen.getByRole('alert').textContent).toContain('start no later than the end')
     expect(apply).not.toHaveBeenCalled()
     if (fullscreen)
@@ -363,7 +418,7 @@ describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) =
         close={vi.fn()}
       />,
     )
-    fireEvent.click(screen.getByRole('checkbox', { name: /Unavailable saved filter \(999\)/ }))
+    fireEvent.click(option(/Unavailable saved filter \(999\)/))
     if (fullscreen) {
       expect(apply).not.toHaveBeenCalled()
       fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
@@ -388,4 +443,28 @@ describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) =
     expect(apply.mock.lastCall?.[0].yearFrom ?? null).toBeNull()
     expect(apply.mock.lastCall?.[0].yearTo ?? null).toBeNull()
   })
+})
+
+it('keeps the standalone year editor inside the focus loop without intercepting caret movement', () => {
+  render(
+    <AvalonFilterPanel
+      filter={{}}
+      games={games}
+      facts={avalonFacts(games, workspace)}
+      workspace={workspace}
+      fullscreen
+      apply={vi.fn()}
+      close={vi.fn()}
+    />,
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Release year from · Any' }))
+  const input = screen.getByRole('textbox', { name: 'From this year' })
+  const back = screen.getByRole('button', { name: 'Back to filters' })
+  expect(document.activeElement).toBe(input)
+  expect(fireEvent.keyDown(input, { key: 'ArrowLeft' })).toBe(true)
+  expect(document.activeElement).toBe(input)
+  fireEvent.keyDown(input, { key: 'Tab', shiftKey: true })
+  expect(document.activeElement).toBe(back)
+  fireEvent.keyDown(back, { key: 'Tab' })
+  expect(document.activeElement).toBe(input)
 })

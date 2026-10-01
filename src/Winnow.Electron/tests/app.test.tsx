@@ -10,6 +10,7 @@ import { afterglow } from '../src/renderer/themes/afterglow'
 import { AVALON_PALETTES } from '../src/renderer/themes/avalon-palettes'
 import { clearViewState, useViewState } from '../src/renderer/viewState'
 import { mergeFixture } from './parity-merge-fixtures'
+import { chooseFilterSelect } from './library-controls'
 
 // Whole-app hydration can exceed the one-second query default under parallel worker load.
 configure({ asyncUtilTimeout: 5000 })
@@ -774,7 +775,7 @@ describe('integrated frontend', () => {
       else {
         fireEvent.click(await screen.findByRole('button', { name: 'Filter & sort' }))
         const panel = within(screen.getByRole('dialog', { name: 'Library filters' }))
-        fireEvent.change(panel.getByLabelText('Collection'), { target: { value: 'derelict' } })
+        chooseFilterSelect('Collection', 'derelict')
         fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
       }
       expect(screen.queryByRole('button', { name: 'View Still waiting' })).toBeNull()
@@ -900,16 +901,19 @@ describe('integrated frontend', () => {
       await changeSurface(mode === 'fullscreen')
       const navigation = () => within(screen.getByRole('navigation', { name: 'Main navigation' }))
       expect(reads).not.toHaveBeenCalled()
-      fireEvent.click(navigation().getByRole('button', { name: 'Activity' }))
-      fireEvent.click(await screen.findByRole('button', { name: 'Library summary' }))
-      fireEvent.click(await screen.findByRole('button', { name: 'Spending' }))
+      if (mode === 'desktop') fireEvent.click(navigation().getByRole('button', { name: 'STATS' }))
+      else {
+        fireEvent.click(navigation().getByRole('button', { name: 'Activity' }))
+        fireEvent.click(await screen.findByRole('button', { name: 'Library summary' }))
+        fireEvent.click(await screen.findByRole('button', { name: 'Spending' }))
+      }
       await screen.findByText(/No Steam spending has been captured/)
       expect(reads).toHaveBeenCalledTimes(1)
       fireEvent.click(navigation().getByRole('button', { name: 'Library' }))
       expect(screen.queryByRole('region', { name: 'Account spending' })).toBeNull()
       expect(await screen.findByRole('button', { name: `View ${game.title}` })).toBeTruthy()
       expect(reads).toHaveBeenCalledTimes(1)
-      fireEvent.click(navigation().getByRole('button', { name: 'Activity' }))
+      fireEvent.click(navigation().getByRole('button', { name: mode === 'desktop' ? 'STATS' : 'Activity' }))
       await screen.findByRole('region', { name: 'Account spending' })
       await waitFor(() => expect(reads).toHaveBeenCalledTimes(2))
       client.clear()

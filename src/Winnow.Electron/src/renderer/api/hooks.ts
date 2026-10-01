@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef } from 'react'
 import { z } from 'zod'
 import { request } from './client'
 import { prepareLibrary } from './prepare-library'
+import { waitForLibraryWrites } from './library-write-barrier'
 export { librarySchema } from './prepare-library'
 import type {
   ActivityCursor,
@@ -59,10 +60,13 @@ export function useApiQuery<T>(route: string, params?: Record<string, string | n
   })
 }
 export function useLibrary(enabled = true) {
+  const client = useQueryClient()
   return useQuery({
     queryKey: ['api', 'library.get'],
-    queryFn: async ({ signal }) =>
-      prepareLibrary(await request('library.get', undefined, undefined, signal), signal),
+    queryFn: async ({ signal }) => {
+      await waitForLibraryWrites(client, signal)
+      return prepareLibrary(await request('library.get', undefined, undefined, signal), signal)
+    },
     enabled,
     retry: false,
     staleTime: 30_000,

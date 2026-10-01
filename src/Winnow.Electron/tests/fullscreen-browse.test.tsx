@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { libraryRole, libraryLabel, returnToLibrary, setLibrarySort } from './library-controls'
+import {
+  libraryRole,
+  libraryLabel,
+  returnToLibrary,
+  setLibrarySort,
+  chooseFilterSelect,
+} from './library-controls'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { AvalonLibrary, AvalonShell } from '../src/renderer/themes/avalon'
@@ -149,9 +155,9 @@ it('keeps fullscreen filter, collection and sort edits local until Apply without
   const before = cards()
   fireEvent.click(libraryRole('button', { name: 'Filters' }))
   const panel = within(filterPanel())
-  change(panel.getByLabelText('Installation'), 'true')
-  change(panel.getByLabelText('Collection'), 'never_played')
-  change(panel.getByLabelText('Sort'), 'title-desc')
+  chooseFilterSelect('Installation', 'true')
+  chooseFilterSelect('Collection', 'never_played')
+  chooseFilterSelect('Sort', 'title-desc')
   expect(cards()).toEqual(before)
   expect(document.querySelector('.avalon-fullscreen-library-summary')?.textContent).toContain(
     'Dormant longest',
@@ -172,9 +178,9 @@ it('discards changed fullscreen sort and collection on Cancel or Back and clears
   for (const cancel of ['Cancel', 'Back']) {
     fireEvent.click(libraryRole('button', { name: 'Filters' }))
     const panel = within(filterPanel())
-    change(panel.getByLabelText('Sort'), 'title-desc')
-    change(panel.getByLabelText('Collection'), 'derelict')
-    change(panel.getByLabelText('Installation'), 'true')
+    chooseFilterSelect('Sort', 'title-desc')
+    chooseFilterSelect('Collection', 'derelict')
+    chooseFilterSelect('Installation', 'true')
     if (cancel === 'Cancel') fireEvent.click(panel.getByRole('button', { name: 'Cancel' }))
     else fireEvent.keyDown(filterPanel(), { key: 'Escape' })
     expect(value('Sort')).toBe('time-low')
@@ -182,14 +188,14 @@ it('discards changed fullscreen sort and collection on Cancel or Back and clears
   }
   fireEvent.click(libraryRole('button', { name: 'Filters' }))
   const panel = within(filterPanel())
-  change(panel.getByLabelText('Sort'), 'title-desc')
-  change(panel.getByLabelText('Collection'), 'derelict')
-  change(panel.getByLabelText('Installation'), 'true')
+  chooseFilterSelect('Sort', 'title-desc')
+  chooseFilterSelect('Collection', 'derelict')
+  chooseFilterSelect('Installation', 'true')
   const beforeClear = cards()
   fireEvent.click(panel.getByRole('button', { name: 'Clear filters' }))
-  expect((panel.getByLabelText('Sort') as HTMLSelectElement).value).toBe('title-desc')
-  expect((panel.getByLabelText('Collection') as HTMLSelectElement).value).toBe('all')
-  expect((panel.getByLabelText('Installation') as HTMLSelectElement).value).toBe('')
+  expect(panel.getByRole('button', { name: 'Sort · Name Z–A' })).toBeDefined()
+  expect(panel.getByRole('button', { name: 'Collection · All games' })).toBeDefined()
+  expect(panel.getByRole('button', { name: 'ON DISK · Any' })).toBeDefined()
   expect(cards()).toEqual(beforeClear)
   fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
   expect(value('Sort')).toBe('title-desc')
@@ -208,7 +214,7 @@ it('offers exactly four fullscreen shortcuts and clears its current cut without 
   ])
   change(libraryLabel('Search games'), 'Game 01')
   fireEvent.click(libraryRole('button', { name: 'Filters' }))
-  change(within(filterPanel()).getByLabelText('Installation'), 'false')
+  chooseFilterSelect('Installation', 'false')
   fireEvent.click(within(filterPanel()).getByRole('button', { name: 'Apply filters' }))
   expect(cards()).toEqual([])
   fireEvent.click(shortcuts.getByRole('button', { name: 'Installed6' }))

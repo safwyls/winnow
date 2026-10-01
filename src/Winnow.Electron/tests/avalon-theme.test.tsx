@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
-import { libraryRole, libraryLabel, returnToLibrary } from './library-controls'
+import {
+  libraryRole,
+  libraryLabel,
+  returnToLibrary,
+  chooseFilterSelect,
+  openFilterGroup,
+} from './library-controls'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ComponentType, ReactNode } from 'react'
@@ -271,7 +277,7 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     else {
       fireEvent.click(libraryRole('button', { name: 'Filters' }))
       const panel = within(libraryRole('dialog', { name: 'Library filters' }))
-      fireEvent.change(panel.getByLabelText('Collection'), { target: { value: 'bounced' } })
+      chooseFilterSelect('Collection', 'bounced')
       fireEvent.click(panel.getByRole('button', { name: 'Apply filters' }))
     }
     expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(1)
@@ -312,7 +318,10 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
       fireEvent.click(libraryRole('button', { name: 'List view' }))
       const row = libraryRole('button', { name: 'View Prey. Owned on Steam, Epic' })
       expect(row.className).toBe('avalon-record')
-      expect(row.textContent).toContain('Steam / Epic')
+      expect([...row.querySelectorAll('.avalon-store-chip')].map((chip) => chip.textContent)).toEqual([
+        'Steam',
+        'Epic',
+      ])
       expect(document.querySelectorAll('.avalon-record')).toHaveLength(2)
     }
   })
@@ -483,8 +492,11 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     ctx.games = [...ctx.games, imported]
     mounted.update(ctx)
     fireEvent.click(libraryRole('button', { name: 'Filters' }))
-    fireEvent.click(screen.getByText('Stores', { selector: 'summary' }))
-    const xbox = libraryRole('checkbox', { name: 'Xbox, 1 matching title' })
+    if (mode === 'fullscreen') openFilterGroup('PLATFORM')
+    else fireEvent.click(screen.getByText('Stores', { selector: 'summary' }))
+    const xbox = libraryRole(mode === 'fullscreen' ? 'button' : 'checkbox', {
+      name: 'Xbox, 1 matching title',
+    })
     expect(xbox.hasAttribute('disabled')).toBe(false)
     fireEvent.click(xbox)
     if (mode === 'fullscreen') fireEvent.click(libraryRole('button', { name: 'Apply filters' }))
@@ -492,8 +504,13 @@ describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {
     expect(screen.queryByRole('button', { name: 'View Library game 1' })).toBeNull()
     expect(libraryRole('button', { name: 'View Library game 2' })).toBeDefined()
     fireEvent.click(libraryRole('button', { name: 'Filters' }))
-    expect(libraryRole('checkbox', { name: 'Xbox, 1 matching title' })).toBeDefined()
-    expect(libraryRole('checkbox', { name: 'Steam, 1 matching title' })).toBeDefined()
+    if (mode === 'fullscreen') openFilterGroup('PLATFORM')
+    expect(
+      libraryRole(mode === 'fullscreen' ? 'button' : 'checkbox', { name: 'Xbox, 1 matching title' }),
+    ).toBeDefined()
+    expect(
+      libraryRole(mode === 'fullscreen' ? 'button' : 'checkbox', { name: 'Steam, 1 matching title' }),
+    ).toBeDefined()
   })
 })
 
@@ -807,7 +824,9 @@ it('applies Derelict exemptions only to the captured selected games', async () =
   ]
   const request = vi.fn().mockResolvedValue({ ok: true, status: 200, data: {} })
   Object.defineProperty(window, 'winnow', { value: { request }, configurable: true })
-  mount(ctx, AvalonLibrary)
+  ctx.children = <AvalonLibrary {...ctx} />
+  mount(ctx, AvalonShell)
+  fireEvent.click(libraryRole('button', { name: /^Derelict/ }))
   fireEvent.click(libraryRole('button', { name: 'View Library game 1' }), { ctrlKey: true })
   fireEvent.click(libraryRole('button', { name: 'View Library game 2' }), { ctrlKey: true })
   fireEvent.click(libraryRole('button', { name: 'Remove from Derelict' }))

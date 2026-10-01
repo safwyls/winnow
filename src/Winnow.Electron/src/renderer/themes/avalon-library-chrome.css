@@ -58,6 +58,19 @@
   .avalon-record > span:last-child {
     padding-right: 0;
   }
+  .avalon-record > .avalon-record-stores {
+    display: flex;
+    gap: 4px;
+    padding-right: 8px;
+  }
+  .avalon-store-chip {
+    flex: none;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font: calc(9px * var(--theme-text-scale, 1))/1.2 var(--font-mono);
+    text-transform: uppercase;
+  }
   .avalon-cut-bar {
     display: flex;
     flex-wrap: wrap;

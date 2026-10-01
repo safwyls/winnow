@@ -14,6 +14,13 @@ export function returnToLibrary() {
 }
 export function libraryRole(...args: Parameters<typeof screen.getByRole>) {
   let [role, options] = args
+  if (role === 'textbox' && ['From this year', 'Up to this year'].includes(String(options?.name))) {
+    // Fullscreen's controller keyboard edits this retained model input, as the source TextBox fixture does.
+    const input = document.querySelector<HTMLInputElement>(
+      `.avalon-filter-panel.fullscreen input[aria-label="${options?.name}"]`,
+    )
+    if (input) return input
+  }
   if (fullscreenLibrary() && options?.name === 'Filters') options = { ...options, name: 'Filter & sort' }
   let control = screen.queryByRole(role, options)
   if (control) return control
@@ -24,6 +31,30 @@ export function libraryRole(...args: Parameters<typeof screen.getByRole>) {
   fireEvent.click(screen.getByRole('button', { name: 'More' }))
   if (['textbox', 'combobox'].includes(role)) fireEvent.click(screen.getByText('Current search and sort'))
   return screen.getByRole(role, options)
+}
+
+export function chooseFilterSelect(field: 'Sort' | 'Collection' | 'Installation', value: string) {
+  const panel = document.querySelector('.avalon-filter-panel.fullscreen')
+  if (!panel) {
+    fireEvent.change(screen.getByLabelText(field), { target: { value } })
+    return
+  }
+  const back = screen.queryByRole('button', { name: 'Back to filters' })
+  if (back) fireEvent.click(back)
+  fireEvent.click(
+    screen.getByRole('button', { name: field === 'Installation' ? /^ON DISK ·/ : new RegExp(`^${field} ·`) }),
+  )
+  const choice = [...panel.querySelectorAll<HTMLButtonElement>('[data-filter-choice]')].find(
+    (button) => button.dataset.filterChoice === value,
+  )
+  if (!choice) throw Error(`Missing ${field} choice ${value}`)
+  fireEvent.click(choice)
+}
+
+export function openFilterGroup(header: string) {
+  const back = screen.queryByRole('button', { name: 'Back to filters' })
+  if (back) fireEvent.click(back)
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${header} ·`) }))
 }
 export function libraryLabel(...args: Parameters<typeof screen.getByLabelText>) {
   if (args[0] === 'Sort' && !fullscreenLibrary()) return screen.getByRole('button', { name: /^Sort ·/ })

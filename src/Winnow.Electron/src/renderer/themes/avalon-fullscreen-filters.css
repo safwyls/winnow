@@ -1,0 +1,203 @@
+@layer themes {
+  .avalon-filter-panel.fullscreen {
+    inset: 0;
+    width: auto;
+    max-width: none;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    gap: 0;
+    background: var(--bg);
+    --filter-text-scale: calc(var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+    font-family: var(--font-body);
+  }
+  .avalon-filter-panel.fullscreen > header {
+    display: block;
+    flex: none;
+  }
+  .avalon-filter-panel.fullscreen > header h2 {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: calc(64px * var(--filter-text-scale));
+    font-weight: 400;
+    line-height: 1.15;
+  }
+  .fullscreen-filter-count {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: calc(28px * var(--filter-text-scale));
+  }
+  .avalon-filter-panel.fullscreen:not([data-filter-page='overview']) > header h2 {
+    font-size: calc(48px * var(--filter-text-scale));
+  }
+  .fullscreen-filter-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    flex: 1;
+    min-height: 0;
+    margin-block: 24px;
+  }
+  .fullscreen-filter-columns[hidden] {
+    display: none;
+  }
+  .fullscreen-filter-browse,
+  .fullscreen-filter-refine,
+  .fullscreen-filter-choices {
+    min-height: 0;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    scroll-padding: 8px;
+  }
+  .fullscreen-filter-browse {
+    padding-right: 32px;
+  }
+  .fullscreen-filter-refine {
+    padding-left: 32px;
+    border-left: 1px solid var(--line);
+  }
+  .avalon-filter-panel.fullscreen .fullscreen-filter-columns h3 {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font: 400 calc(32px * var(--filter-text-scale))/1.3 var(--font-body);
+    margin: 8px 0 16px;
+  }
+  .fullscreen-filter-columns h3 svg {
+    width: 28px;
+    height: 28px;
+    flex: none;
+    color: var(--muted);
+  }
+  .fullscreen-filter-browse h3:not(:first-child) {
+    margin-top: 32px;
+  }
+  .avalon-filter-panel.fullscreen button,
+  .avalon-filter-panel.fullscreen input {
+    font-family: var(--font-body);
+    font-size: calc(28px * var(--filter-text-scale));
+    font-weight: 400;
+    line-height: 1.35;
+    padding: 12px 16px;
+    min-height: 58px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .fullscreen-filter-columns button {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    justify-content: flex-start;
+    width: 100%;
+    margin-bottom: 12px;
+  }
+  .fullscreen-filter-refine > button {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+  }
+  .fullscreen-filter-value {
+    font-size: calc(24px * var(--filter-text-scale));
+    color: var(--muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .fullscreen-filter-value[data-selected] {
+    color: var(--accent-foreground, var(--accent));
+  }
+  .fullscreen-filter-empty {
+    color: var(--muted);
+    font-size: calc(24px * var(--filter-text-scale));
+  }
+  .fullscreen-filter-choices {
+    flex: 1;
+    margin-block: 24px;
+    padding: 4px;
+  }
+  .fullscreen-filter-choices > button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 16px;
+    text-align: left;
+    width: 100%;
+    max-width: 1320px;
+    margin-bottom: 12px;
+  }
+  .fullscreen-filter-choices > button:has(small) {
+    display: grid;
+    gap: 10px;
+  }
+  .fullscreen-filter-choices small {
+    font-size: calc(24px * var(--filter-text-scale));
+    color: var(--muted);
+  }
+  .fullscreen-filter-check {
+    width: 1em;
+    flex: none;
+    color: var(--accent-foreground, var(--accent));
+  }
+  .fullscreen-filter-option-count {
+    margin-left: auto;
+    color: var(--muted);
+  }
+  .fullscreen-filter-choices > button[aria-pressed='true'] {
+    color: var(--accent-foreground, var(--accent));
+  }
+  .fullscreen-filter-choices > label {
+    display: grid;
+    gap: 16px;
+    font-size: calc(28px * var(--filter-text-scale));
+  }
+  .avalon-filter-panel.fullscreen > footer {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .avalon-filter-panel.fullscreen > footer [role='alert'] {
+    color: var(--avalon-amber-foreground);
+    margin: 0;
+    font-size: calc(24px * var(--filter-text-scale));
+  }
+  .fullscreen-filter-actions {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .fullscreen-filter-hints {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    color: var(--muted);
+    font-size: calc(24px * var(--filter-text-scale));
+  }
+  .fullscreen-filter-hints > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .fullscreen-filter-hints [data-filter-glyph] {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+  }
+  .fullscreen-filter-hints svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+  }
+  .fullscreen-filter-hints svg path {
+    fill: currentColor;
+  }
+  .avalon-shell.fullscreen:has(.avalon-filter-panel.fullscreen) .avalon-footer > span:first-child {
+    visibility: hidden;
+  }
+  .avalon-shell.fullscreen .avalon-library[data-filters-open='true'] > :not(.avalon-filter-panel) {
+    visibility: hidden;
+  }
+}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { LibraryFilter, LibraryGame } from '../api/types'
 import { matchesBucket } from './avalon-data'
 import { libraryBucketLabel } from './avalon-library-chrome'
+import { AvalonFullscreenFilters } from './avalon-fullscreen-filters'
 import {
   AVALON_FACET_GROUPS,
   avalonRuleOptions,
@@ -22,6 +23,7 @@ export function AvalonFilterPanel({
   browse,
   apply,
   close,
+  editText,
 }: {
   filter: LibraryFilter
   games: LibraryGame[]
@@ -33,6 +35,7 @@ export function AvalonFilterPanel({
   browse?: { sort: string; bucket: string; manual: boolean }
   apply(filter: LibraryFilter, browse?: { sort: string; bucket: string }): void
   close(): void
+  editText?(input: HTMLInputElement): void
 }) {
   const [draft, setDraft] = useState(filter),
     [from, setFrom] = useState(String(filter.yearFrom ?? '')),
@@ -107,6 +110,41 @@ export function AvalonFilterPanel({
   const datedYears = allGames.flatMap((game) =>
     game.firstReleaseYear == null ? [] : [game.firstReleaseYear],
   )
+  if (fullscreen)
+    return (
+      <AvalonFullscreenFilters
+        draft={draft}
+        update={update}
+        groups={visibleGroups}
+        browse={{ sort: draftSort, bucket: draftBucket, manual: browse?.manual ?? false }}
+        setBrowse={(next) => {
+          setDraftSort(next.sort)
+          setDraftBucket(next.bucket)
+        }}
+        from={from}
+        to={to}
+        showYears={Boolean(datedYears.length || from || to)}
+        year={year}
+        editText={editText}
+        count={population.filter((game) => matchesAvalonRules(game, draft, facts.get(game.workId))).length}
+        error={error}
+        valid={Boolean(valid)}
+        close={close}
+        clear={() => {
+          setFrom('')
+          setTo('')
+          setError('')
+          setDraftBucket('all')
+          update({})
+        }}
+        apply={() => {
+          if (!valid) return
+          if (browse) apply({ ...draft, ...valid }, { sort: draftSort, bucket: draftBucket })
+          else apply({ ...draft, ...valid })
+          close()
+        }}
+      />
+    )
   return (
     <section
       ref={ref}

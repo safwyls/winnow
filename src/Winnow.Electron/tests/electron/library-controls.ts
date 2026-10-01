@@ -37,7 +37,7 @@ export async function setLibrarySort(page: Page, sort: string) {
     await returnToLibrary(page)
     await page.getByRole('button', { name: 'Filter & sort', exact: true }).click()
     const panel = page.getByRole('dialog', { name: 'Library filters', exact: true })
-    await panel.getByRole('combobox', { name: 'Sort', exact: true }).selectOption(sort)
+    await chooseFilterSelect(page, 'Sort', sort)
     await panel.getByRole('button', { name: 'Apply filters' }).click()
   } else {
     await page.getByRole('button', { name: /^Sort ·/ }).click()
@@ -46,6 +46,20 @@ export async function setLibrarySort(page: Page, sort: string) {
       .locator(`[role="menuitemradio"][value="${sort}"]`)
       .click()
   }
+}
+
+export async function chooseFilterSelect(
+  page: Page,
+  field: 'Sort' | 'Collection' | 'Installation',
+  value: string,
+) {
+  const panel = page.getByRole('dialog', { name: 'Library filters', exact: true })
+  const back = panel.getByRole('button', { name: 'Back to filters', exact: true })
+  if (await back.isVisible()) await back.click()
+  await panel
+    .getByRole('button', { name: field === 'Installation' ? /^ON DISK ·/ : new RegExp(`^${field} ·`) })
+    .click()
+  await panel.locator(`[data-filter-choice="${value}"]`).click()
 }
 export async function expectLibrarySort(page: Page, sort: string) {
   const field = await libraryField(page, 'Sort')

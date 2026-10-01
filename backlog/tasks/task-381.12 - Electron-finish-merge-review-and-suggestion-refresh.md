@@ -5,6 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
+updated_date: '2026-10-01 02:20'
 labels:
   - electron
   - parity
@@ -75,3 +76,9 @@ Review boundary: work on this task only after the user prompts continuation from
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-381.7 visual evidence: fullscreen merge member sheets still use compact desktop-sized title/action text (roughly 14px) beside 16px store chips. Compare MergeMemberSheet and parity-merge.css with the source fullscreen tokens while completing this merge-review checkpoint. Evidence: .tmp/task3817-labels-initial-results/library-labels-fullscreen--aaaf7-mber-store-without-clipping/fullscreen-merge-2.png. Store labels and no-clipping assertions are covered by TASK-381.7; they do not establish overall merge-sheet typography parity. This task remains To Do; no implementation has started.
+<!-- SECTION:NOTES:END -->

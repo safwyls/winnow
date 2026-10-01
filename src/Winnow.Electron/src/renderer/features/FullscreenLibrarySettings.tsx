@@ -10,6 +10,7 @@ import { AccountVisibility, JournalPromptPreference, usePresentationPreferences 
 import { RatingCapPreference, useLibraryPreferenceChange } from './RatingCap'
 import { parseExpansionGrouping } from './parity-library-grain'
 import { Notice } from './shared'
+import { ExplicitVisibility } from './ExplicitVisibility'
 
 export const librarySortChoices = [
   ['DormantLongest', 'Dormant longest'],
@@ -82,6 +83,7 @@ export function FullscreenLibrarySettings({
         disabled={!library.data || change.pending}
         change={(value) => change.apply('showExplicitContent', value)}
       />
+      <ExplicitVisibility />
       <RatingCapPreference mode="fullscreen" presentation="row" />
       <FullscreenAdjustment
         label="Preferred platform for grouped games"

@@ -1,11 +1,11 @@
 ---
 id: TASK-381.7
 title: 'Electron: finish library filters, selection and lists'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:45'
-updated_date: '2026-09-30 23:29'
+updated_date: '2026-10-01 02:37'
 labels:
   - electron
   - parity
@@ -16,6 +16,7 @@ references:
 documentation:
   - src/Winnow.Electron/README.md
   - design-system.md
+  - docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-two.md
 parent_task_id: TASK-381
 priority: high
 type: task
@@ -80,10 +81,10 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original settings/filter options, collection explanations, Derelict overrides and store labels retain their values and meaning after refresh.
-- [ ] #2 Selection, hide, rail list controls and list prompts/writes preserve browsing position, atomic writes, conflict/retry behavior and controller focus on both surfaces.
-- [ ] #3 All 24 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original settings/filter options, collection explanations, Derelict overrides and store labels retain their values and meaning after refresh.
+- [x] #2 Selection, hide, rail list controls and list prompts/writes preserve browsing position, atomic writes, conflict/retry behavior and controller focus on both surfaces.
+- [x] #3 All 24 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -91,8 +92,24 @@ Review boundary: work on this task only after the user prompts continuation from
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit the twenty-four frozen source contracts and existing Electron evidence, preserving complete fixtures, failure cases and both presentation paths.
+2. Use bounded agent ownership for list writes/prompts/rail controls, visibility/Derelict/selection behavior, and filter-option/collection/store-label evidence. Coordinator owns fullscreen Filter & sort visual fidelity, shared-file integration and all native test scheduling.
+3. Repair demonstrated gaps in staged filtering, selection and persisted operations. Restore fullscreen filter groups, readable type and persistent controller actions against the original source and design tokens, retaining desktop behavior.
+4. Execute focused component/API tests and serialized native desktop/fullscreen cases with disposable data, then the complete component/API suite separately. Inspect screenshots, verify exact source-method mappings, update documentation and checkpoint evidence, and commit a reviewable milestone.
+5. Stop at TASK-381.7 for user review. Do not begin TASK-381.8 until explicitly prompted.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-TASK-381.5 review finding: the existing fullscreen Filters surface passes native accessible-name and D-pad reachability checks, but still uses the shared auto-fit form layout with 20px labels and smaller supporting actions. Compare that presentation with FullscreenBrowseFiltersPage and the fullscreen design tokens during this filter checkpoint; controller-route evidence alone does not establish visual parity. This task remains To Do and has not been started.
+Restored fullscreen Browse/Refine filters, choice pages, staged counts, source typography, A/B/Y hints and controller year editing. Added captured-selection Hide with post-refresh visible focus, explicit-content counts, Derelict-only removal, complete collection explanations, store chips and desktop STATS. Membership refresh waits for queued and compensating writes. Fullscreen Library tools now uses readable single-column editors; native measurement caught and corrected a narrow-window heading override. Desktop and fullscreen have separate native evidence. All 24 source contracts are resolved: 23 ported and one retained backend atomicity method with all six original cases passing. Build/typecheck and formatting pass; complete component/live API suite: 3464 cases in 173 files, 85.40 seconds, no skips. Native ledger: 87 distinct passing cases, including controller keyboard, deep 900-game viewport, list failure/retry and both scaled layouts. Inventory: 1352 ported, 626 retained backend, 32 framework-specific, 351 pending, 74 partial; overall migration gate remains incomplete with 425 unresolved. See checkpoint-sixty-two.md for exact per-method evidence, fixture corrections and limitations. Physical devices, full .NET suite and packaged releases were not checked. Existing merge-sheet typography finding is recorded in TASK-381.12; it remains To Do. Stop here for user review before TASK-381.8.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed library filters, selection and list parity on desktop and fullscreen, including readable fullscreen presentation and controller hints. All 24 assigned source contracts resolved. Verification: 3464 component/API, 87 distinct native and 6 retained transaction cases passed; build/typecheck/format checks passed. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-two.md. The overall migration still has 425 unresolved methods. Pause for review before tile actions in TASK-381.8.
+<!-- SECTION:FINAL_SUMMARY:END -->

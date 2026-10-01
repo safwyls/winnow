@@ -3,7 +3,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
-import { setLibrarySort } from './library-controls'
+import { setLibrarySort, chooseFilterSelect } from './library-controls'
 import type { LibraryResponse, FeedSnapshot } from '../../src/renderer/api/types'
 
 type FixtureHost = { __winnowLayoutFixture: { library: LibraryResponse; feed: FeedSnapshot } }
@@ -275,9 +275,9 @@ test('fullscreen filter drafts apply with Y from the top, cancel with B and keep
   await controller()
   await page.getByRole('button', { name: 'Filter & sort', exact: true }).click()
   const panel = page.getByRole('dialog', { name: 'Library filters' })
-  await panel.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('title-desc')
-  await panel.getByRole('combobox', { name: 'Collection', exact: true }).selectOption('never_played')
-  await panel.getByRole('combobox', { name: 'Installation', exact: true }).selectOption('true')
+  await chooseFilterSelect(page, 'Sort', 'title-desc')
+  await chooseFilterSelect(page, 'Collection', 'never_played')
+  await chooseFilterSelect(page, 'Installation', 'true')
   await expect(page.locator('.avalon-fullscreen-library-summary')).toContainText('Dormant longest')
   const apply = panel.getByRole('button', { name: 'Apply filters' })
   const geometry = await apply.evaluate((element) => {
@@ -300,7 +300,7 @@ test('fullscreen filter drafts apply with Y from the top, cancel with B and keep
   await expect(page.locator('.avalon-fullscreen-library-summary')).toContainText('Name Z–A')
   await expect(page.locator('.avalon-results-count')).toHaveText('10 games')
   await page.getByRole('button', { name: 'Filter & sort', exact: true }).click()
-  await panel.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('dormant')
+  await chooseFilterSelect(page, 'Sort', 'dormant')
   await panel.getByRole('button', { name: 'Cancel' }).focus()
   await tap(1)
   await expect(panel).toHaveCount(0)
@@ -525,7 +525,16 @@ test('fullscreen options and tools retain the same viewport and column sixty row
       await expect(options.getByRole('button').first()).toHaveText('My lists')
       await expect(options.getByRole('button').first()).toBeFocused()
       await expect(options.getByRole('button').first()).toHaveCSS('border-bottom-style', 'solid')
-      await expect(options.getByRole('button').first()).toHaveCSS('border-bottom-width', '3px')
+      const underlineWidth = await options.evaluate((node) => {
+        // Compare the source 3px border after Chromium snaps it at the current interface zoom.
+        const probe = document.createElement('span')
+        probe.style.borderBottom = '3px solid'
+        node.append(probe)
+        const width = getComputedStyle(probe).borderBottomWidth
+        probe.remove()
+        return width
+      })
+      await expect(options.getByRole('button').first()).toHaveCSS('border-bottom-width', underlineWidth)
       expect(
         await options
           .getByRole('button')
