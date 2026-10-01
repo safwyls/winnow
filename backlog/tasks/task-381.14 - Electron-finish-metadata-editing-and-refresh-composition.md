@@ -1,11 +1,11 @@
 ---
 id: TASK-381.14
 title: 'Electron: finish metadata editing and refresh composition'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
-updated_date: '2026-10-01 08:54'
+updated_date: '2026-10-01 08:55'
 labels:
   - electron
   - parity
@@ -71,7 +71,7 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -88,6 +88,8 @@ Started after IGDB matching milestone 43649dc3 and completion 775e0bcc. This is 
 Audit confirmed a missing optional metadata-service seam: Details construction required the editor service. Added availability to metadata state and safe unavailable mutations while preserving ordinary Details reads. Renderer is hiding only explicit unavailability, restoring the constant Edit details tooltip and gating native file selection on its picker capability. Existing save/draft logic is retained. Native verification is being expanded from year-only to the original summary/publisher/year matrix and background refresh with focused drafts and update rows.
 
 Checkpoint 69: all 3699 component/live API cases pass across 182 files in 92.29s; 27 original source and 9 new HTTP cases pass; 16 distinct native cases pass with two final accessibility reruns. Final build/typecheck, formatting and migration audit pass. Fixed a real compact reception accessibility gap; adjusted the older header locator to its aggregate name while preserving the ordering assertion. Screenshots inspected on both surfaces. Inventory now 1439 ported,650 retained-backend,32 framework-specific,255 pending,59 partial. Native controller input is simulated.
+
+Milestone e2be2a53 records implementation, migration inventory and checkpoint 69. Continuing to TASK-381.15 under the authorized ten-task batch.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
