@@ -27,6 +27,8 @@ import type { ArtworkState, LibraryResponse, Workspace } from '../renderer/api/t
 import { recentGames, jumpListAppId, jumpListArguments, JumpListPublisher } from './jump-list'
 import { JumpListIcons } from './jump-list-icons'
 import { applicationBuildInfo } from './application-build-info'
+import { loginItemOptions } from './login-options'
+import { openDataFolder } from './data-folders'
 import { startActivationHost, resolveBackendDataDirectory, type ActivationHost } from './activation-host'
 import { SnapshotRefresh } from '../shared/snapshot-refresh'
 import { FontCatalogue } from './fonts'
@@ -677,17 +679,16 @@ async function initialize(): Promise<void> {
       hasSteam: () => Boolean(app.getApplicationNameForProtocol('steam://')),
     })
   })
-  handle('winnow:folder', async (folder: string) => {
-    if (!['logs', 'plugins', 'themes'].includes(folder)) throw new Error('Unknown Winnow folder')
-    // Ask the backend for its active directory, including legacy fallback installs.
-    const result = await transport!.request<{ directory: string }>({ route: 'plugins.directory' })
-    if (!result.ok || !result.data?.directory)
-      throw new Error('Connect to your library before opening its folder.')
-    const path = join(dirname(result.data.directory), folder)
-    await mkdir(path, { recursive: true })
-    const problem = await shell.openPath(path)
-    if (problem) throw new Error('The folder could not be opened.')
-  })
+  handle('winnow:folder', (folder: string) =>
+    openDataFolder(folder, {
+      pluginDirectory: async () => {
+        const result = await transport!.request<{ directory: string }>({ route: 'plugins.directory' })
+        return result.ok ? result.data?.directory : undefined
+      },
+      createDirectory: (path) => mkdir(path, { recursive: true }),
+      openPath: (path) => shell.openPath(path),
+    }),
+  )
   handle('winnow:install-folder', (ownershipId: unknown) =>
     openInstallFolder(ownershipId, {
       workspace: async () => {
@@ -762,14 +763,17 @@ async function initialize(): Promise<void> {
     packaged: app.isPackaged,
     steamStoreAvailable: Boolean(app.getApplicationNameForProtocol('steam://')),
     autostartSupported: app.isPackaged && process.platform === 'win32',
-    openAtLogin: process.platform === 'win32' ? app.getLoginItemSettings().openAtLogin : false,
+    openAtLogin:
+      process.platform === 'win32'
+        ? app.getLoginItemSettings(loginItemOptions(process.execPath, explicitDataDirectory)).openAtLogin
+        : false,
   }))
   handle('winnow:application:autostart', (enabled: boolean) => {
     if (typeof enabled !== 'boolean' || !app.isPackaged || process.platform !== 'win32')
       throw new Error('Start at sign-in is available in packaged Windows builds.')
     app.setLoginItemSettings({
+      ...loginItemOptions(process.execPath, explicitDataDirectory),
       openAtLogin: enabled,
-      args: ['--background', ...(explicitDataDirectory ? ['--data-dir', explicitDataDirectory] : [])],
     })
   })
   const journalNotifications = new Map<number, Notification>()

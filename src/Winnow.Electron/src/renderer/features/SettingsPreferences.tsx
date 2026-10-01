@@ -11,6 +11,7 @@ import { usePluginInstallation } from './plugin-installation'
 import { PluginInstallStatus } from './PluginInstallStatus'
 import { useViewState } from '../viewState'
 import './application-info.css'
+import { useLogsFolder } from './useLogsFolder'
 import {
   FullscreenAdjustment,
   FullscreenSettingsAction,
@@ -93,6 +94,7 @@ export function ApplicationPreferences({
     enabled: !!window.winnow.applicationInfo,
   })
   const [nativeError, setNativeError] = useState<unknown>(null)
+  const logs = useLogsFolder()
   const [nativeBusy, setNativeBusy] = useState(false)
   useSetupBusy(preferences.pending || command.isPending || nativeBusy)
   useSetupPreferenceError(preferences.error || nativeError)
@@ -269,12 +271,7 @@ export function ApplicationPreferences({
           <>
             <h2 className="fullscreen-settings-group">Diagnostics</h2>
             {window.winnow.openDataFolder && (
-              <FullscreenSettingsAction
-                label="Open logs folder"
-                onClick={() => {
-                  void window.winnow.openDataFolder!('logs').catch(setNativeError)
-                }}
-              />
+              <FullscreenSettingsAction label="Open logs folder" onClick={() => void logs.open()} />
             )}
             <p className="muted">
               For a bug report, include the Winnow version, what happened and when, and the recent log files.
@@ -289,9 +286,7 @@ export function ApplicationPreferences({
               Run setup again
             </button>
             {window.winnow.openDataFolder && (
-              <button onClick={() => void window.winnow.openDataFolder!('logs').catch(setNativeError)}>
-                Open logs folder
-              </button>
+              <button onClick={() => void logs.open()}>Open logs folder</button>
             )}
           </div>
         ))}
@@ -311,6 +306,7 @@ export function ApplicationPreferences({
         </section>
       )}
       {!setup && <ApplicationUpdates mode={mode} />}
+      <Notice error={logs.error} />
       <Notice error={preferences.error || command.error || nativeError || info.error} />
     </section>
   )

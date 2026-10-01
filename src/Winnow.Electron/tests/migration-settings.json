@@ -163,15 +163,5 @@
       }
     ],
     "reason": "Both modes render a quiet failure notice, preserve focus, open logs and keep the notice until every outstanding backend failure has cleared."
-  },
-  "SessionWatcherDiagnosticsTests.Settings_keep_log_access_after_recovery_on_both_surfaces": {
-    "status": "partial",
-    "tests": [],
-    "reason": "Application settings always offer Open logs folder when the native bridge is available. A separate settings assertion after diagnostics recovery remains required."
-  },
-  "SessionWatcherDiagnosticsTests.Failed_folder_open_exposes_manual_path_and_retry_clears_it": {
-    "status": "partial",
-    "tests": [],
-    "reason": "Folder-open failures surface through a retryable Notice, but the renderer does not currently receive the resolved logs directory for the manual-path fallback."
   }
 }

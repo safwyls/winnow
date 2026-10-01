@@ -20,6 +20,7 @@ var directoryIndex = Array.IndexOf(args, "--data-dir");
 if (directoryIndex < 0 || directoryIndex + 1 >= args.Length)
     throw new ArgumentException("Pass --data-dir <throwaway directory> to this test fixture.");
 var directory = Path.GetFullPath(args[directoryIndex + 1]);
+var diagnostics = Path.GetFileName(directory).StartsWith("winnow-electron-diagnostics-", StringComparison.Ordinal);
 if (args.Contains("--inspect-frontend-activation"))
 {
     if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Windows activation inspection only.");
@@ -50,12 +51,20 @@ if (visibility)
     Directory.CreateDirectory(directory);
     await File.WriteAllTextAsync(marker, "Winnow Electron visibility test fixture");
 }
-else if (!(pluginActions || editions || merges || matching || metadataEditing || detailsReading || activityRemaining || journalActivity || gameplayStats || recommendationState || recommendationPreview || coverBehavior || artworkState || startupBoundary || nativeHost || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
+else if (!(diagnostics || pluginActions || editions || merges || matching || metadataEditing || detailsReading || activityRemaining || journalActivity || gameplayStats || recommendationState || recommendationPreview || coverBehavior || artworkState || startupBoundary || nativeHost || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
     || File.Exists(Path.Combine(directory, "winnow.db")))
     throw new ArgumentException("Composition fixtures require a new test-owned directory.");
 
 await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"], services =>
 {
+    if (diagnostics)
+    {
+        DiagnosticsFixture.Register(services);
+        services.AddSingleton<PluginActionShellGuard>();
+        services.AddSingleton<IUriDispatcher>(provider => provider.GetRequiredService<PluginActionShellGuard>());
+        services.AddSingleton<IHttpMessageHandlerBuilderFilter, MatchingOfflineHttp>();
+        return;
+    }
     if (nativeHost)
     {
         NativeHostFixture.Register(services);
@@ -212,6 +221,7 @@ await using var app = BackendApplication.Build(["--data-dir", directory, "--no-s
         provider.GetRequiredService<ILogger<OwnershipRefreshCoordinator>>()));
 });
 await app.Services.GetRequiredService<FirstRunSetupService>().SaveAsync(null);
+if (diagnostics) app.Services.GetRequiredService<DiagnosticsFixture>().Initialize(directory);
 if (nativeHost) await app.Services.GetRequiredService<NativeHostFixture>().InitializeAsync(directory);
 if (startupBoundary)
 {
@@ -225,7 +235,9 @@ if (pluginActions)
 
 // BackendApplication's normal loopback, authority and bearer-token middleware covers these routes.
 // Only this separately built test executable exposes fixture control; the production backend does not.
-if (nativeHost)
+if (diagnostics)
+    DiagnosticsFixture.Map(app);
+else if (nativeHost)
     NativeHostFixture.Map(app);
 else if (startupBoundary)
     StartupBoundaryFixture.Map(app);

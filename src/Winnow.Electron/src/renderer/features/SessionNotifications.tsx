@@ -12,6 +12,7 @@ import { RefreshQueue } from '../refresh'
 import './session-notifications.css'
 import { sessionDuration } from './journal-prompt-controls'
 import { controllerScope } from '../controller'
+import { useLogsFolder } from './useLogsFolder'
 
 interface SessionPrompt {
   sessionId: number
@@ -43,7 +44,7 @@ export function SessionNotifications({
   const client = useQueryClient()
   const [prompt, setPrompt] = useState<SessionPrompt | null>(null)
   const [showCard, setShowCard] = useState(false)
-  const [folderError, setFolderError] = useState<unknown>(null)
+  const logs = useLogsFolder()
   const [draft] = useViewState<PromptDraft | null>(`draft:journal:${prompt?.sessionId ?? 'none'}`, null)
   const touched = Boolean(draft?.sending || draft?.rating || draft?.note.trim())
   const latest = useRef({ library: library.data, touched, prompt })
@@ -136,14 +137,6 @@ export function SessionNotifications({
     return () => clearTimeout(timer)
   }, [prompt, touched, suspended, dismiss])
 
-  async function openLogs() {
-    setFolderError(null)
-    try {
-      await window.winnow.openDataFolder?.('logs')
-    } catch (failure) {
-      setFolderError(failure)
-    }
-  }
   if (suspended) return null
   return (
     <div className={`session-notifications mode-${mode}`}>
@@ -153,8 +146,8 @@ export function SessionNotifications({
             Session tracking needs attention. Some play sessions may be missing. Winnow will retry
             automatically.
           </p>
-          {window.winnow.openDataFolder && <button onClick={() => void openLogs()}>Open logs folder</button>}
-          <Notice error={folderError} />
+          {window.winnow.openDataFolder && <button onClick={() => void logs.open()}>Open logs folder</button>}
+          <Notice error={logs.error} />
         </aside>
       )}
       {prompt && showCard && (

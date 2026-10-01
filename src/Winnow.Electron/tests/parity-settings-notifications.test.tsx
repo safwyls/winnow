@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SessionNotifications } from '../src/renderer/features/SessionNotifications'
-import { JournalPromptPreference } from '../src/renderer/features/SettingsPreferences'
+import { ApplicationPreferences, JournalPromptPreference } from '../src/renderer/features/SettingsPreferences'
 import { clearViewState } from '../src/renderer/viewState'
 import type { ApiRequest, BackendEvent } from '../src/shared/bridge'
 import { controllerActivationTarget, moveControllerFocus } from '../src/renderer/controller'
@@ -452,6 +452,66 @@ describe.each(['desktop', 'fullscreen'] as const)('%s session notification parit
     setFailures([])
     await send('diagnostics.changed', 'sessions')
     await waitFor(() => expect(screen.queryByText(/Session tracking needs attention/)).toBeNull())
+  })
+  it('keeps Settings log access after watcher recovery and clears the exact manual path after a successful retry', async () => {
+    const { send, setFailures, openDataFolder, wrapper } = fixture({}, (input) =>
+      input.route === 'preferences.presentation.get' ? { ok: true, status: 200, data: [] } : undefined,
+    )
+    render(
+      <>
+        <SessionNotifications mode={mode} />
+        <ApplicationPreferences mode={mode} />
+      </>,
+      { wrapper },
+    )
+    setFailures([{ operation: 'Tick' }])
+    await send('diagnostics.changed', 'sessions')
+    await screen.findByText(/Session tracking needs attention/)
+    expect(screen.getAllByRole('button', { name: 'Open logs folder' })).toHaveLength(2)
+    setFailures([])
+    await send('diagnostics.changed', 'sessions')
+    await waitFor(() => expect(screen.queryByText(/Session tracking needs attention/)).toBeNull())
+    const button = screen.getByRole('button', { name: 'Open logs folder' })
+    const path = 'C:\\temporary\\winnow-health-source\\logs'
+    const message = `Couldn't open the logs folder. Open it manually: ${path}`
+    openDataFolder.mockRejectedValueOnce(new Error(message))
+    fireEvent.click(button)
+    await screen.findByText(message)
+    fireEvent.click(button)
+    await waitFor(() => expect(screen.queryByText(message)).toBeNull())
+    expect(openDataFolder.mock.calls).toEqual([['logs'], ['logs']])
+  })
+
+  it('keeps diagnostics current while a dialog suspends the notice and retries its exact logs failure without moving focus', async () => {
+    const { send, setFailures, openDataFolder, wrapper } = fixture()
+    const ui = (suspended: boolean) => (
+      <>
+        <button>Dialog control</button>
+        <SessionNotifications mode={mode} suspended={suspended} />
+      </>
+    )
+    const view = render(ui(true), { wrapper })
+    const focus = screen.getByRole('button', { name: 'Dialog control' })
+    focus.focus()
+    setFailures([{ operation: 'Tick' }])
+    await send('diagnostics.changed', 'sessions')
+    expect(screen.queryByText(/Session tracking needs attention/)).toBeNull()
+    view.rerender(ui(false))
+    await screen.findByText(/Session tracking needs attention/)
+    expect(document.activeElement).toBe(focus)
+    const message =
+      "Couldn't open the logs folder. Open it manually: C:\\temporary\\winnow-health-notice\\logs"
+    openDataFolder.mockRejectedValueOnce(new Error(message))
+    fireEvent.click(screen.getByRole('button', { name: 'Open logs folder' }))
+    await screen.findByText(message)
+    fireEvent.click(screen.getByRole('button', { name: 'Open logs folder' }))
+    await waitFor(() => expect(screen.queryByText(message)).toBeNull())
+    view.rerender(ui(true))
+    setFailures([])
+    await send('diagnostics.changed', 'sessions')
+    view.rerender(ui(false))
+    await waitFor(() => expect(screen.queryByText(/Session tracking needs attention/)).toBeNull())
+    expect(document.activeElement).toBe(focus)
   })
 })
 

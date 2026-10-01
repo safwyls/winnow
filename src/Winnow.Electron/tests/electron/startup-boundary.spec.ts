@@ -344,7 +344,7 @@ test('unloadable renderer startup reports exit three without an unhandled reject
   let result: Awaited<ReturnType<typeof fatal>>
   try {
     result = await fatal(directory, fixture, report, {
-      ELECTRON_RENDERER_URL: `http://127.0.0.1:${address.port}/`,
+      ELECTRON_RENDERER_URL: `http://127.0.0.1:${address.port}/?diagnostic=unstructured-private-secret`,
     })
     expect(result.code).toBe(3)
     expect(result.report.uncaught).toEqual([])
@@ -357,6 +357,21 @@ test('unloadable renderer startup reports exit three without an unhandled reject
     expect(result.report.backendProcessId).toBeGreaterThan(0)
     expect((await state(directory)).ready).toBe(true)
     process.kill(result.report.backendProcessId, 0)
+    const diagnostic = await readFile(join(directory, 'logs/electron-startup-failure.log'), 'utf8')
+    expect(diagnostic).toContain('StartupFailure')
+    expect(diagnostic).toContain('type=Error')
+    expect(diagnostic).toContain('code=ERR_CONNECTION_REFUSED')
+    expect(diagnostic).toContain('errno=-102')
+    expect(diagnostic).toMatch(/ build=\d+\.\d+\.\d+/)
+    expect(diagnostic).toMatch(/ commit=[a-f0-9]{40}/)
+    expect(diagnostic).toMatch(/ at=[A-Za-z_$][\w$.]*/)
+    expect(diagnostic).not.toContain('unstructured-private-secret')
+    expect(diagnostic).not.toContain(directory)
+    expect(diagnostic).not.toContain('http://127.0.0.1')
+    await info.attach('actual-startup-persisted-safe-metadata', {
+      body: diagnostic,
+      contentType: 'text/plain',
+    })
   } finally {
     await closeFixture(undefined, directory)
   }

@@ -52,7 +52,16 @@ const bridge: WinnowBridge = {
   onUpdate: (callback) => subscribe<ApplicationUpdateSnapshot>('winnow:update:changed', callback),
   takeActivations: () => ipcRenderer.invoke('winnow:activation:pending'),
   onActivation: (callback) => subscribe<ApplicationActivation>('winnow:activation', callback),
-  openDataFolder: (folder) => ipcRenderer.invoke('winnow:folder', folder),
+  openDataFolder: async (folder) => {
+    try {
+      return await ipcRenderer.invoke('winnow:folder', folder)
+    } catch (error) {
+      const prefix = "Error invoking remote method 'winnow:folder': Error: "
+      if (error instanceof Error && error.message.startsWith(prefix))
+        throw new Error(error.message.slice(prefix.length))
+      throw error
+    }
+  },
   openInstallFolder: (ownershipId) => ipcRenderer.invoke('winnow:install-folder', ownershipId),
   chooseManualExecutable: () => ipcRenderer.invoke('winnow:manual-executable'),
   chooseManualExecutableFacts: () => ipcRenderer.invoke('winnow:manual-executable-facts'),

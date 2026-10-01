@@ -213,6 +213,60 @@ function mountAfterglow() {
   return mount()
 }
 describe('integrated frontend', () => {
+  it('keeps the passive 997 caption current through fullscreen and completion without refreshing library snapshots', async () => {
+    const events = new Set<Parameters<WinnowBridge['onEvent']>[0]>()
+    window.winnow.onEvent = (listener) => {
+      events.add(listener)
+      return () => {
+        events.delete(listener)
+      }
+    }
+    let progress = { total: 1247, remaining: 0 }
+    const original = window.winnow.request
+    window.winnow.request = vi.fn(async (input) =>
+      input.route === 'progress.get' ? { ok: true, status: 200, data: progress } : original(input),
+    ) as WinnowBridge['request']
+    mount()
+    await screen.findByRole('button', { name: 'Winnow home' })
+    await waitFor(() => expect(document.querySelector('.startup-presentation')).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(document.getElementById('main-content')))
+    expect(document.querySelector('.fetch-status')).toBeNull()
+    const snapshotReads = () =>
+      vi
+        .mocked(window.winnow.request)
+        .mock.calls.filter(([input]) =>
+          ['library.get', 'library.workspace', 'feed.get'].includes(input.route),
+        ).length
+    const baseline = snapshotReads()
+    const send = async (remaining: number) => {
+      progress = { total: 1247, remaining }
+      await act(async () => {
+        events.forEach((listener) => listener({ kind: 'progress.changed', resource: 'progress' }))
+      })
+    }
+    const focus = screen.getByRole('button', { name: 'Search library' })
+    focus.focus()
+    await send(997)
+    const caption = await screen.findByRole('status', { name: 'Fetching details, 997 titles left' })
+    expect(caption.closest('.avalon-header')).not.toBeNull()
+    expect(caption.querySelector('button, input, [tabindex]')).toBeNull()
+    expect(caption.hasAttribute('tabindex')).toBe(false)
+    expect(document.activeElement).toBe(focus)
+    expect(snapshotReads()).toBe(baseline)
+    await changeSurface(true)
+    expect(document.querySelector('.fetch-status')).toBeNull()
+    await send(1)
+    expect(document.querySelector('.fetch-status')).toBeNull()
+    await changeSurface(false)
+    const singular = await screen.findByRole('status', { name: 'Fetching details, 1 title left' })
+    expect(singular.dataset.itemStatus).toBe('Fetching details, 1 title left')
+    expect(within(singular).getByText('title left')).toBeTruthy()
+    const afterPresentation = snapshotReads()
+    await send(0)
+    await waitFor(() => expect(document.querySelector('.fetch-status')).toBeNull())
+    expect(snapshotReads()).toBe(afterPresentation)
+  })
+
   it('shares persisted appearance and dormancy while keeping fullscreen motion and sizing independent on reentry', async () => {
     const original = window.winnow.request
     const values: Record<string, string> = {

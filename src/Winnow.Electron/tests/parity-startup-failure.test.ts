@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import {
@@ -10,6 +19,7 @@ import {
   startupFailureCode,
   startupFailureSentence,
   startupFailureTitle,
+  startupDiagnostic,
 } from '../src/main/startup-failure'
 import { dataDirectoryArgument } from '../src/main/lifecycle'
 
@@ -122,24 +132,108 @@ describe('startup failure boundary migrated from Avalonia', () => {
     expect(scrubStartupDiagnostic('user A.name+ says no', 'A.name+')).toBe('user [redacted-user] says no')
     expect(scrubStartupDiagnostic('x'.repeat(40000))).toHaveLength(32768)
   })
-  it('writes bounded redacted logs inside the selected throwaway directory', () => {
+  it('writes bounded structured logs inside the selected throwaway directory', () => {
     const directory = temporaryDirectory()
     const surface = vi.fn()
     reportStartupFailure(new Error('token=private-token'), { directory, surface })
     const path = join(directory, 'logs', 'electron-startup-failure.log')
     const logged = readFileSync(path, 'utf8')
-    expect(logged).toContain('[redacted-secret]')
+    expect(logged).toContain('type=Error')
+    expect(logged).toContain(' build=')
     expect(logged).not.toContain('private-token')
     expect(logged).not.toContain(directory)
     writeFileSync(path, 'x'.repeat(512 * 1024))
     reportStartupFailure(new Error('second fault'), { directory, surface })
     expect(readFileSync(`${path}.previous`, 'utf8')).toHaveLength(512 * 1024)
-    expect(readFileSync(path, 'utf8')).toContain('second fault')
+    expect(readFileSync(path, 'utf8')).toContain('StartupFailure')
+    expect(readFileSync(path, 'utf8')).not.toContain('second fault')
   })
   it('does not create an unresolved library directory just to log a failure', () => {
     const path = join(temporaryDirectory(), 'missing')
     reportStartupFailure(new Error('early failure'), { directory: path, surface: vi.fn() })
     expect(existsSync(path)).toBe(false)
+  })
+  it.each([false, true])(
+    'Startup_fault_is_persisted_without_a_host_even_when_its_normal_sink_is_open: %s',
+    (openNormalSink) => {
+      const directory = temporaryDirectory()
+      // Keep a real, separate normal sink open while the pre-logger fallback appends.
+      if (openNormalSink) mkdirSync(join(directory, 'logs'))
+      const normal = openNormalSink ? openSync(join(directory, 'logs', 'diagnostic.log'), 'a') : undefined
+      let fault: NodeJS.ErrnoException | undefined
+      function startupIoFault() {
+        try {
+          readFileSync(join(directory, 'missing-config'))
+        } catch (error) {
+          const native = error as NodeJS.ErrnoException
+          throw Object.assign(new Error('unstructured-private-secret'), {
+            code: native.code,
+            errno: native.errno,
+          })
+        }
+      }
+      try {
+        try {
+          startupIoFault()
+        } catch (error) {
+          fault = error as NodeJS.ErrnoException
+        }
+        expect(fault).toBeInstanceOf(Error)
+        expect(Number.isSafeInteger(fault!.errno)).toBe(true)
+        expect(reportStartupFailure(fault, { directory, surface: vi.fn() })).toBe(3)
+        const text = readFileSync(join(directory, 'logs', 'electron-startup-failure.log'), 'utf8')
+        expect(text).toContain('type=Error')
+        expect(text).toContain('startupIoFault')
+        expect(text).toContain(`errno=${fault!.errno}`)
+        expect(text).toContain('code=ENOENT')
+        expect(text).toContain(' build=')
+        expect(text).toContain(' commit=')
+        expect(text).toMatch(/run=[a-f0-9]{32}/)
+        expect(text).not.toContain('unstructured-private-secret')
+        expect(text).not.toContain(directory)
+        expect(text).not.toContain('missing-config')
+        expect(text).not.toContain('HResult')
+      } finally {
+        if (normal !== undefined) closeSync(normal)
+      }
+    },
+  )
+  it('Failure_to_write_startup_diagnostics_preserves_exit_code_and_alert with a real file blocking logs', () => {
+    const directory = temporaryDirectory()
+    writeFileSync(join(directory, 'logs'), 'Directory deliberately blocked by a file')
+    const surface = vi.fn()
+    expect(reportStartupFailure(new Error('original fault'), { directory, surface })).toBe(3)
+    expect(surface).toHaveBeenCalledExactlyOnceWith(
+      startupFailureTitle,
+      expect.stringContaining('original fault'),
+    )
+    expect(readFileSync(join(directory, 'logs'), 'utf8')).toBe('Directory deliberately blocked by a file')
+  })
+  it('Startup_cancellation_does_not_write_failure_diagnostics or create the logs directory', () => {
+    const directory = temporaryDirectory()
+    const surface = vi.fn()
+    expect(reportStartupFailure(new DOMException('Closed', 'AbortError'), { directory, surface })).toBe(0)
+    expect(surface).not.toHaveBeenCalled()
+    expect(existsSync(join(directory, 'logs'))).toBe(false)
+  })
+  it('does not treat multiline messages, arbitrary codes or file locations as structured metadata', () => {
+    function reportedStartupCall() {
+      return Object.assign(
+        new Error('unstructured-private-secret\n    at private_secret (C:/private/path:1:1)'),
+        {
+          code: 'ARBITRARY_PRIVATE_SECRET',
+          path: 'C:/private/path',
+        },
+      )
+    }
+    const text = startupDiagnostic(reportedStartupCall())
+    expect(text).toContain('reportedStartupCall')
+    expect(text).not.toContain('private')
+    expect(text).not.toContain('PRIVATE')
+    expect(text).not.toContain('code=')
+    expect(text).not.toContain('errno=')
+    expect(text).not.toMatch(/\r|\n/)
+    expect(Buffer.byteLength(startupDiagnostic(new Error('x'.repeat(100000))))).toBeLessThan(2048)
   })
 })
 

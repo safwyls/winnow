@@ -98,6 +98,7 @@ import { AvalonBackdrop } from './avalon-backdrop'
 import { AvalonAmbientBackdrop } from './avalon-ambient-backdrop'
 import { AvalonLibraryPanel } from './avalon-library-panel'
 import { UpdateCaption } from '../features/Updates'
+import { FetchCaption } from '../features/FetchStatus'
 import { LibraryHideConfirmation } from '../features/LibraryHideConfirmation'
 import { unreadLabel } from './avalon-unread'
 
@@ -349,6 +350,7 @@ export function AvalonShell(context: ThemeContext) {
         <div className="avalon-utilities">
           {fullscreen && <FullscreenStatus />}
           <div className="avalon-utility-actions">
+            <FetchCaption mode={context.mode} />
             <UpdateCaption mode={context.mode} />
             <button
               aria-label="Search library"

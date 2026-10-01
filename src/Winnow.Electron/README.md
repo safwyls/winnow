@@ -219,6 +219,10 @@ Right set switches explicitly; controller focus stays on a row after saving. Lib
 opens from Library settings and Back returns to its action. Application includes diagnostics
 help, the active backend's log directory, setup replay and update controls. Unsupported
 startup registration is omitted from fullscreen and explained in desktop settings.
+Windows startup registration reads and writes the same executable and background
+arguments, including an explicit library override. Application settings retain
+**Open logs folder** after session tracking recovers. If opening fails, the feedback
+includes the resolved path for manual access; a successful retry clears that feedback.
 
 The notification-area icon appears when either tray preference is enabled or Winnow starts
 in the background. A hidden window keeps its icon until restored, even if another frontend
@@ -431,10 +435,18 @@ invalid logging settings and an unsupported database schema. Backend configurati
 from its installation directory. A failure during frontend initialization shows a diagnostic
 message and exits with code 3, including a failed primary renderer load; cancellation
 exits cleanly. Messages redact credentials and incidental paths. When the selected library
-directory exists, initialization failures also write a bounded, redacted log in its `logs`
-folder. An unavailable logger or native alert does not replace the original exit status.
+directory exists, initialization failures also write a bounded structured log in its `logs`
+folder. It records the exception type, named call frames, available native error code,
+build and run metadata. Arbitrary exception messages and file paths are omitted.
+An unavailable logger or native alert does not replace the original exit status.
 
 ## What is available
+
+Avalon's desktop caption shows **FETCHING DETAILS** and the remaining title count
+while metadata enrichment runs. It is passive, disappears on completion or
+disconnection, and continues tracking progress while fullscreen hides the caption.
+Progress events refresh that count independently of the Library and feed. Returning
+from fullscreen or closing a dialog shows the current count without changing focus.
 
 - Discover with real recommendation reasons, visible-card impressions, Play/Install, snooze,
   dismissal and Undo. Avalon keeps saved receipts in place while the reader hovers or focuses

@@ -1,10 +1,11 @@
 ---
 id: TASK-381.25
 title: 'Electron: finish fetch status and session diagnostics'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:48'
+updated_date: '2026-10-01 19:47'
 labels:
   - electron
   - parity
@@ -51,18 +52,40 @@ tests/Winnow.Ui.Tests/SessionWatcherDiagnosticsTests.cs
 tests/Winnow.Ui.Tests/TitleBarFetchStatusTests.cs
 - TitleBarFetchStatusTests.Fetch_progress_fits_caption_updates_and_survives_fullscreen_round_trip [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Keep one implementation task active, verify and commit each milestone, then continue. Pause for review after TASK-381.30.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original fetch aggregation, title-bar status, diagnostics logging and watcher failure/recovery contracts retain accurate progress, terminal state and error visibility.
-- [ ] #2 Desktop and fullscreen diagnostics/application-settings routes remain accessible without stealing focus or exposing secrets; cancellation/disposal stop obsolete updates.
-- [ ] #3 All 13 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original fetch aggregation, title-bar status, diagnostics logging and watcher failure/recovery contracts retain accurate progress, terminal state and error visibility.
+- [x] #2 Desktop and fullscreen diagnostics/application-settings routes remain accessible without stealing focus or exposing secrets; cancellation/disposal stop obsolete updates.
+- [x] #3 All 13 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Execute and audit all13 frozen source methods/14 cases with their original progress counts, caption geometry, diagnostic privacy and folder retry assertions. 2. Restore a passive desktop fetch caption with a separate live reporter adapter, cancel stale reads and keep progress updates independent of full library refresh. 3. Persist bounded structured startup failure metadata without arbitrary messages or paths, preserve alert/exit/cancellation, and align native login-setting reads with writes. 4. Preserve accessible log actions after recovery and show the actual manual path on folder failures, clearing it on retry on both surfaces. 5. Verify focused component/API and isolated native cases plus desktop/fullscreen captures, update checkpoint80/mappings/docs, commit and continue to TASK-381.26.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started after TASK-381.24 implementation c071f1a2 and completion12cdd35. Baseline3992 component/live API cases and31 native pass. Inventory1571 ported,665 retained,32 framework-specific,145 pending,22 partial. Read-only preparation confirms missing fetch caption, unsafe arbitrary-message startup persistence, login-option read/write mismatch and Settings log retry feedback gap. Preserve unrelated .claude/settings.local.json and scc-report.html. Root owns Backlog/docs/maps/integration; bounded host, renderer and native owners preserve one another edits.
+
+All14 assigned original cases pass unchanged:11 main plus3 UI. Two additional original watcher failure/recovery surface cases also pass (16 executed bodies, no skips); captures/TRX use task38125-original-captures and task38125-dotnet-results. The new authenticated HTTP progress/health test passes, preserving997→1→0 snapshots, distinct events, wrong-operation recovery isolation and no private exception message/path in diagnostics. The isolated fixture builds with0 warnings/errors and exposes only authenticated test-control routes.
+
+Final verification:202 focused host/component cases,16 original executed cases,1 authenticated API and6 distinct native cases pass. Caption font fix additionally passes3 targeted cases. Build/typecheck/format pass. Both log captures inspected after exact IPC-wrapper removal; affected native cases rerun successfully. Evidence checkpoint-eighty.md and task38125-native-evidence.json. All13 methods ported; inventory1584 ported/665 retained/32 framework/134 pending/20 partial. Actual autorun entries and physical devices were not exercised.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Restored passive fetch caption and isolated progress refresh, bounded private startup diagnostics, matching Windows login read/write options, and exact recoverable log feedback on desktop/fullscreen. Verified202 focused cases,16 source cases,1 API and6 native cases; all13 assigned contracts ported. See checkpoint80 for fixtures, captures and native limits.
+<!-- SECTION:FINAL_SUMMARY:END -->
