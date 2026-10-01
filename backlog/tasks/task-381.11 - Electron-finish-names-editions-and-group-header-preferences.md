@@ -1,7 +1,7 @@
 ---
 id: TASK-381.11
 title: 'Electron: finish names, editions and group-header preferences'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:45'
@@ -71,7 +71,7 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -90,4 +90,6 @@ The user authorized the next ten tasks, 381.11 through 381.20, sequentially with
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 Saved header preferences now update visible titles and covers while preserving canonical identity and metadata. Save/refusal recovery retains focus, and native edition acquisition/separation and user-name workflows pass on desktop and fullscreen. All 19 assigned source contracts have complete evidence. See docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-six.md. Continuing the authorized batch with 381.12 after the milestone commit.
+
+Milestone commit: 22ce6df3. All checks and the fourteen-case native ledger are recorded in checkpoint 66.
 <!-- SECTION:FINAL_SUMMARY:END -->
