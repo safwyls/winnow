@@ -1,11 +1,11 @@
 ---
 id: TASK-381.8
 title: 'Electron: finish tile actions and installed store links'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:45'
-updated_date: '2026-10-01 03:21'
+updated_date: '2026-10-01 03:22'
 labels:
   - electron
   - parity
@@ -66,7 +66,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -87,10 +87,14 @@ Audited all fourteen frozen contracts, including the eighteenth router row throu
 Final build/typecheck, formatting and whitespace checks pass. All 3,490 component/live API cases across 177 files pass in 86.65 seconds, with no skips. All 49 distinct native cases pass, including both surfaces, all four original store-link viewport sizes, exact Steam 440 dispatch, real plugin actions, shared pending operations, 4K proportions and enlarged text. All three unchanged PluginGameActionIntegrationTests pass. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-three.md and .tmp/task3818-native-summary.json.
 
 All fourteen assigned methods are resolved: twelve ported and two retained backend. Inventory: 1,364 ported, 628 retained backend, 32 framework-specific, 338 pending and 73 partial; 411 remain unresolved. Physical controllers, the full .NET suite and installers remain later validation. Runs used disposable data with OS calls intercepted. TASK-381.9 remains To Do pending the user's continuation.
+
+Reviewable implementation milestone: 510a5861 (Finish Electron tile actions and installed store links). Pausing at this task boundary for user review. TASK-381.9 has not been started.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 Tiles, fullscreen X and Details share primary dispatch, pending operations and uncertain retries. Install refresh preserves drafts, destinations and store hit targets. Plugin evidence is visible; fullscreen text and 4K proportions are corrected. Build and all 3,490 component/API, 49 native and 3 original backend tests pass. All fourteen assigned methods are resolved; 411 pending/partial methods remain overall. Review evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-three.md. Stop here; TASK-381.9 remains To Do.
+
+Milestone commit: 510a5861. Paused for user review before TASK-381.9.
 <!-- SECTION:FINAL_SUMMARY:END -->
