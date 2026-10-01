@@ -86,7 +86,7 @@ describe.each(['desktop', 'fullscreen'])('%s Epic connection workflow', (mode) =
       </QueryClientProvider>,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Platforms' }))
-    fireEvent.click(await screen.findByRole('button', { name: /^EPIC/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Epic/i }))
     return { ...h, state }
   }
   it('opening and refreshing settings only reads account state without starting sign-in', async () => {
@@ -124,6 +124,8 @@ describe.each(['desktop', 'fullscreen'])('%s Epic connection workflow', (mode) =
     expect(screen.getByText(/lasts for this run only/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Connect Epic Games' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Sign out of Epic' }))
+    expect(screen.getByRole('dialog', { name: 'Sign out of Epic?' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
     await screen.findByRole('button', { name: 'Connect Epic Games' })
     expect(screen.queryByText(/Account B/)).toBeNull()
     expect(h.request).toHaveBeenCalledWith(expect.objectContaining({ route: 'connections.epic.signOut' }))

@@ -38,7 +38,7 @@ afterEach(() => {
   cleanup()
   for (const mode of ['desktop', 'fullscreen']) clearViewState(`${mode}:settings:tab`)
 })
-function fixture(
+async function fixture(
   mode: Mode,
   options: {
     games?: LibraryGame[]
@@ -108,6 +108,7 @@ function fixture(
       name: 'Platforms',
     }),
   )
+  if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Steam' }))
   return { request, client, state, steamSignIn, steamCapturePages }
 }
 
@@ -119,8 +120,22 @@ it('counts each grouped title once per store before screen filtering', () => {
   })
 })
 describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', (mode) => {
+  async function selectPlatform(name: string) {
+    if (mode === 'fullscreen') {
+      fireEvent.click(screen.getByRole('button', { name: 'Back to Platforms' }))
+      name = name === 'STEAM' ? 'Steam' : name === 'EPIC' ? 'Epic' : name
+    }
+    fireEvent.click(await screen.findByRole('button', { name }))
+  }
+  async function openPurchase() {
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: mode === 'fullscreen' ? 'Purchase history' : 'Import purchase history',
+      }),
+    )
+  }
   it.each([false, true])('states which library coverage a saved API key=%s adds', async (key) => {
-    fixture(mode, {
+    await fixture(mode, {
       snapshot: {
         ...disconnected,
         steam: { ...disconnected.steam, hasApiKey: key, hasUsableCredential: key },
@@ -136,16 +151,19 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', 
           : 'Games never touched on this PC are not in your library yet.',
       ),
     ).toBeTruthy()
-    expect(within(steam).getByText(key ? 'On - API' : 'Off')).toBeTruthy()
+    expect(within(steam).getByText(key ? 'On - API' : 'Off', { selector: 'h3 small' })).toBeTruthy()
   })
   it('refreshes folded capture availability and keeps saved files reachable without sign-in or a browser', async () => {
-    const h = fixture(mode)
+    const h = await fixture(mode)
     await screen.findByRole('region', { name: 'Steam connection' })
     delete window.winnow.steamCapturePages
     await h.client.invalidateQueries({ queryKey: ['api', 'connections.get'] })
-    fireEvent.click(screen.getByRole('button', { name: 'Import purchase history' }))
+    await openPurchase()
     expect(screen.getByText(/Steam capture window is unavailable in this frontend/)).toBeTruthy()
-    expect((screen.getByLabelText('Saved Steam pages') as HTMLInputElement).disabled).toBe(false)
+    if (mode === 'fullscreen') {
+      fireEvent.click(screen.getByRole('button', { name: 'Read saved pages' }))
+      expect(screen.getByRole('button', { name: 'Choose a page' })).toBeTruthy()
+    } else expect((screen.getByLabelText('Saved Steam pages') as HTMLInputElement).disabled).toBe(false)
     expect(screen.queryByRole('button', { name: 'Capture account pages in Winnow' })).toBeNull()
     expect(
       (screen.getByText('Before you save the pages').closest('details') as HTMLDetailsElement).open,
@@ -154,13 +172,13 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', 
     expect(h.steamSignIn).not.toHaveBeenCalled()
   })
   it('uses the shared expansion projection without adding a folded pack store to its base', async () => {
-    fixture(mode, {
+    await fixture(mode, {
       games: [game(1, ['steam', 'steam']), game(2, ['epic']), game(3, ['steam', 'gog'])],
       grouped: true,
     })
     await screen.findByText('2 games in your library')
     await waitFor(() => expect(document.querySelector('#platform-epic .platform-title-count')).toBeNull())
-    fireEvent.click(screen.getByRole('button', { name: 'GOG' }))
+    await selectPlatform('GOG')
     expect(
       within(screen.getByRole('region', { name: 'GOG connection' }).parentElement!).getByText(
         '1 game in your library',
@@ -168,8 +186,9 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', 
     ).toBeTruthy()
   })
   it('opens on Steam and shows exactly one platform card while switching in either direction', async () => {
-    fixture(mode)
-    expect(screen.getByRole('button', { name: 'Platforms' }).getAttribute('aria-pressed')).toBe('true')
+    await fixture(mode)
+    if (mode === 'desktop')
+      expect(screen.getByRole('button', { name: 'Platforms' }).getAttribute('aria-pressed')).toBe('true')
     await screen.findByRole('region', { name: 'Steam connection' })
     expect(screen.queryByRole('region', { name: 'Epic connection' })).toBeNull()
     expect(screen.queryByRole('region', { name: 'GOG connection' })).toBeNull()
@@ -179,7 +198,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', 
       ['STEAM', 'Steam connection'],
       ['GOG', 'GOG connection'],
     ]) {
-      fireEvent.click(screen.getByRole('button', { name: tab }))
+      await selectPlatform(tab)
       expect(screen.getByRole('region', { name: card })).toBeTruthy()
       expect(
         ['Steam connection', 'Epic connection', 'GOG connection'].filter((name) =>
@@ -193,12 +212,13 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', 
     expect(within(gog).getByText(/nothing to sign into/)).toBeTruthy()
   })
   it('keeps lapsed Epic and failing Steam attention visible on other tabs without starting a connection', async () => {
-    const h = fixture(mode, {
+    const h = await fixture(mode, {
       snapshot: { ...disconnected, epic: { isLive: false, displayName: 'Expired account' } },
     })
-    const epic = await screen.findByRole('button', { name: /^EPIC/ })
+    if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Back to Platforms' }))
+    const epic = await screen.findByRole('button', { name: /^EPIC/i })
     expect(within(epic).getByLabelText('Needs attention')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'GOG' }))
+    if (mode === 'desktop') await selectPlatform('GOG')
     h.state.snapshot = {
       ...h.state.snapshot,
       steamHealth: 3,
@@ -207,7 +227,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', 
     await h.client.invalidateQueries({ queryKey: ['api', 'connections.get'] })
     await waitFor(() =>
       expect(
-        within(screen.getByRole('button', { name: /^STEAM/ })).getByLabelText('Needs attention'),
+        within(screen.getByRole('button', { name: /^STEAM/i })).getByLabelText('Needs attention'),
       ).toBeTruthy(),
     )
     expect(within(screen.getByRole('button', { name: 'GOG' })).queryByLabelText('Needs attention')).toBeNull()
@@ -218,17 +238,17 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', 
     const games = Array.from({ length: 1247 }, (_, index) =>
       game(index + 1, ['steam', ...(index < 67 ? ['epic'] : []), ...(index < 14 ? ['gog'] : [])]),
     )
-    fixture(mode, { games, accounts: 2 })
+    await fixture(mode, { games, accounts: 2 })
     const count = await screen.findByText('1,247 games in your library')
     expect(count.className).toBe('platform-title-count')
     expect(await screen.findByText('1,247 games across 2 accounts')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'EPIC' }))
+    await selectPlatform('EPIC')
     expect(
       within(screen.getByRole('region', { name: 'Epic connection' }).parentElement!).getByText(
         '67 games in your library',
       ),
     ).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'GOG' }))
+    await selectPlatform('GOG')
     expect(
       within(screen.getByRole('region', { name: 'GOG connection' }).parentElement!).getByText(
         '14 games in your library',
@@ -239,7 +259,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', 
     [[], 0, null],
     [[game(1, ['steam'])], 1, '1 game across 1 account'],
   ] as const)('omits empty counts and uses singular account nouns', async (games, accounts, summary) => {
-    fixture(mode, { games: [...games], accounts })
+    await fixture(mode, { games: [...games], accounts })
     await screen.findByRole('region', { name: 'Steam connection' })
     if (summary) expect(await screen.findByText(summary)).toBeTruthy()
     else {
@@ -248,31 +268,40 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', 
     }
   })
   it('composes with an unavailable count source and marks account confirmation pending until confirmed', async () => {
-    const h = fixture(mode, { countUnavailable: true })
+    const h = await fixture(mode, { countUnavailable: true })
     await screen.findByRole('region', { name: 'Steam connection' })
     expect(document.querySelector('.platform-title-count')).toBeNull()
     expect(screen.getByText('Account confirmation pending')).toBeTruthy()
     expect(
-      (screen.getByRole('checkbox', { name: 'Show only your account' }) as HTMLInputElement).disabled,
+      (
+        screen.getByRole(mode === 'fullscreen' ? 'switch' : 'checkbox', {
+          name: 'Show only your account',
+        }) as HTMLInputElement
+      ).disabled,
     ).toBe(true)
     h.state.confirmed = true
     await h.client.invalidateQueries({ queryKey: ['api', 'connections.visibility.get'] })
     await waitFor(() => expect(screen.queryByText('Account confirmation pending')).toBeNull())
     expect(
-      (screen.getByRole('checkbox', { name: 'Show only your account' }) as HTMLInputElement).disabled,
+      (
+        screen.getByRole(mode === 'fullscreen' ? 'switch' : 'checkbox', {
+          name: 'Show only your account',
+        }) as HTMLInputElement
+      ).disabled,
     ).toBe(false)
   })
   it('starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking', async () => {
-    const h = fixture(mode)
+    const h = await fixture(mode)
     const methods = await screen.findByRole('button', { name: 'Which one should I use?' })
-    const purchase = screen.getByRole('button', { name: 'Import purchase history' })
+    const purchase =
+      mode === 'desktop' ? screen.getByRole('button', { name: 'Import purchase history' }) : null
     const consent = screen.getByRole('button', { name: 'Sign in to Steam' })
     const accounts = screen.getByRole('button', { name: 'What the account filter covers' })
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.queryByLabelText('Saved Steam pages')).toBeNull()
     for (const [button, title] of [
       [methods, 'Ways to connect Steam'],
-      [purchase, 'Import Steam purchase history'],
+      ...(purchase ? [[purchase, 'Import Steam purchase history'] as const] : []),
       [consent, 'Before you sign in'],
       [accounts, 'Steam account scope'],
     ] as const) {
@@ -295,14 +324,17 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', 
     expect(h.steamSignIn).not.toHaveBeenCalled()
   })
   it('shows both purchase import explanations before choosing a route, with no saved credential required', async () => {
-    const h = fixture(mode)
-    fireEvent.click(await screen.findByRole('button', { name: 'Import purchase history' }))
+    const h = await fixture(mode)
+    await openPurchase()
     expect(screen.getByText(/Save your Steam account pages as HTML/).closest('details')).toBeNull()
     expect(screen.getByText(/Sign in to Steam in a private window to capture/).closest('details')).toBeNull()
-    expect((screen.getByLabelText('Saved Steam pages') as HTMLInputElement).disabled).toBe(false)
     expect(
       (screen.getByRole('button', { name: 'Capture account pages in Winnow' }) as HTMLButtonElement).disabled,
     ).toBe(false)
+    if (mode === 'fullscreen') {
+      fireEvent.click(screen.getByRole('button', { name: 'Read saved pages' }))
+      expect(screen.getByRole('button', { name: 'Choose a page' })).toBeTruthy()
+    } else expect((screen.getByLabelText('Saved Steam pages') as HTMLInputElement).disabled).toBe(false)
     expect(h.steamSignIn).not.toHaveBeenCalled()
     expect(h.steamCapturePages).not.toHaveBeenCalled()
   })

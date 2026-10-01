@@ -224,7 +224,7 @@ describe('account summary parity with AccountStatsSummaryTests', () => {
   )
 })
 describe('saved licence-page import parity', () => {
-  it('imports selected saved pages immediately and reports partial results', async () => {
+  it('imports selected saved pages only after Read and reports partial results', async () => {
     const pages = { licensesHtml: '<html>fixture</html>', source: 1, capturedAt: '2026-09-01T00:00:00Z' }
     const request = mount(<SteamPageImport />, (route) =>
       route === 'imports.steam.load'
@@ -245,10 +245,14 @@ describe('saved licence-page import parity', () => {
       value: async () => new TextEncoder().encode('<html>fixture</html>').buffer,
     })
     fireEvent.change(screen.getByLabelText('Saved Steam pages'), { target: { files: [file] } })
+    expect(request).not.toHaveBeenCalledWith(expect.objectContaining({ route: 'imports.steam.load' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Read' }))
     await screen.findByText('licenses.html: Licence page ready')
     await screen.findByText(/This capture is incomplete/)
     await waitFor(() =>
-      expect(request).toHaveBeenCalledWith({ route: 'imports.steam.pages', params: undefined, body: pages }),
+      expect(request).toHaveBeenCalledWith(
+        expect.objectContaining({ route: 'imports.steam.pages', params: undefined, body: pages }),
+      ),
     )
   })
 })

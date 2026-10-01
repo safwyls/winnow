@@ -149,16 +149,6 @@
     ],
     "reason": "Both modes mount actual Settings, send the named connection command, refresh shared queries and verify the resulting method/account state rather than only testing a prebuilt snapshot."
   },
-  "SteamConnectionPanelTests.A_host_with_no_sign_in_still_offers_the_key_and_says_the_window_cannot_open": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-steam-connections.test.tsx",
-        "case": "keeps the independent key method available when the native sign-in host is missing"
-      }
-    ],
-    "reason": "Missing native sign-in reports that route unavailable while retaining the complete API-key form. Unlike the original late-installable WebView2 runtime, a missing preload method has no live retry command, so the original attempted-unavailable command assertion is not counted as ported."
-  },
   "SteamConnectionPanelTests.A_signed_in_user_never_sees_the_blocked_message": {
     "status": "ported",
     "tests": [

@@ -156,9 +156,16 @@ Fullscreen fills the viewport with the saved safe margins and larger controls. I
 artwork-type, preview and Back hints stay beside the actions; focusing the URL field
 adds **Y · Keyboard**. Exact ultrawide hero fitting remains stable under interface zoom.
 
-Settings groups Steam, Epic and GOG under **Platforms**, with one card at a time, attention
-markers and title counts from the whole library. Steam keeps credential guidance, account
-scope, purchase import and sign-in consent in separate dialogs. **Show only your account**
+Settings groups Steam, Epic and GOG under **Platforms**, with attention markers and title
+counts from the whole library. Desktop shows one card at a time. Fullscreen opens each
+platform from a summary, with separate API key and purchase-history pages. Back restores
+the invoking action; vertical navigation and Select, Back and keyboard hints stay beside
+the controls. Steam keeps credential guidance, account scope, purchase import and sign-in
+consent separate. Epic asks before signing out, and cancelling preserves the current account.
+Saved Steam pages are selected first and imported only after **Read**. Fullscreen uses
+the controller file browser; leaving the page discards its selection. CSV exports retain
+the UTF-8 signature and the backend's original contents. Cancelling the save writes nothing.
+**Show only your account**
 becomes available after Steam confirms the account. Its separate count uses the data
 font and appears only when games from other accounts can be hidden. Games without
 account attribution stay visible; own-account mode also scopes the displayed playtime.

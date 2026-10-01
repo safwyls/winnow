@@ -1,0 +1,122 @@
+.fullscreen-platform-page,
+.setup-dialog.fullscreen-platform-dialog {
+  --platform-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  font: calc(clamp(18.67px, 1.4583vw, 28px) * var(--platform-scale))/1.4 var(--font-body);
+}
+.fullscreen-platform-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 4px 8px 24px;
+}
+.fullscreen-platform-page h1,
+.fullscreen-platform-dialog h2 {
+  margin: 0 0 24px;
+  font: calc(clamp(42.67px, 3.3333vw, 64px) * var(--platform-scale))/1.15 var(--font-display);
+}
+.fullscreen-platform-content .feature-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.fullscreen-platform-page .feature-panel > h2,
+.fullscreen-platform-page .steam-connections > header > h2 {
+  display: none;
+}
+.fullscreen-platform-content .form-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+.fullscreen-platform-content p,
+.fullscreen-platform-content label,
+.fullscreen-platform-content .field,
+.fullscreen-platform-content .reading-prose,
+.fullscreen-platform-content .connection-state,
+.fullscreen-platform-content h3,
+.fullscreen-platform-content small {
+  font-size: inherit;
+  line-height: inherit;
+}
+.fullscreen-platform-content button,
+.fullscreen-platform-content summary,
+.fullscreen-platform-content input:not([type='checkbox']) {
+  display: block;
+  width: min(1100px, 100%);
+  min-height: 72px;
+  margin-block: 12px;
+  padding: 12px 24px;
+  font-size: inherit;
+  text-align: left;
+}
+.fullscreen-platform-content .field {
+  display: block;
+}
+.fullscreen-platform-content .check-field {
+  display: flex;
+  margin-block: 20px;
+}
+.fullscreen-platform-content input[type='checkbox'] {
+  flex: none;
+  width: 28px;
+  height: 28px;
+}
+.fullscreen-platform-content button {
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+}
+.fullscreen-platform-content button:focus,
+.fullscreen-platform-content summary:focus {
+  outline: none;
+  border-bottom-color: var(--accent-foreground, var(--accent));
+  color: var(--accent-foreground, var(--accent));
+}
+.platform-controller-hints {
+  display: flex;
+  flex: none;
+  gap: 32px;
+  padding: 16px 8px 0;
+  color: var(--muted);
+  font: calc(clamp(16px, 1.25vw, 24px) * var(--platform-scale))/1.4 var(--font-body);
+}
+.platform-controller-hints > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.platform-controller-hints svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+}
+.platform-controller-hints path {
+  fill: currentColor;
+}
+.setup-dialog.fullscreen-platform-dialog {
+  inset: 0 auto auto 0;
+  transform: none;
+  width: calc(100vw / var(--effective-interface-scale, 1));
+  height: calc(100dvh / var(--effective-interface-scale, 1));
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: calc(100vh * var(--fullscreen-safe-ratio, 0.05) / var(--effective-interface-scale, 1))
+    calc(100vw * var(--fullscreen-safe-ratio, 0.05) / var(--effective-interface-scale, 1));
+  border: 0;
+  border-radius: 0;
+}
+.setup-dialog.fullscreen-platform-dialog .setup-body {
+  min-height: 0;
+  padding: 4px 8px 24px;
+}

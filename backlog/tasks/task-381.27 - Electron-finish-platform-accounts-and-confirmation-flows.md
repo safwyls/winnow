@@ -1,10 +1,11 @@
 ---
 id: TASK-381.27
 title: 'Electron: finish platform accounts and confirmation flows'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:48'
+updated_date: '2026-10-01 20:49'
 labels:
   - electron
   - parity
@@ -71,18 +72,40 @@ tests/Winnow.Ui.Tests/StoresAccountContextTests.cs
 - StoresAccountContextTests.Details_render_selected_account_acquisition_then_withhold_conflicting_aggregate_license [pending at split]
 - StoresAccountContextTests.Statistics_render_known_and_unknown_account_scope_without_ambiguous_money_totals [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Keep one implementation task active, verify and commit each milestone, then continue. Pause for review after TASK-381.30.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original confirmation, disclosure/refetch, Steam connection and account-inventory rules preserve consent and account-specific state.
-- [ ] #2 Desktop platform cards and fullscreen platform pages retain all original actions, busy/error states, focus routes and counts; headless auth fallback has equivalent behavior or an explicit host-specific disposition.
-- [ ] #3 All 25 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original confirmation, disclosure/refetch, Steam connection and account-inventory rules preserve consent and account-specific state.
+- [x] #2 Desktop platform cards and fullscreen platform pages retain all original actions, busy/error states, focus routes and counts; headless auth fallback has equivalent behavior or an explicit host-specific disposition.
+- [x] #3 All 25 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Execute25 frozen source methods/40 expected cases and preserve exact account confirmation, inventory, install, acquisition and monetary-scope fixtures. 2. Add bounded real API composition for incomplete/complete inventory, credential replacement, unknown install observations and scoped acquisition/statistics. 3. Restore fullscreen Platforms summary/child pages with refreshed state, vertical focus and Back; preserve masked drafts and confirm Epic sign-out. 4. Make saved-page selection an explicit Read workflow and preserve native CSV destination cancellation and UTF-8 BOM. 5. Verify component/API and isolated native desktop/fullscreen journeys with scaled captures and hints; record checkpoint82/dispositions, commit and continue to TASK-381.28.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started after TASK-381.26 implementation e8473317. Inventory1589ported/682retained/33framework/111pending/20partial. Read-only prep .tmp/task38127-prep.md identifies concrete fullscreen platform routing, saved-page review, Epic confirmation and CSV BOM gaps. Root owns main export helper/tests, docs/maps/Backlog/integration. Domain owners handle backend/source, renderer and native with source freeze before native execution; preserve unrelated files.
+
+Source inspection confirmed fullscreen saved pages used the controller file browser. Added a named main/preload selection session with opaque handles, deferred bounded reads, cancellation and lifecycle disposal; host tests pass 6/6 including CSV destination/BOM. Initial real API platform cases pass 10/10; exact disclosure projection and renderer/native verification remain in progress.
+
+Completed platform summary/child tools, shared credential busy guards, Epic confirmation/focus, explicit saved HTML Read with controller file picker and opaque deferred handles, and UTF-8 BOM export. All40 original cases and11 HTTP cases pass;377 platform component cases plus20 shared controller cases and7 host cases covered. All24 native journeys/regressions and2 supplementary native Escape diagnostics pass. A native scaled test found controller Right spatial fallback; tagged controller events fix it while preserving physical caret defaults. TypeScript/format/build pass; final bundle index-Dqdv37w6.js. Checkpoint82 records source limits, test-harness corrections and reviewed captures. Inventory1606ported/688retained/35framework/88pending/18partial.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Restored fullscreen platform tools, explicit saved-page review and controller picker, guarded credential edits, confirmed Epic sign-out with focus restoration, and preserved CSV bytes/cancellation. Verified40 source,11 HTTP,377 platform +20 shared controller +7 host cases,24 native cases and2 Escape diagnostics; build/typecheck/format pass. All25 assigned contracts disposed; checkpoint-eighty-two.md records evidence. Continue to TASK-381.28 within the authorized batch.
+<!-- SECTION:FINAL_SUMMARY:END -->

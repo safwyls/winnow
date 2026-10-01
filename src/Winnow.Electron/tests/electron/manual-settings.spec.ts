@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite'
 import electronPath from 'electron'
 import type { ApiRequest } from '../../src/shared/bridge'
 import type { ManualGame, LibraryResponse } from '../../src/renderer/api/types'
+import { prebuiltBackend, prebuiltActivationHelper } from './prebuilt-backend'
 
 async function api<T>(page: Page, input: ApiRequest): Promise<T> {
   return page.evaluate(async (input) => {
@@ -52,11 +53,15 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     const application = await electron.launch({
       executablePath: electronPath as unknown as string,
       args: [resolve('.'), '--data-dir', directory, '--no-sync'],
-      env: Object.fromEntries(
-        Object.entries(process.env).filter(
-          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-        ),
-      ) as Record<string, string>,
+      env: {
+        ...(Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+          ),
+        ) as Record<string, string>),
+        WINNOW_BACKEND_PATH: prebuiltBackend,
+        WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+      },
       chromiumSandbox: true,
       timeout: 60000,
     })
@@ -80,23 +85,44 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         .getByRole('navigation', { name: 'Settings section' })
         .getByRole('button', { name: 'Platforms', exact: true })
         .click()
-      await expect(page.getByRole('region', { name: 'Steam connection' })).toBeVisible()
+      if (mode === 'fullscreen')
+        await page
+          .locator('.fullscreen-platform-summary')
+          .getByRole('button', { name: 'Steam', exact: true })
+          .click()
+      await expect(page.getByRole('region', { name: 'Steam connection', exact: true })).toBeVisible()
+      if (mode === 'fullscreen')
+        await page.getByRole('button', { name: 'Back to Platforms', exact: true }).click()
       await page.getByRole('button', { name: 'GOG', exact: true }).click()
-      await expect(page.getByRole('region', { name: 'GOG connection' })).toBeVisible()
-      await expect(page.getByRole('region', { name: 'Steam connection' })).not.toBeVisible()
+      await expect(page.getByRole('region', { name: 'GOG connection', exact: true })).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Steam connection', exact: true })).not.toBeVisible()
       await expect(page.getByText('Not needed', { exact: true })).toBeVisible()
-      await page.getByRole('button', { name: 'STEAM', exact: true }).click()
+      if (mode === 'fullscreen')
+        await page.getByRole('button', { name: 'Back to Platforms', exact: true }).click()
+      await page.getByRole('button', { name: mode === 'fullscreen' ? 'Steam' : 'STEAM', exact: true }).click()
       const methods = page.getByRole('button', { name: 'Which one should I use?' })
       await methods.click()
       await expect(page.getByRole('dialog', { name: 'Ways to connect Steam' })).toBeVisible()
       if (mode === 'fullscreen') await tap(1)
       else await page.keyboard.press('Escape')
       await expect(methods).toBeFocused()
-      await page.getByRole('button', { name: 'Import purchase history', exact: true }).click()
-      const purchase = page.getByRole('dialog', { name: 'Import Steam purchase history' })
-      await expect(purchase.getByLabel('Saved Steam pages')).toBeEnabled()
-      await expect(purchase.getByRole('button', { name: 'Capture account pages in Winnow' })).toBeEnabled()
-      await purchase.getByRole('button', { name: 'Close', exact: true }).click()
+      if (mode === 'fullscreen') {
+        await page.getByRole('button', { name: 'Purchase history', exact: true }).click()
+        await expect(
+          page.getByRole('button', { name: 'Capture account pages in Winnow', exact: true }),
+        ).toBeEnabled()
+        await page.getByRole('button', { name: 'Read saved pages', exact: true }).click()
+        await expect(page.getByRole('button', { name: 'Choose a page', exact: true })).toBeEnabled()
+        await page.getByRole('button', { name: 'Back to Purchase history', exact: true }).click()
+        await page.getByRole('button', { name: 'Back to Steam', exact: true }).click()
+        await page.getByRole('button', { name: 'Back to Platforms', exact: true }).click()
+      } else {
+        await page.getByRole('button', { name: 'Import purchase history', exact: true }).click()
+        const purchase = page.getByRole('dialog', { name: 'Import Steam purchase history' })
+        await expect(purchase.getByLabel('Saved Steam pages')).toBeEnabled()
+        await expect(purchase.getByRole('button', { name: 'Capture account pages in Winnow' })).toBeEnabled()
+        await purchase.getByRole('button', { name: 'Close', exact: true }).click()
+      }
       await page.screenshot({ path: info.outputPath(`${mode}-platforms.png`) })
 
       await nav.getByRole('button', { name: 'Library', exact: true }).click()
@@ -229,7 +255,16 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         await api(page, { route: 'manual.delete', params: { ownershipId: entry.ownershipId } })
       }
       await page.getByRole('button', { name: 'Settings', exact: true }).click()
-      const count = page.locator('#platform-steam .platform-title-count')
+      if (mode === 'fullscreen')
+        await page
+          .locator('.fullscreen-platform-summary')
+          .getByRole('button', { name: 'Steam', exact: true })
+          .click()
+      const count = page.locator(
+        mode === 'fullscreen'
+          ? '.fullscreen-platform-page .platform-title-count'
+          : '#platform-steam .platform-title-count',
+      )
       await expect(count).toHaveText('1 game in your library')
       expect(await count.evaluate((element) => getComputedStyle(element).fontVariantNumeric)).toBe(
         'tabular-nums',

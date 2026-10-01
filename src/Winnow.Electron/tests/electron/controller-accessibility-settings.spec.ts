@@ -11,6 +11,7 @@ import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
 import { assertAccessibleControls, assertDirectionalReachability } from './controller-accessibility-helpers'
+import { prebuiltBackend, prebuiltActivationHelper } from './prebuilt-backend'
 
 let application: ElectronApplication, page: Page, directory: string
 const errors: string[] = []
@@ -19,11 +20,15 @@ test.beforeAll(async () => {
   application = await electron.launch({
     executablePath: electronPath as unknown as string,
     args: [resolve('.'), '--data-dir', directory, '--seed-sample', '--no-sync'],
-    env: Object.fromEntries(
-      Object.entries(process.env).filter(
-        ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-      ),
-    ) as Record<string, string>,
+    env: {
+      ...(Object.fromEntries(
+        Object.entries(process.env).filter(
+          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+        ),
+      ) as Record<string, string>),
+      WINNOW_BACKEND_PATH: prebuiltBackend,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+    },
     chromiumSandbox: true,
     timeout: 60000,
   })
@@ -112,7 +117,20 @@ async function screen(name: string, mode: 'desktop' | 'fullscreen'): Promise<Loc
     .click()
   const scope = page.locator('.settings-page')
   if (name === 'Platforms' || name === 'Steam key') {
-    await expect(page.getByLabel('Steam Web API key', { exact: true })).toBeVisible()
+    if (mode === 'fullscreen') {
+      const summary = page.locator('.fullscreen-platform-summary')
+      await expect(summary.getByRole('button', { name: 'Steam', exact: true })).toBeVisible()
+      if (name === 'Platforms') return summary
+      await summary.getByRole('button', { name: 'Steam', exact: true }).click()
+      await page.getByRole('button', { name: 'Steam Web API key', exact: true }).click()
+      await expect(
+        page.getByLabel('Steam Web API key', { exact: true }).and(page.locator('input')),
+      ).toBeVisible()
+      return page.getByRole('region', { name: 'Steam Web API key', exact: true })
+    }
+    await expect(
+      page.getByLabel('Steam Web API key', { exact: true }).and(page.locator('input')),
+    ).toBeVisible()
     if (name === 'Steam key') return page.getByRole('region', { name: 'Steam API key method', exact: true })
   }
   if (name === 'Plugins') await expect(scope.getByText('Reading plugins…', { exact: true })).toHaveCount(0)

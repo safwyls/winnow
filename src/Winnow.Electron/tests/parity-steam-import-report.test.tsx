@@ -92,6 +92,7 @@ function fixture(
 }
 function selectFiles(files = [file()]) {
   fireEvent.change(screen.getByLabelText('Saved Steam pages'), { target: { files } })
+  if (files.length) fireEvent.click(screen.getByRole('button', { name: 'Read' }))
 }
 async function importPages() {
   const button = screen.getByRole('button', { name: 'Import captured pages' }) as HTMLButtonElement
@@ -261,7 +262,11 @@ describe.each(['desktop', 'fullscreen'])('%s Steam capture and saved-file routes
     captureConsent()
     await screen.findByText('Games updated')
     expect(capture).toHaveBeenCalledExactlyOnceWith({ consentGranted: true })
-    expect(request).toHaveBeenCalledExactlyOnceWith({ route: 'imports.steam.pages', params: undefined, body: captured.pages })
+    expect(request).toHaveBeenCalledExactlyOnceWith({
+      route: 'imports.steam.pages',
+      params: undefined,
+      body: captured.pages,
+    })
   })
   it.each(['captured', 'partial'] as const)(
     'imports %s pages automatically after the dedicated capture command consents',
@@ -271,11 +276,18 @@ describe.each(['desktop', 'fullscreen'])('%s Steam capture and saved-file routes
         captureOutcome: outcome,
         ...(outcome === 'partial' ? { pages: { ...captured.pages!, historyHtml: null } } : {}),
       }
-      const { request } = fixture(mode, <SteamCapture />, undefined, vi.fn(async () => capture))
+      const { request } = fixture(
+        mode,
+        <SteamCapture />,
+        undefined,
+        vi.fn(async () => capture),
+      )
       captureConsent()
       await screen.findByText('Games updated')
       expect(request).toHaveBeenCalledExactlyOnceWith({
-        route: 'imports.steam.pages', params: undefined, body: capture.pages,
+        route: 'imports.steam.pages',
+        params: undefined,
+        body: capture.pages,
       })
       expect(screen.queryByRole('button', { name: 'Import captured pages' })).toBeNull()
     },
@@ -284,11 +296,18 @@ describe.each(['desktop', 'fullscreen'])('%s Steam capture and saved-file routes
     'a failed %s import retains its pages for an explicit retry without recapturing',
     async (source) => {
       let imports = 0
-      const { request, capture } = fixture(mode, <><SteamCapture /><SteamPageImport /></>, (input) => {
-        if (input.route === 'imports.steam.load') return loaded()
-        if (++imports === 1) throw new Error('The importer is temporarily unavailable.')
-        return report
-      })
+      const { request, capture } = fixture(
+        mode,
+        <>
+          <SteamCapture />
+          <SteamPageImport />
+        </>,
+        (input) => {
+          if (input.route === 'imports.steam.load') return loaded()
+          if (++imports === 1) throw new Error('The importer is temporarily unavailable.')
+          return report
+        },
+      )
       if (source === 'saved') selectFiles()
       else captureConsent()
       await screen.findByRole('alert')
@@ -405,8 +424,10 @@ describe.each(['desktop', 'fullscreen'])('%s Steam capture and saved-file routes
     expect(screen.getByText('No pages were selected. Nothing was imported.')).toBeTruthy()
   })
   it('Files_that_are_not_account_pages_are_named_and_nothing_is_imported', async () => {
-    const { request } = fixture(mode, <SteamPageImport />, (input) => input.route === 'imports.steam.pages' ? report :
-      loaded([{ path: 'other.html', outcome: 3, kind: 0, detail: 'No account table' }], false),
+    const { request } = fixture(mode, <SteamPageImport />, (input) =>
+      input.route === 'imports.steam.pages'
+        ? report
+        : loaded([{ path: 'other.html', outcome: 3, kind: 0, detail: 'No account table' }], false),
     )
     selectFiles([file('other.html')])
     await screen.findByText(/None of the selected files were recognized/)
@@ -418,11 +439,13 @@ describe.each(['desktop', 'fullscreen'])('%s Steam capture and saved-file routes
     [0, 'Different_licence_pages_are_both_reported_loaded'],
     [1, 'One_file_of_each_kind_raises_no_second_copy_notice'],
   ] as const)('%s %s', async (kind, _name) => {
-    fixture(mode, <SteamPageImport />, (input) => input.route === 'imports.steam.pages' ? report :
-      loaded([
-        { path: 'one.html', outcome: 0, kind: 0, detail: null },
-        { path: 'two.html', outcome: 0, kind, detail: null },
-      ]),
+    fixture(mode, <SteamPageImport />, (input) =>
+      input.route === 'imports.steam.pages'
+        ? report
+        : loaded([
+            { path: 'one.html', outcome: 0, kind: 0, detail: null },
+            { path: 'two.html', outcome: 0, kind, detail: null },
+          ]),
     )
     selectFiles([file('one.html'), file('two.html')])
     await screen.findByText(/one.html: Licence page ready/)
@@ -430,12 +453,14 @@ describe.each(['desktop', 'fullscreen'])('%s Steam capture and saved-file routes
     expect(screen.queryByText(/Duplicate licence pages/)).toBeNull()
   })
   it('reports duplicate and account-mismatched files without hiding successful pages', async () => {
-    fixture(mode, <SteamPageImport />, (input) => input.route === 'imports.steam.pages' ? report :
-      loaded([
-        { path: 'one.html', outcome: 0, kind: 0, detail: null },
-        { path: 'two.html', outcome: 4, kind: 0, detail: null },
-        { path: 'foreign.html', outcome: 5, kind: 1, detail: null },
-      ]),
+    fixture(mode, <SteamPageImport />, (input) =>
+      input.route === 'imports.steam.pages'
+        ? report
+        : loaded([
+            { path: 'one.html', outcome: 0, kind: 0, detail: null },
+            { path: 'two.html', outcome: 4, kind: 0, detail: null },
+            { path: 'foreign.html', outcome: 5, kind: 1, detail: null },
+          ]),
     )
     selectFiles()
     await screen.findByText(/Duplicate licence pages/)

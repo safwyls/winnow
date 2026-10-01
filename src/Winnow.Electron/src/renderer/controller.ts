@@ -3,6 +3,11 @@ import { ControllerInput, ControllerButton as B, type ControllerPadState } from 
 import { selectedStandardController } from '../shared/controller-status'
 
 export type Direction = 'left' | 'right' | 'up' | 'down'
+const controllerNavigationEvents = new WeakSet<Event>()
+/** Directional handlers can consume controller movement without blocking physical caret keys. */
+export function isControllerNavigationEvent(event: Event): boolean {
+  return controllerNavigationEvents.has(event)
+}
 type Rect = { left: number; top: number; width: number; height: number }
 /** Keep directional movement on the nearest row/column before crossing to another. */
 export function spatialTarget(rectangles: Rect[], current: number, direction: Direction): number {
@@ -133,6 +138,7 @@ export function moveControllerFocus(direction: Direction) {
     bubbles: true,
     cancelable: true,
   })
+  controllerNavigationEvents.add(key)
   active?.dispatchEvent(key)
   if (key.defaultPrevented) return
   if (

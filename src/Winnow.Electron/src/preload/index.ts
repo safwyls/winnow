@@ -13,6 +13,17 @@ function subscribe<T>(channel: string, callback: (value: T) => void): () => void
   ipcRenderer.on(channel, listener)
   return () => ipcRenderer.removeListener(channel, listener)
 }
+async function savedPages<T>(action: 'choose' | 'read' | 'clear', ...args: unknown[]): Promise<T> {
+  const channel = `winnow:steam:saved-pages:${action}`
+  try {
+    return await ipcRenderer.invoke(channel, ...args)
+  } catch (error) {
+    const prefix = `Error invoking remote method '${channel}': Error: `
+    if (error instanceof Error && error.message.startsWith(prefix))
+      throw new Error(error.message.slice(prefix.length))
+    throw error
+  }
+}
 const bridge: WinnowBridge = {
   filePickerSnapshot: () => ipcRenderer.invoke('winnow:file-picker:snapshot'),
   onFilePicker: (callback) => subscribe('winnow:file-picker:changed', callback),
@@ -66,6 +77,9 @@ const bridge: WinnowBridge = {
   chooseManualExecutable: () => ipcRenderer.invoke('winnow:manual-executable'),
   chooseManualExecutableFacts: () => ipcRenderer.invoke('winnow:manual-executable-facts'),
   exportAcquisitions: () => ipcRenderer.invoke('winnow:acquisitions:export'),
+  chooseSavedSteamPage: () => savedPages('choose'),
+  readSavedSteamPages: (ids) => savedPages('read', ids),
+  clearSavedSteamPages: () => savedPages('clear'),
   steamSignIn: (options) => ipcRenderer.invoke('winnow:steam:signin', options),
   prepareEpicSignIn: () => ipcRenderer.invoke('winnow:epic:prepare'),
   epicSignIn: (options) => ipcRenderer.invoke('winnow:epic:signin', options),

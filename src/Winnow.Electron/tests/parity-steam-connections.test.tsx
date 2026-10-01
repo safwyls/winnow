@@ -275,7 +275,7 @@ describe.each(['desktop', 'fullscreen'])('%s Steam connection presentation', (mo
       )
       render(<Settings mode={mode as 'desktop' | 'fullscreen'} />, { wrapper: harness.wrapper })
       fireEvent.click(screen.getByRole('button', { name: 'Platforms' }))
-      fireEvent.click(await screen.findByRole('button', { name: /^EPIC/ }))
+      fireEvent.click(await screen.findByRole('button', { name: /^Epic/i }))
       await screen.findByText(
         live
           ? 'Connected as Fixture account.'

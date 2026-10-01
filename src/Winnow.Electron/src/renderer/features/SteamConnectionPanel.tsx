@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { StoreConnections } from '../api/types'
+import type { Mode, StoreConnections } from '../api/types'
 import { steamCapturePermissionExplanation, steamConnectionState } from './steamConnection'
 import { AccountVisibility } from './SettingsPreferences'
 import { Notice } from './shared'
@@ -26,6 +26,8 @@ function SteamConnectionContent({
   onClearKey,
   error,
   titleCount,
+  mode = 'desktop',
+  tools,
 }: {
   snapshot: StoreConnections
   signIn: ReactNode
@@ -36,6 +38,8 @@ function SteamConnectionContent({
   onClearKey(): void
   error?: unknown
   titleCount?: number
+  mode?: Mode
+  tools?: { key(): void; purchase(): void }
 }) {
   const state = steamConnectionState(snapshot),
     steam = snapshot.steam
@@ -48,6 +52,9 @@ function SteamConnectionContent({
         <h2>Steam</h2>
         <p
           className="connection-state"
+          role="status"
+          aria-label={state.label}
+          aria-live="polite"
           data-tone={state.attention ? 'attention' : state.live ? 'live' : 'quiet'}
         >
           {state.label}
@@ -139,8 +146,14 @@ function SteamConnectionContent({
             {state.keyInUse ? ' · In use' : ''}
           </small>
         </h3>
-        {keyEditor}
-        {steam.apiKeyIsAppManaged && (
+        {tools ? (
+          <button disabled={accountBusy} onClick={tools.key}>
+            Steam Web API key
+          </button>
+        ) : (
+          keyEditor
+        )}
+        {!tools && steam.apiKeyIsAppManaged && (
           <button disabled={accountBusy} onClick={onClearKey}>
             Remove saved API key
           </button>
@@ -166,7 +179,7 @@ function SteamConnectionContent({
           {accountCount.toLocaleString('en-US')} {accountCount === 1 ? 'account' : 'accounts'}
         </p>
       )}
-      <AccountVisibility credentials={steam} />
+      <AccountVisibility credentials={steam} mode={mode} />
       <SteamInformationDialog
         name="accounts"
         label="What the account filter covers"
@@ -179,18 +192,24 @@ function SteamConnectionContent({
           ownership or delete games.
         </p>
       </SteamInformationDialog>
-      {purchase && (
-        <section aria-label="Steam purchase history">
-          <h3>Purchase history</h3>
-          <SteamInformationDialog
-            name="purchase"
-            label="Import purchase history"
-            title="Import Steam purchase history"
-            description="Read account pages in Winnow, or import files saved from your browser. Both routes work without a saved session or API key."
-          >
-            {purchase}
-          </SteamInformationDialog>
-        </section>
+      {tools ? (
+        <button disabled={accountBusy} onClick={tools.purchase}>
+          Purchase history
+        </button>
+      ) : (
+        purchase && (
+          <section aria-label="Steam purchase history">
+            <h3>Purchase history</h3>
+            <SteamInformationDialog
+              name="purchase"
+              label="Import purchase history"
+              title="Import Steam purchase history"
+              description="Read account pages in Winnow, or import files saved from your browser. Both routes work without a saved session or API key."
+            >
+              {purchase}
+            </SteamInformationDialog>
+          </section>
+        )
       )}
       <Notice error={error} />
     </section>

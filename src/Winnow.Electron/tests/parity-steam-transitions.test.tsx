@@ -27,7 +27,7 @@ function deferred<T>() {
   })
   return { promise, resolve }
 }
-function fixture(
+async function fixture(
   mode: Mode,
   setup: {
     signedIn?: SteamSignInResult
@@ -116,6 +116,7 @@ function fixture(
   )
   const view = render(<Settings mode={mode} />, { wrapper })
   fireEvent.click(screen.getByRole('button', { name: 'Platforms' }))
+  if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Steam' }))
   return { ...view, request, signIn, openExternal, client, wrapper }
 }
 async function begin(capture = false) {
@@ -134,15 +135,24 @@ async function completedSignIn() {
 }
 
 describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitions', (mode) => {
+  async function keyTool() {
+    if (mode === 'fullscreen')
+      fireEvent.click(await screen.findByRole('button', { name: 'Steam Web API key' }))
+    return await screen.findByLabelText<HTMLInputElement>('Steam Web API key', { selector: 'input' })
+  }
+  function backToSteam() {
+    if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Back to Steam' }))
+  }
   it('Saving_a_key_hands_it_over_empties_the_field_and_says_it_is_in_use', async () => {
-    const { request } = fixture(mode)
-    const input = (await screen.findByLabelText('Steam Web API key')) as HTMLInputElement
+    const { request } = await fixture(mode)
+    const input = await keyTool()
     fireEvent.change(input, { target: { value: 'sanitized-key-fixture' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save API key' }))
-    await screen.findByText('KEY SET')
-    expect(screen.getByText('On - API')).toBeTruthy()
     await screen.findByText('API key saved securely.')
     expect(input.value).toBe('')
+    backToSteam()
+    await screen.findByText('KEY SET')
+    expect(screen.getByText('On - API')).toBeTruthy()
     expect(request).toHaveBeenCalledWith({
       route: 'connections.steam.key',
       params: undefined,
@@ -150,10 +160,12 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
     })
   })
   it('Clearing_removes_the_key_and_withdraws_the_clear_command', async () => {
-    const { request } = fixture(mode, { key: true })
+    const { request } = await fixture(mode, { key: true })
+    await keyTool()
     fireEvent.click(await screen.findByRole('button', { name: 'Remove saved API key' }))
+    await screen.findByText('Saved API key removed.')
+    backToSteam()
     await screen.findByText('NO CONNECTION')
-    expect(screen.getByText('Saved API key removed.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Remove saved API key' })).toBeNull()
     expect(request).toHaveBeenCalledWith({
       route: 'connections.steam.key',
@@ -162,27 +174,32 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
     })
   })
   it('a refused credential save leaves the field and connection state unchanged', async () => {
-    fixture(mode, { failKey: true })
-    const input = (await screen.findByLabelText('Steam Web API key')) as HTMLInputElement
+    await fixture(mode, { failKey: true })
+    const input = await keyTool()
     fireEvent.change(input, { target: { value: 'unsaved-fixture' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save API key' }))
     await screen.findByText('This computer could not protect the key. It was not saved.')
     expect(input.value).toBe('unsaved-fixture')
+    backToSteam()
     expect(screen.getByText('NO CONNECTION')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Remove saved API key' })).toBeNull()
   })
   it('A_successful_sign_in_renders_the_reports_own_account_confirmation', async () => {
-    fixture(mode)
+    await fixture(mode)
     await begin()
     await completedSignIn()
     expect(screen.getByText(/Account confirmed. The account filter is available/)).toBeTruthy()
     expect(screen.getByText('SIGNED IN')).toBeTruthy()
     expect(
-      (screen.getByRole('checkbox', { name: 'Show only your account' }) as HTMLInputElement).disabled,
+      (
+        screen.getByRole(mode === 'fullscreen' ? 'switch' : 'checkbox', {
+          name: 'Show only your account',
+        }) as HTMLInputElement
+      ).disabled,
     ).toBe(false)
   })
   it('A_sign_in_with_no_refresh_token_is_reported_rather_than_dressed_up', async () => {
-    fixture(mode, {
+    await fixture(mode, {
       signedIn: { signedIn: true, persisted: true, refreshTokenCaptured: false, accountConfirmed: true },
     })
     await begin()
@@ -191,7 +208,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
     expect(screen.queryByRole('alert')).toBeNull()
   })
   it('a run-only session keeps its persistence warning after the connection refresh hides sign-in', async () => {
-    fixture(mode, {
+    await fixture(mode, {
       signedIn: { signedIn: true, persisted: false, refreshTokenCaptured: true, accountConfirmed: true },
     })
     await begin()
@@ -201,7 +218,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
     expect(screen.queryByRole('button', { name: 'Sign in to Steam' })).toBeNull()
   })
   it('Signing_out_clears_the_identity_the_session_earned and withdraws capture permission', async () => {
-    const { signIn } = fixture(mode)
+    const { signIn } = await fixture(mode)
     await begin(true)
     await completedSignIn()
     fireEvent.click(screen.getByRole('button', { name: 'Sign out of Steam' }))
@@ -209,7 +226,11 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
     expect(screen.queryByText(account)).toBeNull()
     expect(screen.queryByText(/Steam connected/)).toBeNull()
     expect(
-      (screen.getByRole('checkbox', { name: 'Show only your account' }) as HTMLInputElement).disabled,
+      (
+        screen.getByRole(mode === 'fullscreen' ? 'switch' : 'checkbox', {
+          name: 'Show only your account',
+        }) as HTMLInputElement
+      ).disabled,
     ).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Sign in to Steam' }))
     expect(
@@ -226,17 +247,18 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
     })
   })
   it('signing out retains the independent API key and its scheduler state', async () => {
-    fixture(mode, { key: true })
+    await fixture(mode, { key: true })
     await begin()
     await completedSignIn()
     expect(screen.getByText('SIGNED IN, KEY SET')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Sign out of Steam' }))
     await screen.findByText('KEY SET')
     expect(screen.getByText('On - API')).toBeTruthy()
+    if (mode === 'fullscreen') await keyTool()
     expect(screen.getByRole('button', { name: 'Remove saved API key' })).toBeTruthy()
   })
   it('a failed sign-out keeps the account identity and reports the error', async () => {
-    fixture(mode, { failSignOut: true })
+    await fixture(mode, { failSignOut: true })
     await begin()
     await completedSignIn()
     fireEvent.click(screen.getByRole('button', { name: 'Sign out of Steam' }))
@@ -246,29 +268,41 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
   })
   it('an active sign-in holds key changes and the purchase-file route', async () => {
     const gate = deferred<SteamSignInResult>()
-    const { request } = fixture(mode, { key: true, gate: gate.promise })
+    const { request } = await fixture(mode, { key: true, gate: gate.promise })
+    const keyAction = await screen.findByRole<HTMLButtonElement>('button', {
+      name: mode === 'fullscreen' ? 'Steam Web API key' : 'Remove saved API key',
+    })
+    const purchaseAction = screen.getByRole<HTMLButtonElement>('button', {
+      name: mode === 'fullscreen' ? 'Purchase history' : 'Import purchase history',
+    })
     await begin()
-    expect(
-      (screen.getByRole('button', { name: 'Remove saved API key', hidden: true }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true)
-    expect(
-      (screen.getByRole('button', { name: 'Import purchase history', hidden: true }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true)
+    expect(keyAction.disabled).toBe(true)
+    expect(purchaseAction.disabled).toBe(true)
     expect(screen.queryByLabelText('Saved Steam pages')).toBeNull()
     expect(request.mock.calls.some(([input]) => input.route.startsWith('imports.steam'))).toBe(false)
     await act(async () => gate.resolve({ signedIn: false, outcome: 4 }))
     await waitFor(() =>
       expect(
-        (screen.getByRole('button', { name: 'Remove saved API key' }) as HTMLButtonElement).disabled,
+        (
+          screen.getByRole('button', {
+            name: mode === 'fullscreen' ? 'Steam Web API key' : 'Remove saved API key',
+          }) as HTMLButtonElement
+        ).disabled,
       ).toBe(false),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Import purchase history' }))
-    expect((screen.getByLabelText('Saved Steam pages') as HTMLInputElement).disabled).toBe(false)
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: mode === 'fullscreen' ? 'Purchase history' : 'Import purchase history',
+      }),
+    )
+    if (mode === 'fullscreen') {
+      fireEvent.click(screen.getByRole('button', { name: 'Read saved pages' }))
+      expect(screen.getByRole('button', { name: 'Choose a page' })).toBeTruthy()
+    } else expect((screen.getByLabelText('Saved Steam pages') as HTMLInputElement).disabled).toBe(false)
   })
   it('The_key_page_is_opened_through_the_shared_dispatcher and failures retain its address', async () => {
-    const { openExternal } = fixture(mode)
+    const { openExternal } = await fixture(mode)
+    await keyTool()
     fireEvent.click(await screen.findByRole('button', { name: 'Get a key' }))
     await waitFor(() => expect(openExternal).toHaveBeenCalledWith('https://steamcommunity.com/dev/apikey'))
     openExternal.mockResolvedValueOnce({ opened: false })
@@ -284,7 +318,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
   })
   it('leaving the settings host cancels a pending Steam sign-in and ignores a late completion', async () => {
     const gate = deferred<SteamSignInResult>()
-    const { unmount, request } = fixture(mode, { gate: gate.promise })
+    const { unmount, request } = await fixture(mode, { gate: gate.promise })
     await begin()
     const before = request.mock.calls.length
     unmount()

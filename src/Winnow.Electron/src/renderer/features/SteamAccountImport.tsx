@@ -5,6 +5,7 @@ import { Notice } from './shared'
 import { SteamImportReport, type SteamImportReportData } from './SteamImportReport'
 import { useSteamAccountBusy, useSteamImportAttempt } from './SteamAccountOperation'
 import { useSetupBusy } from './settingsState'
+import type { Mode } from '../api/types'
 
 interface LoadedPages {
   pages: Record<string, unknown>
@@ -19,31 +20,48 @@ async function encodeFile(file: File): Promise<string> {
     binary += String.fromCharCode(...bytes.subarray(offset, offset + 16384))
   return btoa(binary)
 }
-export function SteamPageImport() {
+export function SteamPageImport({ mode = 'desktop' }: { mode?: Mode } = {}) {
   const client = useQueryClient()
   const [loaded, setLoaded] = useState<LoadedPages | null>(null)
   const [report, setReport] = useState<SteamImportReportData | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [pickerNotice, setPickerNotice] = useState('')
+  const [selected, setSelected] = useState<File[]>([])
+  const [handles, setHandles] = useState<{ id: string; name: string }[]>([])
+  const lifetime = useRef(new AbortController())
   const picker = useRef<HTMLInputElement>(null)
   useEffect(() => {
+    lifetime.current = new AbortController()
+    const controller = lifetime.current
     const input = picker.current
-    const cancelled = () => setPickerNotice('No pages were selected. Nothing was imported.')
+    const cancelled = () => {
+      setSelected([])
+      setPickerNotice('No pages were selected. Nothing was imported.')
+    }
     input?.addEventListener('cancel', cancelled)
-    return () => input?.removeEventListener('cancel', cancelled)
-  }, [])
+    return () => {
+      controller.abort()
+      input?.removeEventListener('cancel', cancelled)
+      if (mode === 'fullscreen') void window.winnow.clearSavedSteamPages?.().catch(() => {})
+    }
+  }, [mode])
   const busy = useSteamAccountBusy(pending)
   const startAttempt = useSteamImportAttempt(() => {
     setLoaded(null)
     setReport(null)
     setError(null)
     setPickerNotice('')
+    setSelected([])
+    setHandles([])
+    if (mode === 'fullscreen') void window.winnow.clearSavedSteamPages?.().catch(() => {})
   })
   useSetupBusy(pending)
-  async function load(files: File[]) {
+  async function load() {
     if (busy) return
-    startAttempt()
+    const files = selected
+    const signal = lifetime.current.signal
+    if (!files.length && !handles.length) return
     setPending(true)
     setError(null)
     setPickerNotice('')
@@ -57,21 +75,55 @@ export function SteamPageImport() {
         throw new Error(
           'Choose pages up to 64 MiB each and 128 MiB in total. Import larger captures in smaller groups.',
         )
-      const uploads = await Promise.all(
-        files.map(async (file) => ({ name: file.name, content: await encodeFile(file) })),
-      )
-      const pages = await request<LoadedPages>('imports.steam.load', undefined, { files: uploads })
+      const uploads =
+        mode === 'fullscreen'
+          ? await window.winnow.readSavedSteamPages!(handles.map((file) => file.id))
+          : await Promise.all(
+              files.map(async (file) => ({ name: file.name, content: await encodeFile(file) })),
+            )
+      signal.throwIfAborted()
+      const pages = await request<LoadedPages>('imports.steam.load', undefined, { files: uploads }, signal)
+      setSelected([])
+      setHandles([])
+      if (mode === 'fullscreen') void window.winnow.clearSavedSteamPages?.().catch(() => {})
       setLoaded(pages)
       if (pages.anythingLoaded) await importPages(pages)
     } catch (failure) {
-      setError(failure)
+      if (!signal.aborted) setError(failure)
     } finally {
-      setPending(false)
+      if (!signal.aborted) setPending(false)
     }
   }
   async function importPages(pages: LoadedPages) {
-    setReport(await request<SteamImportReportData>('imports.steam.pages', undefined, pages.pages))
+    const signal = lifetime.current.signal
+    signal.throwIfAborted()
+    setReport(await request<SteamImportReportData>('imports.steam.pages', undefined, pages.pages, signal))
     await client.invalidateQueries({ queryKey: ['api'] })
+  }
+  async function choose() {
+    if (busy || !window.winnow.chooseSavedSteamPage) return
+    startAttempt()
+    setError(null)
+    setLoaded(null)
+    setReport(null)
+    setPending(true)
+    const signal = lifetime.current.signal
+    try {
+      const file = await window.winnow.chooseSavedSteamPage()
+      if (signal.aborted) return
+      if (file) {
+        setHandles((previous) =>
+          previous.some((item) => item.id === file.id) ? previous : [...previous, file],
+        )
+        setPickerNotice('')
+      } else {
+        setPickerNotice('No additional page was selected. Nothing was imported.')
+      }
+    } catch (failure) {
+      if (!signal.aborted) setError(failure)
+    } finally {
+      if (!signal.aborted) setPending(false)
+    }
   }
   async function commit() {
     if (busy || report || !loaded?.anythingLoaded) return
@@ -89,7 +141,7 @@ export function SteamPageImport() {
     <section className="steam-page-import" aria-label="Steam purchase and licence import">
       <h3>Purchase and licence history</h3>
       <p>
-        Save your Steam account pages as HTML in your browser, then select the saved files to import them.
+        Save your Steam account pages as HTML in your browser, then select the saved files and choose Read.
         You can import several licence pages together. Missing amounts remain unknown.
       </p>
       <details>
@@ -119,29 +171,67 @@ export function SteamPageImport() {
           Open purchase history
         </button>
       </div>
-      <label className="field">
-        Saved Steam pages
-        <input
-          ref={picker}
-          type="file"
-          accept=".html,.htm"
-          multiple
-          disabled={busy}
+      {mode === 'fullscreen' ? (
+        <button disabled={busy || !window.winnow.chooseSavedSteamPage} onClick={() => void choose()}>
+          Choose a page
+        </button>
+      ) : (
+        <label className="field">
+          Saved Steam pages
+          <input
+            ref={picker}
+            type="file"
+            accept=".html,.htm"
+            multiple
+            disabled={busy}
+            onClick={() => {
+              startAttempt()
+              setLoaded(null)
+              setReport(null)
+              setError(null)
+              setPickerNotice('')
+              setSelected([])
+            }}
+            onChange={(event) => {
+              const files = Array.from(event.currentTarget.files ?? [])
+              event.currentTarget.value = ''
+              startAttempt()
+              setSelected(files)
+              setLoaded(null)
+              setReport(null)
+              setError(null)
+              if (files.length) setPickerNotice('')
+              else setPickerNotice('No pages were selected. Nothing was imported.')
+            }}
+          />
+        </label>
+      )}
+      {(selected.length > 0 || handles.length > 0) && (
+        <ul aria-label="Selected Steam pages">
+          {(mode === 'fullscreen' ? handles : selected).map((file, index) => (
+            <li key={index}>{file.name}</li>
+          ))}
+        </ul>
+      )}
+      <div className="form-actions">
+        <button disabled={busy || (!selected.length && !handles.length)} onClick={() => void load()}>
+          {mode === 'fullscreen' ? 'Read selected pages' : 'Read'}
+        </button>
+        <button
+          disabled={busy || (!selected.length && !handles.length)}
           onClick={() => {
-            startAttempt()
+            setSelected([])
+            setHandles([])
+            setPickerNotice('')
             setLoaded(null)
             setReport(null)
             setError(null)
-            setPickerNotice('')
+            if (mode === 'fullscreen') void window.winnow.clearSavedSteamPages?.().catch(setError)
           }}
-          onChange={(event) => {
-            const files = Array.from(event.currentTarget.files ?? [])
-            event.currentTarget.value = ''
-            if (files.length) void load(files)
-            else setPickerNotice('No pages were selected. Nothing was imported.')
-          }}
-        />
-      </label>
+        >
+          Clear selection
+        </button>
+      </div>
       <Notice error={error} />
       {pickerNotice && <p role="status">{pickerNotice}</p>}
       {pending && <p role="status">Reading and importing your capture…</p>}

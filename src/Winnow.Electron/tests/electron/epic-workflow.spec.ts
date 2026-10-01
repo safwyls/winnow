@@ -3,6 +3,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
+import { prebuiltBackend, prebuiltActivationHelper } from './prebuilt-backend'
 
 for (const [mode, scale] of [
   ['desktop', 1],
@@ -20,11 +21,15 @@ for (const [mode, scale] of [
         '--no-sync',
         '--seed-sample',
       ],
-      env: Object.fromEntries(
-        Object.entries(process.env).filter(
-          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-        ),
-      ) as Record<string, string>,
+      env: {
+        ...(Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+          ),
+        ) as Record<string, string>),
+        WINNOW_BACKEND_PATH: prebuiltBackend,
+        WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+      },
       chromiumSandbox: true,
       timeout: 60000,
     })
@@ -56,9 +61,9 @@ for (const [mode, scale] of [
         .getByRole('navigation', { name: 'Settings section' })
         .getByRole('button', { name: 'Platforms', exact: true })
         .click()
-      await page.getByRole('button', { name: /^EPIC/ }).click()
+      await page.getByRole('button', { name: mode === 'fullscreen' ? 'Epic' : 'EPIC', exact: true }).click()
       if (mode === 'fullscreen')
-        await expect(page.getByRole('heading', { name: 'Epic Games', exact: true })).toHaveCSS(
+        await expect(page.getByRole('heading', { name: 'Epic', exact: true })).toHaveCSS(
           'font-size',
           `${64 * scale}px`,
         )

@@ -40,6 +40,8 @@ import { FullscreenSettingsAction } from './FullscreenSettingRows'
 import { FullscreenMetadataChild, FullscreenMetadataSettings } from './FullscreenMetadataSettings'
 import { MetadataSyncSettings } from './MetadataSyncSettings'
 import { useMetadataSync } from './metadata-sync'
+import { FullscreenPlatforms } from './FullscreenPlatforms'
+import { PlatformConfirmation, PlatformHints, platformVerticalFocus } from './PlatformControls'
 
 export function Settings({
   mode = 'desktop',
@@ -65,6 +67,8 @@ export function Settings({
         ? 'Application'
         : tab
   const metadataChild = mode === 'fullscreen' && (tab === 'IGDB metadata' || tab === 'Artwork source order')
+  const [platformChild, setPlatformChild] = useState(false)
+  const fullscreenChild = metadataChild || (mode === 'fullscreen' && tab === 'Platforms' && platformChild)
   const page = useRef<HTMLElement>(null)
   const previousTab = useRef(tab)
   useEffect(() => {
@@ -109,7 +113,7 @@ export function Settings({
   return (
     <section
       ref={page}
-      className={`feature-page settings-page mode-${mode}${mode === 'fullscreen' && tab === 'Controller' ? ' fullscreen-controller-page' : ''}${metadataChild ? ' fullscreen-settings-child' : ''}`}
+      className={`feature-page settings-page mode-${mode}${mode === 'fullscreen' && tab === 'Controller' ? ' fullscreen-controller-page' : ''}${fullscreenChild ? ' fullscreen-settings-child' : ''}`}
       onKeyDown={(event) => {
         // A portal's Escape belongs to its own layer even though React bubbles through this page.
         if (
@@ -125,7 +129,7 @@ export function Settings({
         }
       }}
     >
-      {!metadataChild && (
+      {!fullscreenChild && (
         <header className="feature-heading">
           <div>
             {mode === 'fullscreen' ? (
@@ -142,7 +146,7 @@ export function Settings({
           </div>
         </header>
       )}
-      {!metadataChild && (
+      {!fullscreenChild && (
         <SectionNavigation fullscreen={mode === 'fullscreen'}>
           <nav className="tabs" aria-label="Settings section">
             {sections.map((name) => (
@@ -171,27 +175,30 @@ export function Settings({
         </button>
       )}
       {mode === 'fullscreen' && tab === 'Controller' && <ControllerGuide />}
-      {tab === 'Platforms' && (
-        <div className="feature-grid">
-          {stores.data ? (
-            <Platforms
-              snapshot={stores.data}
-              steam={(titleCount) => (
-                <SteamConnectionCard
-                  snapshot={stores.data}
-                  mode={mode}
-                  error={stores.error}
-                  titleCount={titleCount}
-                />
-              )}
-              epic={<EpicConnectionCard snapshot={stores.data} mode={mode} />}
-            />
-          ) : (
-            <Notice error={stores.error} message="Loading platform connections…" />
-          )}
-          <Notice error={command.error} />
-        </div>
-      )}
+      {tab === 'Platforms' &&
+        (mode === 'fullscreen' ? (
+          <FullscreenPlatforms onChildChange={setPlatformChild} />
+        ) : (
+          <div className="feature-grid">
+            {stores.data ? (
+              <Platforms
+                snapshot={stores.data}
+                steam={(titleCount) => (
+                  <SteamConnectionCard
+                    snapshot={stores.data}
+                    mode={mode}
+                    error={stores.error}
+                    titleCount={titleCount}
+                  />
+                )}
+                epic={<EpicConnectionCard snapshot={stores.data} mode={mode} />}
+              />
+            ) : (
+              <Notice error={stores.error} message="Loading platform connections…" />
+            )}
+            <Notice error={command.error} />
+          </div>
+        ))}
       {tab === 'Metadata & artwork' &&
         (mode === 'fullscreen' ? (
           <div className="fullscreen-appearance-layout">
@@ -398,12 +405,14 @@ export function SteamConnectionCard({
   purchase = true,
   error,
   titleCount,
+  tools,
 }: {
   snapshot: StoreConnections
   mode?: Mode
   purchase?: boolean
   error?: unknown
   titleCount?: number
+  tools?: { key(): void; purchase(): void }
 }) {
   const command = useCommand()
   const state = steamConnectionState(snapshot)
@@ -415,12 +424,15 @@ export function SteamConnectionCard({
         busy={command.isPending}
         error={error || command.error}
         titleCount={titleCount}
+        mode={mode}
+        tools={tools}
         signIn={
           <SteamAccount
             key={mode}
             label={state.signInLabel}
             showAction={state.showSignIn}
             sessionPresent={snapshot.steam.hasSession}
+            mode={mode}
           />
         }
         keyEditor={<SteamKeyForm key={mode} hasKey={snapshot.steam.hasApiKey} />}
@@ -448,15 +460,35 @@ export function EpicConnectionCard({
 }) {
   const command = useCommand()
   const [epicBusy, setEpicBusy] = useState(false)
-  useSetupBusy(command.isPending || epicBusy)
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const card = useRef<HTMLElement>(null)
+  const focusAfterSignOut = useRef(false)
+  useEffect(() => {
+    if (!focusAfterSignOut.current || confirmSignOut || snapshot.epic) return
+    const timer = setTimeout(() => {
+      if (document.activeElement === document.body)
+        card.current?.querySelector<HTMLButtonElement>('.epic-account button:not(:disabled)')?.focus()
+      focusAfterSignOut.current = false
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [confirmSignOut, snapshot.epic])
+  const epicStatus = snapshot.epic?.isLive ? 'SIGNED IN' : snapshot.epic ? 'SESSION EXPIRED' : 'NOT SIGNED IN'
+  useSetupBusy(command.isPending || epicBusy || confirmSignOut)
   return (
-    <section className={`feature-panel epic-platform-card mode-${mode}`} aria-label="Epic connection">
+    <section
+      ref={card}
+      className={`feature-panel epic-platform-card mode-${mode}`}
+      aria-label="Epic connection"
+    >
       <h2>Epic Games</h2>
       <p
         className="connection-state"
+        role="status"
+        aria-label={epicStatus}
+        aria-live="polite"
         data-tone={snapshot.epic?.isLive ? 'live' : snapshot.epic ? 'attention' : 'quiet'}
       >
-        {snapshot.epic?.isLive ? 'SIGNED IN' : snapshot.epic ? 'SESSION EXPIRED' : 'NOT SIGNED IN'}
+        {epicStatus}
       </p>
       <p>
         {snapshot.epic?.isLive
@@ -466,10 +498,7 @@ export function EpicConnectionCard({
             : 'Installed games are available through the local Epic library.'}
       </p>
       {snapshot.epic && (
-        <button
-          disabled={command.isPending || epicBusy}
-          onClick={() => command.mutate({ route: 'connections.epic.signOut' })}
-        >
+        <button disabled={command.isPending || epicBusy} onClick={() => setConfirmSignOut(true)}>
           Sign out of Epic
         </button>
       )}
@@ -481,12 +510,40 @@ export function EpicConnectionCard({
       />
       <p className="muted">Existing account connections are shared with other Winnow frontends.</p>
       <Notice error={command.error} />
+      <PlatformConfirmation
+        open={confirmSignOut}
+        setOpen={setConfirmSignOut}
+        mode={mode}
+        title="Sign out of Epic?"
+        description="Signing out deletes the stored credential. Your Epic games stay — they come from local files."
+        pending={command.isPending}
+        error={command.error}
+        returnFocus={() =>
+          card.current?.querySelector<HTMLButtonElement>('.epic-account button:not(:disabled)') ?? null
+        }
+        confirm={() =>
+          void command
+            .mutateAsync({ route: 'connections.epic.signOut' })
+            .then(() => {
+              focusAfterSignOut.current = true
+              setConfirmSignOut(false)
+            })
+            .catch(() => {})
+        }
+      />
     </section>
   )
 }
 
 export function SteamKeyForm({ hasKey }: { hasKey?: boolean } = {}) {
   const [key, setKey] = useState('')
+  const field = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    const input = field.current
+    return () => {
+      if (input) input.value = ''
+    }
+  }, [])
   const [message, setMessage] = useState('')
   const [linkError, setLinkError] = useState<unknown>(null)
   const hadKey = useRef(hasKey)
@@ -517,6 +574,7 @@ export function SteamKeyForm({ hasKey }: { hasKey?: boolean } = {}) {
         Steam Web API key
         <input
           type="password"
+          ref={field}
           autoComplete="off"
           value={key}
           onChange={(event) => setKey(event.target.value)}
@@ -553,7 +611,8 @@ export function SteamAccount({
   label = 'Sign in to Steam',
   showAction = true,
   sessionPresent,
-}: { label?: string; showAction?: boolean; sessionPresent?: boolean } = {}) {
+  mode = 'desktop',
+}: { label?: string; showAction?: boolean; sessionPresent?: boolean; mode?: Mode } = {}) {
   const [consent, setConsent] = useSteamModal('consent')
   const [staySignedIn, setStaySignedIn] = useState(true)
   const [capturePurchaseHistory, setCapturePurchaseHistory] = useState(false)
@@ -641,13 +700,22 @@ export function SteamAccount({
         <Dialog.Portal>
           <Dialog.Overlay className="setup-overlay consent-overlay" />
           <Dialog.Content
-            className="setup-dialog consent-dialog"
+            className={`setup-dialog consent-dialog${mode === 'fullscreen' ? ' fullscreen-platform-dialog' : ''}`}
+            onOpenAutoFocus={
+              mode === 'fullscreen'
+                ? (event) => {
+                    event.preventDefault()
+                    document.querySelector<HTMLButtonElement>('[data-platform-consent-cancel]')?.focus()
+                  }
+                : undefined
+            }
+            onKeyDown={mode === 'fullscreen' ? platformVerticalFocus : undefined}
             onEscapeKeyDown={(event) => {
               event.stopPropagation()
               if (pending) event.preventDefault()
             }}
           >
-            <div className="setup-body">
+            <div className={`setup-body${mode === 'fullscreen' ? ' fullscreen-platform-content' : ''}`}>
               <Dialog.Title>Before you sign in</Dialog.Title>
               <Dialog.Description>Connect your account through Steam’s own sign-in page.</Dialog.Description>
               <p className="reading-prose">
@@ -685,6 +753,7 @@ export function SteamAccount({
                   Continue to Steam
                 </button>
                 <button
+                  data-platform-consent-cancel
                   disabled={pending && !window.winnow.cancelSteamWindow}
                   onClick={() => {
                     if (pending) void window.winnow.cancelSteamWindow?.().catch(setError)
@@ -702,6 +771,7 @@ export function SteamAccount({
               )}
               <Notice error={error} />
             </div>
+            {mode === 'fullscreen' && <PlatformHints />}
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>

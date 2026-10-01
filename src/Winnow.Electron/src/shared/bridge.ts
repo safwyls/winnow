@@ -51,6 +51,14 @@ export interface SteamSignInOptions {
   maxLoadMoreClicks?: number
   maxLicensesPages?: number
 }
+export interface SavedSteamPage {
+  id: string
+  name: string
+}
+export interface SavedSteamPageUpload {
+  name: string
+  content: string
+}
 export interface SteamCapturedPages {
   licensesHtml?: string | null
   additionalLicensesHtml: string[]
@@ -150,6 +158,9 @@ export interface WinnowBridge {
   chooseManualExecutable?(): Promise<string | null>
   chooseManualExecutableFacts?(): Promise<import('./executable-facts').ExecutableFacts | null>
   exportAcquisitions?(): Promise<boolean>
+  chooseSavedSteamPage?(): Promise<SavedSteamPage | null>
+  readSavedSteamPages?(ids: string[]): Promise<SavedSteamPageUpload[]>
+  clearSavedSteamPages?(): Promise<void>
   steamSignIn?(options: SteamSignInOptions): Promise<SteamSignInResult>
   cancelSteamWindow?(): Promise<boolean>
   steamCapturePages?(options: { consentGranted: boolean }): Promise<SteamCaptureResult>

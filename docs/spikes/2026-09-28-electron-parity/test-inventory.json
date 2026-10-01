@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 111,
-    "partial": 20,
-    "ported": 1589,
-    "retained-backend": 682,
-    "framework-specific": 33
+    "pending": 88,
+    "partial": 18,
+    "ported": 1606,
+    "retained-backend": 688,
+    "framework-specific": 35
   },
   "tests": [
     {
@@ -1683,7 +1683,8 @@
     {
       "id": "ConsoleAuthPromptTests.A_null_WinExe_standard_handle_is_not_mistaken_for_redirection",
       "source": "tests/Winnow.Tests/ConsoleAuthPromptTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "The unchanged executed source asserts that both IntPtr.Zero and INVALID_HANDLE_VALUE (-1) are unusable redirected standard-output handles in the Avalonia WinExe ConsoleAuthPrompt. Electron does not compose that C# console prompt. Its authentication runs through the native browser/manual flow and typed main/preload/API boundaries, so adding a C# console-handle test to JavaScript would not exercise the product. This narrow host-handle disposition does not waive working browser sign-in, cancellation, unavailable-host copy or credential privacy; those are separately ported platform contracts."
     },
     {
       "id": "CoverArtPreferenceTests.Loads_mode_without_writing_back",
@@ -15070,32 +15071,69 @@
     {
       "id": "OwnedAccountConfirmationTests.The_remote_sync_asks_about_an_account_that_never_won_a_candidate",
       "source": "tests/Winnow.Tests/OwnedAccountConfirmationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Resolve/ExternalIdResolver.cs",
+        "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs",
+        "src/Winnow.Data/Repositories/OwnershipInventoryRepository.cs"
+      ],
+      "reason": "The unchanged real SQLite/resolver source fixture keeps Portal/app400, candidate winner22222 with900 minutes, account observations11111/40 and22222/900, observed2026-08-26T00:00Z. Actual RemoteOwnershipSyncService asks both accounts in sorted order even though11111 never wins the candidate. Silent Steam/Epic/GOG fixture readers avoid live launcher state. The backend still composes this same service and account-membership resolver."
     },
     {
       "id": "OwnedAccountConfirmationTests.A_confirmed_account_is_written_where_the_filter_can_read_it",
       "source": "tests/Winnow.Tests/OwnedAccountConfirmationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+        "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+        "src/Winnow.Data/Repositories/SettingsRepository.cs"
+      ],
+      "reason": "The unchanged source seeds Portal/app400 ownership11111, executes the shared real backfill with key-one and an account-disclosing history client, and asserts the settings reference is11111. The current backend uses the same SteamAccountConfirmation/backfill/settings path; Electron reads its account-visibility projection."
     },
     {
       "id": "OwnedAccountConfirmationTests.Changing_the_api_key_clears_the_confirmed_account",
       "source": "tests/Winnow.Tests/OwnedAccountConfirmationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+        "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+        "src/Winnow.Data/Repositories/SettingsRepository.cs"
+      ],
+      "reason": "The unchanged source confirms11111 with key-one, reruns with key-two, and asserts the exact SHA-256 fingerprint moved to key-two. Its stub discloses the same account again; the original does not assert that confirmation remains absent after this run. The distinct no-disclosure and HTTP replacement tests cover the cleared state. No frontend duplicates fingerprint logic."
     },
     {
       "id": "OwnedAccountConfirmationTests.A_changed_key_that_discloses_nothing_leaves_the_account_cleared",
       "source": "tests/Winnow.Tests/OwnedAccountConfirmationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+        "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+        "src/Winnow.Data/Repositories/SettingsRepository.cs"
+      ],
+      "reason": "The unchanged source first confirms11111 for Portal/app400 with key-one, then runs key-two with no account disclosure and requires the cleaned stored reference to be null. The production backend retains exactly this reconciliation policy and real settings transaction."
     },
     {
       "id": "OwnedAccountConfirmationTests.Removing_the_api_key_clears_the_confirmed_account",
       "source": "tests/Winnow.Tests/OwnedAccountConfirmationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+        "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+        "src/Winnow.Data/Repositories/SettingsRepository.cs"
+      ],
+      "reason": "The unchanged source confirms11111 with key-one and then runs the actual backfill with a null key provider. The cleaned confirmation reference must be null; no stored account is trusted without a current proving credential. Current backend composition retains the same policy."
     },
     {
       "id": "OwnedAccountConfirmationTests.The_stored_key_fingerprint_is_never_the_key",
       "source": "tests/Winnow.Tests/OwnedAccountConfirmationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/SteamAccountConfirmation.cs",
+        "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+        "src/Winnow.Data/Repositories/SettingsRepository.cs"
+      ],
+      "reason": "The unchanged source backfills Portal/app400 for11111 using SUPERSECRETKEYVALUE. It requires a non-null stored fingerprint, excludes the literal case-insensitively, and compares the exact SHA-256 fixture result. This is the actual shared backend credential-identity path, not a renderer string redaction substitute."
     },
     {
       "id": "OwnedAccountDisclosureRefetchTests.A_finished_account_recovers_its_ref_from_a_completed_year",
@@ -15154,7 +15192,22 @@
     {
       "id": "OwnedAccountDisclosureRefetchTests.An_account_with_no_populated_years_leaves_the_toggle_disabled",
       "source": "tests/Winnow.Tests/OwnedAccountDisclosureRefetchTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PlatformContextParityTests.cs",
+          "case": "Original_empty_completed_years_ask_only_2026_and_publish_an_unconfirmed_account_visibility"
+        },
+        {
+          "file": "tests/parity-steam-connections.test.tsx",
+          "case": "explains unconfirmed identity with key=%s session=%s"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "masked key draft disposal replacement confirmation reset and explicit saved HTML Read preserve export BOM and cancellation"
+        }
+      ],
+      "reason": "The unchanged source fixes2026-08-30T12Z, Portal/app400/account11111 and completed empty2022–2025 markers. Only2026 is requested, no confirmed account is invented, and the old StoresViewModel disables scope and shows its explanation. The executed HTTP replacement reconstructs those exact records/markers and runs the real backfill at that clock with only the remote history response controlled, then verifies account-visibility remains unconfirmed while the key remains set. Executed React disabled-state and explanation assertions accompany the HTTP projection; native credential replacement checks both surfaces."
     },
     {
       "id": "OwnedAccountDisclosureRefetchTests.An_account_that_never_confirmed_retries_history_without_bypassing_confirmation",
@@ -19085,14 +19138,14 @@
     {
       "id": "SteamConnectionPanelTests.A_host_with_no_sign_in_still_offers_the_key_and_says_the_window_cannot_open",
       "source": "tests/Winnow.Tests/SteamConnectionPanelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-steam-connections.test.tsx",
-          "case": "keeps the independent key method available when the native sign-in host is missing"
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "A_host_with_no_sign_in_still_offers_the_key_and_says_the_window_cannot_open"
         }
       ],
-      "reason": "Missing native sign-in reports that route unavailable while retaining the complete API-key form. Unlike the original late-installable WebView2 runtime, a missing preload method has no live retry command, so the original attempted-unavailable command assertion is not counted as ported."
+      "reason": "The unchanged source has key-present/session-absent credentials and no native sign-in service. Both Electron Settings surfaces preserve KEY SET, the unavailable-host explanation and an enabled masked key editor. A missing bridge capability exposes no native sign-in action, replacing the legacy command's unavailable result without attempting to invoke an absent host. The test does not claim native-browser execution."
     },
     {
       "id": "SteamConnectionPanelTests.The_save_command_refuses_an_empty_field",
@@ -19457,8 +19510,8 @@
     {
       "id": "SteamConnectionSeamTests.A_host_with_no_steam_module_answers_nothing_rather_than_throwing",
       "source": "tests/Winnow.Tests/SteamConnectionSeamTests.cs",
-      "status": "partial",
-      "reason": "The production backend always registers Steam services. The renderer missing-native-window case is covered, but the original optional no-Steam-module constructor has no audited replacement yet."
+      "status": "framework-specific",
+      "reason": "The unchanged source constructs the optional legacy StoreConnections without any Steam module, reads SteamConnection.None/unconfigured, then saves ABC and clears without throwing. Current production uses mandatory StoreConnectionApplication/provider registrations behind the independent backend; only legacy test composition retains that optional constructor. This literal absent-module DI shape therefore does not apply to Electron and is not claimed as retained production behavior. Actual unconfigured Steam projections and the no-native-sign-in key path are covered separately through the real API and renderer."
     },
     {
       "id": "SteamConnectionSeamTests.Saving_a_key_writes_it_and_invalidates_the_credential_provider",
@@ -24096,7 +24149,18 @@
     {
       "id": "AccountInventoryCompositionTests.Library_and_feed_keep_unknown_ownership_until_a_complete_inventory_and_expand_after_failure",
       "source": "tests/Winnow.Ui.Tests/AccountInventoryCompositionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PlatformContextParityTests.cs",
+          "case": "Complete_and_incomplete_source_inventories_drive_both_library_and_real_feed_and_a_failed_attempt_expands_them"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "exact incomplete complete then failed Steam inventory restores household Library and Feed visibility"
+        }
+      ],
+      "reason": "All four unchanged source rows (both surfaces × initial complete/incomplete) preserve My game/Steam111 and Household game/Steam222 with membership date2026-08-01, own scope and confirmed111. Incomplete inventory keeps2 library/feed cards; actual completed SteamOwnedGames inventory count1 narrows both to1. A new incomplete attempt invalidates the earlier completeness and restores2 including Household, hidden count0. The two executed HTTP rows use identical SQLite inputs, actual inventory repository and real feed engine, including initial2→complete1→failed2 and initial1→failed2. Native checks preserve visible titles and both refreshed surfaces; no canned feed counts or scoring are substituted."
     },
     {
       "id": "AccountStatsSummaryTests.Both_surfaces_show_shared_count_percentages_and_preserve_currency_boundaries",
@@ -27933,42 +27997,166 @@
     {
       "id": "FullscreenPlatformParityTests.Api_key_draft_is_masked_local_and_erased_on_close",
       "source": "tests/Winnow.Ui.Tests/FullscreenPlatformParityTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "Api_key_draft_is_masked_local_and_erased_on_close"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "masked key draft disposal replacement confirmation reset and explicit saved HTML Read preserve export BOM and cancellation"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "fullscreen 720p 140 percent platform tools retain vertical focus masked Y keyboard and one-layer Back"
+        }
+      ],
+      "reason": "The source edits unsaved-local-draft in a masked fullscreen password field, leaves the shared original SteamApiKey unchanged, and clears the local page draft on disposal. React child-page close/remount is the corresponding draft lifetime; both actual masking and absence of a save/write are asserted by the executed checks. A successful saved key is a separate operation."
     },
     {
       "id": "FullscreenPlatformParityTests.Saved_page_selection_requires_read_and_cancel_returns_no_paths",
       "source": "tests/Winnow.Ui.Tests/FullscreenPlatformParityTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "Saved_page_selection_requires_read_and_cancel_returns_no_paths"
+        },
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "saved-page selection accumulates two files, deduplicates and preserves both when an additional picker is cancelled"
+        },
+        {
+          "file": "tests/parity-saved-page-selection.test.ts",
+          "case": "cancel revokes handles and an outstanding chooser cannot restore a disposed selection"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "masked key draft disposal replacement confirmation reset and explicit saved HTML Read preserve export BOM and cancellation"
+        },
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "closing a saved-page tool cancels a pending read before any load or import"
+        }
+      ],
+      "reason": "The source accepts C:/temporary/history.html with exactly .html/.htm filters but keeps the selection task pending until explicit Read. Disposing/canceling yields no paths. Electron retains file handles locally without importing/reading while only selected; Back/cancel discards them and explicit Read uses the real importer. Native uses a sanitized real file in an isolated documents directory instead of the source synthetic C: path."
     },
     {
       "id": "FullscreenPlatformParityTests.Acquisition_export_cancels_without_writing_and_preserves_csv_encoding",
       "source": "tests/Winnow.Ui.Tests/FullscreenPlatformParityTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-acquisition-destination.test.ts",
+          "case": "source cancelled destination returns false and leaves the existing CSV and directory untouched"
+        },
+        {
+          "file": "tests/parity-acquisition-destination.test.ts",
+          "case": "source accepted destination preserves the default filename CRLF accented text and UTF-8 BOM bytes"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "masked key draft disposal replacement confirmation reset and explicit saved HTML Read preserve export BOM and cancellation"
+        }
+      ],
+      "reason": "The source refuses canceled export without writing, supplies winnow-acquisitions.csv, and preserves literal title,currency CRLF Élan,EUR CRLF with exactly a UTF-8 BOM (EF BB BF). Host tests prove that literal fixture; native tests compare actual file bytes with the real API export and verify canceled destinations remain unchanged."
     },
     {
       "id": "FullscreenPlatformTests.Settings_platform_summary_refreshes_on_open_and_tracks_shared_account_state",
       "source": "tests/Winnow.Ui.Tests/FullscreenPlatformTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "Settings_platform_summary_refreshes_on_open_and_tracks_shared_account_state"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "platform summary neutral statuses Epic replacement and expired cancellation preserve current identity and Steam health"
+        }
+      ],
+      "reason": "The source refreshes on entering Platforms, presents live Epic Test player as SIGNED IN, provides Open plus one glyph, and retains focus on the same summary action as shared state becomes NOT SIGNED IN. Updating Steam health changes its summary as well. React summary child navigation shares state/operations and preserves origin focus, with native visibility and glyph bounds."
     },
     {
       "id": "FullscreenPlatformTests.Epic_expiry_and_failed_signin_remain_truthful",
       "source": "tests/Winnow.Ui.Tests/FullscreenPlatformTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PlatformContextParityTests.cs",
+          "case": "Actual_Epic_attempt_cancel_preserves_expired_identity_and_success_after_signout_replaces_A_with_B"
+        },
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "Epic_expiry_and_failed_signin_remain_truthful"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "platform summary neutral statuses Epic replacement and expired cancellation preserve current identity and Steam health"
+        }
+      ],
+      "reason": "The source starts expired Test player, attempts a sign-in that returns canceled, and retains both expired state and old identity with exact Sign-in cancelled. Nothing was changed. copy and Sign in again action. The real API test cancels an actual owned Epic attempt and refuses its later completion with404, retaining expired Test player and exactly one earlier successful exchange. Native browser cancellation verifies the presentation part."
     },
     {
       "id": "FullscreenPlatformTests.Platform_reads_existing_sessions_and_updates_after_epic_signout_and_signin",
       "source": "tests/Winnow.Ui.Tests/FullscreenPlatformTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PlatformContextParityTests.cs",
+          "case": "Actual_Epic_attempt_cancel_preserves_expired_identity_and_success_after_signout_replaces_A_with_B"
+        },
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "Platform_reads_existing_sessions_and_updates_after_epic_signout_and_signin"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "platform summary neutral statuses Epic replacement and expired cancellation preserve current identity and Steam health"
+        }
+      ],
+      "reason": "The source opens the existing Test player session, requires a sign-out confirmation, closes only that nested layer on confirmation, shows unsigned state, then displays New test player after success. Real backend operations are tested with Account A→B as the adjacent shared-context fixture; native uses the Test player/New test player stage to preserve these exact names and nested focus/layer assertions."
     },
     {
       "id": "FullscreenPlatformTests.Steam_renders_health_identity_and_actions_as_shared_state_changes",
       "source": "tests/Winnow.Ui.Tests/FullscreenPlatformTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PlatformContextParityTests.cs",
+          "case": "Real_connection_projection_tracks_live_expired_and_absent_Steam_session_without_network_or_identity_leakage"
+        },
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "Steam_renders_health_identity_and_actions_as_shared_state_changes"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "platform summary neutral statuses Epic replacement and expired cancellation preserve current identity and Steam health"
+        }
+      ],
+      "reason": "The source live session SteamID64 76561198000000000 has a future expiry and no API key, then becomes expired and finally SteamConnection.None. Identity and available actions track those states truthfully. Executed actual StoreConnectionApplication HTTP reads preserve that exact identity/live/expired/none sequence with controlled session provider and real credential selection; no external token service is contacted."
     },
     {
       "id": "FullscreenPlatformTests.Platform_tool_directional_focus_matches_the_vertical_layout",
       "source": "tests/Winnow.Ui.Tests/FullscreenPlatformTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "Platform_tool_directional_focus_matches_the_vertical_layout"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "fullscreen 720p 140 percent platform tools retain vertical focus masked Y keyboard and one-layer Back"
+        },
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "controller horizontal movement stays in the masked key field while physical arrow defaults remain available"
+        }
+      ],
+      "reason": "The source opens each consent/key/saved-page tool and checks every adjacent Down/Up step follows vertical geometry, while Right remains on the same control. Native controller traversal verifies actual fullscreen child pages; component event dispatch alone cannot establish their bounds. Root/renderer also retain topmost keyboard and Back behavior."
     },
     {
       "id": "FullscreenQuickMenuTests.Repeated_start_keeps_one_menu_and_returns_to_the_original_focus",
@@ -31245,32 +31433,114 @@
     {
       "id": "StoresAccountContextTests.Optional_provider_states_are_named_and_neutral_on_both_surfaces",
       "source": "tests/Winnow.Ui.Tests/StoresAccountContextTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "Optional_provider_states_are_named_and_neutral_on_both_surfaces"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "platform summary neutral statuses Epic replacement and expired cancellation preserve current identity and Steam health"
+        },
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "Optional_provider_states_are_named_and_neutral_on_both_surfaces: %s"
+        }
+      ],
+      "reason": "All six unchanged source rows cover Steam/Epic/GOG × desktop/fullscreen. Each visible status has its exact automation name once and positive width. Unsigned optional Steam/Epic states are neutral without attention; GOG no-sign-in-needed uses the source live/neutral treatment. Both renderer semantics and native visibility/bounds are executed in the linked component and native checks."
     },
     {
       "id": "StoresAccountContextTests.Replacing_key_clears_old_confirmation_and_disables_account_scope_on_both_surfaces",
       "source": "tests/Winnow.Ui.Tests/StoresAccountContextTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PlatformContextParityTests.cs",
+          "case": "Original_key_confirmation_10001_is_cleared_before_replacement_publication_and_clear_preserves_disabled_scope"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "masked key draft disposal replacement confirmation reset and explicit saved HTML Read preserve export BOM and cancellation"
+        },
+        {
+          "file": "tests/parity-steam-panel-contracts.test.tsx",
+          "case": "Replacing_key_clears_old_confirmation_and_disables_account_scope_on_both_surfaces"
+        }
+      ],
+      "reason": "The unchanged source confirms10001 for original-test-key, replaces with replacement-test-key, and requires null confirmation with key still present, disabled scope and explanation. Clearing removes the key while the gate stays disabled. The HTTP replacement uses real SteamAccountConfirmation and StoreConnectionApplication; its refresh subscriber observes null before both publications, verifies exact replacement storage and no raw key in the public connections response. Controlled key storage matches the source; encrypted persistence is not claimed."
     },
     {
       "id": "StoresAccountContextTests.Epic_signout_and_replacement_signin_render_only_current_account",
       "source": "tests/Winnow.Ui.Tests/StoresAccountContextTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PlatformContextParityTests.cs",
+          "case": "Actual_Epic_attempt_cancel_preserves_expired_identity_and_success_after_signout_replaces_A_with_B"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "platform summary neutral statuses Epic replacement and expired cancellation preserve current identity and Steam health"
+        },
+        {
+          "file": "tests/parity-epic-settings.test.tsx",
+          "case": "successful sign-in keeps its run-only warning after query refresh, then sign-out forgets that account"
+        },
+        {
+          "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+          "case": "Platform_reads_existing_sessions_and_updates_after_epic_signout_and_signin"
+        }
+      ],
+      "reason": "The unchanged two-surface fixture starts live Account A, removes it on sign-out, then renders only Account B with correct actions. Real authenticated begin/complete/sign-out operations use actual attempt ownership/state validation and a controlled token exchange provider, preserving A→none→B. Native exercises the real trusted browser callback and cancellation without rewriting connection DTOs; this is not a live Epic authentication claim."
     },
     {
       "id": "StoresAccountContextTests.Persisted_unknown_install_observation_keeps_play_until_authoritative_absence",
       "source": "tests/Winnow.Ui.Tests/StoresAccountContextTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PlatformContextParityTests.cs",
+          "case": "Unknown_install_observation_preserves_same_ownership_and_path_until_authoritative_absence"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "persisted unknown install keeps Play and path on the same Details until authoritative absence"
+        }
+      ],
+      "reason": "The original LibraryReadFixtures2 population/list[2,1] is preserved. Epic sample-item or GOG12345 ownership1 begins installed at C:/Fixture/Game; actual OwnershipRepository.Upsert(null) preserves identical ownership/path, then authoritative false clears installed/path. Real HTTP details/library/workspace reads prove those persisted facts and Epic FixtureGame launch provenance. Both native surfaces retain the same open Details and change Play→Play→Install; no launcher files or OS dispatch are touched."
     },
     {
       "id": "StoresAccountContextTests.Details_render_selected_account_acquisition_then_withhold_conflicting_aggregate_license",
       "source": "tests/Winnow.Ui.Tests/StoresAccountContextTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PlatformContextParityTests.cs",
+          "case": "Selected_account_acquisition_is_gift_2024_then_all_accounts_choose_2020_and_withhold_conflicting_licence"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "selected 2024 gift becomes aggregate 2020 without licence and ambiguous three-account spending has no money total"
+        }
+      ],
+      "reason": "The source two-game fixture records owner1/account10001 retail at2020-01-02T12Z and10002 gift at2024-01-02T12Z, each price0 with SteamAccountHistory provenance. Own scope confirmed10002 projects2024/gift; all scope projects2020 and suppresses conflicting licence. The HTTP test uses those exact real repository facts and preserves ownership identity. Native shows the same open Details removing stale gift copy after the account-scope change."
     },
     {
       "id": "StoresAccountContextTests.Statistics_render_known_and_unknown_account_scope_without_ambiguous_money_totals",
       "source": "tests/Winnow.Ui.Tests/StoresAccountContextTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PlatformContextParityTests.cs",
+          "case": "Three_original_five_dollar_facts_preserve_two_known_accounts_and_unknown_scope_for_safe_presentation"
+        },
+        {
+          "file": "tests/electron/platform-contracts.spec.ts",
+          "case": "selected 2024 gift becomes aggregate 2020 without licence and ambiguous three-account spending has no money total"
+        }
+      ],
+      "reason": "The source three purchase facts retain Fixture game/$/500cents for10001,10002 and null. Real API returns transactionCount3, knownAccounts2, unknownFacts1 and the genuine raw1500cent aggregate; React intentionally withholds monetary rows and $15.00 because account scope is ambiguous. The native acquisition fixture adds these independent account facts without changing owner acquisition assertions. Do not claim the repository zeroes or discards observed money."
     },
     {
       "id": "SupplementalFeedTests.Primary_reason_reaches_desktop_and_fullscreen_without_additional_copy",

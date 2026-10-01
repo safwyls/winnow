@@ -252,9 +252,5 @@
       }
     ],
     "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
-  },
-  "SteamConnectionSeamTests.A_host_with_no_steam_module_answers_nothing_rather_than_throwing": {
-    "status": "partial",
-    "reason": "The production backend always registers Steam services. The renderer missing-native-window case is covered, but the original optional no-Steam-module constructor has no audited replacement yet."
   }
 }

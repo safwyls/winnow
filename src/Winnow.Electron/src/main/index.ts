@@ -29,6 +29,8 @@ import { JumpListIcons } from './jump-list-icons'
 import { applicationBuildInfo } from './application-build-info'
 import { loginItemOptions } from './login-options'
 import { openDataFolder } from './data-folders'
+import { saveAcquisitions } from './acquisition-export'
+import { SavedSteamPages } from './saved-steam-pages'
 import { startActivationHost, resolveBackendDataDirectory, type ActivationHost } from './activation-host'
 import { SnapshotRefresh } from '../shared/snapshot-refresh'
 import { FontCatalogue } from './fonts'
@@ -501,6 +503,10 @@ async function initialize(): Promise<void> {
     })
     return choice.canceled ? null : (choice.filePaths[0] ?? null)
   }
+  const savedSteamPages = new SavedSteamPages(chooseFile, () => filePicker.cancel())
+  handle('winnow:steam:saved-pages:choose', () => savedSteamPages.choose())
+  handle('winnow:steam:saved-pages:read', (ids: unknown) => savedSteamPages.read(ids))
+  handle('winnow:steam:saved-pages:clear', () => savedSteamPages.clear())
   const requestLifetimes = new RequestLifetimes()
   const requestOwners = new WeakSet<object>()
   const observeRequestOwner = (owner: Electron.WebContents) => {
@@ -717,16 +723,7 @@ async function initialize(): Promise<void> {
       route: 'acquisitions.export',
     })
     if (!result.ok || !result.data) throw new Error('Acquisitions could not be exported. Try again.')
-    const path = await chooseFile({
-      title: 'Export acquisitions',
-      mode: 'save',
-      suggestedName: 'winnow-acquisitions.csv',
-      filterName: 'CSV',
-      extensions: ['csv'],
-    })
-    if (!path) return false
-    await writeFile(path, result.data.content, 'utf8')
-    return true
+    return saveAcquisitions(result.data.content, chooseFile)
   })
   handle('winnow:steam:signin', (options: SteamSignInOptions) =>
     signInToSteam(window!, transport!, options, (message) => {
@@ -841,11 +838,16 @@ async function initialize(): Promise<void> {
     window.webContents.on('will-attach-webview', (event) => event.preventDefault())
     window.webContents.on('did-start-loading', () => {
       rendererAcceptsActivation = false
+      savedSteamPages.clear()
       filePicker.cancel()
     })
-    window.webContents.on('render-process-gone', () => filePicker.cancel())
+    window.webContents.on('render-process-gone', () => {
+      savedSteamPages.clear()
+      filePicker.cancel()
+    })
     window.on('enter-full-screen', () => emit('winnow:fullscreen:changed', true))
     window.on('leave-full-screen', () => {
+      savedSteamPages.clear()
       filePicker.cancel()
       controllerProbe.dispose()
       emit('winnow:fullscreen:changed', false)
@@ -873,6 +875,7 @@ async function initialize(): Promise<void> {
       if (!event.defaultPrevented) windowLifetime.abort(new DOMException('Window closed', 'AbortError'))
     })
     window.on('closed', () => {
+      savedSteamPages.clear()
       filePicker.cancel()
       controllerProbe.dispose()
       windowLifetime.abort(new DOMException('Window closed', 'AbortError'))
