@@ -92,6 +92,22 @@ test('fullscreen Home crossfades independent source geometry, keeps visible art 
   await surface('fullscreen', 2520, 1080)
   await choose('hero')
   await expect(backdrop().locator('[data-key="steam-hero:hero"] img')).toBeVisible()
+  await info.attach('wide-hero-viewport-measurement', {
+    body: JSON.stringify(
+      await backdrop().evaluate((node) => {
+        const bounds = node.getBoundingClientRect()
+        const image = node.querySelector('img')!
+        return {
+          viewport: [innerWidth, innerHeight],
+          bodyZoom: getComputedStyle(document.body).zoom,
+          client: [node.clientWidth, node.clientHeight],
+          bounds: bounds.toJSON(),
+          image: [image.naturalWidth, image.naturalHeight],
+        }
+      }),
+    ),
+    contentType: 'application/json',
+  })
   const geometry = async () =>
     backdrop()
       .locator('.avalon-backdrop-art')

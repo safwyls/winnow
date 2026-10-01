@@ -491,7 +491,12 @@ function SharedDetails({
             />
           )}
           {tab === 'Metadata' && metadata.data?.available !== false && (
-            <MetadataEditor key={workId} workId={workId} mode={mode} />
+            <MetadataEditor
+              key={workId}
+              workId={workId}
+              coverWorkId={game?.headerWorkId ?? game?.workId}
+              mode={mode}
+            />
           )}
           {tab === 'Game match' && igdb.data?.available !== false && (
             <IgdbMatch
@@ -511,7 +516,13 @@ function SharedDetails({
             </>
           )}
           {tab === 'Artwork' && (
-            <ArtworkEditor key={workId} workId={workId} mode={mode} title={game?.title} />
+            <ArtworkEditor
+              key={workId}
+              workId={workId}
+              coverWorkId={game?.headerWorkId ?? game?.workId}
+              mode={mode}
+              title={game?.title}
+            />
           )}
         </div>
         <aside className="detail-sidebar">

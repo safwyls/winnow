@@ -146,6 +146,16 @@ their source attribution. If the metadata editing service is unavailable, Detail
 usable and hides the editor. Without a file picker, both artwork fields keep their URL
 route and omit file selection.
 
+The artwork browser's **Current** cover follows the displayed header on both surfaces.
+A saved choice keeps priority until **Use automatic** restores the live cover. Previewing
+another candidate preserves that selection while the header changes; saving and resetting
+still edit the canonical game. Source-order changes apply to open backdrops immediately.
+The old image stays visible until its replacement is ready, and closing the view releases
+its artwork and preference subscription.
+Fullscreen fills the viewport with the saved safe margins and larger controls. Its
+artwork-type, preview and Back hints stay beside the actions; focusing the URL field
+adds **Y · Keyboard**. Exact ultrawide hero fitting remains stable under interface zoom.
+
 Settings groups Steam, Epic and GOG under **Platforms**, with one card at a time, attention
 markers and title counts from the whole library. Steam keeps credential guidance, account
 scope, purchase import and sign-in consent in separate dialogs. IGDB and artwork source

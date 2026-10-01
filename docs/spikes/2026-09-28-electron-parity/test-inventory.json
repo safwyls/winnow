@@ -1,10 +1,10 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 189,
+    "pending": 173,
     "partial": 29,
-    "ported": 1531,
-    "retained-backend": 653,
+    "ported": 1537,
+    "retained-backend": 663,
     "framework-specific": 33
   },
   "tests": [
@@ -1300,17 +1300,52 @@
     {
       "id": "ArtworkBrowserPluginIntegrationTests.Packaged_SteamGridDB_browses_all_slots_and_keeps_selected_original_after_disable_and_restart",
       "source": "tests/Winnow.Tests/ArtworkBrowserPluginIntegrationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs",
+        "src/Winnow.Application/Services/PluginArtworkSource.cs",
+        "src/Winnow.Application/Services/ArtworkSelectionService.cs",
+        "src/Winnow.Data/Repositories/ArtworkChoiceRepository.cs",
+        "src/Winnow.Plugins/PluginCatalog.cs",
+        "src/Winnow.Plugins/PluginHttpClient.cs",
+        "src/Winnow.Covers/UserArt.cs"
+      ],
+      "reason": "The unchanged original executes the packaged SteamGridDB plugin against the actual shared browser, plugin catalogue, SQLite cache, selection repository and local user-art store used by the HTTP frontend. It preserves the missing-key retry message, all three Hero/Cover/Icon slots, two pages, artist/page/thumbnail provenance, cache registrations, three durable choices, no identity links, and exact original 100×80 MediumPurple bytes after plugin disable and catalogue restart. These are backend contracts; no Avalonia UI or bitmap presentation assertion is included."
     },
     {
       "id": "ArtworkBrowserPluginIntegrationTests.Host_filters_wrong_kind_offhost_and_malformed_plugin_candidates_before_registration",
       "source": "tests/Winnow.Tests/ArtworkBrowserPluginIntegrationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs",
+        "src/Winnow.Application/Services/PluginArtworkSource.cs",
+        "src/Winnow.Plugins/PluginCatalog.cs"
+      ],
+      "reason": "The unchanged executed host test loads the actual malformed plugin package and retains only valid Hero art. Wrong Cover kind, an unapproved host and the 9000×1080 asset are rejected before any plugin-artwork registration. The same shared browser validation and plugin URL policy serve authenticated Electron artwork browsing."
     },
     {
       "id": "ArtworkBrowserServiceTests.Current_cover_uses_live_library_projection_but_never_replaces_a_saved_choice",
       "source": "tests/Winnow.Tests/ArtworkBrowserServiceTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-current.test.tsx",
+          "case": "uses the live preferred cover, preserves the saved manual choice, and follows each projection after reset"
+        },
+        {
+          "file": "tests/parity-artwork-current.test.tsx",
+          "case": "reads the preferred header cover while retaining canonical offers, revision, and mutation identity"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ArtworkStateParityTests.cs",
+          "case": "Projected_cover_changes_preserve_canonical_revision_and_saved_manual_choice_until_group_reset"
+        },
+        {
+          "file": "tests/electron/artwork-state.spec.ts",
+          "case": "browser Current follows the live header cover while a saved choice wins across projection changes and source order persists"
+        }
+      ],
+      "reason": "Both surfaces preserve the literal source wrapper sequence: canonical work1 Game/Steam620, displayed IGDB preferred, manual IGDB candidate preview test:valid, durable user selection, ignored newprojection while saved, reset revealing newprojection and subsequent arbitrary Steam440 projection. Component publication uses the actual selected-cover cache and leaves canonical state/revision unchanged even at final Steam440. Real API/native composition uses a confirmed same-game group with preferred pinned child2; registered IGDB manual retains the original 100×80 Coral bytes on canonical work1, and reopening preserves it. Canonical revision remains unchanged across the preferred/newprojection stages and resets to the original revision. The final real-API Steam440 stage changes the group external ID and thus its canonical revision; this transport adaptation is separate from the exact callback component assertion. Offers, writes and resets always use canonical work1."
     },
     {
       "id": "ArtworkBrowserServiceTests.Saving_retains_original_bytes_and_provenance_until_explicit_reset",
@@ -1391,52 +1426,126 @@
     {
       "id": "ArtworkPreferencesTests.Saved_order_survives_restart_and_invalid_entries_keep_all_sources",
       "source": "tests/Winnow.Tests/ArtworkPreferencesTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Presentation/ArtworkPreferences.cs",
+        "src/Winnow.Application/Services/PresentationPreferencesService.cs"
+      ],
+      "reason": "The unchanged executed source test retains default Steam/SteamGridDB/IGDB, trims and deduplicates the exact invalid/mixed-case input, isolates the caller array, persists the exact normalized string, reloads from a fresh preferences instance, emits one notification for the changed value and normalizes the later malformed stored string. ArtworkPreferences remains the shared policy. The authenticated ArtworkSourceOrder write now delegates to SaveAsync before publishing its refresh event; HTTP regressions verify both original live-order arrays reach the singleton policy and a new client."
     },
     {
       "id": "ArtworkPreferencesTests.Failed_write_does_not_publish_or_notify",
       "source": "tests/Winnow.Tests/ArtworkPreferencesTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Presentation/ArtworkPreferences.cs",
+        "src/Winnow.Application/Services/PresentationPreferencesService.cs"
+      ],
+      "reason": "The unchanged executed FailingStore fixture throws IOException during SaveAsync. The exact prior SourceOrder object remains identical and Changed fires zero times. The shared policy writes before publishing; the HTTP application delegates its artwork-order writes to that same method and publishes its SSE event only after success."
     },
     {
       "id": "ArtworkPreferencesTests.Source_blocks_reorder_while_saved_art_and_standard_hero_keep_their_positions",
       "source": "tests/Winnow.Tests/ArtworkPreferencesTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Presentation/ArtworkPreferences.cs",
+        "src/Winnow.Presentation/BackdropSelection.cs",
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs"
+      ],
+      "reason": "The unchanged executed policy test covers all six permutations of the exact Steam42, SteamGridDB50584 source URL and IGDB art3840×2160 blocks, preserving saved user art first and standard Steam hero last. Electron backdrop candidates use this shared policy directly; no separate frontend ordering algorithm replaces it."
     },
     {
       "id": "ArtworkSelectionIntegrationTests.Service_shares_confirmed_copies_but_keeps_expansions_and_unlinked_works_separate",
       "source": "tests/Winnow.Tests/ArtworkSelectionIntegrationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/ArtworkSelectionService.cs",
+        "src/Winnow.Data/Repositories/ArtworkChoiceRepository.cs",
+        "src/Winnow.Data/Repositories/IdentityLinkRepository.cs"
+      ],
+      "reason": "The unchanged executed real SQLite test preserves Game, Other store copy and Expansion, confirmed same-game versus expansion relations, the icon choice written only to the child, parent effective reads, exclusion from the expansion, and original child ownership after retracting the link. The same ArtworkSelectionService and repository back Electron reads, saves and group resets."
     },
     {
       "id": "ArtworkSelectionIntegrationTests.Configured_imports_survive_refresh_and_reopen_then_reset_the_group_slot",
       "source": "tests/Winnow.Tests/ArtworkSelectionIntegrationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/WorkMetadataEditService.cs",
+        "src/Winnow.Application/Services/ArtworkSelectionService.cs",
+        "src/Winnow.Data/Repositories/ArtworkChoiceRepository.cs",
+        "src/Winnow.Covers/UserArt.cs"
+      ],
+      "reason": "Both unchanged source theory rows execute Cover/cover_url and Hero/background_url against real SQLite and the shared metadata editor. The 24×16 Teal import survives source-file deletion, provider refresh and service reopen with exact retained bytes and child ownership. Missing, truncated and actual two-frame GIF inputs preserve the prior choice. Parent reset clears the group slot, preserves the unrelated Icon, and restores the refreshed automatic URL and non-user ownership. These application/repository/image-validation paths are shared by the independent frontend."
     },
     {
       "id": "BackdropSelectionTests.Landscape_selection_uses_crop_resolution_and_excludes_unsuitable_assets",
       "source": "tests/Winnow.Tests/BackdropSelectionTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Presentation/BackdropSelection.cs",
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs"
+      ],
+      "reason": "The unchanged executed shared policy uses the exact 6000×1000 wide, 2560×1440 fit, portrait, alpha and animated assets. Default aspect orders fit before wide, aspect6 makes wide first, and unsuitable assets remain excluded. The backend backdrop endpoint calls the same policy."
     },
     {
       "id": "BackdropSelectionTests.Hd_screenshot_precedes_unknown_or_small_art_and_legacy_order_is_stable",
       "source": "tests/Winnow.Tests/BackdropSelectionTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Presentation/BackdropSelection.cs",
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs"
+      ],
+      "reason": "The unchanged executed shared policy places the exact 1920×1080 HD screenshot before unknown and 640×360 artwork, while dimensionless legacy first,second screenshot IDs retain their order. Electron receives these candidates from the same shared selector."
     },
     {
       "id": "BackdropSelectionTests.Saved_background_leads_and_duplicates_are_removed",
       "source": "tests/Winnow.Tests/BackdropSelectionTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Presentation/BackdropSelection.cs",
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs"
+      ],
+      "reason": "The unchanged executed policy resolves the source saved IGDB chosen URL and the matching 3840×2160 artwork to exactly one chosen backdrop. The shared selector supplies Electron candidate lists, preserving saved-art precedence and duplicate removal."
     },
     {
       "id": "BackdropSelectionTests.Known_Steam_heroes_bracket_IGDB_after_the_saved_background",
       "source": "tests/Winnow.Tests/BackdropSelectionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "implementation": [
+        "src/Winnow.Presentation/BackdropSelection.cs",
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs"
+      ],
+      "reason": "The unchanged executed shared policy preserves user chosen first, deduplicates the exact 42,42,invalid,43 Steam inputs, brackets IGDB art with high-resolution then standard Steam heroes, and supplies both 42 fallbacks without metadata. The HTTP endpoint uses that same selector and Steam aspect ratio. The original final width assertion moves to Electron backdropWidth: the existing two-surface renderer policy case explicitly preserves 1920×1080 Steam hero→3840 decode width. Electron does not call the Avalonia-only DecodeWidth consumer path. This mixed contract is ported rather than claiming all assertions remain backend-only.",
+      "tests": [
+        {
+          "file": "tests/avalon-backdrop.test.ts",
+          "case": "Steam hero geometry and decode width stay independent of landscape layers with fullscreen %s"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+          "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images"
+        }
+      ]
     },
     {
       "id": "BackdropSelectionTests.Grouped_non_Steam_playable_copy_keeps_known_Steam_hero_ids",
       "source": "tests/Winnow.Tests/BackdropSelectionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-order.test.tsx",
+          "case": "%s grouped installed GOG primary keeps the Steam42 hero with duplicate Steam ownerships"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ArtworkStateParityTests.cs",
+          "case": "Installed_GOG_primary_keeps_the_known_Steam_hero_through_the_real_library_boundary"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ArtworkStateParityTests.cs",
+          "case": "Repeated_Steam42_repository_observations_produce_one_hero_while_GOG_stays_installed_primary"
+        }
+      ],
+      "reason": "Both real Details component surfaces keep the original three entries: installed GOG ownership1/release1 and Steam ownerships2/3 sharing release2/app42. The playable primary stays GOG with no primary Steam ID, the canonical backdrop requests and consumes only Steam42, and Play dispatches ownership1. SQLite forbids duplicate release/store ownership rows, so real HTTP separately uses the two valid GOG/Steam rows. An additional repository-boundary decorator repeats the Steam42 observation and verifies the actual shared browser emits one high-resolution and one standard hero. This separates renderer consumption from backend deduplication without weakening the duplicate source fixture or the database constraints."
     },
     {
       "id": "BundledThemeTests.Authored_themes_ship_without_a_local_theme_directory",
@@ -23991,17 +24100,66 @@
     {
       "id": "ArtworkPreferenceBackdropTests.Fullscreen_unowned_group_root_background_precedes_owned_child_heroes",
       "source": "tests/Winnow.Ui.Tests/ArtworkPreferenceBackdropTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-order.test.tsx",
+          "case": "uses the unowned canonical root background before Steam42 and SGDB50584 without requesting the owned child background"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ArtworkStateParityTests.cs",
+          "case": "Unowned_group_root_background_precedes_child_Steam_and_grid_art_without_using_child_saved_background"
+        },
+        {
+          "file": "tests/electron/artwork-state.spec.ts",
+          "case": "fullscreen unowned group root tries rootsaved then Steam42 then the original SteamGridDB50584 asset and excludes childsaved"
+        }
+      ],
+      "reason": "The real fullscreen backdrop tries missing user rootsaved, missing Steam hero42, then the exact SteamGridDB50584 URL/key and displays 32×10 pixels; user childsaved is never requested. Detach releases its owner/subscription. The source supplies a resolved root directly through TileFixture without repository links; the HTTP/native fixture records a real confirmed same-game root1/owned child2 link to produce that same canonical projection. Saved root/child fields and child artwork facts are real SQLite data, the missing file and unavailable Steam fetch are genuine failures, and successful bytes traverse the production image pipeline."
     },
     {
       "id": "ArtworkPreferenceBackdropTests.Desktop_live_order_retains_pixels_until_replacement_and_unsubscribes_on_dispose",
       "source": "tests/Winnow.Ui.Tests/ArtworkPreferenceBackdropTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-order.test.tsx",
+          "case": "retains exact 32×10 Steam42 pixels until 32×18 IGDB art arrives and unsubscribes on detach, fullscreen %s"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ArtworkStateParityTests.cs",
+          "case": "HTTP_source_order_updates_the_shared_candidate_policy_and_survives_a_fresh_client"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ArtworkStateParityTests.cs",
+          "case": "Immutable_replacement_image_keeps_source_dimensions_and_records_canceled_late_delivery"
+        },
+        {
+          "file": "tests/electron/artwork-state.spec.ts",
+          "case": "source live order retains the 32 by 10 backdrop until the held 32 by 18 replacement and detaches its subscription"
+        }
+      ],
+      "reason": "The production desktop backdrop preserves the exact Steam42 32×10 resource while IGDB art is pending after saving igdb,steam,steamgriddb. Only 32×18 completion replaces it and releases the old owner; detach releases the new owner and a later preference change makes no new backdrop read. Component lease identity replaces Avalonia bitmap ownership; native uses real encoded dimensions, the actual HTTP preference route/SSE and an immutable serialized-image hold. The shared preference fix makes the changed order visible before refresh publication."
     },
     {
       "id": "ArtworkPreferenceBackdropTests.Fullscreen_live_order_retains_pixels_and_detach_releases_subscriptions",
       "source": "tests/Winnow.Ui.Tests/ArtworkPreferenceBackdropTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-artwork-order.test.tsx",
+          "case": "retains exact 32×10 Steam42 pixels until 32×18 IGDB art arrives and unsubscribes on detach, fullscreen %s"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ArtworkStateParityTests.cs",
+          "case": "HTTP_source_order_updates_the_shared_candidate_policy_and_survives_a_fresh_client"
+        },
+        {
+          "file": "tests/electron/artwork-state.spec.ts",
+          "case": "source live order retains the 32 by 10 backdrop until the held 32 by 18 replacement and detaches its subscription"
+        }
+      ],
+      "reason": "At the original 1920×1080 with reduced motion, fullscreen preserves the exact old 32×10 Steam42 pixels while the 32×18 IGDB replacement is held, using this source method’s distinct igdb,steamgriddb,steam order. Completion replaces and releases the old resource; detach clears the new image, releases its owner and subscription, and the later steam,igdb,steamgriddb event triggers no read. Actual API/pipeline/native evidence complements the exact component ownership assertions; immutable response gating does not rewrite candidate or image data."
     },
     {
       "id": "BackendLiveUpdatesTests.FullscreenActivityJournalAndSummaryUseApiOnlyFrontendServices",

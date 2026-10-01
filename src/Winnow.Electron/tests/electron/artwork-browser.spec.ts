@@ -96,6 +96,95 @@ async function inside(target: Locator, container: Locator) {
   expect(box!.x + box!.width).toBeLessThanOrEqual(outer!.x + outer!.width + 1)
   expect(box!.y + box!.height).toBeLessThanOrEqual(outer!.y + outer!.height + 1)
 }
+async function fullscreenPage(width: number, height: number, scale: number) {
+  await expect
+    .poll(() =>
+      dialog()
+        .locator('.artwork-choice')
+        .evaluateAll(
+          (nodes) =>
+            nodes.length > 0 && nodes.every((node) => (node.querySelector('img')?.naturalWidth ?? 0) > 0),
+        ),
+    )
+    .toBe(true)
+  const measured = await dialog().evaluate((node) => {
+    const style = getComputedStyle(node)
+    const body = node.querySelector('.artwork-browser')!
+    const heading = body.querySelector('h2')!
+    const input = body.querySelector('input')!
+    const slot = body.querySelector('.artwork-browser-slots button')!
+    const label = body.querySelector('.field')!
+    const zoom = Number(getComputedStyle(document.body).zoom)
+    return {
+      bounds: node.getBoundingClientRect().toJSON(),
+      viewport: [innerWidth, innerHeight],
+      zoom,
+      textScale: getComputedStyle(document.documentElement).getPropertyValue('--fullscreen-text-scale'),
+      safeRatio:
+        Number(getComputedStyle(document.documentElement).getPropertyValue('--fullscreen-safe-ratio')) ||
+        0.05,
+      padding: [parseFloat(style.paddingTop) * zoom, parseFloat(style.paddingLeft) * zoom],
+      fonts: {
+        body: parseFloat(getComputedStyle(body).fontSize),
+        title: parseFloat(getComputedStyle(heading).fontSize),
+        slot: parseFloat(getComputedStyle(slot).fontSize),
+        input: parseFloat(getComputedStyle(input).fontSize),
+        label: parseFloat(getComputedStyle(label).fontSize),
+        crop: parseFloat(getComputedStyle(body.querySelector('.artwork-crop-controls button')!).fontSize),
+      },
+      minHeight: parseFloat(getComputedStyle(slot).minHeight),
+      candidates: [...body.querySelectorAll('.artwork-choice')].map((choice) => ({
+        current: choice.parentElement?.classList.contains('artwork-browser-gallery'),
+        imageHeight: parseFloat(getComputedStyle(choice.querySelector('img')!).height),
+        stateFont: parseFloat(getComputedStyle(choice.querySelector(':scope > span')!).fontSize),
+        descriptionFont: parseFloat(getComputedStyle(choice.querySelector('small')!).fontSize),
+        gap: parseFloat(getComputedStyle(choice).gap),
+      })),
+    }
+  })
+  await test.info().attach('fullscreen-artwork-page-measurements', {
+    body: JSON.stringify(measured, null, 2),
+    contentType: 'application/json',
+  })
+  expect(measured.viewport).toEqual([width, height])
+  expect(measured.bounds.x).toBeCloseTo(0, 1)
+  expect(measured.bounds.y).toBeCloseTo(0, 1)
+  expect(measured.bounds.width).toBeCloseTo(width, 1)
+  expect(measured.bounds.height).toBeCloseTo(height, 1)
+  expect(measured.padding[0]).toBeCloseTo(height * measured.safeRatio, 1)
+  expect(measured.padding[1]).toBeCloseTo(width * measured.safeRatio, 1)
+  const referenceScale = Math.min(1, width / 1920)
+  for (const [role, reference] of Object.entries({
+    body: 24,
+    title: 32,
+    slot: 28,
+    input: 24,
+    label: 22,
+    crop: 24,
+  }))
+    expect(measured.fonts[role as keyof typeof measured.fonts]).toBeCloseTo(
+      reference * referenceScale * scale,
+      1,
+    )
+  expect(measured.minHeight).toBe(64)
+  expect(measured.candidates.length).toBeGreaterThan(0)
+  for (const choice of measured.candidates) {
+    expect(choice.imageHeight).toBe(choice.current ? 100 : 150)
+    expect(choice.stateFont).toBeCloseTo(22 * referenceScale * scale, 1)
+    expect(choice.descriptionFont).toBeCloseTo(22 * referenceScale * scale, 1)
+    expect(choice.gap).toBe(16)
+  }
+  const hints = dialog().getByRole('group', { name: 'Artwork controls', exact: true })
+  await expect(hints).toBeVisible()
+  for (const glyph of ['LT', 'RT', 'A', 'B'])
+    await expect(hints.locator(`[data-artwork-glyph="${glyph}"] svg`)).toBeVisible()
+  await inside(hints, dialog())
+  for (const control of [
+    dialog().locator('.artwork-browser-heading'),
+    dialog().locator('.artwork-browser-actions'),
+  ])
+    await inside(control, dialog())
+}
 for (const [width, height] of [
   [1280, 820],
   [1200, 640],
@@ -185,15 +274,16 @@ test('desktop artwork traps both keyboard directions and Back restores More with
   await expect(detail().getByRole('button', { name: 'More', exact: true })).toBeFocused()
   expect((await writes()).length).toBe(count)
 })
-for (const [reducedMotion, scale] of [
-  [false, 1],
-  [true, 1.4],
+for (const [reducedMotion, scale, width, height] of [
+  [false, 1, 1920, 1080],
+  [true, 1.4, 1920, 1080],
+  [true, 1.4, 1280, 720],
 ] as const)
-  test(`fullscreen artwork preserves controller selection focus during paging with reduced motion ${reducedMotion} and text ${scale}`, async ({}, info) => {
+  test(`fullscreen artwork preserves controller selection focus during paging with reduced motion ${reducedMotion} and text ${scale}${width === 1280 ? ' at 1280 by 720' : ''}`, async ({}, info) => {
     await app.evaluate(() => {
       ;(globalThis as unknown as { __artworkBrowser: { count: number } }).__artworkBrowser.count = 1
     })
-    await open('fullscreen', 1920, 1080, scale)
+    await open('fullscreen', width, height, scale)
     await page.emulateMedia({ reducedMotion: reducedMotion ? 'reduce' : 'no-preference' })
     await page.evaluate(() => {
       const state = { pressed: [] as number[] }
@@ -221,6 +311,7 @@ for (const [reducedMotion, scale] of [
       await buttons([index])
       await buttons([])
     }
+    await fullscreenPage(width, height, scale)
     for (const [button, order] of [
       [7, ['Cover', 'Icon', 'Hero']],
       [6, ['Icon', 'Cover', 'Hero']],
@@ -244,6 +335,43 @@ for (const [reducedMotion, scale] of [
     await tap(0)
     await expect(dialog().getByText('Artwork saved.', { exact: true })).toBeVisible()
     await expect(dialog().getByRole('button', { name: 'Use automatic', exact: true })).toBeEnabled()
+    await fullscreenPage(width, height, scale)
+    const preview = dialog().getByRole('region', { name: 'Artwork preview' })
+    const image = preview.locator('.artwork-preview-frame img')
+    await expect(image).toHaveCount(1)
+    await expect.poll(() => image.evaluate((node) => (node as HTMLImageElement).naturalWidth)).toBe(800)
+    await inside(image, preview)
+    for (const crop of await preview.locator('.artwork-crop-controls button').all())
+      await inside(crop, preview)
+    await info.attach('persistent-preview-bounds', {
+      body: JSON.stringify({
+        image: await image.boundingBox(),
+        preview: await preview.boundingBox(),
+        crops: await preview
+          .locator('.artwork-crop-controls button')
+          .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().toJSON())),
+      }),
+      contentType: 'application/json',
+    })
+    const before = [await preview.boundingBox(), await apply.boundingBox()]
+    await dialog()
+      .locator('.artwork-browser-gallery')
+      .evaluate((node) => {
+        node.scrollTop = 500
+      })
+    expect([await preview.boundingBox(), await apply.boundingBox()]).toEqual(before)
+    const url = dialog().getByRole('textbox', { name: 'Artwork image URL', exact: true })
+    await url.focus()
+    await expect(dialog().locator('.artwork-controller-hints [data-artwork-glyph="Y"] svg')).toBeVisible()
+    await tap(3)
+    const keyboard = page.getByRole('dialog', { name: 'Enter text', exact: true })
+    await expect(keyboard).toBeVisible()
+    for (const glyph of ['A', 'B', 'X', 'RT'])
+      await expect(keyboard.locator(`[data-keyboard-glyph="${glyph}"] svg`)).toBeVisible()
+    await page.screenshot({ path: info.outputPath(`fullscreen-${scale}-keyboard.png`) })
+    await tap(1)
+    await expect(keyboard).toHaveCount(0)
+    await expect(url).toBeFocused()
     await page.screenshot({ path: info.outputPath(`fullscreen-${scale}.png`) })
     await tap(1)
     await expect(dialog()).toHaveCount(0)

@@ -21,13 +21,15 @@
     overflow: hidden;
   }
   .artwork-browser-dialog.mode-fullscreen {
-    inset: 0;
-    width: 100vw;
-    height: 100dvh;
+    inset: 0 auto auto 0;
+    width: calc(100vw / var(--effective-interface-scale));
+    height: calc(100dvh / var(--effective-interface-scale));
+    margin: 0;
     border: 0;
     border-radius: 0;
-    padding: 4vh 5vw;
-    font-size: calc(18px * var(--fullscreen-text-scale, 1));
+    background: var(--bg);
+    padding: calc(100vh * var(--fullscreen-safe-ratio, 0.05) / var(--effective-interface-scale))
+      calc(100vw * var(--fullscreen-safe-ratio, 0.05) / var(--effective-interface-scale));
   }
   .artwork-browser {
     display: grid;
@@ -238,11 +240,95 @@
     margin: 0;
     padding: 0;
   }
+  .artwork-browser.mode-fullscreen {
+    --artwork-text-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+    font-size: calc(clamp(16px, 1.25vw, 24px) * var(--artwork-text-scale));
+    gap: 20px;
+  }
+  .artwork-browser.mode-fullscreen .artwork-browser-heading h2 {
+    font-size: calc(clamp(21.33px, 1.667vw, 32px) * var(--artwork-text-scale));
+  }
+  .artwork-browser.mode-fullscreen button,
+  .artwork-browser.mode-fullscreen input {
+    min-height: 64px;
+    font-size: calc(clamp(18.67px, 1.458vw, 28px) * var(--artwork-text-scale));
+  }
   .artwork-browser.mode-fullscreen button {
-    min-height: 42px;
+    padding: 12px 24px;
+  }
+  .artwork-browser.mode-fullscreen .artwork-crop-controls button,
+  .artwork-browser.mode-fullscreen input {
+    font-size: calc(clamp(16px, 1.25vw, 24px) * var(--artwork-text-scale));
+  }
+  .artwork-browser.mode-fullscreen .field,
+  .artwork-browser.mode-fullscreen .status-message,
+  .artwork-browser.mode-fullscreen .error-message,
+  .artwork-browser.mode-fullscreen small {
+    font-size: calc(clamp(14.67px, 1.146vw, 22px) * var(--artwork-text-scale));
+  }
+  .artwork-browser.mode-fullscreen .artwork-browser-gallery > .artwork-choice {
+    width: 100%;
+  }
+  .artwork-browser.mode-fullscreen .artwork-choice {
+    font-size: calc(clamp(14.67px, 1.146vw, 22px) * var(--artwork-text-scale));
+    gap: 16px;
+  }
+  .artwork-browser.mode-fullscreen .artwork-choice img {
+    height: 150px;
+  }
+  .artwork-browser.mode-fullscreen .artwork-browser-gallery > .artwork-choice img {
+    height: 100px;
   }
   .artwork-browser.mode-fullscreen .artwork-browser-candidates {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .artwork-controller-hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 32px;
+    color: var(--muted);
+    font-size: calc(clamp(14.67px, 1.146vw, 22px) * var(--artwork-text-scale));
+  }
+  .artwork-controller-hints > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .artwork-control-glyph {
+    display: inline-flex;
+    flex-shrink: 0;
+    width: calc(28px * var(--artwork-text-scale));
+    height: calc(28px * var(--artwork-text-scale));
+  }
+  .artwork-control-glyph svg {
+    width: 100%;
+    height: 100%;
+  }
+  .artwork-control-glyph path {
+    fill: currentColor;
+  }
+  @media (max-height: 800px) and (min-width: 951px) {
+    .artwork-browser.mode-fullscreen .artwork-browser-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 32px;
+    }
+    .artwork-browser.mode-fullscreen .artwork-browser-actions {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      column-gap: 16px;
+    }
+    .artwork-browser.mode-fullscreen .artwork-browser-actions > .status-message,
+    .artwork-browser.mode-fullscreen .artwork-browser-actions > .error-message,
+    .artwork-browser.mode-fullscreen .artwork-browser-actions > .artwork-controller-hints,
+    .artwork-browser.mode-fullscreen .artwork-browser-actions > button {
+      grid-column: 1 / -1;
+    }
+    .artwork-browser.mode-fullscreen .artwork-browser-actions form,
+    .artwork-browser.mode-fullscreen .artwork-browser-actions .field {
+      min-width: 0;
+    }
   }
   @media (max-width: 950px) {
     .artwork-browser-body {

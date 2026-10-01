@@ -719,6 +719,7 @@ export function AvalonDetailsLayout({
       {metadataOpen && metadata.data?.available !== false && (
         <MetadataDialog
           workId={workId}
+          coverWorkId={game?.headerWorkId ?? game?.workId}
           title={game?.title ?? 'Game'}
           mode={mode}
           editText={editText}
@@ -731,6 +732,7 @@ export function AvalonDetailsLayout({
       {artworkOpen && (
         <ArtworkBrowserDialog
           workId={workId}
+          coverWorkId={game?.headerWorkId ?? game?.workId}
           title={game?.title ?? 'Game artwork'}
           mode={mode}
           onClose={() => {

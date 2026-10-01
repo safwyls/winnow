@@ -1,5 +1,7 @@
 using Winnow.Api.Contracts.Preferences;
+using Winnow.App.Services;
 using Winnow.Core.Repositories;
+using Winnow.Enrich.Igdb.Storage;
 using Xunit;
 
 namespace Winnow.Application.Tests;
@@ -18,7 +20,7 @@ public sealed class PresentationPreferencesTests
         settings.Values["fullscreen.reduced-motion"] = "true";
         settings.Values["fullscreen.fit-ultrawide"] = "true";
         var changes = new Changes();
-        var preferences = new PresentationPreferencesService(settings, changes);
+        var preferences = new PresentationPreferencesService(settings, changes, new ArtworkPreferences(settings));
 
         var initial = (await preferences.ReadAsync(default)).ToDictionary(row => row.Preference, row => row.Value);
         Assert.Null(initial[PresentationPreference.FullscreenInterfaceScale]);
@@ -34,14 +36,14 @@ public sealed class PresentationPreferencesTests
         Assert.Equal(legacyScale, settings.Values["fullscreen.ui-scale"]);
         Assert.Equal(("preferences.changed", "FullscreenInterfaceScale"), Assert.Single(changes.Events));
 
-        var reloaded = new PresentationPreferencesService(settings, new Changes());
+        var reloaded = new PresentationPreferencesService(settings, new Changes(), new ArtworkPreferences(settings));
         var current = (await reloaded.ReadAsync(default)).ToDictionary(row => row.Preference, row => row.Value);
         Assert.Equal("1.1", current[PresentationPreference.FullscreenInterfaceScale]);
         foreach (var preference in initial.Keys.Where(key => key != PresentationPreference.FullscreenInterfaceScale))
             Assert.Equal(initial[preference], current[preference]);
     }
 
-    private sealed class MemorySettings : ISettingsRepository
+    private sealed class MemorySettings : ISettingsRepository, ISettingsStore
     {
         public Dictionary<string, string> Values { get; } = [];
         public Task<string?> GetAsync(string key, CancellationToken ct = default) =>
@@ -49,6 +51,13 @@ public sealed class PresentationPreferencesTests
         public Task SetAsync(string key, string value, CancellationToken ct = default)
         {
             Values[key] = value;
+            return Task.CompletedTask;
+        }
+        Task ISettingsStore.SetAsync(string key, string? value, CancellationToken ct) =>
+            value is null ? RemoveAsync(key, ct) : SetAsync(key, value, ct);
+        public Task RemoveAsync(string key, CancellationToken ct = default)
+        {
+            Values.Remove(key);
             return Task.CompletedTask;
         }
     }

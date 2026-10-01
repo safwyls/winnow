@@ -17,6 +17,35 @@ interface ArtState {
 }
 let selectionRead = 0
 
+export function useArtworkSelection(workId: number, hero = false, enabled = true) {
+  return useQuery({
+    queryKey: ['artwork', workId, hero],
+    enabled,
+    staleTime: artworkFreshness,
+    gcTime: artworkLifetime,
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const requestId = crypto.randomUUID().replaceAll('-', '')
+      const cancel = () => {
+        void window.winnow.cancelRequest?.(requestId).catch(() => undefined)
+      }
+      signal.addEventListener('abort', cancel, { once: true })
+      try {
+        const result = await window.winnow.request<ArtState>({
+          route: 'artworkState',
+          params: { workId, slot: hero ? 'Hero' : 'Cover' },
+          requestId,
+        })
+        signal.throwIfAborted()
+        if (!result.ok) throw new Error('Artwork state could not be loaded.')
+        return { selection: result.data ?? null, read: ++selectionRead }
+      } finally {
+        signal.removeEventListener('abort', cancel)
+      }
+    },
+  })
+}
+
 export function Artwork({
   workId,
   hero = false,
@@ -75,31 +104,7 @@ export function Artwork({
     },
     [],
   )
-  const state = useQuery({
-    queryKey: ['artwork', workId, hero],
-    staleTime: artworkFreshness,
-    gcTime: artworkLifetime,
-    retry: false,
-    queryFn: async ({ signal }) => {
-      const requestId = crypto.randomUUID().replaceAll('-', '')
-      const cancel = () => {
-        void window.winnow.cancelRequest?.(requestId).catch(() => undefined)
-      }
-      signal.addEventListener('abort', cancel, { once: true })
-      try {
-        const result = await window.winnow.request<ArtState>({
-          route: 'artworkState',
-          params: { workId, slot: hero ? 'Hero' : 'Cover' },
-          requestId,
-        })
-        signal.throwIfAborted()
-        if (!result.ok) throw new Error('Artwork state could not be loaded.')
-        return { selection: result.data ?? null, read: ++selectionRead }
-      } finally {
-        signal.removeEventListener('abort', cancel)
-      }
-    },
-  })
+  const state = useArtworkSelection(workId, hero)
   const key = state.data?.selection?.current?.previewKey
   const identity = key ? JSON.stringify([view, key.provider, key.id, state.data!.selection!.revision]) : ''
   // A realized surface keeps its best size; recycling starts from the new surface's measured width.

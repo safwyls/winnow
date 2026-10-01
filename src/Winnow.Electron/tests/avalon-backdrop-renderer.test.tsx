@@ -88,6 +88,31 @@ afterEach(() => {
   vi.unstubAllGlobals()
   document.documentElement.classList.remove('reduced-motion')
 })
+
+it('keeps the exact 21:9 fit threshold under fractional interface zoom despite rounded client dimensions', async () => {
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(2965)
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(1271)
+  const originalStyle = window.getComputedStyle.bind(window)
+  vi.spyOn(window, 'getComputedStyle').mockImplementation((node) => {
+    const style = originalStyle(node)
+    if (node.classList.contains('avalon-backdrop')) {
+      Object.defineProperty(style, 'width', { value: String(2520 / 0.85) })
+      Object.defineProperty(style, 'height', { value: String(1080 / 0.85) })
+    }
+    return style
+  })
+  const view = render(<AvalonBackdrop workId={1} fullscreen reducedMotion />)
+  await waitFor(() =>
+    expect(view.container.querySelector('.avalon-backdrop-art')?.getAttribute('data-fitted')).toBe('true'),
+  )
+  const image = view.container.querySelector<HTMLElement>('.avalon-backdrop-art')!
+  expect(Number.parseFloat(image.style.width) * 0.85).toBeCloseTo(2520, 5)
+  expect(Number.parseFloat(image.style.height) * 0.85).toBeCloseTo(813.75, 5)
+  const read = vi
+    .mocked(window.winnow.request)
+    .mock.calls.find(([input]) => input.route === 'artwork.backdrop')![0]
+  expect(read.params?.aspectRatio).toBeCloseTo(21 / 9, 8)
+})
 function frame(time: number) {
   act(() => {
     const pending = [...frames.values()]

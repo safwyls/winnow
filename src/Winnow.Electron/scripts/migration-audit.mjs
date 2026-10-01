@@ -43,6 +43,8 @@ const reviewedBackendFiles = new Set([
   'src/Winnow.Enrich.Steam/SteamStoreClient.cs',
   'src/Winnow.Enrich.Steam/Model/SteamStoreJson.cs',
   'src/Winnow.Presentation/CoverSelection.cs',
+  'src/Winnow.Presentation/ArtworkPreferences.cs',
+  'src/Winnow.Presentation/BackdropSelection.cs',
   'src/Winnow.Covers/UserArt.cs',
   'src/Winnow.Covers/PluginArtRef.cs',
   'src/Winnow.Covers/IgdbImageUrl.cs',

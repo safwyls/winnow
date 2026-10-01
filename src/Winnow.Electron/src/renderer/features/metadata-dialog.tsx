@@ -7,12 +7,14 @@ import './metadata-dialog.css'
 
 export function MetadataDialog({
   workId,
+  coverWorkId,
   title,
   mode,
   onClose,
   editText,
 }: {
   workId: number
+  coverWorkId?: number
   title: string
   mode: Mode
   onClose(): void
@@ -62,6 +64,7 @@ export function MetadataDialog({
           <div className="metadata-dialog-body">
             <MetadataEditor
               workId={workId}
+              coverWorkId={coverWorkId}
               mode={mode}
               navigation={mode === 'fullscreen' ? 'fields' : 'form'}
               navigationRef={navigation}

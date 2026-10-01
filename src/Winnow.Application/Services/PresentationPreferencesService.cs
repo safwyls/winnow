@@ -1,9 +1,11 @@
 using Winnow.Api.Contracts.Preferences;
+using Winnow.App.Services;
 using Winnow.Core.Repositories;
 
 namespace Winnow.Application;
 
-public sealed class PresentationPreferencesService(ISettingsRepository settings, IApplicationChangePublisher changes)
+public sealed class PresentationPreferencesService(ISettingsRepository settings, IApplicationChangePublisher changes,
+    ArtworkPreferences artwork)
 {
     public static string StorageKey(PresentationPreference preference) => preference switch
     {
@@ -48,7 +50,10 @@ public sealed class PresentationPreferencesService(ISettingsRepository settings,
     {
         ArgumentNullException.ThrowIfNull(value);
         if (value.Length > 16384 || value.Contains('\0')) throw new ArgumentException("Preference value is invalid.");
-        await settings.SetAsync(StorageKey(preference), value, ct);
+        if (preference == PresentationPreference.ArtworkSourceOrder)
+            await artwork.SaveAsync(value.Split(','), ct);
+        else
+            await settings.SetAsync(StorageKey(preference), value, ct);
         changes.Publish("preferences.changed", preference.ToString());
         if (preference is PresentationPreference.ShowNonGameEntries or PresentationPreference.ShowExplicitContent
             or PresentationPreference.MaturityCap or PresentationPreference.GroupExpansions)

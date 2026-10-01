@@ -45,7 +45,15 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [cover ownership and presentation checkpoint](checkpoint-seventy-six.md) records
+The [artwork state and backdrop checkpoint](checkpoint-seventy-seven.md) records all
+3,918 component/live API cases, seventeen unchanged source cases, seventeen distinct
+native cases, fifteen HTTP cases and two application regressions passing. Current
+cover projection, live source order, fullscreen artwork presentation and fractional
+ultrawide measurements preserve both surfaces. Six assigned methods are ported and
+ten remain shared backend policy, leaving 173 pending and 29 partial methods. Work
+continues through the authorized batch ending at TASK-381.30.
+
+The preceding [cover ownership and presentation checkpoint](checkpoint-seventy-six.md) records
 all 3,904 component/live API cases, forty unchanged source cases, 26 new native cases, eighteen existing native artwork
 regressions, 21 HTTP cases and 194 cover-library cases passing. Screenshot leases,
 conversion limits, failure cleanup and live Fit/Fill now preserve both surfaces'

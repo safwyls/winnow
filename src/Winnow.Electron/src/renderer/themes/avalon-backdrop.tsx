@@ -64,8 +64,10 @@ export function AvalonBackdrop({
     const node = element.current!
     const resize = () => {
       const bounds = node.getBoundingClientRect()
-      const width = node.clientWidth,
-        height = node.clientHeight
+      // Integer client dimensions can turn a 21:9 viewport into a narrower ratio under zoom.
+      const layout = getComputedStyle(node)
+      const width = Number.parseFloat(layout.width) || node.clientWidth,
+        height = Number.parseFloat(layout.height) || node.clientHeight
       setSize((previous) =>
         width === previous.width &&
         height === previous.height &&

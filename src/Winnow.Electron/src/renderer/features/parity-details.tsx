@@ -584,6 +584,7 @@ const metadataSource = (source?: string | null) =>
 
 export function MetadataEditor({
   workId,
+  coverWorkId,
   mode = 'desktop',
   navigation = 'form',
   navigationRef,
@@ -591,6 +592,7 @@ export function MetadataEditor({
   editText,
 }: {
   workId: number
+  coverWorkId?: number
   mode?: 'desktop' | 'fullscreen'
   navigation?: 'form' | 'fields'
   navigationRef?: Ref<MetadataEditorNavigation>
@@ -1027,6 +1029,7 @@ export function MetadataEditor({
       {artworkSlot && (
         <ArtworkBrowserDialog
           workId={workId}
+          coverWorkId={coverWorkId}
           title={metadata.data?.title ?? 'Game artwork'}
           mode={mode}
           initialSlot={artworkSlot}

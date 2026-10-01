@@ -6,10 +6,38 @@ import type { ArtworkCandidate, ArtworkPage, ArtworkState, CoverKey, Mode } from
 import type { ArtworkSaveResult } from '../../shared/bridge'
 import { updatePageUrl } from './details-facts'
 import { Empty, Notice } from './shared'
+import { useArtworkSelection } from '../components/Artwork'
+import leftTrigger from './assets/xbox_lt_outline.svg?raw'
+import rightTrigger from './assets/xbox_rt_outline.svg?raw'
+import selectButton from './assets/xbox_button_a_outline.svg?raw'
+import backButton from './assets/xbox_button_b_outline.svg?raw'
+import keyboardButton from './assets/xbox_button_y_outline.svg?raw'
 import './artwork-browser.css'
 
 export const artworkSlots = ['Hero', 'Cover', 'Icon'] as const
 export type ArtworkSlot = (typeof artworkSlots)[number]
+const controlArtwork = {
+  LT: leftTrigger,
+  RT: rightTrigger,
+  A: selectButton,
+  B: backButton,
+  Y: keyboardButton,
+}
+function ArtworkControlGlyph({ button }: { button: keyof typeof controlArtwork }) {
+  return (
+    <span
+      className="artwork-control-glyph"
+      data-artwork-glyph={button}
+      aria-hidden="true"
+      dangerouslySetInnerHTML={{
+        __html: controlArtwork[button].replace(
+          '<svg ',
+          `<svg viewBox="${button.length === 2 ? '0 0 64 64' : '8 8 48 48'}" `,
+        ),
+      }}
+    />
+  )
+}
 interface ArtworkSource {
   id: string
   name: string
@@ -74,12 +102,14 @@ export function ArtworkImage({
 
 export function ArtworkBrowserDialog({
   workId,
+  coverWorkId,
   title,
   mode,
   initialSlot = 'Hero',
   onClose,
 }: {
   workId: number
+  coverWorkId?: number
   title: string
   mode: Mode
   initialSlot?: ArtworkSlot
@@ -121,6 +151,7 @@ export function ArtworkBrowserDialog({
         >
           <ArtworkBrowser
             workId={workId}
+            coverWorkId={coverWorkId}
             title={title}
             mode={mode}
             initialSlot={initialSlot}
@@ -138,6 +169,7 @@ export function ArtworkBrowserDialog({
 
 export function ArtworkBrowser({
   workId,
+  coverWorkId,
   title = 'Artwork',
   mode = 'desktop',
   initialSlot = 'Hero',
@@ -146,6 +178,7 @@ export function ArtworkBrowser({
   onBusyChange,
 }: {
   workId: number
+  coverWorkId?: number
   title?: string
   mode?: Mode
   initialSlot?: ArtworkSlot
@@ -153,6 +186,7 @@ export function ArtworkBrowser({
   onClose?(): void
   onBusyChange?(busy: boolean): void
 }) {
+  const [editingUrl, setEditingUrl] = useState(false)
   const [slot, setSlot] = useState<ArtworkSlot>(initialSlot)
   const [slots, setSlots] = useState<Record<ArtworkSlot, BrowseState>>({
     Hero: freshSlot(),
@@ -189,8 +223,24 @@ export function ArtworkBrowser({
     staleTime: 30_000,
     retry: false,
   })
-  const selected = slots[slot].selected ?? current.data?.current
-  const isCurrent = sameArtwork(selected, current.data?.current)
+  const automaticCover =
+    Boolean(current.data) &&
+    slot === 'Cover' &&
+    (!current.data?.current || current.data.current.sourceId === 'automatic')
+  const displayed = useArtworkSelection(coverWorkId ?? workId, false, automaticCover)
+  const displayedKey = displayed.data?.selection?.current?.previewKey
+  const currentCandidate: ArtworkCandidate | null | undefined =
+    automaticCover && displayedKey
+      ? {
+          sourceId: 'automatic',
+          sourceName: 'Automatic',
+          assetId: `${displayedKey.provider}:${displayedKey.id}`,
+          previewKey: displayedKey,
+          isCurrent: true,
+        }
+      : current.data?.current
+  const selected = slots[slot].selected ?? currentCandidate
+  const isCurrent = sameArtwork(selected, currentCandidate)
   const needsRefresh = refreshFailed || (error instanceof ApiError && (error.conflict || error.uncertain))
   const writable = Boolean(current.data) && !current.isFetching && !current.error && !needsRefresh && !busy
   useEffect(() => {
@@ -324,7 +374,7 @@ export function ArtworkBrowser({
             )
           }}
         >
-          {mode === 'fullscreen' && <span aria-hidden="true">LT</span>}
+          {mode === 'fullscreen' && <ArtworkControlGlyph button="LT" />}
           {artworkSlots.map((name) => (
             <button
               key={name}
@@ -337,7 +387,7 @@ export function ArtworkBrowser({
               {name}
             </button>
           ))}
-          {mode === 'fullscreen' && <span aria-hidden="true">RT</span>}
+          {mode === 'fullscreen' && <ArtworkControlGlyph button="RT" />}
         </div>
         <nav className="artwork-browser-sources" aria-label="Artwork sources">
           <button
@@ -361,13 +411,13 @@ export function ArtworkBrowser({
       </div>
       <div className="artwork-browser-body">
         <div ref={gallery} className="artwork-browser-gallery" tabIndex={-1}>
-          {current.data?.current && (
+          {currentCandidate && (
             <ArtworkChoice
-              candidate={current.data.current}
+              candidate={currentCandidate}
               selected={isCurrent}
               current
               disabled={busy}
-              onSelect={() => patchSlot({ selected: current.data!.current! })}
+              onSelect={() => patchSlot({ selected: null })}
             />
           )}
           {sources.data?.map((source) => (
@@ -378,7 +428,7 @@ export function ArtworkBrowser({
               source={source}
               visible={slots[slot].source === 'all' || slots[slot].source === source.id}
               selected={selected}
-              current={current.data?.current}
+              current={currentCandidate}
               disabled={busy}
               onSelect={(candidate) => patchSlot({ selected: candidate })}
             />
@@ -492,6 +542,8 @@ export function ArtworkBrowser({
               aria-label="Artwork image URL"
               value={url}
               disabled={busy}
+              onFocus={() => setEditingUrl(true)}
+              onBlur={() => setEditingUrl(false)}
               onChange={(event) => setUrl(event.target.value)}
             />
           </label>
@@ -514,6 +566,29 @@ export function ArtworkBrowser({
             </button>
           )}
         </div>
+        {mode === 'fullscreen' && (
+          <div className="artwork-controller-hints" role="group" aria-label="Artwork controls">
+            <span>
+              <ArtworkControlGlyph button="LT" />
+              <ArtworkControlGlyph button="RT" />
+              <span className="sr-only">LT / RT </span>Artwork type
+            </span>
+            <span>
+              <ArtworkControlGlyph button="A" />
+              <span className="sr-only">A </span>Preview or select
+            </span>
+            <span>
+              <ArtworkControlGlyph button="B" />
+              <span className="sr-only">B </span>Back
+            </span>
+            {editingUrl && !busy && (
+              <span>
+                <ArtworkControlGlyph button="Y" />
+                <span className="sr-only">Y </span>Keyboard
+              </span>
+            )}
+          </div>
+        )}
       </footer>
     </section>
   )
