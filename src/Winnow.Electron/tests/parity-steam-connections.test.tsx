@@ -122,8 +122,16 @@ describe.each(['desktop', 'fullscreen'])('%s Steam connection presentation', (mo
       ).toBeTruthy()
       expect(screen.getByRole('region', { name: 'Steam sign-in method' })).toBeTruthy()
       expect(screen.getByRole('region', { name: 'Steam API key method' })).toBeTruthy()
-      expect(within(screen.getByRole('region', { name: 'Steam sign-in method' })).getByRole('heading').textContent?.includes('In use')).toBe(session && !key)
-      expect(within(screen.getByRole('region', { name: 'Steam API key method' })).getByRole('heading').textContent?.includes('In use')).toBe(key)
+      expect(
+        within(screen.getByRole('region', { name: 'Steam sign-in method' }))
+          .getByRole('heading')
+          .textContent?.includes('In use'),
+      ).toBe(session && !key)
+      expect(
+        within(screen.getByRole('region', { name: 'Steam API key method' }))
+          .getByRole('heading')
+          .textContent?.includes('In use'),
+      ).toBe(key)
       expect(screen.getByRole('heading', { name: 'Local files On' })).toBeTruthy()
       expect(screen.getByText(key ? 'On - API' : session ? 'On - Login' : 'Off')).toBeTruthy()
       if (key) {
@@ -182,7 +190,8 @@ describe.each(['desktop', 'fullscreen'])('%s Steam connection presentation', (mo
   it('does not display a blocked identity message after confirmation', async () => {
     const harness = fixture({}, () => ({ accountConfirmed: true, ownAccountOnly: false, hiddenCount: 4 }))
     render(<AccountVisibility credentials={snapshot(false, true, 1).steam} />, { wrapper: harness.wrapper })
-    await screen.findByText('4 games from other accounts are affected.')
+    await screen.findByText('games from other accounts')
+    expect(document.querySelector('.account-scope-count-value')?.textContent).toBe('4')
     expect(screen.queryByText(/Signing in again should resolve/)).toBeNull()
     expect((screen.getByRole('checkbox') as HTMLInputElement).disabled).toBe(false)
   })
@@ -226,8 +235,7 @@ describe.each(['desktop', 'fullscreen'])('%s Steam connection presentation', (mo
         { wrapper: harness.wrapper },
       )
       expect(
-        (screen.getByRole('checkbox', { name: 'Only show games from my Steam account' }) as HTMLInputElement)
-          .disabled,
+        (screen.getByRole('checkbox', { name: 'Show only your account' }) as HTMLInputElement).disabled,
       ).toBe(true)
       fireEvent.click(screen.getByRole('button', { name: 'Sign in to Steam' }))
       fireEvent.click(screen.getByRole('button', { name: 'Continue to Steam' }))
@@ -243,7 +251,7 @@ describe.each(['desktop', 'fullscreen'])('%s Steam connection presentation', (mo
         expect(
           (
             screen.getByRole('checkbox', {
-              name: 'Only show games from my Steam account',
+              name: 'Show only your account',
             }) as HTMLInputElement
           ).disabled,
         ).toBe(!confirmed),

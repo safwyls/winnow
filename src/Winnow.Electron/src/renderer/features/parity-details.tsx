@@ -246,7 +246,15 @@ function ScreenshotImage({ asset, width }: { asset: { provider: string; id: stri
   return <ArtworkAsset asset={asset} width={width} alt="Game screenshot" />
 }
 
-export function UpdateSignals({ details, game }: { details?: GameDetails; game?: LibraryGame }) {
+export function UpdateSignals({
+  details,
+  game,
+  hasCachedNotes = false,
+}: {
+  details?: GameDetails
+  game?: LibraryGame
+  hasCachedNotes?: boolean
+}) {
   const facts = details as DetailFacts | undefined
   const client = useQueryClient()
   const [busy, setBusy] = useViewState(`updates:${details?.workId}:sending`, false)
@@ -362,48 +370,46 @@ export function UpdateSignals({ details, game }: { details?: GameDetails; game?:
     <section className="feature-panel">
       <h2>Updates</h2>
       <p className="update-gap-caption">{flags.caption}</p>
-      {!events.length ? (
-        <Empty>No update signals recorded.</Empty>
-      ) : (
-        events.map((event) => (
-          <article
-            className="update-row"
-            key={event.id}
-            data-unread={event.unread}
-            aria-label={`${updateHeadline(event)} · ${dateLabel(event.occurredAt)}${event.unread ? ' · unread' : ''}`}
-          >
-            <div>
-              <time>{dateLabel(event.occurredAt)}</time>
-              <h3>
-                {event.unread && (
-                  <span className="update-unread-dot" aria-hidden="true">
-                    ●{' '}
-                  </span>
-                )}
-                {updateHeadline(event)}
-              </h3>
-            </div>
-            {updatePageUrl(event.url) ? (
-              <button
-                onClick={async () => {
-                  try {
-                    setLinkError(null)
-                    await openExternal(event.url!, { failure: 'inline' })
-                  } catch {
-                    setLinkError(
-                      new Error('Could not open the update. Try again after checking your browser.'),
-                    )
-                  }
-                }}
-              >
-                Read
-              </button>
-            ) : (
-              <p className="muted">No patch notes page was recorded for this update.</p>
-            )}
-          </article>
-        ))
-      )}
+      {!events.length
+        ? !hasCachedNotes && <Empty>No update signals recorded.</Empty>
+        : events.map((event) => (
+            <article
+              className="update-row"
+              key={event.id}
+              data-unread={event.unread}
+              aria-label={`${updateHeadline(event)} · ${dateLabel(event.occurredAt)}${event.unread ? ' · unread' : ''}`}
+            >
+              <div>
+                <time>{dateLabel(event.occurredAt)}</time>
+                <h3>
+                  {event.unread && (
+                    <span className="update-unread-dot" aria-hidden="true">
+                      ●{' '}
+                    </span>
+                  )}
+                  {updateHeadline(event)}
+                </h3>
+              </div>
+              {updatePageUrl(event.url) ? (
+                <button
+                  onClick={async () => {
+                    try {
+                      setLinkError(null)
+                      await openExternal(event.url!, { failure: 'inline' })
+                    } catch {
+                      setLinkError(
+                        new Error('Could not open the update. Try again after checking your browser.'),
+                      )
+                    }
+                  }}
+                >
+                  Read
+                </button>
+              ) : (
+                <p className="muted">No patch notes page was recorded for this update.</p>
+              )}
+            </article>
+          ))}
       <div className="form-actions">
         {available && flags.unread > 0 && (
           <button className="acknowledge-updates" disabled={busy} onClick={() => void change(false)}>

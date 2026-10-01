@@ -33,6 +33,8 @@ import { createGameLink } from '../../shared/external-links'
 import { useLaunchFeedback } from './LaunchFeedback'
 import { usePrimaryActions } from './PrimaryActions'
 import type { IgdbState } from './igdb-match'
+import { primaryEntry } from '../../shared/game-actions'
+import { cachedGogPatchNotes, GogPatchNotes, GogPatchNotesText, GogPatchNotesHints } from './GogPatchNotes'
 
 const detailScrollPositions = new WeakMap<QueryClient, Map<string, number>>()
 const editorSections = new Set(['Metadata', 'Game match', 'Artwork'])
@@ -247,6 +249,23 @@ function SharedDetails({
   const metadata = useApiQuery<Metadata>('metadata.get', { workId })
   const journalPreferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
   const game = library.data?.games.find((item) => item.workId === workId)
+  const gogNotes = cachedGogPatchNotes(
+    primaryEntry(game?.entries ?? [], workspace.data) ?? game?.entries[0],
+    workspace.data,
+  )
+  const [readingNotes, setReadingNotes] = useState(false)
+  const notesOrigin = useRef<HTMLButtonElement | null>(null)
+  const notesBack = useRef<HTMLButtonElement | null>(null)
+  const notesScroll = useRef<HTMLDivElement | null>(null)
+  useLayoutEffect(() => {
+    if (readingNotes) notesBack.current?.focus({ preventScroll: true })
+    else if (notesOrigin.current) {
+      page.current
+        ?.querySelector<HTMLButtonElement>('[data-details-reading="Patch notes"]')
+        ?.focus({ preventScroll: true })
+      notesOrigin.current = null
+    }
+  }, [readingNotes])
   const unreadRows = (workspace.data?.buckets ?? []) as {
     resolvedWorkId: number
     releaseId: number
@@ -333,6 +352,34 @@ function SharedDetails({
   const sessions = Object.values(details.data?.sessions ?? {})
     .flat()
     .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+  if (mode === 'fullscreen' && readingNotes)
+    return (
+      <section
+        className="feature-page details-page mode-fullscreen gog-patch-reading"
+        aria-label="Patch notes"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            event.stopPropagation()
+            setReadingNotes(false)
+          }
+          if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+            event.preventDefault()
+            event.stopPropagation()
+            notesScroll.current?.scrollBy({ top: event.key === 'ArrowUp' ? -160 : 160, behavior: 'instant' })
+          }
+        }}
+      >
+        <h1>Patch notes</h1>
+        <div ref={notesScroll} className="gog-patch-reading-scroll" data-controller-scroll-step="160">
+          <GogPatchNotesText notes={gogNotes} />
+        </div>
+        <button ref={notesBack} onClick={() => setReadingNotes(false)}>
+          Back to Updates
+        </button>
+        <GogPatchNotesHints />
+      </section>
+    )
   return (
     <section
       ref={page}
@@ -480,7 +527,22 @@ function SharedDetails({
               {game && <SteamReportedActivity games={[game]} mode={mode} />}
             </>
           )}
-          {tab === 'Updates' && <UpdateSignals details={details.data} game={game} />}
+          {tab === 'Updates' && (
+            <>
+              <UpdateSignals details={details.data} game={game} hasCachedNotes={!!gogNotes} />
+              <GogPatchNotes
+                notes={gogNotes}
+                read={
+                  mode === 'fullscreen'
+                    ? (origin) => {
+                        notesOrigin.current = origin
+                        setReadingNotes(true)
+                      }
+                    : undefined
+                }
+              />
+            </>
+          )}
           {tab === 'Journal' && (
             <DetailsJournal
               notes={details.data?.journalEntries ?? []}

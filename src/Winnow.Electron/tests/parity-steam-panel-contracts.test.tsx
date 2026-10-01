@@ -109,8 +109,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s original Steam connection 
     expect(signIn.mock.calls[0][0].capturePurchaseHistory ?? false).toBe(false)
     expect(screen.getByRole('heading', { name: /Signed in Working/ })).toBeTruthy()
     expect(
-      (screen.getByRole('checkbox', { name: 'Only show games from my Steam account' }) as HTMLInputElement)
-        .disabled,
+      (screen.getByRole('checkbox', { name: 'Show only your account' }) as HTMLInputElement).disabled,
     ).toBe(false)
     expect(screen.queryByRole('alert')).toBeNull()
   })
@@ -291,7 +290,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s original Steam connection 
     fixture(mode, true, false, true, 0, true)
     const input = await ready()
     const account = screen.getByRole('checkbox', {
-      name: 'Only show games from my Steam account',
+      name: 'Show only your account',
     }) as HTMLInputElement
     await waitFor(() => expect(account.disabled).toBe(false))
     fireEvent.change(input, { target: { value: 'replacement-key' } })

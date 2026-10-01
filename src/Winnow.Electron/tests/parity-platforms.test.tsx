@@ -253,15 +253,13 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s Platforms source contracts', 
     expect(document.querySelector('.platform-title-count')).toBeNull()
     expect(screen.getByText('Account confirmation pending')).toBeTruthy()
     expect(
-      (screen.getByRole('checkbox', { name: 'Only show games from my Steam account' }) as HTMLInputElement)
-        .disabled,
+      (screen.getByRole('checkbox', { name: 'Show only your account' }) as HTMLInputElement).disabled,
     ).toBe(true)
     h.state.confirmed = true
     await h.client.invalidateQueries({ queryKey: ['api', 'connections.visibility.get'] })
     await waitFor(() => expect(screen.queryByText('Account confirmation pending')).toBeNull())
     expect(
-      (screen.getByRole('checkbox', { name: 'Only show games from my Steam account' }) as HTMLInputElement)
-        .disabled,
+      (screen.getByRole('checkbox', { name: 'Show only your account' }) as HTMLInputElement).disabled,
     ).toBe(false)
   })
   it('starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking', async () => {

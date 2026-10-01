@@ -45,13 +45,14 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [fetch status and diagnostics checkpoint](checkpoint-eighty.md) records 202
-focused component/host cases, sixteen source cases, one authenticated API case and
-six distinct native cases passing. The passive caption, bounded startup diagnostics,
-Windows login options and log recovery preserve the assigned original contracts.
-All thirteen methods are ported, leaving 134 pending and 20 partial methods. The
-[preceding checkpoint](checkpoint-seventy-nine.md) records the most recent broad
-3,992-case component/live API gate. Work continues through TASK-381.30.
+The [ownership and snapshot checkpoint](checkpoint-eighty-one.md) records thirty
+original cases, ten API cases, 307 focused renderer cases and eight distinct native
+cases passing. Account-filter copy and cached GOG notes now preserve both surfaces;
+shared ownership, install-state and scheduler behavior retains its original tests.
+Five methods are ported, seventeen retained and one narrowly framework-specific,
+leaving 111 pending and 20 partial methods. The [native identity checkpoint](checkpoint-seventy-nine.md)
+records the most recent broad 3,992-case component/live API gate. Work continues
+through TASK-381.30.
 
 The preceding [startup and first-run setup checkpoint](checkpoint-seventy-eight.md) records
 3,958 component/live API cases, twenty-five unchanged source cases, five HTTP cases

@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 134,
+    "pending": 111,
     "partial": 20,
-    "ported": 1584,
-    "retained-backend": 665,
-    "framework-specific": 32
+    "ported": 1589,
+    "retained-backend": 682,
+    "framework-specific": 33
   },
   "tests": [
     {
@@ -121,17 +121,62 @@
     {
       "id": "AccountMembershipTests.The_toggle_is_disabled_until_an_account_is_confirmed",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "reason": "The unchanged source uses confirmed reference11111 with no complete inventory and changes CanChooseAccountScope false→true and hides the exact blocked explanation. The real HTTP replacement starts with no confirmed reference, inventory, library rows or account preference; GET preserves absence, authenticated confirm sets11111, and GET becomes enabled without inventing inventory prerequisites.  Executed desktop/fullscreen controls retain the exact number-free face, disabled-to-confirmed transition, positive-only 1/1,234 singular/plural count and own-account caveat. One UI write causes one explicit command invalidation. Native1234 uses real rows and complete inventory, measures mono tabular figures, confirms absent preference before save, narrows1235 to1 and retains own mode after reopening.",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/OwnershipSnapshotParityTests.cs",
+          "case": "Confirmed_11111_enables_the_account_choice_without_inventory_or_an_implicit_default_write"
+        },
+        {
+          "file": "tests/parity-account-membership.test.tsx",
+          "case": "The_toggle_is_disabled_until_an_account_is_confirmed"
+        },
+        {
+          "file": "tests/electron/ownership-snapshot.spec.ts",
+          "case": "account scope confirms identity defaults without writing saves reopens filters the real library and renders the source 1234 data figure"
+        }
+      ]
     },
     {
       "id": "AccountMembershipTests.The_toggle_defaults_to_every_account_and_persists_the_choice",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "reason": "Original confirmed11111 GET leaves the setting absent and OwnAccountOnly false; one explicit UI save stores own and invokes ReloadLibrary once. New HTTP1/1234 rows confirm absent default, exactly one explicit PUT and one account-visibility library.changed event, persisted own, a new backend host reading the same preference, and actual visible library narrowing. HTTP/SSE refreshes can coalesce separately; the component fixture verifies one command invalidation separately from transport GETs. Executed desktop/fullscreen controls retain the exact number-free face, disabled-to-confirmed transition, positive-only 1/1,234 singular/plural count and own-account caveat. One UI write causes one explicit command invalidation. Native1234 uses real rows and complete inventory, measures mono tabular figures, confirms absent preference before save, narrows1235 to1 and retains own mode after reopening.",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/OwnershipSnapshotParityTests.cs",
+          "case": "One_explicit_account_write_persists_the_original_own_scope_and_reopens_with_the_exact_hidden_count"
+        },
+        {
+          "file": "tests/parity-account-membership.test.tsx",
+          "case": "The_toggle_defaults_to_every_account_and_persists_the_choice"
+        },
+        {
+          "file": "tests/electron/ownership-snapshot.spec.ts",
+          "case": "account scope confirms identity defaults without writing saves reopens filters the real library and renders the source 1234 data figure"
+        }
+      ]
     },
     {
       "id": "AccountMembershipTests.The_toggle_states_what_it_hides_with_the_figure_in_the_data_face",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "reason": "Original properties require number-free Show only your account, no count row for zero, 1/game from other accounts and 1,234/games from other accounts. HTTP supplemental data seeds genuine1/1234 other-account entries and a selected-account complete inventory so returned counts equal actual disappearing tiles.  Executed desktop/fullscreen controls retain the exact number-free face, disabled-to-confirmed transition, positive-only 1/1,234 singular/plural count and own-account caveat. One UI write causes one explicit command invalidation. Native1234 uses real rows and complete inventory, measures mono tabular figures, confirms absent preference before save, narrows1235 to1 and retains own mode after reopening.",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/OwnershipSnapshotParityTests.cs",
+          "case": "One_explicit_account_write_persists_the_original_own_scope_and_reopens_with_the_exact_hidden_count"
+        },
+        {
+          "file": "tests/parity-account-membership.test.tsx",
+          "case": "The_toggle_states_what_it_hides_with_the_figure_in_the_data_face"
+        },
+        {
+          "file": "tests/electron/ownership-snapshot.spec.ts",
+          "case": "account scope confirms identity defaults without writing saves reopens filters the real library and renders the source 1234 data figure"
+        }
+      ]
     },
     {
       "id": "AccountMembershipTests.A_within_band_disagreement_settles_at_the_lower_figure",
@@ -11389,7 +11434,21 @@
     {
       "id": "LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job",
       "source": "tests/Winnow.Tests/LibrarySyncSchedulingTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "reason": "The unchanged executed source scans only Winnow.App/Program.cs for SyncAsync followed by blocking C# Task GetAwaiter().GetResult, Wait or Result syntax. Electron has no such C# frontend Program/Task syntax, so this literal scanner does not apply. Its nonblocking intent remains: asynchronous main health/preference readiness does not invoke library sync, and independent BackendStartupService runs initial sync in BackgroundService. Existing real ownership-refresh tests exercise committed library/feed and controls during held downstream enrichment; they do not claim a held initial startup experiment. This disposition does not waive readiness or change independent backend lifetime.",
+      "implementation": [
+        "src/Winnow.Backend/BackendStartupService.cs"
+      ],
+      "tests": [
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "reuses a healthy external backend without another companion or startup waiter"
+        },
+        {
+          "file": "tests/electron/ownership-refresh.spec.ts",
+          "case": "scheduled acquisition and gated metadata update the visible feed with partial failure"
+        }
+      ]
     },
     {
       "id": "LibraryViewModelTests.Derelict_rail_filters_games_and_details_explain_the_evidence",
@@ -11982,17 +12041,41 @@
     {
       "id": "LifecycleSyncServiceTests.Batch_cap_and_persisted_attempts_prevent_failed_titles_starving_others",
       "source": "tests/Winnow.Tests/LifecycleSyncServiceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged executed real SQLite fixture preserves51 works/releases/IGDB IDs1..51 at2026-09-09. Recreating the production service between failing-client passes gives inserted0 and50 calls first,51 calls/all51 distinct after the second; persisted attempts prevent starvation across service instances. Actual backend registers the same service in downstream and hourly lifecycle work.",
+      "implementation": [
+        "src/Winnow.Application/Services/LifecycleSyncService.cs",
+        "src/Winnow.Data/Repositories/LifecycleRepository.cs",
+        "src/Winnow.Data/Repositories/IgdbObservationWriter.cs",
+        "src/Winnow.Data/Repositories/WorkIgdbMappingWrites.cs",
+        "src/Winnow.Data/Repositories/WorkIgdbPinRepository.cs"
+      ]
     },
     {
       "id": "LifecycleSyncServiceTests.A_new_mapping_is_due_immediately_without_reusing_the_old_mapping_attempt_time",
       "source": "tests/Winnow.Tests/LifecycleSyncServiceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged executed Game fixture maps42, syncs1 then0, pins43/Corrected through the actual repository, and immediately syncs1. Calls remain exactly42,43 and the single retained release observation has SourceId43. The production shared service/revision-keyed attempt and mapping-write paths are the same backend consumed by Electron.",
+      "implementation": [
+        "src/Winnow.Application/Services/LifecycleSyncService.cs",
+        "src/Winnow.Data/Repositories/LifecycleRepository.cs",
+        "src/Winnow.Data/Repositories/IgdbObservationWriter.cs",
+        "src/Winnow.Data/Repositories/WorkIgdbMappingWrites.cs",
+        "src/Winnow.Data/Repositories/WorkIgdbPinRepository.cs"
+      ]
     },
     {
       "id": "LifecycleSyncServiceTests.Cached_observation_is_not_duplicated_or_given_a_new_time_next_day",
       "source": "tests/Winnow.Tests/LifecycleSyncServiceTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged executed real database/client fixture inserts one42 observation, advances the clock one day, inserts0 on the next run and retains the original response observation timestamp. This shared service/repository behavior is independent of either frontend.",
+      "implementation": [
+        "src/Winnow.Application/Services/LifecycleSyncService.cs",
+        "src/Winnow.Data/Repositories/LifecycleRepository.cs",
+        "src/Winnow.Data/Repositories/IgdbObservationWriter.cs",
+        "src/Winnow.Data/Repositories/WorkIgdbMappingWrites.cs",
+        "src/Winnow.Data/Repositories/WorkIgdbPinRepository.cs"
+      ]
     },
     {
       "id": "ListAtomicWriteTests.A_failed_bulk_change_leaves_no_partial_list_even_when_an_outer_transaction_commits",
@@ -15144,17 +15227,38 @@
     {
       "id": "OwnershipRefreshLifecycleTests.Account_changes_coalesce_behind_startup_and_keep_one_followup_during_the_full_operation",
       "source": "tests/Winnow.Tests/OwnershipRefreshLifecycleTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged executed real queue/coordinator/pipeline fixture holds startup through20requests with zero acquisitions, then holds first account-a metadata. Twenty account-b requests still leave only account-a acquired until release. Final acquisition order is account-a/account-b, metadataCalls2 and completed2; stopping completes. These same shared queues are subscribed by BackendStartupService.",
+      "implementation": [
+        "src/Winnow.Application/Services/CredentialMetadataRefresh.cs",
+        "src/Winnow.Application/Services/OwnershipRefreshCoordinator.cs",
+        "src/Winnow.Application/Services/LibraryRefreshPipeline.cs",
+        "src/Winnow.Backend/BackendStartupService.cs"
+      ]
     },
     {
       "id": "OwnershipRefreshLifecycleTests.Shutdown_cancels_active_metadata_discards_queued_account_changes_and_releases_both_gates",
       "source": "tests/Winnow.Tests/OwnershipRefreshLifecycleTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged executed first acquisition publishes then metadata waits on cancellation. Stop discards queued changes and leaves acquisitions1/metadata1/publications1. A fresh direct coordinator call succeeds afterward and reaches2/2/3, establishing both gate reuse and no hidden queued pass, with the original five-second failure bounds.",
+      "implementation": [
+        "src/Winnow.Application/Services/CredentialMetadataRefresh.cs",
+        "src/Winnow.Application/Services/OwnershipRefreshCoordinator.cs",
+        "src/Winnow.Application/Services/LibraryRefreshPipeline.cs",
+        "src/Winnow.Backend/BackendStartupService.cs"
+      ]
     },
     {
       "id": "OwnershipRefreshLifecycleTests.Igdb_and_ownership_refresh_share_one_downstream_pipeline_without_delaying_committed_ownership_publication",
       "source": "tests/Winnow.Tests/OwnershipRefreshLifecycleTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged executed shared pipeline holds IGDB metadata yet ownership acquisition commits and publishes immediately. Exact before-release order is igdb metadata:start,ownership,publish; final adds igdb metadata:end,publish,history,ownership metadata:start,ownership metadata:end,publish. The actual backend composes the same coordinator and single downstream pipeline.",
+      "implementation": [
+        "src/Winnow.Application/Services/CredentialMetadataRefresh.cs",
+        "src/Winnow.Application/Services/OwnershipRefreshCoordinator.cs",
+        "src/Winnow.Application/Services/LibraryRefreshPipeline.cs",
+        "src/Winnow.Backend/BackendStartupService.cs"
+      ]
     },
     {
       "id": "PluginAccountSettingsTests.Sign_in_waits_for_user_and_poll_interval_then_connects_and_signs_out",
@@ -16129,12 +16233,26 @@
     {
       "id": "RemoteOwnershipInventoryTests.Only_complete_resolved_inventories_enable_filtering_including_the_empty_library",
       "source": "tests/Winnow.Tests/RemoteOwnershipInventoryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "All six unchanged source rows execute with Household Steamapp2/account222, selected111/own, fake answer date2026-09-01 and actual resolver/SQLite. Complete→1visible/complete, empty→0/complete, partial→2/incomplete, stale→2/incomplete, unanswered→1/incomplete, throw→1/incomplete. Every row requests111 even without local selected-account rows; complete rows preserve item_count1/0 and response observation time. Failed answers are not authoritative emptiness.",
+      "implementation": [
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Data/Repositories/OwnershipInventoryRepository.cs",
+        "src/Winnow.Data/Repositories/LibraryQueryRepository.cs",
+        "src/Winnow.Resolve/ExternalIdResolver.cs"
+      ]
     },
     {
       "id": "RemoteOwnershipInventoryTests.Cancellation_or_resolution_failure_cannot_publish_completion",
       "source": "tests/Winnow.Tests/RemoteOwnershipInventoryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Both unchanged source rows execute: token cancellation before remote answer and a real SQL trigger abort while resolving candidate work. Both must throw; neither publishes inventory completeness and Household remains visible. Retain exception and visibility assertions, not only the completion flag.",
+      "implementation": [
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Data/Repositories/OwnershipInventoryRepository.cs",
+        "src/Winnow.Data/Repositories/LibraryQueryRepository.cs",
+        "src/Winnow.Resolve/ExternalIdResolver.cs"
+      ]
     },
     {
       "id": "RemoteOwnershipSyncConvergenceTests.A_second_sync_over_unchanged_sources_writes_no_play_records",
@@ -16194,12 +16312,28 @@
     {
       "id": "RemoteOwnershipSyncInstallStateTests.A_sync_that_also_reads_the_owned_library_still_records_what_is_on_disk",
       "source": "tests/Winnow.Tests/RemoteOwnershipSyncInstallStateTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged executed synthetic Steam filesystem retains source app1203620/Elden Ring StateFlags4, libraryfolders size44998366792, account12345678/localconfig playtime817/lastPlayed1787400000 and remote2026-08-23T12Z answer1203620 plus1244090/Sea of Stars0. Sync sees three candidates; local app is installed at exact throwaway steamapps/common/ELDEN RING while web-only app is false/null. No live launcher files are used.",
+      "implementation": [
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Ingest.Steam/SteamLibrarySource.cs",
+        "src/Winnow.Resolve/ExternalIdResolver.cs",
+        "src/Winnow.Data/Repositories/OwnershipRepository.cs",
+        "src/Winnow.Data/Repositories/SteamInstallStateRepository.cs"
+      ]
     },
     {
       "id": "RemoteOwnershipSyncInstallStateTests.Re_syncing_does_not_erode_install_state",
       "source": "tests/Winnow.Tests/RemoteOwnershipSyncInstallStateTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Three unchanged complete source syncs preserve the synthetic local1203620 installed/non-null path and remote-only1244090. Exactly two ownership rows remain and one is installed. The actual production local/remote merge and resolver remain shared backend behavior.",
+      "implementation": [
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Ingest.Steam/SteamLibrarySource.cs",
+        "src/Winnow.Resolve/ExternalIdResolver.cs",
+        "src/Winnow.Data/Repositories/OwnershipRepository.cs",
+        "src/Winnow.Data/Repositories/SteamInstallStateRepository.cs"
+      ]
     },
     {
       "id": "ScreenshotLightboxTests.It_opens_on_the_shot_that_was_pressed",
@@ -16560,17 +16694,41 @@
     {
       "id": "SnapshotSchedulerHistoryTests.A_tick_captures_a_playtime_delta_as_one_snapshot_and_one_play_record",
       "source": "tests/Winnow.Tests/SnapshotSchedulerHistoryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged executed controlled15-minute scheduler uses real resolver/SQLite and Steam2686630 Voyagers of Nera/account12345678. Initial244minutes/2026-08-23T20Z gives one snapshot/play record;281minutes/+37minutes gives exactly two, counters244/281 and snapshot observation times15minutes apart. Stop completes within original20s failure bounds.",
+      "implementation": [
+        "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Resolve/ExternalIdResolver.cs",
+        "src/Winnow.Data/Repositories/PlaytimeSnapshotRepository.cs",
+        "src/Winnow.Data/Repositories/PlayRecordRepository.cs"
+      ]
     },
     {
       "id": "SnapshotSchedulerHistoryTests.Ticks_over_unchanged_files_write_nothing_at_all",
       "source": "tests/Winnow.Tests/SnapshotSchedulerHistoryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged executed six controlled ticks over the same source244minute facts retain one snapshot and one play record and MaxInFlight1. The backend uses the same scheduler and local-sync gate; no JavaScript timer replaces it.",
+      "implementation": [
+        "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Resolve/ExternalIdResolver.cs",
+        "src/Winnow.Data/Repositories/PlaytimeSnapshotRepository.cs",
+        "src/Winnow.Data/Repositories/PlayRecordRepository.cs"
+      ]
     },
     {
       "id": "SnapshotSchedulerHistoryTests.Stopping_mid_scan_rolls_the_pass_back_rather_than_writing_through_a_disposed_factory",
       "source": "tests/Winnow.Tests/SnapshotSchedulerHistoryTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged source first resolves244 then holds second999 in the fake local-sync callback before entering the resolver. Stop succeeds,244/one record remain readable and five additional intervals create no calls beyond the existing two. This proves cancellation, factory readability and no later writes; it does not exercise a partially written second transaction despite its title.",
+      "implementation": [
+        "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Resolve/ExternalIdResolver.cs",
+        "src/Winnow.Data/Repositories/PlaytimeSnapshotRepository.cs",
+        "src/Winnow.Data/Repositories/PlayRecordRepository.cs"
+      ]
     },
     {
       "id": "SnapshotSchedulerServiceTests.Successful_scan_refreshes_even_when_history_counters_are_zero",
@@ -19429,22 +19587,46 @@
     {
       "id": "SteamInstallRefreshTests.Stable_install_and_uninstall_refresh_manifest_only_ownership_without_erasing_history",
       "source": "tests/Winnow.Tests/SteamInstallRefreshTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged real temp-manifest Steam620/Portal2 fixture requires stable second polls: State0 publishesfalse, malformed manifest does not publish, State4 eventually publishestrue/path, deletion eventually publishesfalse/null. Exact publications false,true,false preserve the ownershipID and release. No play-history rows are seeded/asserted by this original, so this mapping does not invent a history-preservation assertion.",
+      "implementation": [
+        "src/Winnow.Application/Services/EpicInstallRefreshService.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Ingest.Steam/SteamLibrarySource.cs",
+        "src/Winnow.Data/Repositories/SteamInstallStateRepository.cs"
+      ]
     },
     {
       "id": "SteamInstallRefreshTests.Incomplete_inventory_preserves_installed_state_and_next_complete_scan_reconciles_after_restart",
       "source": "tests/Winnow.Tests/SteamInstallRefreshTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged source installs620 then deletes its manifest and points libraryfolders at Z:/missing-winnow-test-drive. Recreated source/sync returns null fingerprint and preserves installedtrue; restoring complete folders reconciles installedfalse. Shared source completeness and reconciliation behavior serves both frontend surfaces.",
+      "implementation": [
+        "src/Winnow.Application/Services/EpicInstallRefreshService.cs",
+        "src/Winnow.Application/Services/LibrarySyncService.cs",
+        "src/Winnow.Ingest.Steam/SteamLibrarySource.cs",
+        "src/Winnow.Data/Repositories/SteamInstallStateRepository.cs"
+      ]
     },
     {
       "id": "SteamInstallRefreshTests.Steam_management_uses_uninstall_and_never_declares_a_game_launch",
       "source": "tests/Winnow.Tests/SteamInstallRefreshTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "The unchanged shared action policy returns exact steam://uninstall/620, Uninstall kind and StartsGamefalse for installedSteam620. False/null installed and malformed620?bad return null. Production GameActionApplication consumes this same policy; four executed existing HTTP management cases add route/dispatch proof without substituting their different identities for the original.",
+      "implementation": [
+        "src/Winnow.Api.Contracts/Actions/StoreActions.cs",
+        "src/Winnow.Application/Services/GameActionApplication.cs"
+      ]
     },
     {
       "id": "SteamInstallRefreshTests.Other_store_management_is_navigation_not_an_uninstall",
       "source": "tests/Winnow.Tests/SteamInstallRefreshTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "reason": "Both unchanged source rows pass: installedEpic/null returns com.epicgames.launcher://store/library, installedGOG123 returns goggalaxy://opengameview/gog_123. Each label starts Manage in, kind is Link and StartsGamefalse. The same policy runs in production GameActionApplication; supplemental HTTP tests intercept dispatch.",
+      "implementation": [
+        "src/Winnow.Api.Contracts/Actions/StoreActions.cs",
+        "src/Winnow.Application/Services/GameActionApplication.cs"
+      ]
     },
     {
       "id": "AchievementEvidenceTests.Known_schema_distinguishes_zero_unlocks_and_records_global_percentages",
@@ -20754,7 +20936,22 @@
     {
       "id": "StorefrontTests.Sync_uses_owned_store_ids_and_warms_the_read_only_projection",
       "source": "tests/Winnow.Tests/StorefrontTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "reason": "Original two owned works/releases GOG1/1207658871 and Epic2/catalog-id plus unownedGOG3/99, launch namespacefn/artifactFortnite and exact Epic/GOG canned bodies execute through actual StorefrontSyncService/client/cache. HTTP fixture preserves two calls total, skips99, returns exact Fortnite/Panzer URLs and readable notes, and repeated library/workspace/sync reads add no IO. React receives storefronts/launch keys from LibraryWorkspaceResponse and associates by original release/provider identity; it is an explicit transport replacement for PlayableEntry.Storefront, not a claim that LibraryResponse embeds the cache. Executed Avalon/shared Details components on both surfaces associate exact release provenance and omit unrelated/empty notes. Native desktop expands readable13px GOG notes; fullscreen opens24px text with32px title and local Read/Back hints, then controller Back restores origin focus. Both follow exact Panzer and cached Hades URLs using the saved browser destination and omit the absent Epic link. All external dispatches are captured, not launched.",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/OwnershipSnapshotParityTests.cs",
+          "case": "Owned_storefront_sync_warms_the_exact_two_provider_responses_and_all_HTTP_projections_remain_read_only"
+        },
+        {
+          "file": "tests/parity-gog-patch-notes.test.tsx",
+          "case": "Sync_uses_owned_store_ids_and_warms_the_read_only_projection"
+        },
+        {
+          "file": "tests/electron/ownership-snapshot.spec.ts",
+          "case": "exact GOG Cloud Saves notes stay safe with Panzer storefront provenance and missing Epic becomes only its cached Hades link"
+        }
+      ]
     },
     {
       "id": "StorefrontTests.Epic_fetch_is_shared_cached_and_projects_only_valid_slugs",
@@ -20891,7 +21088,26 @@
     {
       "id": "StorefrontTests.Details_offer_store_link_and_readable_gog_notes_and_hide_missing_epic_link",
       "source": "tests/Winnow.Tests/StorefrontTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "reason": "HTTP fixture preserves work/release/owner1 Panzer General2, GOG1207658871, playtime0, original product-card and changelog body. Actual cache projection yields exactPanzer URL, Internal Update/Cloud Saves support/newlines and strips script bad()/HTML. Epic2 has no web link until the source Hades mapping is cached, then the shared policy returns exactly its Hades URI. No HTML is injected and no provider network is needed for this cached detail fixture. Executed Avalon/shared Details components on both surfaces associate exact release provenance and omit unrelated/empty notes. Native desktop expands readable13px GOG notes; fullscreen opens24px text with32px title and local Read/Back hints, then controller Back restores origin focus. Both follow exact Panzer and cached Hades URLs using the saved browser destination and omit the absent Epic link. All external dispatches are captured, not launched.",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/OwnershipSnapshotParityTests.cs",
+          "case": "Cached_Panzer_notes_remain_readable_and_missing_Epic_link_appears_only_after_the_actual_cache_changes"
+        },
+        {
+          "file": "tests/parity-gog-patch-notes.test.tsx",
+          "case": "Details_offer_store_link_and_readable_gog_notes_and_hide_missing_epic_link (%s)"
+        },
+        {
+          "file": "tests/parity-gog-patch-notes.test.tsx",
+          "case": "renders unexpected cached markup as inert text and omits whitespace-only notes"
+        },
+        {
+          "file": "tests/electron/ownership-snapshot.spec.ts",
+          "case": "exact GOG Cloud Saves notes stay safe with Panzer storefront provenance and missing Epic becomes only its cached Hades link"
+        }
+      ]
     },
     {
       "id": "StoresViewModelTests.Signed_out_offers_a_sign_in_and_claims_nothing_else",

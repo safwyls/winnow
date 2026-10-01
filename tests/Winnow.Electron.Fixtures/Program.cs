@@ -21,6 +21,7 @@ if (directoryIndex < 0 || directoryIndex + 1 >= args.Length)
     throw new ArgumentException("Pass --data-dir <throwaway directory> to this test fixture.");
 var directory = Path.GetFullPath(args[directoryIndex + 1]);
 var diagnostics = Path.GetFileName(directory).StartsWith("winnow-electron-diagnostics-", StringComparison.Ordinal);
+var ownershipSnapshot = Path.GetFileName(directory).StartsWith("winnow-electron-ownership-snapshot-", StringComparison.Ordinal);
 if (args.Contains("--inspect-frontend-activation"))
 {
     if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Windows activation inspection only.");
@@ -57,6 +58,14 @@ else if (!(diagnostics || pluginActions || editions || merges || matching || met
 
 await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"], services =>
 {
+    if (ownershipSnapshot)
+    {
+        OwnershipSnapshotFixture.Register(services);
+        services.AddSingleton<PluginActionShellGuard>();
+        services.AddSingleton<IUriDispatcher>(provider => provider.GetRequiredService<PluginActionShellGuard>());
+        services.AddSingleton<IHttpMessageHandlerBuilderFilter, MatchingOfflineHttp>();
+        return;
+    }
     if (diagnostics)
     {
         DiagnosticsFixture.Register(services);
@@ -235,7 +244,9 @@ if (pluginActions)
 
 // BackendApplication's normal loopback, authority and bearer-token middleware covers these routes.
 // Only this separately built test executable exposes fixture control; the production backend does not.
-if (diagnostics)
+if (ownershipSnapshot)
+    OwnershipSnapshotFixture.Map(app);
+else if (diagnostics)
     DiagnosticsFixture.Map(app);
 else if (nativeHost)
     NativeHostFixture.Map(app);

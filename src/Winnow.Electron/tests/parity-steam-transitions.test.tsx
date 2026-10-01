@@ -99,7 +99,8 @@ function fixture(
     if (input.route === 'plugins.get' || input.route === 'operations.get') data = []
     if (input.route === 'preferences.presentation.get') data = []
     if (input.route === 'library.get') data = { games: [], lists: [] }
-    if (input.route === 'library.workspace') data = { works: [], externalIds: [], epicLaunchKeys: {}, pluginActions: {}, identityLinks: [] }
+    if (input.route === 'library.workspace')
+      data = { works: [], externalIds: [], epicLaunchKeys: {}, pluginActions: {}, identityLinks: [] }
     return { ok: true, status: 200, data }
   })
   const openExternal = vi.fn(async () => ({ opened: true }))
@@ -177,8 +178,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
     expect(screen.getByText(/Account confirmed. The account filter is available/)).toBeTruthy()
     expect(screen.getByText('SIGNED IN')).toBeTruthy()
     expect(
-      (screen.getByRole('checkbox', { name: 'Only show games from my Steam account' }) as HTMLInputElement)
-        .disabled,
+      (screen.getByRole('checkbox', { name: 'Show only your account' }) as HTMLInputElement).disabled,
     ).toBe(false)
   })
   it('A_sign_in_with_no_refresh_token_is_reported_rather_than_dressed_up', async () => {
@@ -209,8 +209,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
     expect(screen.queryByText(account)).toBeNull()
     expect(screen.queryByText(/Steam connected/)).toBeNull()
     expect(
-      (screen.getByRole('checkbox', { name: 'Only show games from my Steam account' }) as HTMLInputElement)
-        .disabled,
+      (screen.getByRole('checkbox', { name: 'Show only your account' }) as HTMLInputElement).disabled,
     ).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Sign in to Steam' }))
     expect(
@@ -253,7 +252,10 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam connection transitio
       (screen.getByRole('button', { name: 'Remove saved API key', hidden: true }) as HTMLButtonElement)
         .disabled,
     ).toBe(true)
-    expect((screen.getByRole('button', { name: 'Import purchase history', hidden: true }) as HTMLButtonElement).disabled).toBe(true)
+    expect(
+      (screen.getByRole('button', { name: 'Import purchase history', hidden: true }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true)
     expect(screen.queryByLabelText('Saved Steam pages')).toBeNull()
     expect(request.mock.calls.some(([input]) => input.route.startsWith('imports.steam'))).toBe(false)
     await act(async () => gate.resolve({ signedIn: false, outcome: 4 }))

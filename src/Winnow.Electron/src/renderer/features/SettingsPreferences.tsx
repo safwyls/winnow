@@ -12,6 +12,7 @@ import { PluginInstallStatus } from './PluginInstallStatus'
 import { useViewState } from '../viewState'
 import './application-info.css'
 import { useLogsFolder } from './useLogsFolder'
+import './account-visibility.css'
 import {
   FullscreenAdjustment,
   FullscreenSettingsAction,
@@ -544,10 +545,10 @@ export function AccountVisibility({
   useSetupBusy(command.isPending)
   useSetupPreferenceError(state.error || command.error)
   return (
-    <div>
+    <div className={`account-visibility mode-${mode}`}>
       {mode === 'fullscreen' ? (
         <FullscreenSwitch
-          label="Only show games from my Steam account"
+          label="Show only your account"
           description={
             state.data?.accountConfirmed
               ? 'Hide games from other Steam accounts on this computer.'
@@ -577,21 +578,32 @@ export function AccountVisibility({
               })
             }
           />
-          Only show games from my Steam account
+          Show only your account
         </label>
       )}
       {!state.data?.accountConfirmed && <p className="muted">Account confirmation pending</p>}
-      <p className="muted reading-prose">
-        {state.data?.accountConfirmed
-          ? `${state.data.hiddenCount} games from other accounts are affected.`
-          : credentials?.hasSession
+      {(state.data?.hiddenCount ?? 0) > 0 && (
+        <p className="account-scope-count muted">
+          <span className="account-scope-count-value">{state.data!.hiddenCount.toLocaleString()}</span>{' '}
+          <span className="account-scope-count-unit">
+            {state.data!.hiddenCount === 1 ? 'game from other accounts' : 'games from other accounts'}
+          </span>
+        </p>
+      )}
+      {!state.data?.accountConfirmed && (
+        <p className="muted reading-prose">
+          {credentials?.hasSession
             ? 'The sign-in did not record which account is yours. Signing in again should resolve this.'
             : credentials?.hasApiKey
               ? 'Your API key is set, but Winnow has not confirmed which account it belongs to yet. This happens automatically during the next Steam import.'
-              : credentials
-                ? 'Winnow does not know which Steam account is yours yet. Signing in tells it immediately; an API key finds out at the next Steam import.'
-                : 'This becomes available after Steam confirms which account is yours.'}
-      </p>
+              : 'Winnow does not know which Steam account is yours yet. Signing in tells it immediately; an API key finds out at the next Steam import.'}
+        </p>
+      )}
+      {state.data?.ownAccountOnly && (
+        <p className="account-scope-caveat muted reading-prose">
+          Games Winnow cannot attribute stay visible. Shown playtime becomes your account's.
+        </p>
+      )}
       <Notice error={state.error || command.error} />
     </div>
   )

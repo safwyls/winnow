@@ -44,10 +44,11 @@ import { ChooseLaunchVersion } from './choose-launch-version'
 import { ReleaseAchievements } from './detail-achievements'
 import type { IgdbState } from './igdb-match'
 import './details-layout.css'
+import { cachedGogPatchNotes, GogPatchNotes, GogPatchNotesText, GogPatchNotesHints } from './GogPatchNotes'
 
 const desktopSections = ['Overview', 'Activity', 'Updates', 'Journal', 'Library'] as const
 const televisionSections = ['Overview', 'Updates', 'Journal', 'Library'] as const
-type Reading = 'About' | 'History'
+type Reading = 'About' | 'History' | 'Patch notes'
 type Tool = 'Metadata' | 'Game match' | 'Artwork'
 const tools: Tool[] = ['Game match', 'Metadata', 'Artwork']
 
@@ -148,6 +149,7 @@ export function AvalonDetailsLayout({
         )
       : 0
   const primary = primaryEntry(game?.entries ?? [], workspace.data) ?? game?.entries[0]
+  const gogNotes = cachedGogPatchNotes(primary, workspace.data)
   const ownerships = (details.data?.ownerships ?? []) as { id: number; installPath?: string | null }[]
   const links = game && workspace.data ? gameLinks(game, workspace.data, details.data?.events) : []
   const hasExpansions =
@@ -285,7 +287,10 @@ export function AvalonDetailsLayout({
       return
     const target = event.target as HTMLElement
     if (target.closest('[role="dialog"],[role="alertdialog"],[role="menu"]') || tool) return
-    if (reading === 'About' && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+    if (
+      (reading === 'About' || reading === 'Patch notes') &&
+      (event.key === 'ArrowUp' || event.key === 'ArrowDown')
+    ) {
       event.preventDefault()
       event.stopPropagation()
       body.current?.scrollBy({ top: event.key === 'ArrowUp' ? -160 : 160, behavior: 'instant' })
@@ -464,7 +469,17 @@ export function AvalonDetailsLayout({
         )}
       </section>
     )
-  else if (section === 'Updates') panel = <UpdateSignals details={details.data} game={game} />
+  else if (reading === 'Patch notes') panel = <GogPatchNotesText notes={gogNotes} />
+  else if (section === 'Updates')
+    panel = (
+      <>
+        <UpdateSignals details={details.data} game={game} hasCachedNotes={!!gogNotes} />
+        <GogPatchNotes
+          notes={gogNotes}
+          read={fullscreen ? (origin) => openReading('Patch notes', origin) : undefined}
+        />
+      </>
+    )
   else if (section === 'Journal') panel = journal
   else if (section === 'Library')
     panel = (
@@ -687,7 +702,9 @@ export function AvalonDetailsLayout({
         aria-labelledby={tool || reading ? undefined : `${id}-${section}`}
         aria-label={tool ?? reading ?? undefined}
         tabIndex={fullscreen ? -1 : 0}
-        data-controller-scroll-step={fullscreen && reading === 'About' ? 160 : undefined}
+        data-controller-scroll-step={
+          fullscreen && (reading === 'About' || reading === 'Patch notes') ? 160 : undefined
+        }
       >
         {fullscreen &&
           section === 'Overview' &&
@@ -703,6 +720,7 @@ export function AvalonDetailsLayout({
           )}
         {panel}
       </div>
+      {fullscreen && reading === 'Patch notes' && <GogPatchNotesHints />}
       <MetadataRefreshStatus state={refresh} className="detail-refetch-status" polite />
       {editing != null && (
         <JournalEditor sessionId={editing} onClose={() => setEditing(null)} mode={mode} editText={editText} />
@@ -745,7 +763,12 @@ export function AvalonDetailsLayout({
   )
   if (fullscreen)
     return (
-      <div ref={root} className="avalon-details fullscreen" onKeyDown={fullscreenKeys}>
+      <div
+        ref={root}
+        className="avalon-details fullscreen"
+        data-reading={reading ?? undefined}
+        onKeyDown={fullscreenKeys}
+      >
         {content}
       </div>
     )

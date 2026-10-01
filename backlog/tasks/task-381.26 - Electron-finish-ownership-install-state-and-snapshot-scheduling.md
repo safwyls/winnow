@@ -1,10 +1,11 @@
 ---
 id: TASK-381.26
 title: 'Electron: finish ownership, install state and snapshot scheduling'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:48'
+updated_date: '2026-10-01 20:04'
 labels:
   - electron
   - parity
@@ -69,18 +70,40 @@ tests/Winnow.Tests/StorefrontTests.cs
 - StorefrontTests.Sync_uses_owned_store_ids_and_warms_the_read_only_projection [pending at split]
 - StorefrontTests.Details_offer_store_link_and_readable_gog_notes_and_hide_missing_epic_link [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Keep one implementation task active, verify and commit each milestone, then continue. Pause for review after TASK-381.30.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original account membership, remote ownership, lifecycle refresh and Steam install-state contracts pass through shared backend/API composition.
-- [ ] #2 Sync and snapshot history scheduling preserve source timing, cancellation and deduplication; desktop/fullscreen receive the same completed authoritative state.
-- [ ] #3 All 23 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original account membership, remote ownership, lifecycle refresh and Steam install-state contracts pass through shared backend/API composition.
+- [x] #2 Sync and snapshot history scheduling preserve source timing, cancellation and deduplication; desktop/fullscreen receive the same completed authoritative state.
+- [x] #3 All 23 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Execute all23 frozen source methods/30 expected cases and audit the retained ownership/install/snapshot implementations without rewriting shared services. 2. Restore exact account-scope label, positive-only formatted data count and own-scope caveat on desktop/fullscreen. 3. Render safe cached GOG patch notes in both Details paths, retaining storefront provenance and missing-link behavior. 4. Add bounded real API/fixture proof for account persistence and owned storefront cache projection, then focused component/native checks with captures. 5. Record individual dispositions and checkpoint81, commit and continue to TASK-381.27.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started after TASK-381.25 implementation d66f7617. Inventory1584 ported/665 retained/32 framework/134 pending/20 partial. Read-only preparation .tmp/task38126-prep.md identifies17 shared retained methods,5 renderer/API contracts and1 narrow C# source scanner. Root owns Backlog/docs/mappings/integration; bounded owners preserve each other edits. Native runs wait for all build/test activity to finish.
+
+All30 assigned original source cases pass without skips in task38126-source-results/task38126-source.trx. The retained service fixtures preserve exact lifecycle50/51 attempts, remote inventory six outcomes, two cancellation/resolver failures, Steam install stability and snapshot244-to281 timing. Source title limitations (no history row seeded; cancellation before resolver) will remain explicit in checkpoint81. Renderer restoration is in progress; final promotion waits API/components/native.
+
+Final checks pass:30 source cases,10 HTTP cases (6new+4management),307 focused renderer cases,13 typography leaf cases and8 distinct native cases. TypeScript/format/production build and fixture build pass. Both surfaces visually inspected; native1234 count uses actual1235-to1 library and persisted choice; cached Panzer/Hades links use saved browser destination with captured OS boundary. Original misconfigured destination runs retained in evidence. All23 methods resolved:5ported17retained1narrow framework scanner. Inventory1589/682/33/111pending/20partial. Checkpoint-eighty-one.md and task38126-native-evidence.json record scope/limits; no physical-device or held-initial-startup claim.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Restored exact account visibility label/count/caveat and readable cached GOG notes on desktop/fullscreen. Retained shared ownership/install/snapshot behavior with30 unchanged source cases,10API,307component and8native passes. Five methods ported,17retained and1narrow C# scanner classified; checkpoint81 records exact fixtures, captures and limits.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -1,0 +1,8 @@
+.account-scope-count-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.account-visibility.mode-fullscreen :is(.account-scope-count, .account-scope-caveat) {
+  font-size: calc(24px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}

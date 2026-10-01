@@ -1,0 +1,58 @@
+.gog-patch-notes {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.gog-patch-notes summary {
+  cursor: pointer;
+}
+.gog-patch-notes-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.gog-patch-notes .gog-patch-notes-text {
+  font-size: calc(13px * var(--theme-text-scale, 1));
+}
+.gog-patch-notes-hints {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 28px;
+  color: var(--muted);
+  font-size: calc(20px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}
+.gog-patch-notes-hints > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.gog-patch-notes-hints svg {
+  display: block;
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+}
+.avalon-details.fullscreen .gog-patch-notes-text {
+  max-width: 1200px;
+  font-size: calc(24px * var(--detail-scale));
+}
+.avalon-details.fullscreen[data-reading='Patch notes'] .avalon-details-back-row h2,
+.gog-patch-reading h1 {
+  font-size: calc(32px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+  font-weight: 700;
+}
+.gog-patch-reading {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+  height: 100%;
+}
+.gog-patch-reading-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+.gog-patch-reading .gog-patch-notes-text {
+  font-size: calc(24px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}

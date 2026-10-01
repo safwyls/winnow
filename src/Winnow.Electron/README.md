@@ -158,7 +158,11 @@ adds **Y · Keyboard**. Exact ultrawide hero fitting remains stable under interf
 
 Settings groups Steam, Epic and GOG under **Platforms**, with one card at a time, attention
 markers and title counts from the whole library. Steam keeps credential guidance, account
-scope, purchase import and sign-in consent in separate dialogs. IGDB and artwork source
+scope, purchase import and sign-in consent in separate dialogs. **Show only your account**
+becomes available after Steam confirms the account. Its separate count uses the data
+font and appears only when games from other accounts can be hidden. Games without
+account attribution stay visible; own-account mode also scopes the displayed playtime.
+IGDB and artwork source
 preferences live under **Metadata & artwork**. The shared IGDB form in Settings and setup
 reports saved, unreadable and externally configured credentials without revealing a secret.
 Saving protects the secret through the backend and queues metadata refresh; removal takes
@@ -625,6 +629,11 @@ store URLs. Epic/GOG store links appear when available; without a Steam ID, the 
 recorded update URL supplies the patch-notes link. Missing destinations are omitted.
 Steam viewing opens its library page for Steam-owned copies, or its store page for a
 Steam-mapped copy owned elsewhere. These links do not launch a game.
+
+Cached GOG patch notes appear under Updates for the selected GOG release. Desktop
+uses a **GOG patch notes** expander; fullscreen opens a **Patch notes** reading page
+with scrolling and Back hints. The text retains the backend's sanitized line breaks;
+opening it does not fetch another store page or borrow another edition's notes.
 The [reading browser](../../docs/electron-link-routing.md) supports HTTP and HTTPS with
 isolated page content, history controls, fullscreen controller navigation and visible
 browser fallback notices. Native launcher viewing links remain separate from game actions.
