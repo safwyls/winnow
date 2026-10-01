@@ -246,6 +246,10 @@ area is unavailable. Existing capitalized boolean preferences remain supported.
 Overflow arrows scroll the tabs without changing the selection. Ordinary drafts survive
 navigation; secret replacements clear on departure or successful save. Advanced fields
 keep their values when collapsed, and required fields reveal themselves before saving.
+Saving settings for an enabled, loaded provider acknowledges the queued refresh.
+PlayStation history keeps its provider name in filters and game details. Grouped game
+details retain each distinct provider's source explanation, including played history
+that does not establish ownership, even when another store supplies the primary copy.
 Device sign-in shows the provider's code and verification address only after you start it.
 Leaving or canceling stops that attempt. Pending writes and installations prevent a service
 restart; a completed restart reconnects and reloads the plugin catalogue.

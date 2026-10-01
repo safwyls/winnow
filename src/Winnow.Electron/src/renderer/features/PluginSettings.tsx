@@ -421,7 +421,11 @@ export function PluginCard({ plugin, mode = 'desktop' }: { plugin: PluginSnapsho
     run({
       route: 'plugins.settings',
       body: { values },
-      success: 'Provider settings saved.',
+      success:
+        'Provider settings saved.' +
+        (plugin.enabled && plugin.isLoaded
+          ? ' Refresh queued.'
+          : ' Enable the plugin and choose Restart library service in Manage plugins to use them.'),
       failure:
         "Could not save plugin settings. Check that secure storage is available and Winnow's data folder is writable, then try again.",
     })

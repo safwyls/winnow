@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Winnow.Electron.Fixtures/PluginProvenanceFixture.cs" Link="Fixtures/PluginProvenanceFixture.cs" />
     <Compile Include="../Winnow.Electron.Fixtures/PlatformContextFixture.cs" Link="Fixtures/PlatformContextFixture.cs" />
     <Compile Include="../Winnow.Electron.Fixtures/OwnershipSnapshotFixture.cs" Link="Fixtures/OwnershipSnapshotFixture.cs" />
     <Compile Include="../Winnow.Electron.Fixtures/StartupBoundaryFixture.cs" Link="Fixtures/StartupBoundaryFixture.cs" />
@@ -18,5 +19,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
     <ProjectReference Include="../../src/Winnow.Backend/Winnow.Backend.csproj" />
     <ProjectReference Include="../../src/Winnow.Api.Client/Winnow.Api.Client.csproj" />
+    <ProjectReference Include="../Winnow.PluginFixture/Winnow.PluginFixture.csproj" />
   </ItemGroup>
 </Project>

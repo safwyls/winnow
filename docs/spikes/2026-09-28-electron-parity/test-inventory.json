@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 80,
+    "pending": 66,
     "partial": 18,
-    "ported": 1606,
-    "retained-backend": 696,
-    "framework-specific": 35
+    "ported": 1611,
+    "retained-backend": 704,
+    "framework-specific": 36
   },
   "tests": [
     {
@@ -5174,12 +5174,40 @@
     {
       "id": "EpicInteractiveSignInTests.No_usable_prompt_is_a_reason_not_a_crash",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Ingest.Epic/Web/Auth/EpicInteractiveSignIn.cs",
+        "src/Winnow.Ingest.Epic/Web/ServiceCollectionExtensions.Web.cs",
+        "src/Winnow.Application/Connections/StoreConnectionApplication.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PluginProvenanceParityTests.cs",
+          "case": "Registered_legacy_Epic_prompt_policy_is_callable_without_prompts_or_with_two_unavailable_prompts"
+        },
+        {
+          "file": "tests/parity-epic-native.test.ts",
+          "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+        }
+      ],
+      "reason": "The unchanged source executes two unavailable scripted prompts and requires unsuccessful NoInteractivePrompt with zero HTTP requests. The same EpicInteractiveSignIn is registered in the production backend; the new direct-composition theory resolves that actual service with two unavailable prompts, requires the same failure and observes no provider requests. This is retained callable legacy prompt policy, not a claim that normal Electron HTTP iterates prompts: StoreConnectionApplication uses BuildRequest and explicit token completion. Electron independently covers failed native initialization followed by explicit manual capture, with no completion/token submission before user input."
     },
     {
       "id": "EpicInteractiveSignInTests.A_host_that_registers_no_prompt_at_all_is_also_a_reason",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Ingest.Epic/Web/Auth/EpicInteractiveSignIn.cs",
+        "src/Winnow.Ingest.Epic/Web/ServiceCollectionExtensions.Web.cs",
+        "src/Winnow.Application/Connections/StoreConnectionApplication.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PluginProvenanceParityTests.cs",
+          "case": "Registered_legacy_Epic_prompt_policy_is_callable_without_prompts_or_with_two_unavailable_prompts"
+        }
+      ],
+      "reason": "The unchanged original creates no prompt registrations and requires NoInteractivePrompt plus zero provider HTTP requests. The new direct-composition theory resolves EpicInteractiveSignIn from the actual BackendApplication container, proves zero IInteractiveAuthPrompt registrations and the same no-request result. The prompt loop is callable retained backend policy, while Electron uses BuildRequest/explicit completion and its own native/manual presentation; this entry does not claim the HTTP route invokes SignInAsync."
     },
     {
       "id": "EpicInteractiveSignInTests.A_rejected_code_reports_the_code_not_the_credentials",
@@ -5408,12 +5436,34 @@
     {
       "id": "InteractiveAuthPromptTests.The_console_prompt_is_available_when_output_is_redirected",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "tests": [
+        {
+          "file": "tests/parity-epic-settings.test.tsx",
+          "case": "opens the system-browser fallback explicitly and submits the masked final address through named IPC only"
+        }
+      ],
+      "reason": "The original source executes ConsoleAuthPrompt.IsAvailableAsync inside xUnit redirected standard streams and requires true; it passes unchanged. This C# frontend console attachment/redirected-terminal availability check has no Electron GUI/Node console-prompt object. Electron keeps the useful alternate capture route as an explicit system-browser/manual callback form on both surfaces, with masked address input and named IPC. That is separately executed behavioral evidence, not a claim to preserve Avalonia ConsoleAuthPrompt or attach to a terminal."
     },
     {
       "id": "InteractiveAuthPromptTests.The_two_prompts_are_registered_in_fallback_order",
       "source": "tests/Winnow.Tests/EpicWeb/EpicInteractiveSignInTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-epic-native.test.ts",
+          "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+        },
+        {
+          "file": "tests/parity-epic-settings.test.tsx",
+          "case": "continues embedded failure %s in the manual form without preparing another attempt"
+        },
+        {
+          "file": "tests/parity-epic-settings.test.tsx",
+          "case": "withdraws repeated sign-in actions while pending and cancels without launching fallback"
+        }
+      ],
+      "reason": "The unchanged source requires exactly two DI descriptors: factory-created WebView prompt first and ConsoleAuthPrompt second. Electron replaces CLR registration order with its actual native-sign-in controller and explicit manual fallback. Unavailable initialization, empty capture and no-session rows all keep one owned attempt, return no captured code, make no completion request, and require explicit manual opening; cancel never starts a fallback. Both Settings presentations expose the masked manual form without preparing a second attempt. This preserves native-first/fallback-second behavior without inventing a console peer in Electron."
     },
     {
       "id": "EpicLibraryIsolationTests.Switching_accounts_after_restart_cannot_reuse_another_accounts_durable_library",
@@ -16099,27 +16149,75 @@
     {
       "id": "PluginSyncIntegrationTests.Shipped_steamgriddb_package_loads_through_the_public_sdk_without_an_app_reference",
       "source": "tests/Winnow.Tests/PluginSyncIntegrationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Plugins/PluginCatalog.cs",
+        "src/Winnow.Plugins/PluginLoadContext.cs",
+        "src/Winnow.Application/Services/PluginStorage.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PluginProvenanceParityTests.cs",
+          "case": "Real_packaged_PSN_settings_mask_save_omit_and_remove_the_exact_source_secret_and_history_options"
+        }
+      ],
+      "reason": "The unchanged source loads the shipped SteamGridDB package through PluginCatalog, requires an active error-free provider and secret apikey setting, verifies no SteamGridDB reference from the Avalonia assembly, and receives null artwork for fixture Game/Steam220 without credentials. The independent backend retains the same catalog/load context/storage and discovers packages during BackendStartupService. The legacy App assembly assertion remains an executed historical assertion; the added BackendApplication assembly assertion directly proves the new host references no Winnow.Plugin.* provider, while the isolated SDK-only fixture proves actual separate-load-context resolution. It does not pretend the old App assertion alone proves backend composition."
     },
     {
       "id": "PluginSyncIntegrationTests.Separate_assembly_imports_library_and_applies_scoped_metadata_and_artwork",
       "source": "tests/Winnow.Tests/PluginSyncIntegrationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/PluginSyncService.cs",
+        "src/Winnow.Plugins/PluginCatalog.cs",
+        "src/Winnow.Plugins/PluginLoadContext.cs",
+        "src/Winnow.Application/Services/PluginStorage.cs",
+        "src/Winnow.Backend/BackendStartupService.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PluginProvenanceParityTests.cs",
+          "case": "Real_packaged_PSN_settings_mask_save_omit_and_remove_the_exact_source_secret_and_history_options"
+        }
+      ],
+      "reason": "The unchanged original executes the real separate FixturePlugin assembly against two seeded games. Import maps fixture-game and Steam220 to the same release, leaves metadata/images untouched until enrichment, then applies Fixture metadata from fixture and plugin:fixture field/image provenance. A second sync preserves the image observation timestamp and exactly three ownerships. A user Summary My summary wins over Replacement, Custom tag coexists with Built-in genre, an off-allowlist artwork URL preserves the previous observation, and an explicit empty response clears only that plugin artwork. Those same PluginSyncService/catalog/storage implementations are used by BackendStartupService; Electron consumes their committed API projections and does not reimplement importing."
     },
     {
       "id": "PluginSyncIntegrationTests.Plugin_facets_refresh_only_their_source_and_leave_builtin_assignments",
       "source": "tests/Winnow.Tests/PluginSyncIntegrationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Data/Repositories/PluginFacetRepository.cs",
+        "src/Winnow.Data/Repositories/FacetRepository.cs",
+        "src/Winnow.Application/Services/PluginSyncService.cs"
+      ],
+      "reason": "The unchanged executed source seeds two games, assigns built-in RPG plus plugin:first One and plugin:second Two to work1, then clears only plugin:first. Release1 resolves exactly RPG and Two in sorted order. The backend still writes through PluginFacetRepository and projects through FacetRepository; this is shared source-scoped storage policy and needs no renderer reimplementation."
     },
     {
       "id": "PluginSyncValidationTests.Every_steam_release_contributes_artwork_and_an_unavailable_release_preserves_the_previous_observation",
       "source": "tests/Winnow.Tests/PluginSyncValidationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/PluginSyncService.cs",
+        "src/Winnow.Plugins/PluginCatalog.cs",
+        "src/Winnow.Plugins/PluginLoadContext.cs",
+        "src/Winnow.Application/Services/PluginStorage.cs",
+        "src/Winnow.Backend/BackendStartupService.cs"
+      ],
+      "reason": "The unchanged original seeds two games plus work1 Steam release3. Real sync calls the artwork provider in exact Steam-ID order [1,3,2] and commits only plugin:release-art hero-3-old.png for work1. Making release1 unavailable while revision changes to new preserves both timestamp and complete old images. Restoring availability produces hero-3-new.png. An empty plugin response removes its observation while retaining separately seeded IGDB imagery. The independent backend uses the identical sync transaction/validation path, so the no-partial-publish and source-retirement rules remain shared backend behavior."
     },
     {
       "id": "PluginSyncValidationTests.Null_shapes_and_broken_metadata_do_not_block_other_providers_or_erase_prior_artwork",
       "source": "tests/Winnow.Tests/PluginSyncValidationTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Application/Services/PluginSyncService.cs",
+        "src/Winnow.Plugins/PluginCatalog.cs",
+        "src/Winnow.Plugins/PluginLoadContext.cs",
+        "src/Winnow.Application/Services/PluginStorage.cs",
+        "src/Winnow.Backend/BackendStartupService.cs"
+      ],
+      "reason": "The unchanged source runs a-broken metadata, b-null malformed-shape and z-good SDK providers against two seeded games. Both nullable-game and fixture-game are imported; z-good metadata and artwork reach both works. The prior b-null previous.png remains, rather than being erased by a null response. The broken provider reports exactly The plugin returned data that could not be applied. without private-key. Same PluginSyncService/catalog soft-failure and source preservation code runs in the backend; one provider cannot prevent subsequent providers from enriching."
     },
     {
       "id": "RatingCapPreferenceTests.The_slider_spans_the_scale_and_starts_at_the_top",
@@ -24224,7 +24322,20 @@
     {
       "id": "XboxPluginPackageTests.Xbox_zip_loads_only_after_opt_in_with_the_shared_sdk_and_hides_managed_credentials",
       "source": "tests/Winnow.Tests/XboxPluginPackageTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "implementation": [
+        "src/Winnow.Plugins/PluginCatalog.cs",
+        "src/Winnow.Plugins/PluginLoadContext.cs",
+        "src/Winnow.Application/Services/PluginStorage.cs",
+        "src/Winnow.Application/Services/PluginSettingsBackend.cs"
+      ],
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/PluginProvenanceParityTests.cs",
+          "case": "Real_packaged_PSN_settings_mask_save_omit_and_remove_the_exact_source_secret_and_history_options"
+        }
+      ],
+      "reason": "The unchanged original packages the actual Xbox assembly and shipped manifest into xbox.zip. Initial discovery leaves it unloaded; enabling still requires a fresh catalog. After restart it loads in a non-default context, implements library/account/game-actions through the shared SDK, and its only Winnow assembly reference is Winnow.PluginSdk. The legacy App has no Xbox reference; supplemental BackendApplication assertion separately proves the new host has no provider references. Actual PluginSettingsBackend hides refresh-token, exposes import-history, keeps client-id advanced/optional/empty, and unrelated Steam220 metadata/artwork is absent. Retained catalog/ZIP/opt-in/settings behavior is not replaced by a frontend mock."
     },
     {
       "id": "AccountInventoryCompositionTests.Library_and_feed_keep_unknown_ownership_until_a_complete_inventory_and_expand_after_failure",
@@ -30748,7 +30859,14 @@
     {
       "id": "PluginLibrarySourcePresentationTests.Grouped_history_retains_its_source_explanation_on_both_surfaces",
       "source": "tests/Winnow.Ui.Tests/PluginLibrarySourcePresentationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-plugin-provenance.test.tsx",
+          "case": "Grouped_history_retains_its_source_explanation_on_both_surfaces (%s)"
+        }
+      ],
+      "reason": "Exact entries Steam1/Xbox2, same work1, zero minutes/no last-played, missing ownership install state One visible source-summary paragraph with Xbox: Played history — not proof of ownership. Summary uses all grouped entries even when Steam is primary; no action dispatched"
     },
     {
       "id": "PluginSettingsInteractionTests.Manage_plugins_restart_supports_keyboard_and_controller",
@@ -31109,17 +31227,38 @@
     {
       "id": "PsnPluginPresentationTests.Settings_mask_session_token_save_history_options_and_remove_the_saved_secret",
       "source": "tests/Winnow.Ui.Tests/PsnPluginPresentationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/plugin-settings-contracts.test.tsx",
+          "case": "Settings_mask_session_token_save_history_options_and_remove_the_saved_secret"
+        }
+      ],
+      "reason": "Exact PlayStation 1.0.0 manifest; npsso saved-secret/null value and source labels; two false boolean options; no account sign-in/out Exactly one text input, password and empty; exact Sony ssocookie setup URL Actual useController gamepad A calls keyboard with the focused NPSSO input in fullscreen Save sends only npsso fixture-session-token, import-history true, include-legacy true; clears draft and acknowledges Refresh queued; fullscreen Save retains focus Second save omits npsso and retains stored-secret state; no extra plugins.refresh call Remove addresses plugin psn/key npsso, disables removal after refreshed state Unsaved unsaved-session-token is absent after unmount/remount"
     },
     {
       "id": "PsnPluginPresentationTests.Imported_history_shows_its_PlayStation_source_without_a_launch_or_install_action",
       "source": "tests/Winnow.Ui.Tests/PsnPluginPresentationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-plugin-provenance.test.tsx",
+          "case": "Imported_history_shows_its_PlayStation_source_without_a_launch_or_install_action (%s)"
+        }
+      ],
+      "reason": "Exact PSN-only work1,60minutes,yesterday,null installed; unavailable plugin actions PlayStation name and PLAYSTATION badge policy; one prefixed source summary No Play or Install control; primaryAction null; no invented Installed/Not installed caption; no action command Original null comes from missing Ownership in TileEntry.For. Core Ownership and API DTO retain bool. Nullable renderer type/parser accepts the exact presentation fixture; native persisted fixture is installed=false and does not prove null."
     },
     {
       "id": "PsnPluginPresentationTests.PlayStation_filter_selects_imported_titles_on_both_surfaces",
       "source": "tests/Winnow.Ui.Tests/PsnPluginPresentationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-filter-options.test.tsx",
+          "case": "PlayStation_filter_selects_imported_titles_on_both_surfaces"
+        }
+      ],
+      "reason": "Two actual rendered titles Game1/Game2; ownership2 plugin:psn Accessible choice PlayStation, 1 matching title Applied exact filter stores [plugin:psn]; only Game2 remains Reopened options retain matching count1"
     },
     {
       "id": "RailListControlsTests.Statistics_sits_with_screens_and_stays_reachable_on_both_surfaces",

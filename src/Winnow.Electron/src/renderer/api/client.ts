@@ -17,7 +17,12 @@ export class ApiError extends Error {
   }
 }
 
-export async function request<T>(route: string, params?: ApiRequest['params'], body?: unknown, signal?: AbortSignal): Promise<T> {
+export async function request<T>(
+  route: string,
+  params?: ApiRequest['params'],
+  body?: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
   signal?.throwIfAborted()
   const requestId = signal ? crypto.randomUUID().replaceAll('-', '') : undefined
   const cancel = () => {
@@ -77,7 +82,7 @@ export const storeLabel = (value: string): string =>
     gog: 'GOG',
     manual: 'Manual',
     'plugin:xbox': 'Xbox',
-    'plugin:psn': 'PlayStation Network',
+    'plugin:psn': 'PlayStation',
   })[value] ?? value.replace(/^plugin:/, '')
 
 export { primaryAction } from '../../shared/game-actions'

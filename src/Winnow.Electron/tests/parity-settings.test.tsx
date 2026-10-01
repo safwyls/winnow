@@ -280,7 +280,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s settings parity', (mode) =
     expect((screen.getByLabelText('Advanced secret') as HTMLInputElement).type).toBe('password')
     fireEvent.change(screen.getByLabelText('Advanced secret'), { target: { value: 'replacement' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save Xbox settings' }))
-    await screen.findByText('Provider settings saved.')
+    await screen.findByText('Provider settings saved. Refresh queued.')
     await waitFor(() => expect((screen.getByLabelText('Advanced secret') as HTMLInputElement).value).toBe(''))
     expect(
       request.mock.calls.some(

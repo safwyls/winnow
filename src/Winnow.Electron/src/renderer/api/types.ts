@@ -6,7 +6,7 @@ export interface GameEntry {
   title: string
   store: string
   platform?: string | null
-  installed: boolean
+  installed: boolean | null
   playtimeMinutes: number
   lastPlayedAt?: string | null
 }

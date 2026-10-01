@@ -45,14 +45,15 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [runtime metadata credentials checkpoint](checkpoint-eighty-three.md) records
-nine unchanged source cases, fifteen HTTP cases and 38 component cases passing.
-The actual shared services retain credential rotation, configuration fallback and
-serialized refresh behavior. The [platform accounts checkpoint](checkpoint-eighty-two.md)
-records forty source cases, eleven API cases and 24 distinct native journeys passing,
-including controller settings pages and explicit saved-page reading on both surfaces.
-The inventory has 1,606 ported, 696 retained-backend and 35 framework-specific methods,
-with 80 pending and eighteen partial. The [native identity checkpoint](checkpoint-seventy-nine.md)
+The [plugin source and sign-in checkpoint](checkpoint-eighty-four.md) records eighteen
+unchanged source cases, twenty backend cases, 272 focused renderer cases, 121 Epic
+component/main/preload cases and eleven distinct native journeys passing. Grouped
+provider explanations, PlayStation labels, plugin settings and Epic fallback retain
+their source contracts. The [runtime metadata credentials checkpoint](checkpoint-eighty-three.md)
+records nine source cases, fifteen HTTP cases, 38 component cases and three native
+journeys passing. The inventory has 1,611 ported, 704 retained-backend and 36
+framework-specific methods, with 66 pending and eighteen partial.
+The [native identity checkpoint](checkpoint-seventy-nine.md)
 records the most recent broad 3,992-case component/live API gate. Work continues
 through TASK-381.30.
 

@@ -36,6 +36,7 @@ import { gameLinks, type GameLink } from '../api/gameLinks'
 import { useViewState } from '../viewState'
 import { InstallFolderButton } from './install-folder'
 import { detailIdle, detailPlaytime } from './details-facts'
+import { librarySourceSummary } from './library-source'
 import { ArtworkBrowserDialog } from './artwork-browser'
 import { AvalonBackdrop } from '../themes/avalon-backdrop'
 import { restoreFocusWhenReady } from './restore-focus'
@@ -167,6 +168,7 @@ export function AvalonDetailsLayout({
   )
   const summary = game?.summary?.trim() || 'No description yet. Metadata fills in automatically.'
   const storeLine = [...new Set(game?.entries.map((entry) => storeLabel(entry.store)) ?? [])].join(' · ')
+  const sourceSummary = librarySourceSummary(game?.entries ?? [], workspace.data)
   useLayoutEffect(() => {
     const node = body.current
     if (!node) return
@@ -577,9 +579,9 @@ export function AvalonDetailsLayout({
               typeof primary.installed === 'boolean' &&
               ` · ${primary.installed ? 'Installed' : 'Not installed'}`}
           </p>
-          {primary && workspace.data?.pluginActions[String(primary.ownershipId)]?.sourceLabel && (
-            <p className="detail-support">
-              {workspace.data.pluginActions[String(primary.ownershipId)].sourceLabel}
+          {sourceSummary && (
+            <p className="detail-support" data-library-source-summary>
+              {sourceSummary}
             </p>
           )}
           <div className="avalon-details-actions" aria-label="Game actions">

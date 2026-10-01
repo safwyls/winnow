@@ -8,7 +8,7 @@ export function InstallFolderButton({
   installPath,
 }: {
   ownershipId: number
-  installed?: boolean
+  installed?: boolean | null
   installPath?: string | null
 }) {
   const [pending, setPending] = useState(false)

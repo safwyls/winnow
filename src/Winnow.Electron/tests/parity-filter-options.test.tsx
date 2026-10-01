@@ -213,6 +213,30 @@ function apply(mode: Mode) {
 }
 
 describe.each(['desktop', 'fullscreen'] as const)('%s source filter option lifecycle', (mode) => {
+  it('PlayStation_filter_selects_imported_titles_on_both_surfaces', async () => {
+    snapshot.games[1].entries[0].store = 'plugin:psn'
+    mount(mode)
+    await waitFor(() => expect(titles()).toEqual(['1', '2']))
+    const panel = await openFilters(mode, 'PLATFORM')
+    fireEvent.click(
+      panel.getByRole(mode === 'desktop' ? 'checkbox' : 'button', {
+        name: 'PlayStation, 1 matching title',
+      }),
+    )
+    apply(mode)
+    await waitFor(() => expect(titles()).toEqual(['2']))
+    expect(screen.getByTestId('current-rules').textContent).toBe(
+      filterFingerprint({ stores: ['plugin:psn'] }),
+    )
+    expect(document.querySelector('[data-avalon-game][data-work-id="2"]')?.textContent).toContain('Game 2')
+    await openFilters(mode, 'PLATFORM')
+    expect(
+      screen.getByRole(mode === 'desktop' ? 'checkbox' : 'button', {
+        name: 'PlayStation, 1 matching title',
+      }),
+    ).toBeDefined()
+  })
+
   it('explains every built-in collection with the original description and Invested label', async () => {
     mount(mode)
     await waitFor(() => expect(titles()).toEqual(['1', '2']))

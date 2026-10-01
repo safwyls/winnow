@@ -27,6 +27,7 @@ import { AddToListButton, orderedLists } from './parity-list-prompt'
 import { DetailsRelationships } from './parity-details-identity'
 import { AvalonDetailsLayout } from './details-layout'
 import { detailPlaytime } from './details-facts'
+import { librarySourceSummary } from './library-source'
 import { ReleaseAchievements } from './detail-achievements'
 import { noActionSentence } from '../../shared/game-actions'
 import { createGameLink } from '../../shared/external-links'
@@ -249,6 +250,7 @@ function SharedDetails({
   const metadata = useApiQuery<Metadata>('metadata.get', { workId })
   const journalPreferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
   const game = library.data?.games.find((item) => item.workId === workId)
+  const sourceSummary = librarySourceSummary(game?.entries ?? [], workspace.data)
   const gogNotes = cachedGogPatchNotes(
     primaryEntry(game?.entries ?? [], workspace.data) ?? game?.entries[0],
     workspace.data,
@@ -413,6 +415,7 @@ function SharedDetails({
           <p className="eyebrow">{game?.bucket.replaceAll('_', ' ') ?? 'YOUR LIBRARY'}</p>
           <h1>{game?.title ?? 'Game details'}</h1>
           <p>{[game?.firstReleaseYear, game?.publisher].filter(Boolean).join(' · ')}</p>
+          {sourceSummary && <p data-library-source-summary>{sourceSummary}</p>}
           {unreadCount > 0 && (
             <button
               onClick={() => {

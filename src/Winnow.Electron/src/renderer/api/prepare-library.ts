@@ -8,7 +8,7 @@ const entry = z
     workId: z.number(),
     title: z.string(),
     store: z.string(),
-    installed: z.boolean(),
+    installed: z.boolean().nullable(),
     playtimeMinutes: z.number(),
   })
   .passthrough()

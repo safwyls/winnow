@@ -8,6 +8,7 @@ import { ArtworkSourcePreferences } from '../src/renderer/features/SettingsPrefe
 import type { PluginSetting, PluginSnapshot } from '../src/renderer/api/types'
 import type { ApiRequest } from '../src/shared/bridge'
 import { clearViewState } from '../src/renderer/viewState'
+import { useController } from '../src/renderer/controller'
 
 function field(key: string, label: string, overrides: Partial<PluginSetting> = {}): PluginSetting {
   return {
@@ -59,6 +60,48 @@ const xbox: PluginSnapshot = {
     field('override', 'Application ID override', { isAdvanced: true, value: 'existing-override' }),
     field('secret', 'Advanced secret', { isAdvanced: true, isSecret: true, hasStoredSecret: true }),
   ],
+}
+const psn: PluginSnapshot = {
+  id: 'psn',
+  name: 'PlayStation',
+  description: 'Import PlayStation games and optional history.',
+  version: '1.0.0',
+  capabilities: 'Library sources, Metadata, Artwork',
+  enabled: true,
+  isLoaded: true,
+  restartRequired: false,
+  status: '',
+  canConfigure: true,
+  hasAccount: false,
+  accountConnected: false,
+  settings: [
+    field('npsso', 'Sony session token (NPSSO)', {
+      value: null,
+      isSecret: true,
+      hasStoredSecret: true,
+      setupUrl: 'https://ca.account.sony.com/api/v1/ssocookie',
+    }),
+    field('import-history', 'Include played games', { isBoolean: true, value: 'false' }),
+    field('include-legacy', 'Include PS3 and PS Vita trophy history', { isBoolean: true, value: 'false' }),
+  ],
+}
+function ControllerSettings({
+  mode,
+  keyboard,
+}: {
+  mode: 'desktop' | 'fullscreen'
+  keyboard: (input?: HTMLInputElement | HTMLTextAreaElement) => void
+}) {
+  useController({
+    enabled: mode === 'fullscreen',
+    surface: mode,
+    keyboard,
+    menu: vi.fn(),
+    search: vi.fn(),
+    switchPage: vi.fn(),
+    play: vi.fn(),
+  })
+  return <PluginSettings mode={mode} />
 }
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -119,13 +162,146 @@ afterEach(() => {
   for (const mode of ['desktop', 'fullscreen']) {
     clearViewState(`${mode}:settings:tab`)
     clearViewState(`${mode}:plugins:selected`)
-    for (const id of ['community-artwork', 'xbox']) clearViewState(`${mode}:plugin:${id}:drafts`)
+    for (const id of ['community-artwork', 'xbox', 'psn']) clearViewState(`${mode}:plugin:${id}:drafts`)
   }
   vi.useRealTimers()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+  Reflect.deleteProperty(navigator, 'getGamepads')
 })
 
 describe.each(['desktop', 'fullscreen'] as const)('%s plugin settings source contracts', (mode) => {
+  it.each([
+    { enabled: false, isLoaded: true },
+    { enabled: true, isLoaded: false },
+  ])('does not promise a queued refresh for provider state %j', async (state) => {
+    const { wrapper, request } = fixture()
+    render(<PluginCard plugin={{ ...psn, ...state }} mode={mode} />, { wrapper })
+    fireEvent.click(screen.getByRole('button', { name: 'Save PlayStation settings' }))
+    const status = await screen.findByText(
+      'Provider settings saved. Enable the plugin and choose Restart library service in Manage plugins to use them.',
+    )
+    expect(status.textContent).not.toContain('Refresh queued.')
+    expect(request.mock.calls.some(([input]) => input.route === 'plugins.refresh')).toBe(false)
+  })
+
+  it('Settings_mask_session_token_save_history_options_and_remove_the_saved_secret', async () => {
+    const snapshots = [structuredClone(psn)]
+    const { wrapper, request, openExternal } = fixture(snapshots, (input) => {
+      if (input.route === 'plugins.settings') {
+        const values = (input.body as { values: Record<string, string> }).values
+        for (const setting of snapshots[0].settings) {
+          if (setting.isSecret) setting.hasStoredSecret ||= Object.hasOwn(values, setting.key)
+          else if (Object.hasOwn(values, setting.key)) setting.value = values[setting.key]
+        }
+      }
+      if (input.route === 'plugins.removeSecret') snapshots[0].settings[0].hasStoredSecret = false
+    })
+    const frames = new Map<number, FrameRequestCallback>()
+    let nextFrame = 0,
+      time = 0,
+      accept = false
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.set(++nextFrame, callback)
+      return nextFrame
+    })
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id))
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    Object.defineProperty(navigator, 'getGamepads', {
+      configurable: true,
+      value: () => [
+        {
+          index: 0,
+          connected: true,
+          mapping: 'standard',
+          axes: [0, 0, 0, 0],
+          buttons: Array.from({ length: 17 }, (_, index) => ({
+            pressed: index === 0 && accept,
+            value: index === 0 && accept ? 1 : 0,
+          })),
+        },
+      ],
+    })
+    const frame = () =>
+      act(() => {
+        time += 16
+        const pending = [...frames.values()]
+        frames.clear()
+        pending.forEach((callback) => callback(time))
+      })
+    const keyboard = vi.fn()
+    let view = render(<ControllerSettings mode={mode} keyboard={keyboard} />, { wrapper })
+    let secret = (await screen.findByLabelText('PlayStation Sony session token (NPSSO)')) as HTMLInputElement
+    expect(secret.type).toBe('password')
+    expect(secret.value).toBe('')
+    expect(secret.placeholder).toBe('Saved secret — leave blank to keep')
+    expect(view.container.querySelectorAll('input:not([type="checkbox"])')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: /Sign (in|out).*PlayStation/ })).toBeNull()
+    const get = screen.getByRole('button', { name: 'Get PlayStation Sony session token (NPSSO)' })
+    fireEvent.click(get)
+    expect(openExternal).toHaveBeenCalledWith('https://ca.account.sony.com/api/v1/ssocookie')
+    if (mode === 'fullscreen') {
+      secret.focus()
+      frame()
+      accept = true
+      frame()
+      accept = false
+      frame()
+      expect(keyboard).toHaveBeenCalledExactlyOnceWith(secret)
+    }
+    fireEvent.change(secret, { target: { value: 'fixture-session-token' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'PlayStation Include played games' }))
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'PlayStation Include PS3 and PS Vita trophy history' }),
+    )
+    const save = screen.getByRole('button', { name: 'Save PlayStation settings' })
+    save.focus()
+    fireEvent.click(save)
+    await screen.findByText('Provider settings saved. Refresh queued.')
+    const writes = () =>
+      request.mock.calls.map(([input]) => input).filter((input) => input.route === 'plugins.settings')
+    expect(writes()).toEqual([
+      {
+        route: 'plugins.settings',
+        params: { pluginId: 'psn' },
+        body: {
+          values: {
+            npsso: 'fixture-session-token',
+            'import-history': 'true',
+            'include-legacy': 'true',
+          },
+        },
+      },
+    ])
+    expect(secret.value).toBe('')
+    if (mode === 'fullscreen') expect(document.activeElement).toBe(save)
+    fireEvent.click(save)
+    await waitFor(() => expect(writes()).toHaveLength(2))
+    await screen.findByText('Provider settings saved. Refresh queued.')
+    expect(writes()[1].body).toEqual({ values: { 'import-history': 'true', 'include-legacy': 'true' } })
+    expect(snapshots[0].settings[0].hasStoredSecret).toBe(true)
+    expect(secret.placeholder).toBe('Saved secret — leave blank to keep')
+    expect(request.mock.calls.some(([input]) => input.route === 'plugins.refresh')).toBe(false)
+    const remove = screen.getByRole('button', {
+      name: 'Remove saved PlayStation Sony session token (NPSSO)',
+    }) as HTMLButtonElement
+    fireEvent.click(remove)
+    await waitFor(() => expect(remove.disabled).toBe(true))
+    await screen.findByText('Saved secret removed. Any configured fallback remains available.')
+    expect(request).toHaveBeenCalledWith({
+      route: 'plugins.removeSecret',
+      params: { pluginId: 'psn', key: 'npsso' },
+    })
+    expect(snapshots[0].settings[0].hasStoredSecret).toBe(false)
+    fireEvent.change(secret, { target: { value: 'unsaved-session-token' } })
+    view.unmount()
+    view = render(<PluginSettings mode={mode} />, { wrapper })
+    secret = (await screen.findByLabelText('PlayStation Sony session token (NPSSO)')) as HTMLInputElement
+    expect(secret.value).toBe('')
+    expect(secret.type).toBe('password')
+  })
+
   it('orders three named artwork providers with working move boundaries', async () => {
     let order = 'plugin:first,plugin:third,plugin:second'
     const { wrapper, request } = fixture(undefined, (input) => {
@@ -263,7 +439,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s plugin settings source con
     render(<PluginSettings mode={mode} />, { wrapper })
     fireEvent.change(await screen.findByLabelText('Community artwork Language'), { target: { value: 'fr' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save Community artwork settings' }))
-    await screen.findByText('Provider settings saved.')
+    await screen.findByText('Provider settings saved. Refresh queued.')
     expect((screen.getByLabelText('Community artwork Language') as HTMLInputElement).value).toBe('fr')
     snapshots[0].settings[1].value = 'ja'
     await act(() => client.invalidateQueries({ queryKey: ['api', 'plugins.get'] }))
@@ -277,7 +453,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s plugin settings source con
     expect(screen.queryByLabelText('Xbox Application ID override')).toBeNull()
     fireEvent.click(screen.getByLabelText('Xbox Scan installed games'))
     fireEvent.click(screen.getByRole('button', { name: 'Save Xbox settings' }))
-    await screen.findByText('Provider settings saved.')
+    await screen.findByText('Provider settings saved. Refresh queued.')
     expect(request).toHaveBeenCalledWith({
       route: 'plugins.settings',
       params: { pluginId: 'xbox' },
@@ -622,7 +798,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s plugin settings source con
     expect(toggle.checked).toBe(false)
     fireEvent.click(toggle)
     fireEvent.click(screen.getByRole('button', { name: 'Save Xbox settings' }))
-    await screen.findByText('Provider settings saved.')
+    await screen.findByText('Provider settings saved. Refresh queued.')
     expect(request).toHaveBeenCalledWith({
       route: 'plugins.settings',
       params: { pluginId: 'xbox' },

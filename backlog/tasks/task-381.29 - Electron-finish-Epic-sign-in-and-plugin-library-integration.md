@@ -1,10 +1,11 @@
 ---
 id: TASK-381.29
 title: 'Electron: finish Epic sign-in and plugin library integration'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:48'
+updated_date: '2026-10-01 21:28'
 labels:
   - electron
   - parity
@@ -54,18 +55,38 @@ tests/Winnow.Ui.Tests/PsnPluginPresentationTests.cs
 - PsnPluginPresentationTests.Imported_history_shows_its_PlayStation_source_without_a_launch_or_install_action [pending at split]
 - PsnPluginPresentationTests.PlayStation_filter_selects_imported_titles_on_both_surfaces [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Keep one implementation task active, verify and commit each milestone, then continue. Pause for review after TASK-381.30.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original Epic sign-in success/cancel/failure and plugin source/sync validation cases pass without persisting secrets in renderer state or leaking account sessions.
-- [ ] #2 PSN/Xbox and provider library presentation retain plugin identity, source actions and error/empty behavior on desktop and fullscreen; packaged provider artifacts satisfy the original contract.
-- [ ] #3 All 14 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original Epic sign-in success/cancel/failure and plugin source/sync validation cases pass without persisting secrets in renderer state or leaking account sessions.
+- [x] #2 PSN/Xbox and provider library presentation retain plugin identity, source actions and error/empty behavior on desktop and fullscreen; packaged provider artifacts satisfy the original contract.
+- [x] #3 All 14 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Execute the fourteen unchanged source methods and preserve plugin package, scoped metadata/artwork and no-prompt fixtures. 2. Restore grouped plugin provenance and exact PlayStation labels on desktop/fullscreen; verify the exact NPSSO settings matrix and filter. 3. Verify real API provider attribution plus existing Epic native/manual fallback and cancellation boundaries. 4. Run focused component/API and serialized native checks, review captures, record exact dispositions/checkpoint84, commit and continue to TASK-381.30.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Read-only preparation .tmp/task38129-prep.md identifies grouped secondary-provider provenance and PlayStation naming gaps. Do not replace shared plugin services or classify all Epic sign-in assertions as framework-specific. Root owns official mapping and integration; backend, renderer and native work have separate owned files.
+
+Verified 18 unchanged source cases, 20 backend cases (18 HTTP and 2 direct registered legacy-policy cases), 272 focused renderer cases, 121 Epic component/main/preload cases and 11 distinct native journeys. All native passes use frozen index-CNBUuq-a.js; harness-only locator and completion fixes are recorded in checkpoint84. Reviewed desktop/fullscreen screenshots including masked keyboard glyphs. Mapping dispositions: 5 ported, 8 retained-backend, 1 narrowly framework-specific; inventory 1611/704/36/66/18. No physical-device or live-provider claim.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Restored grouped provider attribution, PlayStation naming and refresh acknowledgement while preserving source-specific history and NPSSO secret handling on both surfaces. All fourteen assigned contracts are resolved with executed source, API, component and native evidence. See docs/spikes/2026-09-28-electron-parity/checkpoint-eighty-four.md. Continue to TASK-381.30 within the authorized batch.
+<!-- SECTION:FINAL_SUMMARY:END -->
