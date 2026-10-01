@@ -1,7 +1,7 @@
 ---
 id: TASK-381.17
 title: 'Electron: finish activity paging, recovery and journal interactions'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
@@ -78,7 +78,7 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -99,6 +99,8 @@ Source30 and HTTP17 pass. Renderer now serializes Activity reads to the latest s
 Native verification identified and fixed intermittent Chromium retry focus loss, outer Details dismissal during a pending journal save, and misleading local Activity trigger badges. Global LB/RB and prompt Y Keyboard hints remain. Final production build passes; 127 affected renderer cases, 8 account recovery cases, and the repeated 17-case HTTP gate pass. The 40-case native matrix is being completed with focused reruns, plus 13 earlier native journal consumers. Shared activity observer lifetime is covered separately; all 18 migration mappings remain provisional until final native evidence.
 
 Final verification: all3789 component/live API cases across187 files pass in99.33s; original30 and finalHTTP17 pass; all40 new source native cases plus13 earlier consumers pass, with4 Account focus repeats and5 final typography reruns. Build/typecheck, formatting, diff check and migration audit pass. Eighteen screenshots reviewed. All18 assigned methods are ported; inventory1476 ported/650 retained/32 framework/238 pending/39 partial. See checkpoint72 and .tmp/task38117-native-evidence.json. Native input is simulated standard Gamepad API, not physical-controller validation.
+
+Milestone committed as c7f3fbcb. All acceptance criteria are verified; continuing to the eighth task, TASK-381.18, within the authorized ten-task batch.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
