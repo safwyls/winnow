@@ -1,7 +1,7 @@
 ---
 id: TASK-381.25
 title: 'Electron: finish fetch status and session diagnostics'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:48'
@@ -65,7 +65,7 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -82,6 +82,8 @@ Started after TASK-381.24 implementation c071f1a2 and completion12cdd35. Baselin
 All14 assigned original cases pass unchanged:11 main plus3 UI. Two additional original watcher failure/recovery surface cases also pass (16 executed bodies, no skips); captures/TRX use task38125-original-captures and task38125-dotnet-results. The new authenticated HTTP progress/health test passes, preserving997→1→0 snapshots, distinct events, wrong-operation recovery isolation and no private exception message/path in diagnostics. The isolated fixture builds with0 warnings/errors and exposes only authenticated test-control routes.
 
 Final verification:202 focused host/component cases,16 original executed cases,1 authenticated API and6 distinct native cases pass. Caption font fix additionally passes3 targeted cases. Build/typecheck/format pass. Both log captures inspected after exact IPC-wrapper removal; affected native cases rerun successfully. Evidence checkpoint-eighty.md and task38125-native-evidence.json. All13 methods ported; inventory1584 ported/665 retained/32 framework/134 pending/20 partial. Actual autorun entries and physical devices were not exercised.
+
+Reviewable implementation milestone d66f7617. All criteria verified; continuing the authorized batch with TASK-381.26.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
