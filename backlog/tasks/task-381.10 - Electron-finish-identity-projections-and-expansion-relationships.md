@@ -1,11 +1,11 @@
 ---
 id: TASK-381.10
 title: 'Electron: finish identity projections and expansion relationships'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:45'
-updated_date: '2026-10-01 04:53'
+updated_date: '2026-10-01 04:56'
 labels:
   - electron
   - parity
@@ -69,7 +69,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -90,5 +90,15 @@ Fixed nested Escape dismissal and restored focus. Fullscreen confirmation uses r
 
 Verification passed: production build/typecheck; all 3,555 Electron component/live API tests across 178 files in 88.08 seconds; 32 original scoped .NET cases and 11 new HTTP/SQLite cases; 39 distinct native cases and six repeated immediate/settled cancellation checks. Native runs are serial and precede the full component/API suite. All interactive data is disposable.
 
-Checkpoint 65 records exact method mappings, visual evidence, fixture corrections and remaining physical-device, full .NET and packaging validation. Inventory: 1,383 ported, 636 retained backend, 32 framework-specific, 319 pending and 65 partial; 384 unresolved. Milestone commit and completion record follow. TASK-381.11 remains To Do until the user prompts continuation.
+Checkpoint 65 records exact method mappings, visual evidence, fixture corrections and remaining physical-device, full .NET and packaging validation. Inventory: 1,383 ported, 636 retained backend, 32 framework-specific, 319 pending and 65 partial; 384 unresolved. Milestone commit: c9fcb75c. Paused for review; TASK-381.11 remains To Do until the user prompts continuation.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed desktop and fullscreen identity projections: independent copy titles, figures and achievements; visible-scope expansion/base-game actions; exact-child separation; safe cancellation and complete controller hints.
+
+Verified production build/typecheck, 3,555 Electron tests, 43 scoped .NET cases, 39 distinct native cases and six cancellation repetitions. All nineteen assigned source contracts are resolved; 384 contracts remain for later tasks. Evidence and limitations: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-five.md. Milestone commit: c9fcb75c.
+
+Paused at the requested review boundary. TASK-381.11, names, editions and group-header preferences, remains unstarted.
+<!-- SECTION:FINAL_SUMMARY:END -->
