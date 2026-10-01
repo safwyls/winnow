@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQuery } from '@tanstack/react-query'
 import { request } from '../api/client'
@@ -472,7 +472,13 @@ function SpendingDetails({ value, mode }: { value: AccountStats; mode: Mode }) {
   )
 }
 
-export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
+export function AccountStatistics({
+  mode = 'desktop',
+  toolbar,
+}: {
+  mode?: Mode
+  toolbar?: (actions: ReactNode) => ReactNode
+}) {
   const refreshButton = useRef<HTMLButtonElement>(null)
   const restoreRefreshFocus = useRef(false)
   const stats = useQuery({
@@ -520,45 +526,69 @@ export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
     !ambiguous && denominator > 0 && numerator >= 0 && numerator <= denominator
       ? `${Number(((100 * numerator) / denominator).toFixed(1))}%`
       : '—'
+  const actions = (
+    <div className="account-actions">
+      <button
+        ref={refreshButton}
+        disabled={stats.isFetching}
+        onClick={() => {
+          restoreRefreshFocus.current = document.activeElement === refreshButton.current
+          void stats.refetch()
+        }}
+      >
+        {stats.isFetching
+          ? 'Reading Steam spending…'
+          : stats.isError
+            ? 'Try again'
+            : 'Refresh Steam spending'}
+      </button>
+      {window.winnow.exportAcquisitions && (
+        <button
+          onClick={() => {
+            setError(null)
+            setMessage('')
+            void window.winnow.exportAcquisitions!()
+              .then((saved) => {
+                if (saved) setMessage('Acquisitions exported.')
+              })
+              .catch(setError)
+          }}
+        >
+          Export acquisitions
+        </button>
+      )}
+    </div>
+  )
+  const figures = (
+    <div className="feature-grid account-spending-figures">
+      {groups.map((group) => (
+        <SpendSummary key={group.currencySymbol} value={group} />
+      ))}
+    </div>
+  )
   return (
-    <section aria-label="Account spending" className="account-statistics" data-mode={mode}>
-      <header className="feature-heading">
-        <div>
-          <h2>What you brought home</h2>
-          <p className="reading-prose">Spending and licences from your captured Steam account pages.</p>
-        </div>
-        <div className="account-actions">
-          <button
-            ref={refreshButton}
-            disabled={stats.isFetching}
-            onClick={() => {
-              restoreRefreshFocus.current = document.activeElement === refreshButton.current
-              void stats.refetch()
-            }}
-          >
-            {stats.isFetching
-              ? 'Reading Steam spending…'
-              : stats.isError
-                ? 'Try again'
-                : 'Refresh Steam spending'}
-          </button>
-          {window.winnow.exportAcquisitions && (
-            <button
-              onClick={() => {
-                setError(null)
-                setMessage('')
-                void window.winnow.exportAcquisitions!()
-                  .then((saved) => {
-                    if (saved) setMessage('Acquisitions exported.')
-                  })
-                  .catch(setError)
-              }}
-            >
-              Export acquisitions
-            </button>
-          )}
-        </div>
-      </header>
+    <section
+      aria-label="Account spending"
+      className={`account-statistics${toolbar ? ' account-statistics-embedded' : ''}`}
+      data-mode={mode}
+    >
+      {toolbar ? (
+        <>
+          {toolbar(actions)}
+          <div className="account-spending-intro">
+            <p>Source: Steam account pages. Spending imports for other stores are not available.</p>
+            <p>Totals of the Steam account pages that were read, not of the whole account.</p>
+          </div>
+        </>
+      ) : (
+        <header className="feature-heading">
+          <div>
+            <h2>What you brought home</h2>
+            <p className="reading-prose">Spending and licences from your captured Steam account pages.</p>
+          </div>
+          {actions}
+        </header>
+      )}
       {stats.isError && (
         <p className="error-message" role="alert">
           Couldn't read Steam spending. Try again.
@@ -569,6 +599,7 @@ export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
         <p role="status">Reading your account statistics…</p>
       ) : data?.hasAnything ? (
         <>
+          {toolbar && !ambiguous && figures}
           <p>
             {data.transactionCount} transactions · {data.licenseCount} licences
             {data.knownAccountCount > 1 ? ` · ${data.knownAccountCount} identified accounts` : ''}.
@@ -612,11 +643,7 @@ export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
             </p>
           ) : (
             <>
-              <div className="feature-grid">
-                {groups.map((group) => (
-                  <SpendSummary key={group.currencySymbol} value={group} />
-                ))}
-              </div>
+              {!toolbar && figures}
               {groups.length > 1 &&
                 (mode === 'desktop' ? (
                   <label className="field account-currency">

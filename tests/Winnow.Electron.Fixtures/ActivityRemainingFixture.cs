@@ -130,6 +130,7 @@ internal sealed class ActivityReadTrackingFactory(ISqliteConnectionFactory inner
     public string ConnectionString => inner.ConnectionString;
     public SqliteConnection Open() => inner.Open();
     public IUnitOfWork Begin() => inner.Begin();
+    public IUnitOfWork BeginRead() => inner.BeginRead();
     public void ReleasePooledConnections() => inner.ReleasePooledConnections();
     public DbLease Lease()
     {

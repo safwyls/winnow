@@ -273,7 +273,7 @@ public sealed class DetailsApplication(ILibraryApplication library, ILibraryQuer
 
     public async Task<GameplayStats> GetGameplayStatsAsync(GameplayStatisticsRequest request, CancellationToken ct = default)
     {
-        using var transaction = transactions.Begin();
+        using var transaction = transactions.BeginRead();
         var snapshot = await ReadVisibleAsync(null, ct);
         var result = await gameplay.GetAsync(new GameplayStatsRequest
         {

@@ -42,7 +42,7 @@ export function gameplayRange(period: string, customFrom: string, customUntil: s
         Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())) /
         86400000,
     ) + 1
-  if (days > 3660 || from.getFullYear() < 1900)
+  if (days - 1 > 3660 || from.getFullYear() < 1900)
     throw new Error('Choose a period of up to ten years, starting in 1900 or later.')
   const until = new Date(end)
   until.setDate(until.getDate() + 1)

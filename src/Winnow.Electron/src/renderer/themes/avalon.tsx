@@ -248,7 +248,6 @@ function Collections({ context, fullscreenTools }: { context: ThemeContext; full
 export function AvalonShell(context: ThemeContext) {
   const fullscreen = context.mode === 'fullscreen'
   const [activityPanel, setActivityPanel] = useViewState('desktop:journal:panel', 'history')
-  const [statisticsSection, setStatisticsSection] = useViewState('desktop:stats:section', 'gameplay')
   const [librarySelected] = useViewState<number | null>('avalon:library:fullscreen:selected', null)
   const [libraryToolsOpen] = useViewState('avalon:library:fullscreen:tools', false)
   const [libraryFiltersOpen] = useViewState('avalon:library:fullscreen:filters-open', false)
@@ -389,17 +388,10 @@ export function AvalonShell(context: ThemeContext) {
                   key={id}
                   aria-current={
                     id === 'stats'
-                      ? shellPage === 'journal' &&
-                        activityPanel === 'summary' &&
-                        statisticsSection === 'spending'
+                      ? shellPage === 'journal' && activityPanel === 'summary'
                         ? 'page'
                         : undefined
-                      : shellPage === id &&
-                          !(
-                            id === 'journal' &&
-                            activityPanel === 'summary' &&
-                            statisticsSection === 'spending'
-                          )
+                      : shellPage === id && !(id === 'journal' && activityPanel === 'summary')
                         ? 'page'
                         : undefined
                   }
@@ -411,7 +403,6 @@ export function AvalonShell(context: ThemeContext) {
                   onClick={() => {
                     if (id === 'stats') {
                       setActivityPanel('summary')
-                      setStatisticsSection('spending')
                       context.setPage('journal')
                     } else {
                       if (id === 'journal') setActivityPanel('history')

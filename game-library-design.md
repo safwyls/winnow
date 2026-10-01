@@ -1123,6 +1123,9 @@ capture ownership IDs and resolved game IDs from `LibraryViewModel.AllTiles`, wh
 applies library visibility and identity rules. Temporary search and facet selections do not
 silently change this population. `IGameplayStatsRepository` returns bounded aggregates for
 the selected store and half-open UTC interval. Local date boundaries define the period bins.
+The backend derives that ownership scope and reads the aggregates inside one deferred
+read transaction. This keeps a consistent snapshot while allowing independent library
+writes and replacement reads to proceed if an obsolete statistics reader is still finishing.
 Completed valid sessions contribute their stored duration in proportion to overlap with each
 bin; exact duplicate evidence counts once per ownership. Top games fold the selected store's
 sessions by the supplied resolved game ID. Session-length bands and the median use full

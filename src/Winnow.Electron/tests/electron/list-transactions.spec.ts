@@ -355,6 +355,12 @@ test('desktop STATS sits between Merges and All games and opens account statisti
     expect(bounds[index]!.y).toBeGreaterThan(bounds[index - 1]!.y)
   await expect(page.getByText('ACCOUNT', { exact: true })).toHaveCount(0)
   await stats.press('Enter')
+  const summarySections = page.getByRole('navigation', { name: 'Library summary section', exact: true })
+  await expect(summarySections.getByRole('button', { name: 'Gameplay', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await summarySections.getByRole('button', { name: 'Spending', exact: true }).press('Enter')
   await expect(page.getByText(/No Steam spending has been captured/)).toBeVisible()
   await expect(stats).toHaveAttribute('aria-current', 'page')
   await page.screenshot({ path: info.outputPath('desktop-stats-rail.png') })

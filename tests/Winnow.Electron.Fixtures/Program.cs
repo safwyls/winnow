@@ -21,6 +21,7 @@ var metadataEditing = Path.GetFileName(directory).StartsWith("winnow-electron-me
 var detailsReading = Path.GetFileName(directory).StartsWith("winnow-electron-details-reading-", StringComparison.Ordinal);
 var activityRemaining = Path.GetFileName(directory).StartsWith("winnow-electron-activity-remaining-", StringComparison.Ordinal);
 var journalActivity = Path.GetFileName(directory).StartsWith("winnow-electron-journal-activity-", StringComparison.Ordinal);
+var gameplayStats = Path.GetFileName(directory).StartsWith("winnow-electron-gameplay-stats-", StringComparison.Ordinal);
 var marker = Path.Combine(directory, ".visibility-fixture");
 if (visibility)
 {
@@ -29,12 +30,20 @@ if (visibility)
     Directory.CreateDirectory(directory);
     await File.WriteAllTextAsync(marker, "Winnow Electron visibility test fixture");
 }
-else if (!(pluginActions || editions || merges || matching || metadataEditing || detailsReading || activityRemaining || journalActivity || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
+else if (!(pluginActions || editions || merges || matching || metadataEditing || detailsReading || activityRemaining || journalActivity || gameplayStats || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
     || File.Exists(Path.Combine(directory, "winnow.db")))
     throw new ArgumentException("Composition fixtures require a new test-owned directory.");
 
 await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"], services =>
 {
+    if (gameplayStats)
+    {
+        GameplayStatsFixture.Register(services);
+        services.AddSingleton<PluginActionShellGuard>();
+        services.AddSingleton<IUriDispatcher>(provider => provider.GetRequiredService<PluginActionShellGuard>());
+        services.AddSingleton<IHttpMessageHandlerBuilderFilter, MatchingOfflineHttp>();
+        return;
+    }
     if (journalActivity)
     {
         JournalActivityFixture.Register(services);
@@ -140,7 +149,28 @@ if (pluginActions)
 
 // BackendApplication's normal loopback, authority and bearer-token middleware covers these routes.
 // Only this separately built test executable exposes fixture control; the production backend does not.
-if (journalActivity)
+if (gameplayStats)
+{
+    app.MapPost("/__fixture/gameplay-stats/seed", (GameplayFixtureSeed input, GameplayStatsFixture fixture) => fixture.SeedAsync(input.Kind, input.SecondStore));
+    app.MapGet("/__fixture/gameplay-stats/state", (GameplayFixtureControls controls) => controls.Snapshot());
+    app.MapPost("/__fixture/gameplay-stats/arm", (GameplayFixtureArm input, GameplayFixtureControls controls) => controls.Arm(input));
+    app.MapPost("/__fixture/gameplay-stats/release", (GameplayFixtureRelease input, GameplayFixtureControls controls) =>
+    {
+        controls.Release(input.GateId, input.Seconds);
+        return Results.NoContent();
+    });
+    app.MapPost("/__fixture/gameplay-stats/change", async (GameplayFixtureChange input, GameplayStatsFixture fixture) =>
+    {
+        await fixture.ChangeAsync(input.Change);
+        return Results.NoContent();
+    });
+    app.MapPost("/__fixture/gameplay-stats/publish", async (GameplayStatsFixture fixture) =>
+    {
+        await fixture.PublishAsync();
+        return Results.NoContent();
+    });
+}
+else if (journalActivity)
 {
     app.MapPost("/__fixture/journal-activity/seed", (JournalActivitySeed input, JournalActivityFixture fixture) => fixture.SeedAsync(input.Kind));
     app.MapGet("/__fixture/journal-activity/state", (JournalActivityFixture fixture) => fixture.Snapshot());
@@ -316,3 +346,6 @@ internal sealed record ActivityRemainingSeed(string Kind);
 internal sealed record ActivityMeasurementStart(string Name);
 internal sealed record JournalActivitySeed(string Kind);
 internal sealed record JournalActivityRelease(string? GateId = null);
+internal sealed record GameplayFixtureSeed(string Kind, string SecondStore = "gog");
+internal sealed record GameplayFixtureRelease(string? GateId = null, double? Seconds = null);
+internal sealed record GameplayFixtureChange(string Change);

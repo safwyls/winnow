@@ -7,6 +7,17 @@
   flex-wrap: wrap;
   gap: 0.75rem;
 }
+.account-statistics-embedded .account-spending-intro {
+  margin-block: 4px 8px;
+  color: var(--muted);
+}
+.account-statistics-embedded .account-spending-intro p {
+  margin-block: 4px;
+  max-width: none;
+}
+.account-statistics-embedded .account-spending-figures {
+  margin-block: 8px 24px;
+}
 .account-currency {
   margin-block: 1.5rem;
   max-width: 100%;

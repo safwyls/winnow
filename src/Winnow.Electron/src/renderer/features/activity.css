@@ -1,4 +1,73 @@
 @layer components {
+  .gameplay-dashboard {
+    --gameplay-text-scale: var(--theme-text-scale, 1);
+    min-width: 0;
+    container-type: inline-size;
+  }
+  .gameplay-dashboard.mode-fullscreen {
+    --gameplay-text-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+  }
+  .gameplay-toolbar,
+  .gameplay-toolbar .tabs,
+  .gameplay-choices > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+  .gameplay-toolbar {
+    gap: 12px 24px;
+    margin-bottom: 8px;
+  }
+  .gameplay-toolbar h2,
+  .gameplay-toolbar .tabs {
+    margin: 0;
+  }
+  .gameplay-toolbar h2 {
+    font: 700 calc(32px * var(--gameplay-text-scale))/1.2 var(--font-display);
+  }
+  .gameplay-dashboard .activity-charts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @container (min-width: 850px) {
+    .gameplay-dashboard.mode-desktop .activity-charts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container (min-width: 1400px) {
+    .gameplay-dashboard.mode-fullscreen .activity-charts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .gameplay-dashboard .stat-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  }
+  .gameplay-dashboard .stat {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .gameplay-dashboard .activity-bar-track > span {
+    background: var(--cool);
+  }
+  .gameplay-store-counts {
+    margin-top: 24px;
+  }
+  .gameplay-store-counts ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 16px;
+  }
+  .gameplay-store-counts li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 16px;
+  }
+  .gameplay-store-counts .activity-bar-track > span {
+    background: var(--muted);
+  }
   .activity-filters,
   .activity-week-navigation {
     display: flex;
@@ -284,6 +353,73 @@
 }
 
 @layer themes {
+  .gameplay-toolbar .tabs button {
+    border: 0;
+    border-bottom: 2px solid var(--line);
+    border-radius: 0;
+    padding: 10px 18px;
+  }
+  .gameplay-toolbar .tabs button[aria-pressed='true'] {
+    border-bottom-color: var(--accent-foreground, var(--accent));
+  }
+  .gameplay-dashboard.mode-fullscreen .gameplay-toolbar h2 {
+    font-size: calc(64px * var(--gameplay-text-scale));
+  }
+  .gameplay-dashboard.mode-fullscreen .gameplay-toolbar .tabs button {
+    font: 400 calc(28px * var(--gameplay-text-scale))/1.4 var(--font-body);
+    border-bottom-width: 3px;
+  }
+  .gameplay-dashboard.mode-fullscreen .gameplay-choices {
+    max-width: 100%;
+  }
+  .gameplay-dashboard.mode-fullscreen .gameplay-choices h3 {
+    font: 400 calc(18px * var(--gameplay-text-scale))/1.4 var(--font-body);
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-block: 0 12px;
+  }
+  .gameplay-dashboard.mode-fullscreen .gameplay-choices button[aria-pressed='true'] {
+    background: var(--raised);
+    color: var(--accent-foreground, var(--accent));
+    border-color: var(--accent-foreground, var(--accent));
+  }
+  .gameplay-dashboard.mode-fullscreen > button,
+  .gameplay-dashboard.mode-fullscreen .activity-filters button,
+  .gameplay-dashboard.mode-fullscreen [role='alert'] button,
+  .gameplay-dashboard.mode-fullscreen [role='status'] button {
+    font: 400 calc(28px * var(--gameplay-text-scale))/1.4 var(--font-body);
+    min-height: 64px;
+    white-space: normal;
+  }
+  .gameplay-dashboard.mode-fullscreen .activity-filters .field {
+    font: 400 calc(18px * var(--gameplay-text-scale))/1.4 var(--font-body);
+    max-width: 100%;
+  }
+  .gameplay-dashboard.mode-fullscreen .activity-filters input {
+    font: 400 calc(28px * var(--gameplay-text-scale))/1.4 var(--font-body);
+    width: min(450px, 100%);
+    min-width: min(260px, 100%);
+  }
+  .gameplay-dashboard.mode-fullscreen .gameplay-period-label,
+  .gameplay-dashboard.mode-fullscreen .stat span,
+  .gameplay-dashboard.mode-fullscreen .activity-chart,
+  .gameplay-dashboard.mode-fullscreen > p {
+    font: 400 calc(24px * var(--gameplay-text-scale))/1.4 var(--font-body);
+  }
+  .gameplay-dashboard.mode-fullscreen .activity-chart h3 {
+    font: 700 calc(34px * var(--gameplay-text-scale))/1.2 var(--font-display);
+  }
+  .gameplay-dashboard.mode-fullscreen .stat strong {
+    font: 400 calc(47.6px * var(--gameplay-text-scale))/1.2 var(--font-mono);
+  }
+  .gameplay-dashboard.mode-fullscreen .activity-chart li button,
+  .gameplay-dashboard.mode-fullscreen .gameplay-store-counts li {
+    font: 400 calc(24px * var(--gameplay-text-scale))/1.4 var(--font-mono);
+  }
+  .gameplay-dashboard.mode-fullscreen .activity-chart li button {
+    color: var(--text);
+    white-space: normal;
+  }
   .details-journal .journal-entry-actions {
     display: flex;
     gap: 8px;

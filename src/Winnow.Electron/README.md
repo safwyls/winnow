@@ -412,8 +412,15 @@ collections. Missing selected facets remain removable and restrictive.
 Library selection can hide every picked game after confirmation, and **Remove from
 Derelict** appears only within that collection. Hidden games retain their history and
 can be restored individually from Library tools. Desktop list rows show each distinct
-store in its own chip. **STATS**, between Merges and Library, opens Spending directly;
+store in its own chip. **STATS**, between Merges and Library, opens Gameplay initially
+and preserves the selected Gameplay or Spending section on return;
 fullscreen reaches it through Activity's Library summary.
+Gameplay retains independent store and date choices on each surface. Its scope follows
+visible ownerships and linked games, independent of Library search. Removing the selected
+store returns to All stores. Custom dates include both local calendar days, including
+daylight-saving transitions. Cancel, navigation and scope changes reject obsolete reads.
+Current library and store-entry counts stay independent of the chosen period. Spending
+shares the section toolbar and places its figures directly below source and coverage copy.
 Fullscreen Library tools uses a single column of list editors with larger labels,
 fields and actions; the page scrolls to keep the focused controller target visible.
 

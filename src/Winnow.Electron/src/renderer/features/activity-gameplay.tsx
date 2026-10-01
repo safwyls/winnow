@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { dateLabel, hours, request, storeLabel } from '../api/client'
 import { useLibrary } from '../api/hooks'
 import type { GameplayStats, Mode } from '../api/types'
@@ -20,7 +20,24 @@ interface Bar {
   open?: () => void
 }
 
-function Chart({ title, bars, empty }: { title: string; bars: Bar[]; empty: string }) {
+const recordedHours = (seconds: number) =>
+  seconds > 0 && seconds < 360
+    ? '<0.1 h'
+    : `${(seconds / 3600).toLocaleString(undefined, { maximumFractionDigits: 1 })} h`
+const periodDate = (value: string) =>
+  new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+
+function Chart({
+  title,
+  bars,
+  empty,
+  children,
+}: {
+  title: string
+  bars: Bar[]
+  empty: string
+  children?: ReactNode
+}) {
   const [selected, setSelected] = useState<string | null>(null)
   const maximum = Math.max(1, ...bars.map((bar) => bar.value))
   const chosen = bars.find((bar) => bar.key === selected)
@@ -52,6 +69,7 @@ function Chart({ title, bars, empty }: { title: string; bars: Bar[]; empty: stri
           {chosen.open && <button onClick={chosen.open}>Open game</button>}
         </div>
       )}
+      {children}
     </section>
   )
 }
@@ -64,30 +82,67 @@ export function GameplayDashboard({
   onOpenGame?: (id: number) => void
 }) {
   const [section, setSection] = useViewState(`${mode}:stats:section`, 'gameplay')
-  return (
-    <section className={`gameplay-dashboard mode-${mode}`} aria-label="Library summary">
-      <nav className="tabs" aria-label="Library summary section">
+  const root = useRef<HTMLElement>(null)
+  const restoreSection = useRef(false)
+  useLayoutEffect(() => {
+    if (!restoreSection.current) return
+    restoreSection.current = false
+    root.current
+      ?.querySelector<HTMLButtonElement>('.gameplay-toolbar [aria-pressed="true"]')
+      ?.focus({ preventScroll: true })
+  }, [section])
+  const toolbar = (actions?: ReactNode) => (
+    <header className="gameplay-toolbar">
+      <h2>{mode === 'desktop' ? 'Stats' : 'Library summary'}</h2>
+      <nav
+        className="tabs"
+        aria-label="Library summary section"
+        data-controller-page={mode === 'fullscreen' ? '' : undefined}
+        onKeyDown={(event) => {
+          if (event.key !== 'PageUp' && event.key !== 'PageDown') return
+          event.preventDefault()
+          event.stopPropagation()
+          const next = event.key === 'PageUp' ? 'gameplay' : 'spending'
+          restoreSection.current = section !== next
+          setSection(next)
+          event.currentTarget
+            .querySelectorAll<HTMLButtonElement>('button')
+            [next === 'gameplay' ? 0 : 1]?.focus({ preventScroll: true })
+        }}
+      >
         {['gameplay', 'spending'].map((value) => (
           <button
             data-controller-tab
             key={value}
             aria-pressed={section === value}
-            onClick={() => setSection(value)}
+            onClick={(event) => {
+              restoreSection.current = section !== value && document.activeElement === event.currentTarget
+              setSection(value)
+            }}
           >
             {value === 'gameplay' ? 'Gameplay' : 'Spending'}
           </button>
         ))}
       </nav>
+      {actions}
+    </header>
+  )
+  return (
+    <section ref={root} className={`gameplay-dashboard mode-${mode}`} aria-label="Library summary">
       {section === 'spending' ? (
-        <AccountStatistics mode={mode} />
+        <AccountStatistics mode={mode} toolbar={toolbar} />
       ) : (
-        <Gameplay mode={mode} onOpenGame={onOpenGame} />
+        <>
+          {toolbar()}
+          <Gameplay mode={mode} onOpenGame={onOpenGame} />
+        </>
       )}
     </section>
   )
 }
 
 function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) => void }) {
+  const client = useQueryClient()
   const library = useLibrary()
   const [period, setPeriod] = useViewState(`${mode}:stats:period`, '30')
   const [store, setStore] = useViewState(`${mode}:stats:store`, '')
@@ -104,6 +159,9 @@ function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) 
     ...new Set(library.data?.games.flatMap((game) => game.entries.map((entry) => entry.store)) ?? []),
   ].sort()
   const effectiveStore = stores.includes(store) ? store : ''
+  useEffect(() => {
+    if (library.data && store !== effectiveStore) setStore(effectiveStore)
+  }, [library.data, store, effectiveStore, setStore])
   let bounds: ReturnType<typeof gameplayRange> | null = null
   let problem = validation
   try {
@@ -113,30 +171,83 @@ function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) 
   }
   const body = bounds && { ...bounds, store: effectiveStore || null }
   // As-of belongs to the read, while date/store selection identifies its scope.
-  const scope = JSON.stringify([period, applied, effectiveStore, bounds?.fromUtc, bounds?.untilUtc])
+  // The API derives ownerships itself. This key cancels a changed visible scope
+  // without letting the presentation search filter statistics.
+  const ownerships = library.data?.games
+    .flatMap((game) => game.entries.map((entry) => [entry.ownershipId, game.workId, entry.store, game.title]))
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+  const scope = JSON.stringify([
+    period,
+    applied,
+    effectiveStore,
+    bounds?.fromUtc,
+    bounds?.untilUtc,
+    ownerships,
+  ])
   const canceled = stopped === scope
+  const queryKey = ['api', 'statistics.gameplay.dashboard', scope, attempt] as const
   const query = useQuery({
-    queryKey: ['api', 'statistics.gameplay.dashboard', scope, attempt],
-    queryFn: () => request<CompleteGameplayStats>('statistics.gameplay', undefined, body),
+    queryKey,
+    queryFn: ({ signal }) => request<CompleteGameplayStats>('statistics.gameplay', undefined, body, signal),
     enabled: !!body && !problem && !canceled && !!library.data,
     retry: false,
     staleTime: 30_000,
+    refetchOnMount: 'always',
   })
-  const stats = !canceled && !problem ? query.data : undefined
+  const stats = !canceled && !problem && !query.isFetching && !query.isError ? query.data : undefined
   const games = (library.data?.games ?? []).filter(
     (game) => !effectiveStore || game.entries.some((entry) => entry.store === effectiveStore),
   )
-  const counts = [...new Set(games.map((game) => game.bucket))].sort().map((bucket) => ({
-    key: bucket,
-    label: bucket.replaceAll('_', ' '),
-    value: games.filter((game) => game.bucket === bucket).length,
-    text: `${games.filter((game) => game.bucket === bucket).length} games`,
+  const counts = [...new Set(games.map((game) => game.bucket))]
+    .sort()
+    .map((bucket) => ({
+      key: bucket,
+      label:
+        (
+          {
+            never_played: 'Never played',
+            active: 'Active',
+            bounced: 'Started',
+            retired: 'Retired',
+            stale_but_patched: 'Patched',
+            derelict: 'Derelict',
+          } as Record<string, string>
+        )[bucket] ?? bucket,
+      value: games.filter((game) => game.bucket === bucket).length,
+      text: `${games.filter((game) => game.bucket === bucket).length} games`,
+    }))
+    .sort((a, b) => b.value - a.value)
+  const storeEntries = [
+    ...new Map(
+      games
+        .flatMap((game) => game.entries)
+        .filter((entry) => !effectiveStore || entry.store === effectiveStore)
+        .map((entry) => [entry.ownershipId, entry]),
+    ).values(),
+  ]
+  const storeCounts = [...new Set(storeEntries.map((entry) => entry.store))].map((value) => ({
+    key: value,
+    label: storeLabel(value),
+    value: storeEntries.filter((entry) => entry.store === value).length,
   }))
+  const refresh = () => {
+    void client.cancelQueries({ queryKey, exact: true })
+    setStopped(null)
+    if (library.error) void library.refetch()
+    if (period === 'custom') {
+      applyDates()
+      return
+    }
+    setValidation(null)
+    setAttempt((value) => value + 1)
+  }
   const applyDates = () => {
+    void client.cancelQueries({ queryKey, exact: true })
+    setStopped(null)
+    setApplied({ from, until })
     try {
       gameplayRange('custom', from, until)
       setValidation(null)
-      setApplied({ from, until })
       setAttempt((value) => value + 1)
     } catch (error) {
       setValidation((error as Error).message)
@@ -144,38 +255,70 @@ function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) 
   }
   return (
     <>
-      <header className="feature-heading">
-        <div>
-          <h2>Your time with your library</h2>
-          <p>Completed recorded sessions. Concurrent games contribute independently.</p>
-        </div>
-      </header>
       <div className="activity-filters">
-        <label className="field">
-          Gameplay period
-          <select
-            value={period}
-            onChange={(event) => {
-              setPeriod(event.target.value)
-              setValidation(null)
-            }}
-          >
-            <option value="30">30 days</option>
-            <option value="90">90 days</option>
-            <option value="custom">Custom</option>
-          </select>
-        </label>
-        <label className="field">
-          Store
-          <select value={effectiveStore} onChange={(event) => setStore(event.target.value)}>
-            <option value="">All stores</option>
-            {stores.map((value) => (
-              <option key={value} value={value}>
-                {storeLabel(value)}
-              </option>
-            ))}
-          </select>
-        </label>
+        {mode === 'fullscreen' ? (
+          <>
+            <div role="group" aria-label="Store" className="gameplay-choices">
+              <h3>Store</h3>
+              <div>
+                {['', ...stores].map((value) => (
+                  <button key={value} aria-pressed={effectiveStore === value} onClick={() => setStore(value)}>
+                    {value ? storeLabel(value) : 'All stores'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div role="group" aria-label="Gameplay period" className="gameplay-choices">
+              <h3>Period</h3>
+              <div>
+                {[
+                  ['30', '30 days'],
+                  ['90', '90 days'],
+                  ['custom', 'Custom'],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    aria-pressed={period === value}
+                    onClick={() => {
+                      setPeriod(value!)
+                      setValidation(null)
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <label className="field">
+              Gameplay period
+              <select
+                value={period}
+                onChange={(event) => {
+                  setPeriod(event.target.value)
+                  setValidation(null)
+                }}
+              >
+                <option value="30">30 days</option>
+                <option value="90">90 days</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <label className="field">
+              Store
+              <select value={effectiveStore} onChange={(event) => setStore(event.target.value)}>
+                <option value="">All stores</option>
+                {stores.map((value) => (
+                  <option key={value} value={value}>
+                    {storeLabel(value)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
         {period === 'custom' && (
           <>
             <label className="field">
@@ -198,41 +341,42 @@ function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) 
           </>
         )}
       </div>
-      {problem ? (
-        <p role="alert">{problem}</p>
-      ) : library.error || query.error || canceled ? (
+      {problem || library.error || query.error || canceled ? (
         <div role="alert">
           <p>
-            {canceled
-              ? 'Reading stopped. Choose Try again to resume.'
-              : "Couldn't read gameplay statistics. Try again."}
+            {problem ??
+              (canceled
+                ? 'Reading stopped. Choose Try again to resume.'
+                : "Couldn't read gameplay statistics. Try again.")}
           </p>
-          <button
-            onClick={() => {
-              setStopped(null)
-              setAttempt((value) => value + 1)
-              if (library.error) void library.refetch()
-            }}
-          >
-            Try again
-          </button>
+          <button onClick={refresh}>Try again</button>
         </div>
-      ) : query.isPending ? (
+      ) : (
+        <button onClick={refresh}>{mode === 'fullscreen' ? 'Refresh gameplay' : 'Refresh'}</button>
+      )}
+      {!problem && !canceled && query.isFetching ? (
         <div role="status">
           <p>Reading gameplay statistics…</p>
-          <button onClick={() => setStopped(scope)}>Cancel</button>
+          <button
+            onClick={() => {
+              void client.cancelQueries({ queryKey, exact: true })
+              setStopped(scope)
+            }}
+          >
+            Cancel
+          </button>
         </div>
       ) : null}
       {stats && (
         <>
-          <p>
-            {dateLabel(body!.fromUtc)} –{' '}
-            {dateLabel(new Date(new Date(body!.untilUtc).getTime() - 1).toISOString())}
+          <p className="gameplay-period-label">
+            {effectiveStore ? storeLabel(effectiveStore) : 'All stores'} · {periodDate(body!.fromUtc)} –{' '}
+            {periodDate(new Date(new Date(body!.untilUtc).getTime() - 1).toISOString())} · local dates
           </p>
           <div className="stat-strip">
             <div className="stat">
-              <strong>{hours(stats.recordedSeconds / 60)}</strong>
-              <span>Recorded play</span>
+              <strong>{recordedHours(stats.recordedSeconds)}</strong>
+              <span>Recorded hours</span>
             </div>
             <div className="stat">
               <strong>{stats.gamesPlayedCount}</strong>
@@ -244,23 +388,28 @@ function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) 
             </div>
             <div className="stat">
               <strong>
-                {stats.medianSessionSeconds == null ? '—' : hours(stats.medianSessionSeconds / 60)}
+                {stats.medianSessionSeconds == null
+                  ? 'No completed sessions'
+                  : stats.medianSessionSeconds < 3600
+                    ? `${(stats.medianSessionSeconds / 60).toLocaleString(undefined, { maximumFractionDigits: 1 })} min`
+                    : recordedHours(stats.medianSessionSeconds)}
               </strong>
               <span>Median session</span>
             </div>
           </div>
-          {!!stats.excludedSessionCount && (
-            <p>{stats.excludedSessionCount} incomplete or unusable sessions excluded.</p>
-          )}
+          <p className="gameplay-coverage">
+            Completed Winnow sessions on this library, not lifetime playtime or active attention. Overlapping
+            games count independently. Account filters select games, not who played.
+          </p>
           <div className="activity-charts">
             <Chart
               title="Recorded hours over time"
               empty="No recorded play in this period."
               bars={(stats.periods ?? []).map((row) => ({
                 key: row.fromUtc,
-                label: dateLabel(row.fromUtc),
+                label: `${dateLabel(row.fromUtc)} – ${dateLabel(new Date(Date.parse(row.untilUtc) - 1).toISOString())}`,
                 value: row.recordedSeconds,
-                text: hours(row.recordedSeconds / 60),
+                text: recordedHours(row.recordedSeconds),
               }))}
             />
             <Chart
@@ -272,7 +421,7 @@ function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) 
                   library.data?.games.find((game) => game.workId === row.resolvedWorkId)?.title ??
                   'Game no longer in your library',
                 value: row.recordedSeconds,
-                text: hours(row.recordedSeconds / 60),
+                text: recordedHours(row.recordedSeconds),
                 open: onOpenGame && (() => onOpenGame(row.resolvedWorkId)),
               }))}
             />
@@ -290,8 +439,33 @@ function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) 
                 value: row.count,
                 text: `${row.count} sessions`,
               }))}
-            />
-            <Chart title="Your library today" empty="No visible games in this store." bars={counts} />
+            >
+              <p>
+                {stats.startedSessionCount} completed sessions started in this period; median and bands use
+                their full lengths. Hours include the portions of {stats.overlappingSessionCount} sessions
+                within these dates. {stats.excludedSessionCount} unfinished or invalid records excluded.
+              </p>
+            </Chart>
+            <Chart title="Your library today" empty="No visible games in this store." bars={counts}>
+              <div role="group" aria-label="Store entries" className="gameplay-store-counts">
+                <p>Store entries · games owned in more than one store appear under each store.</p>
+                <ul>
+                  {storeCounts.map((row) => (
+                    <li key={row.key}>
+                      <span>{row.label}</span>
+                      <strong>{row.value}</strong>
+                      <span aria-hidden="true" className="activity-bar-track">
+                        <span
+                          style={{
+                            width: `${(100 * row.value) / Math.max(1, ...storeCounts.map((item) => item.value))}%`,
+                          }}
+                        />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Chart>
           </div>
           <p className="muted">
             Your library today is independent of the selected period. All stores counts each game once; a game

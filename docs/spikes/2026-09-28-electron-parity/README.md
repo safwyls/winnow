@@ -45,13 +45,20 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [activity recovery and journal checkpoint](checkpoint-seventy-two.md) records
+The [gameplay statistics checkpoint](checkpoint-seventy-three.md) records all 3,822
+component/live API cases, 28 distinct native cases, 23 unchanged original cases, eleven HTTP cases and 63
+transaction/repository regressions passing. Both surfaces preserve source date,
+scope, cancellation and layout behavior; gameplay uses a coherent deferred read
+snapshot so obsolete reads cannot block library writes. All eleven assigned
+methods are ported; 231 pending and 35 partial methods remain.
+
+The preceding [activity recovery and journal checkpoint](checkpoint-seventy-two.md) records
 all 3,789 component/live API cases, 53 distinct native cases, 30 original cases and
 17 HTTP cases passing. Paging, cancellation, retry focus, inline desktop notes,
 pending-save dismissal guards and fullscreen prompt navigation retain the source
 contracts. Controller and keyboard hints remain visible, with source typography
-verified at both prompt sizes and 140% text. All eighteen assigned methods are ported;
-238 pending and 39 partial methods remain.
+verified at both prompt sizes and 140% text. All eighteen assigned methods were ported
+at that checkpoint.
 
 The preceding [activity tracker and large-history checkpoint](checkpoint-seventy-one.md) records
 all 3,741 component/live API cases, 22 distinct native cases, ten original source cases

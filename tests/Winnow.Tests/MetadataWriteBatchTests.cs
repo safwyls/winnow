@@ -218,6 +218,7 @@ public sealed class MetadataWriteBatchTests
         public string DatabasePath => inner.DatabasePath;
         public string ConnectionString => inner.ConnectionString;
         public IUnitOfWork Begin() => inner.Begin();
+        public IUnitOfWork BeginRead() => inner.BeginRead();
         public void ReleasePooledConnections() => inner.ReleasePooledConnections();
 
         public SqliteConnection Open()

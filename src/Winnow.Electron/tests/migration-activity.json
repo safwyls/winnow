@@ -149,46 +149,6 @@
     ],
     "reason": "Unavailable API response produces explicit unavailable history with retry and no false empty-history claim."
   },
-  "GameplayStatsInteractionTests.Xbox_import_updates_open_gameplay_store_choices_and_library_counts": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity.test.tsx",
-        "case": "refreshes imported store choices and counts resolved games once"
-      }
-    ],
-    "reason": "Open dashboard reacts to a plugin:xbox ownership snapshot and counts the resolved game once. Real import/persistence and rendered counts need integration coverage."
-  },
-  "GameplayStatsInteractionTests.Both_surfaces_scope_dates_switch_sections_and_render_four_charts": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity.test.tsx",
-        "case": "renders four selectable charts, scopes dates and stores, and retains state across spending"
-      }
-    ],
-    "reason": "Both modes cover four data charts, store selection, inclusive custom dates, selected chart actions and independent navigation state. Original viewport overflow, text scale, screenshot and spending value assertions remain."
-  },
-  "GameplayStatsInteractionTests.Desktop_error_retry_and_custom_date_validation_remain_actionable": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity.test.tsx",
-        "case": "clears obsolete figures for invalid custom dates and recovers after correction"
-      }
-    ],
-    "reason": "Invalid custom dates clear obsolete figures and can be corrected; shared query recovery is covered separately. Exact desktop error/retry path remains to be independently exercised."
-  },
-  "GameplayStatsInteractionTests.Fullscreen_gameplay_retry_cancel_and_resume_are_controller_actions": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity.test.tsx",
-        "case": "retries, cancels and resumes without publishing the canceled result"
-      }
-    ],
-    "reason": "Retry, stop, resume and obsolete response suppression are covered in the fullscreen component. Native controller activation is not exercised here."
-  },
   "JournalDetailsInteractionTests.Details_modal_names_the_prompt_off_empty_state": {
     "status": "ported",
     "tests": [

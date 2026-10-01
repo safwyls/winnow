@@ -280,12 +280,16 @@ public sealed class LibraryMultiSelectionTests
             }
         }
 
-        public IUnitOfWork Begin()
+        public IUnitOfWork Begin() => Begin(read: false);
+
+        public IUnitOfWork BeginRead() => Begin(read: true);
+
+        private IUnitOfWork Begin(bool read)
         {
             lock (_gate)
             {
                 ObjectDisposedException.ThrowIf(_stopping, this);
-                var scope = inner.Begin();
+                var scope = read ? inner.BeginRead() : inner.Begin();
                 using var lease = inner.Lease();
                 Track(lease.Connection);
                 return scope;

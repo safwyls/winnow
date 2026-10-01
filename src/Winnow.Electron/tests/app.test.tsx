@@ -1034,12 +1034,16 @@ describe('integrated frontend', () => {
       await changeSurface(mode === 'fullscreen')
       const navigation = () => within(screen.getByRole('navigation', { name: 'Main navigation' }))
       expect(reads).not.toHaveBeenCalled()
-      if (mode === 'desktop') fireEvent.click(navigation().getByRole('button', { name: 'STATS' }))
-      else {
+      if (mode === 'desktop') {
+        fireEvent.click(navigation().getByRole('button', { name: 'STATS' }))
+        expect(await screen.findByRole('button', { name: 'Gameplay', pressed: true })).toBeTruthy()
+        expect(navigation().getByRole('button', { name: 'STATS' }).getAttribute('aria-current')).toBe('page')
+        expect(reads).not.toHaveBeenCalled()
+      } else {
         fireEvent.click(navigation().getByRole('button', { name: 'Activity' }))
         fireEvent.click(await screen.findByRole('button', { name: 'Library summary' }))
-        fireEvent.click(await screen.findByRole('button', { name: 'Spending' }))
       }
+      fireEvent.click(await screen.findByRole('button', { name: 'Spending' }))
       await screen.findByText(/No Steam spending has been captured/)
       expect(reads).toHaveBeenCalledTimes(1)
       fireEvent.click(navigation().getByRole('button', { name: 'Library' }))

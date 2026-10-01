@@ -621,7 +621,11 @@ describe('recorded gameplay statistics parity', () => {
       )
       fireEvent.click(screen.getByRole('button', { name: 'Open game' }))
       expect(open).toHaveBeenCalledWith(1)
-      fireEvent.change(screen.getByLabelText('Store'), { target: { value: 'steam' } })
+      if (mode === 'desktop') fireEvent.change(screen.getByLabelText('Store'), { target: { value: 'steam' } })
+      else
+        fireEvent.click(
+          within(screen.getByRole('group', { name: 'Store' })).getByRole('button', { name: 'Steam' }),
+        )
       await waitFor(() =>
         expect(
           request.mock.calls.some(
@@ -630,7 +634,9 @@ describe('recorded gameplay statistics parity', () => {
           ),
         ).toBe(true),
       )
-      fireEvent.change(screen.getByLabelText('Gameplay period'), { target: { value: 'custom' } })
+      if (mode === 'desktop')
+        fireEvent.change(screen.getByLabelText('Gameplay period'), { target: { value: 'custom' } })
+      else fireEvent.click(screen.getByRole('button', { name: 'Custom' }))
       fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-09-01' } })
       fireEvent.change(screen.getByLabelText('Through'), { target: { value: '2026-09-10' } })
       fireEvent.click(screen.getByRole('button', { name: 'Apply dates' }))
@@ -645,8 +651,17 @@ describe('recorded gameplay statistics parity', () => {
       )
       fireEvent.click(screen.getByRole('button', { name: 'Spending' }))
       fireEvent.click(screen.getByRole('button', { name: 'Gameplay' }))
-      expect((screen.getByLabelText('Gameplay period') as HTMLSelectElement).value).toBe('custom')
-      expect((screen.getByLabelText('Store') as HTMLSelectElement).value).toBe('steam')
+      if (mode === 'desktop') {
+        expect((screen.getByLabelText('Gameplay period') as HTMLSelectElement).value).toBe('custom')
+        expect((screen.getByLabelText('Store') as HTMLSelectElement).value).toBe('steam')
+      } else {
+        expect(screen.getByRole('button', { name: 'Custom' }).getAttribute('aria-pressed')).toBe('true')
+        expect(
+          within(screen.getByRole('group', { name: 'Store' }))
+            .getByRole('button', { name: 'Steam' })
+            .getAttribute('aria-pressed'),
+        ).toBe('true')
+      }
       expect((screen.getByLabelText('From') as HTMLInputElement).value).toBe('2026-09-01')
     },
   )
@@ -682,7 +697,7 @@ describe('recorded gameplay statistics parity', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await screen.findByRole('region', { name: 'Recorded hours over time' })
     await act(async () => finish(ok({ ...stats, recordedSeconds: 9999999 })))
-    expect(screen.queryByText('2,777.8 hr')).toBeNull()
+    expect(screen.queryByText('2,777.8 h')).toBeNull()
     expect(screen.getByRole('region', { name: 'Recorded hours over time' })).toBeTruthy()
   })
   it('refreshes imported store choices and counts resolved games once', async () => {
@@ -703,7 +718,7 @@ describe('recorded gameplay statistics parity', () => {
     )
     expect(await screen.findByRole('option', { name: /xbox/i })).toBeTruthy()
     expect(
-      within(screen.getByRole('region', { name: 'Your library today' })).getByText('1 games'),
+      within(await screen.findByRole('region', { name: 'Your library today' })).getByText('1 games'),
     ).toBeTruthy()
   })
 })
