@@ -1,11 +1,11 @@
 ---
 id: TASK-381.27
 title: 'Electron: finish platform accounts and confirmation flows'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:48'
-updated_date: '2026-10-01 20:49'
+updated_date: '2026-10-01 20:50'
 labels:
   - electron
   - parity
@@ -85,7 +85,7 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -102,6 +102,8 @@ Started after TASK-381.26 implementation e8473317. Inventory1589ported/682retain
 Source inspection confirmed fullscreen saved pages used the controller file browser. Added a named main/preload selection session with opaque handles, deferred bounded reads, cancellation and lifecycle disposal; host tests pass 6/6 including CSV destination/BOM. Initial real API platform cases pass 10/10; exact disclosure projection and renderer/native verification remain in progress.
 
 Completed platform summary/child tools, shared credential busy guards, Epic confirmation/focus, explicit saved HTML Read with controller file picker and opaque deferred handles, and UTF-8 BOM export. All40 original cases and11 HTTP cases pass;377 platform component cases plus20 shared controller cases and7 host cases covered. All24 native journeys/regressions and2 supplementary native Escape diagnostics pass. A native scaled test found controller Right spatial fallback; tagged controller events fix it while preserving physical caret defaults. TypeScript/format/build pass; final bundle index-Dqdv37w6.js. Checkpoint82 records source limits, test-harness corrections and reviewed captures. Inventory1606ported/688retained/35framework/88pending/18partial.
+
+Milestone commit83ecbbf5 contains implementation, source dispositions, checkpoint82 and verification. All acceptance criteria satisfied; continuing sequentially to TASK-381.28 as authorized.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
