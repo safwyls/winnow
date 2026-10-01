@@ -132,12 +132,20 @@ afterEach(() => {
 const unread = (container: HTMLElement) => container.querySelectorAll('.update-row[data-unread="true"]')
 const writes = (request: ReturnType<typeof setup>['request']) =>
   request.mock.calls.map(([input]) => input).filter((input) => input.route.startsWith('updates.'))
+function expectSummaries(container: HTMLElement, gap: string, tracker: string) {
+  const captions = container.querySelectorAll('.update-gap-caption')
+  const summaries = container.querySelectorAll('.activity-tracker .activity-update-summary')
+  expect(captions).toHaveLength(1)
+  expect(captions[0]!.textContent).toBe(gap)
+  expect(summaries).toHaveLength(1)
+  expect(summaries[0]!.textContent).toBe(tracker)
+}
 
 describe.each<Mode>(['desktop', 'fullscreen'])('%s UpdateFlag source contracts', (mode) => {
   it('quiets dots at and below each watermark while keeping newer dots and timeline marks unread', () => {
     const view = setup(mode, [...pair(-5), ...pair(-20, 1, 3), ...pair(-40, 1, 5)], { 1: at(-20) })
     expect(unread(view.container)).toHaveLength(2)
-    expect(screen.getAllByText('1 update landed while you were away.')).toHaveLength(2)
+    expectSummaries(view.container, '1 update landed while you were away.', '1 unread update')
     expect(view.container.querySelectorAll('.activity-timeline-update[data-unread="true"]')).toHaveLength(1)
     expect(view.container.querySelectorAll('.activity-timeline-update[data-unread="false"]')).toHaveLength(2)
   })
@@ -150,15 +158,17 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s UpdateFlag source contracts',
   it('describes a fully read gap without claiming that nothing shipped', () => {
     const view = setup(mode, [...pair(-5), ...pair(-9, 1, 3)], { 1: at(-4) })
     expect(unread(view.container)).toHaveLength(0)
-    expect(
-      screen.getAllByText("2 updates landed while you were away. You've marked them read."),
-    ).toHaveLength(2)
+    expectSummaries(
+      view.container,
+      "2 updates landed while you were away. You've marked them read.",
+      'No unread updates',
+    )
     expect(view.container.querySelectorAll('.activity-timeline-update[data-unread="true"]')).toHaveLength(0)
   })
   it('preserves undismissed dots and counts patches rather than their two observations', () => {
     const view = setup(mode, [...pair(-5), ...pair(-9, 1, 3)])
     expect(unread(view.container)).toHaveLength(4)
-    expect(screen.getAllByText('2 updates landed while you were away.')).toHaveLength(2)
+    expectSummaries(view.container, '2 updates landed while you were away.', '2 unread updates')
   })
   it('dismisses the dots offers undo and refreshes the library once while preserving the timeline range', async () => {
     const view = setup(mode)
@@ -175,7 +185,11 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s UpdateFlag source contracts',
     ])
     expect(view.reload).toHaveBeenCalledExactlyOnceWith({ queryKey: ['api'] })
     expect(screen.getByRole('button', { name: 'Tracked sessions' }).getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getAllByText("1 update landed while you were away. You've marked it read.")).toHaveLength(2)
+    expectSummaries(
+      view.container,
+      "1 update landed while you were away. You've marked it read.",
+      'No unread updates',
+    )
   })
   it('leaves failed writes unread with no receipt no undo and no library refresh', async () => {
     const view = setup(mode)
@@ -229,13 +243,13 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s UpdateFlag source contracts',
       { id: 3, releaseId: 1, kind: 'announcement', occurredAt: at(-1), title: 'Sale' },
     ])
     expect(unread(view.container)).toHaveLength(0)
-    expect(screen.getAllByText('No updates recorded in that stretch.')).toHaveLength(2)
+    expectSummaries(view.container, 'No updates recorded in that stretch.', 'No unread updates')
     expect(screen.queryByRole('button', { name: 'Mark as read' })).toBeNull()
   })
   it('does not extend the watermark through shared notes over a newer build', () => {
     const view = setup(mode, [...pair(-10).slice(0, 1), ...pair(-9, 1, 3)], { 1: at(-10) })
     expect(unread(view.container)).toHaveLength(2)
-    expect(screen.getAllByText('1 update landed while you were away.')).toHaveLength(2)
+    expectSummaries(view.container, '1 update landed while you were away.', '1 unread update')
     expect(screen.getByRole('article', { name: /Notes 3/ }).getAttribute('data-unread')).toBe('true')
   })
   it('retains partial saves reports failure and retries only the remaining release', async () => {

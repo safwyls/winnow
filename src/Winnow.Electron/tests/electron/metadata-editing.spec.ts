@@ -487,8 +487,8 @@ for (const targetMode of ['desktop', 'fullscreen'] as const) {
       'aria-pressed',
       'true',
     )
-    await expect(details().locator('.activity-tracker')).toContainText('3 hr played')
-    await expect(details().locator('.activity-tracker')).toContainText('1 update landed while you were away.')
+    await expect(details().locator('.activity-tracker')).toContainText('3h played')
+    await expect(details().locator('.activity-tracker')).toContainText('1 unread update')
     if (mode === 'fullscreen')
       await activate(details().getByRole('button', { name: 'Back to Overview', exact: true }))
     else await activate(details().getByRole('tab', { name: 'Overview', exact: true }))

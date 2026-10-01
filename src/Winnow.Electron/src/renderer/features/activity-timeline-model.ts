@@ -31,16 +31,28 @@ const nextMonth = (time: number) => {
   const date = new Date(time)
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1)
 }
-const monthLabel = (time: number) =>
-  new Date(time).toLocaleDateString(undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' })
-const dateText = (time: number) =>
-  new Date(time).toLocaleDateString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-const hoursText = (hours: number) => `${hours.toLocaleString(undefined, { maximumFractionDigits: 2 })}h`
+// A large history formats thousands of observations using the same locale and UTC policy.
+const monthFormatter = new Intl.DateTimeFormat(undefined, {
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+const timeFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'UTC',
+})
+const hoursFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
+const monthLabel = (time: number) => monthFormatter.format(time)
+const dateText = (time: number) => dateFormatter.format(time)
+export { dateText as timelineDateLabel }
+const hoursText = (hours: number) => `${hoursFormatter.format(hours)}h`
 
 /** Cumulative counters only describe a month when both adjacent month-end readings are usable. */
 export function buildTimeline(
@@ -159,7 +171,7 @@ export function buildTimeline(
         end: Date.parse(session.endedAt!),
         hours: session.durationSeconds! / 3600,
         tracked: true,
-        label: `${dateText(Date.parse(session.startedAt))} ${new Date(session.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC · ${hoursText(session.durationSeconds! / 3600)} · Winnow session`,
+        label: `${dateText(Date.parse(session.startedAt))} ${timeFormatter.format(Date.parse(session.startedAt))} UTC · ${hoursText(session.durationSeconds! / 3600)} · Winnow session`,
       }))
     : [...monthly.values()].sort((a, b) => a.start - b.start)
   const evidence = [

@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 247,
-    "partial": 56,
-    "ported": 1450,
+    "pending": 244,
+    "partial": 51,
+    "ported": 1458,
     "retained-backend": 650,
     "framework-specific": 32
   },
@@ -749,12 +749,46 @@
     {
       "id": "ActivityTrackerViewModelTests.Acknowledgement_refreshes_plot_marks_without_changing_range",
       "source": "tests/Winnow.Tests/ActivityTrackerViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-activity-tracker-contracts.test.tsx",
+          "case": "refreshes the source single announcement after acknowledgement without changing the empty tracked range"
+        },
+        {
+          "file": "tests/parity-activity-tracker-contracts.test.tsx",
+          "case": "refreshes actual API patch acknowledgements without changing selected range or ownership"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ActivityRemainingParityTests.cs",
+          "case": "Acknowledgement_preserves_the_source_announcement_and_owned_history_over_HTTP"
+        },
+        {
+          "file": "tests/electron/activity-remaining.spec.ts",
+          "case": "real API acknowledgement refreshes unread marks while preserving tracked range and the same Details"
+        }
+      ],
+      "reason": "Both presentation modes preserve the exact preclassified source fixture: September 8, 2026; acquisition two years earlier; last play twenty days earlier; 600 minutes; one Exploration update two days earlier. Replacing the update collection after acknowledgement changes 1 unread update to No unread updates and keeps the empty tracked range selected. The actual API path adds one simultaneous build push because current domain classification requires corroboration before a persisted acknowledgement; the unchanged lone-announcement HTTP fixture correctly returns NothingToDo. Native Electron verifies the real watermark refresh, changed unread marks, preserved tracked selection and same mounted Details. This separates source tracker presentation from the current backend classification rule."
     },
     {
       "id": "ActivityTrackerViewModelTests.Linked_copy_scope_and_sparse_history_are_explicit",
       "source": "tests/Winnow.Tests/ActivityTrackerViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-activity-tracker-contracts.test.tsx",
+          "case": "preserves the exact STEAM copy sparse fixture without inventing a plot or records"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ActivityRemainingParityTests.cs",
+          "case": "Sparse_Steam_copy_preserves_ten_hours_without_inventing_dates_or_history_over_HTTP"
+        },
+        {
+          "file": "tests/electron/activity-remaining.spec.ts",
+          "case": "real API sparse Steam copy retains ten hours without inventing a plot or records"
+        }
+      ],
+      "reason": "The source fixture has 600 minutes, no snapshots or sessions, no acquisition or last-played date, and a supplied STEAM copy scope. Both component paths preserve exact 10h, played · STEAM copy and Last-played date unavailable, with no plot or recorded-hours disclosure. Real API and native paths preserve these facts and absent evidence; their shared store-label presentation uses Steam copy casing. The source method supplies a scope string rather than creating an identity link, so an unrelated linked-work fixture is not claimed."
     },
     {
       "id": "ApiLibraryViewModelTests.MetadataConflictPreservesObservedRevisionForReview",
@@ -23026,62 +23060,98 @@
     {
       "id": "ActivityTimelinePlotTests.Lifetime_months_have_equal_width_and_named_pointer_and_keyboard_selection",
       "source": "tests/Winnow.Ui.Tests/ActivityTimelinePlotTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
+        {
+          "file": "tests/parity-activity-tracker-contracts.test.tsx",
+          "case": "uses the source January–September domain and literal labels for equal-width months and ten-pixel colliding sessions"
+        },
         {
           "file": "tests/parity-activity-timeline.test.tsx",
           "case": "gives lifetime months equal width and accessible selectable labels"
+        },
+        {
+          "file": "tests/electron/activity-remaining.spec.ts",
+          "case": "source February and July months have equal native widths and pointer and Enter selection"
         }
       ],
-      "reason": "Month width, accessible names, click selection, focus selection and tooltips are covered. Real keyboard activation and rendered geometry require browser verification."
+      "reason": "The native production TimelinePlot probe retains the original January 1–September 8, 2026 domain, February 2h monthly-history bar and July 4h Winnow-sessions bar at 700px on both surfaces. Chromium measures equal widths to three decimals and greater than 10px. Pointer activation selects the first literal label; Tab then Enter selects the second; its tooltip is present. Exact series injection replaces the original standalone Avalonia control host while all mark generation and interaction remain production code."
     },
     {
       "id": "ActivityTimelinePlotTests.Session_bars_are_ten_pixels_and_collisions_preserve_all_observations",
       "source": "tests/Winnow.Ui.Tests/ActivityTimelinePlotTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-activity-timeline.test.tsx",
-          "case": "uses ten-pixel session bars and retains every colliding observation"
+          "file": "tests/parity-activity-tracker-contracts.test.tsx",
+          "case": "uses the source January–September domain and literal labels for equal-width months and ten-pixel colliding sessions"
+        },
+        {
+          "file": "tests/electron/activity-remaining.spec.ts",
+          "case": "source three sessions produce two ten-pixel bars retaining the collision observations"
         }
       ],
-      "reason": "The geometry projection preserves ten-pixel marks, combined count, total and longest duration. The original actual arranged bounds need browser measurement."
+      "reason": "Both native surfaces render the exact 700px January–September series: June 1 00:00–02:00 First session, June 1 03:00–04:00 Second session and August 1 00:00–04:00 Third session. Actual arranged bounds contain exactly two 10px bars. The first accessible name preserves two observed sessions and 3h; the second remains Third session. Component projection and native pointer selection retain the colliding observations without inventing additional marks."
     },
     {
       "id": "ActivityTimelinePlotTests.Updates_cluster_without_a_count_limit_and_request_tracked_range",
       "source": "tests/Winnow.Ui.Tests/ActivityTimelinePlotTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-activity-timeline.test.tsx",
-          "case": "clusters unlimited update marks and requests tracked history on activation"
+          "file": "tests/parity-activity-tracker-contracts.test.tsx",
+          "case": "preserves all thirty identical Patch observations and redraws their acknowledgement without a count limit"
+        },
+        {
+          "file": "tests/electron/activity-remaining.spec.ts",
+          "case": "source thirty Patch observations cluster without truncation and request tracked range before refreshing read fills"
         }
       ],
-      "reason": "All 30 updates remain in one accessible cluster; activation changes range and acknowledgements remove unread state. Computed theme color equivalence requires visual verification."
+      "reason": "The exact empty January 1–September 8 series contains thirty Patch announcements on August 1 at minute offsets zero through twenty-nine. Both native surfaces retain one 30 updates · 30 unread cluster, all thirty observations in its name, the source first date in selected detail and the tracked-range request after click. Replacing acknowledged rows preserves one cluster with zero unread. Computed production fills match the supplied source HotPink unread and LightGray read brushes; no item limit or substituted color assertion is used."
     },
     {
       "id": "ActivityTimelinePlotTests.Narrow_layout_keeps_date_labels_and_update_targets_inside_plot",
       "source": "tests/Winnow.Ui.Tests/ActivityTimelinePlotTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/parity-activity-timeline.test.tsx",
           "case": "keeps narrow plot marks within its measured width"
+        },
+        {
+          "file": "tests/parity-activity-tracker-contracts.test.tsx",
+          "case": "keeps the UTC axis aligned with the model at midnight %s"
+        },
+        {
+          "file": "tests/electron/activity-remaining.spec.ts",
+          "case": "source 180px plot keeps Today and every date and update target inside150px without overlapping labels"
         }
       ],
-      "reason": "Update hit regions fit a 180-pixel plot. Actual text layout and scaled-font label collisions remain browser checks."
+      "reason": "Both native surfaces render the original 180px empty January–September plot with updates at the January 1 and September 8 endpoints. Today remains visible, date-label bounds do not overlap, and every descendant stays within the available width (0.01px floating-point tolerance) and 150px height. The production UTC axis formatter keeps midnight endpoints on their source dates; the source local last-played label remains local. Native uses the production plot and CSS order, without mocked DOM geometry."
     },
     {
       "id": "ActivityTrackerInteractionTests.Range_buttons_switch_units_and_keep_monthly_and_session_records_reachable",
       "source": "tests/Winnow.Ui.Tests/ActivityTrackerInteractionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/parity-activity-timeline.test.tsx",
-          "case": "keeps monthly and individual session records reachable"
+          "file": "tests/parity-activity-tracker-contracts.test.tsx",
+          "case": "keeps the exact 2022 monthly and 2026 session records reachable at %ipx"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ActivityRemainingParityTests.cs",
+          "case": "Exact_three_monthly_observations_and_two_sessions_reach_Details_over_HTTP"
+        },
+        {
+          "file": "tests/electron/activity-remaining.spec.ts",
+          "case": "source ${width}px tracker switches units idempotently and keeps all monthly and session records reachable"
+        },
+        {
+          "file": "tests/electron/activity-remaining.spec.ts",
+          "case": "real API source snapshots and sessions remain selectable in Details play history"
         }
       ],
-      "reason": "Both mode paths switch ranges, retain active toggle state and expose all recorded hours. Original 360/620-pixel overflow and plot-height assertions need rendered browser coverage."
+      "reason": "At both original 620x600 and 360x600 host sizes, both native surfaces use the exact March/April/May 2022 month-end 360/600/780-minute observations, September 8, 2026 current instant, sessions twenty and fifteen days earlier lasting one and two hours, acquisition six years earlier and total 960 minutes. Lifetime has three marks and tracked has two; repeated clicks preserve selection; Space activates Lifetime; the plot stays 140–155px high and visible descendants fit the host. Recorded hours opens and retains all three monthly labels. Real API Details separately preserves the dates, durations and range interactions; its persisted sessions use SQLite's process_watch vocabulary instead of the source in-memory process token. The exact standalone probe retains that original token."
     },
     {
       "id": "ActivityTrackerInteractionTests.Grouped_updates_do_not_hide_history_when_no_sessions_exist",
@@ -27624,7 +27694,34 @@
     {
       "id": "LargeHistoryResponsivenessTests.Measure_details_activity_and_account_summary",
       "source": "tests/Winnow.Ui.Tests/LargeHistoryResponsivenessTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/ActivityRemainingParityTests.cs",
+          "case": "Full_source_large_history_reaches_details_weekly_activity_and_account_summary_over_HTTP"
+        },
+        {
+          "file": "tests/parity-activity-tracker-contracts.test.tsx",
+          "case": "preserves locale formatting and all distinct records at the exact large-history ownership volume"
+        },
+        {
+          "file": "tests/parity-activity-tracker-contracts.test.tsx",
+          "case": "keeps measured projection work out of focus, range and acknowledgement-only updates"
+        },
+        {
+          "file": "tests/parity-activity-history-rendering.test.tsx",
+          "case": "does not format unvisited journal rows and retains every note when Journal is opened"
+        },
+        {
+          "file": "tests/parity-activity-history-rendering.test.tsx",
+          "case": "keeps five thousand records out of a closed disclosure and reveals every exact observation on demand"
+        },
+        {
+          "file": "tests/electron/activity-remaining.spec.ts",
+          "case": "exact large history records Details activity and account-summary measurements without imposing a machine-speed budget"
+        }
+      ],
+      "reason": "The real SQLite fixture reproduces all 2,000 works/releases/ownerships, 125,000 sessions and preserved journal notes, 14,600 six-hour snapshots, 2,000 announcements and 40,000 purchases. HTTP verifies 5,060 selected-game sessions and notes, every cumulative snapshot value, real activity and $400,000 across 40,000 transactions. Both 1920x1080 native surfaces exercise production Details, Activity and Spending; fullscreen includes the source weekly Activity operation. Operation-wide factory instrumentation records actual repository leases, elapsed time and lease process IDs; native compares these with actual backend and renderer process IDs. The source ten-second guard remains at repository-lease boundaries and all observed leases stay outside the renderer. Renderer input/heartbeat, action-to-ready and API timings are recorded measurements, not invented hard UI-gap or total-duration limits. Component checks retain exact ownership-volume projection and verify range/focus/acknowledgement-only presentation updates reuse projections while new history invalidates them. Inactive journal rows and closed recorded-hours rows defer rendering; explicit disclosure tests still reveal all 5,000 distinct observations, preserve first/last records and selection, and reopen without losing the selected range."
     },
     {
       "id": "LazyPaneTests.Panes_are_absent_from_the_tree_until_they_are_first_shown",

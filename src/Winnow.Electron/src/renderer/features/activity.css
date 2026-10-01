@@ -99,6 +99,18 @@
   .activity-tracker .tabs {
     flex-wrap: wrap;
   }
+  .activity-tracker {
+    --activity-text-scale: var(--theme-text-scale, 1);
+  }
+  .activity-tracker.mode-fullscreen {
+    --activity-text-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+  }
+  .activity-tracker .activity-total {
+    font: 400 calc(30px * var(--activity-text-scale)) / calc(34px * var(--activity-text-scale))
+      var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
   .activity-timeline-plot {
     position: relative;
     height: 150px;
@@ -237,6 +249,11 @@
   }
 }
 @layer themes {
+  /* Plot marks retain their chart geometry inside fullscreen control sizing. */
+  .activity-timeline-plot .activity-timeline-update {
+    min-height: 0;
+    border-radius: 50%;
+  }
   .dialog-content.journal-dialog.mode-fullscreen {
     --journal-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
     width: 1100px;

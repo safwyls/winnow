@@ -19,6 +19,7 @@ var merges = Path.GetFileName(directory).StartsWith("winnow-electron-merges-", S
 var matching = Path.GetFileName(directory).StartsWith("winnow-electron-matching-", StringComparison.Ordinal);
 var metadataEditing = Path.GetFileName(directory).StartsWith("winnow-electron-metadata-editing-", StringComparison.Ordinal);
 var detailsReading = Path.GetFileName(directory).StartsWith("winnow-electron-details-reading-", StringComparison.Ordinal);
+var activityRemaining = Path.GetFileName(directory).StartsWith("winnow-electron-activity-remaining-", StringComparison.Ordinal);
 var marker = Path.Combine(directory, ".visibility-fixture");
 if (visibility)
 {
@@ -27,12 +28,23 @@ if (visibility)
     Directory.CreateDirectory(directory);
     await File.WriteAllTextAsync(marker, "Winnow Electron visibility test fixture");
 }
-else if (!(pluginActions || editions || merges || matching || metadataEditing || detailsReading || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
+else if (!(pluginActions || editions || merges || matching || metadataEditing || detailsReading || activityRemaining || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
     || File.Exists(Path.Combine(directory, "winnow.db")))
     throw new ArgumentException("Composition fixtures require a new test-owned directory.");
 
 await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"], services =>
 {
+    if (activityRemaining)
+    {
+        services.AddSingleton(new ActivityReadTrackingFactory(new Winnow.Data.SqliteConnectionFactory(
+            Path.Combine(directory, "winnow.db"), pooling: false)));
+        services.AddSingleton<Winnow.Data.ISqliteConnectionFactory>(provider => provider.GetRequiredService<ActivityReadTrackingFactory>());
+        services.AddSingleton<PluginActionShellGuard>();
+        services.AddSingleton<IUriDispatcher>(provider => provider.GetRequiredService<PluginActionShellGuard>());
+        services.AddSingleton<ActivityRemainingFixture>();
+        services.AddSingleton<IHttpMessageHandlerBuilderFilter, MatchingOfflineHttp>();
+        return;
+    }
     if (detailsReading)
     {
         services.AddSingleton<PluginActionShellGuard>();
@@ -119,7 +131,19 @@ if (pluginActions)
 
 // BackendApplication's normal loopback, authority and bearer-token middleware covers these routes.
 // Only this separately built test executable exposes fixture control; the production backend does not.
-if (detailsReading)
+if (activityRemaining)
+{
+    app.MapPost("/__fixture/activity-remaining/seed", (ActivityRemainingSeed input, ActivityRemainingFixture fixture)
+        => fixture.SeedAsync(input.Kind));
+    app.MapGet("/__fixture/activity-remaining/state", (ActivityRemainingFixture fixture) => fixture.Snapshot());
+    app.MapPost("/__fixture/activity-remaining/measure-start", (ActivityMeasurementStart input, ActivityReadTrackingFactory tracking) =>
+    {
+        tracking.Start(input.Name);
+        return Results.NoContent();
+    });
+    app.MapPost("/__fixture/activity-remaining/measure-end", (ActivityReadTrackingFactory tracking) => tracking.End());
+}
+else if (detailsReading)
 {
     app.MapPost("/__fixture/details-reading/seed", (DetailsReadingSeed input, DetailsReadingFixture fixture)
         => fixture.SeedAsync(input.Kind, input.State));
@@ -248,3 +272,5 @@ internal sealed record CapturedActionCheck(bool AfterRemoval);
 internal sealed record MatchingSeed(string Kind);
 internal sealed record MetadataEditingSeed(string Kind);
 internal sealed record DetailsReadingSeed(string Kind, int State = 0);
+internal sealed record ActivityRemainingSeed(string Kind);
+internal sealed record ActivityMeasurementStart(string Name);

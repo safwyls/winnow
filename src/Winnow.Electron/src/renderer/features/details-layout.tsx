@@ -3,6 +3,7 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -13,7 +14,7 @@ import { ArrowLeft, ChevronDown, ListPlus, X, Image, Pencil, Search, EyeOff } fr
 import { useApiQuery, useCommand, useDetails, useLibrary, useWorkspace } from '../api/hooks'
 import { dateLabel, hours, storeLabel } from '../api/client'
 import { primaryEntry, primaryAction, noActionSentence } from '../../shared/game-actions'
-import type { LibraryGame, Metadata, Mode, Workspace } from '../api/types'
+import type { GameDetails, LibraryGame, Metadata, Mode, Workspace } from '../api/types'
 import { Artwork } from '../components/Artwork'
 import { EntryActions, GameLinks, HideGame, ListMembership } from './Details'
 import { IgdbMatch, LibraryFacts, Screenshots, UpdateSignals } from './parity-details'
@@ -43,6 +44,7 @@ import { ChooseLaunchVersion } from './choose-launch-version'
 import { ReleaseAchievements } from './detail-achievements'
 import type { IgdbState } from './igdb-match'
 import './details-layout.css'
+import { activityDateLabel } from './activity-format'
 
 const desktopSections = ['Overview', 'Activity', 'Updates', 'Journal', 'Library'] as const
 const televisionSections = ['Overview', 'Updates', 'Journal', 'Library'] as const
@@ -137,11 +139,16 @@ export function AvalonDetailsLayout({
   const links = game && workspace.data ? gameLinks(game, workspace.data, details.data?.events) : []
   const hasExpansions =
     game && detailsRelationships(game, workspace.data, 'expansions', library.data?.games ?? []).length > 0
-  const sessions = Object.values(details.data?.sessions ?? {})
-    .flat()
-    .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
-  const notes = [...(details.data?.journalEntries ?? [])].sort((a, b) =>
-    b.sessionAt.localeCompare(a.sessionAt),
+  const sessions = useMemo(
+    () =>
+      Object.values(details.data?.sessions ?? {})
+        .flat()
+        .sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
+    [details.data?.sessions],
+  )
+  const notes = useMemo(
+    () => [...(details.data?.journalEntries ?? [])].sort((a, b) => b.sessionAt.localeCompare(a.sessionAt)),
+    [details.data?.journalEntries],
   )
   const summary = game?.summary?.trim() || 'No description yet. Metadata fills in automatically.'
   const storeLine = [...new Set(game?.entries.map((entry) => storeLabel(entry.store)) ?? [])].join(' · ')
@@ -321,29 +328,7 @@ export function AvalonDetailsLayout({
     </>
   )
   const journal = (
-    <section className="feature-panel">
-      <h2>Journal</h2>
-      {!notes.length ? (
-        <Empty>
-          {preferences.data?.promptAfterPlay === false
-            ? 'Journal prompts are off. Turn them on in Display preferences after a game.'
-            : preferences.data?.promptAfterPlay
-              ? 'No notes yet. After you play, Winnow will ask how it went.'
-              : 'No notes yet. Add one to a recorded session from Activity.'}
-        </Empty>
-      ) : (
-        notes.map((note) => (
-          <article className="timeline-entry" key={note.sessionId}>
-            <time>{dateLabel(note.sessionAt)}</time>
-            <div>
-              {note.note && <blockquote>{note.note}</blockquote>}
-              {note.rating && <p>{note.rating} / 5</p>}
-            </div>
-            <button onClick={() => setEditing(note.sessionId)}>Edit note</button>
-          </article>
-        ))
-      )}
-    </section>
+    <DetailsJournal notes={notes} promptAfterPlay={preferences.data?.promptAfterPlay} onEdit={setEditing} />
   )
   const about = (
     <section className="avalon-about feature-panel">
@@ -772,6 +757,42 @@ export function AvalonDetailsLayout({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  )
+}
+
+function DetailsJournal({
+  notes,
+  promptAfterPlay,
+  onEdit,
+}: {
+  notes: GameDetails['journalEntries']
+  promptAfterPlay?: boolean
+  onEdit(sessionId: number): void
+}) {
+  return (
+    <section className="feature-panel">
+      <h2>Journal</h2>
+      {!notes.length ? (
+        <Empty>
+          {promptAfterPlay === false
+            ? 'Journal prompts are off. Turn them on in Display preferences after a game.'
+            : promptAfterPlay
+              ? 'No notes yet. After you play, Winnow will ask how it went.'
+              : 'No notes yet. Add one to a recorded session from Activity.'}
+        </Empty>
+      ) : (
+        notes.map((note) => (
+          <article className="timeline-entry" key={note.sessionId}>
+            <time>{activityDateLabel(note.sessionAt)}</time>
+            <div>
+              {note.note && <blockquote>{note.note}</blockquote>}
+              {note.rating && <p>{note.rating} / 5</p>}
+            </div>
+            <button onClick={() => onEdit(note.sessionId)}>Edit note</button>
+          </article>
+        ))
+      )}
+    </section>
   )
 }
 

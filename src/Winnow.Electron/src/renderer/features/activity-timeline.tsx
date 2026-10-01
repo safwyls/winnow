@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
-import { dateLabel, hours, storeLabel } from '../api/client'
-import type { GameDetails, LibraryGame, Mode } from '../api/types'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { dateLabel, storeLabel } from '../api/client'
+import type { GameDetails, LibraryGame, Mode, Session } from '../api/types'
 import { useViewState } from '../viewState'
 import {
   buildTimeline,
+  timelineDateLabel,
   timelineMarks,
   type PlaytimeSnapshot,
   type TimelineSeries,
@@ -11,6 +12,7 @@ import {
 } from './activity-timeline-model'
 import './activity.css'
 import { updateFlagState } from './update-flags'
+import { durationText } from './details-facts'
 
 export function TimelinePlot({
   series,
@@ -35,7 +37,10 @@ export function TimelinePlot({
     observer.observe(element.current)
     return () => observer.disconnect()
   }, [])
-  const marks = timelineMarks(series, updates, width, tracked)
+  const marks = useMemo(
+    () => timelineMarks(series, updates, width, tracked),
+    [series, updates, width, tracked],
+  )
   const maximum = Math.max(1, ...series.bars.map((bar) => bar.hours))
   const span = Math.max(1, series.end - series.start)
   return (
@@ -86,7 +91,7 @@ export function TimelinePlot({
             </button>
           ))}
           <div className="activity-timeline-dates">
-            <span>{dateLabel(new Date(series.start).toISOString())}</span>
+            <span>{timelineDateLabel(series.start)}</span>
             <span>Today</span>
           </div>
           <div className="activity-timeline-coverage" aria-label="Monthly record coverage">
@@ -106,52 +111,63 @@ export function TimelinePlot({
   )
 }
 
-export function ActivityTimeline({
-  game,
-  details,
+export function ActivityTracker({
+  snapshots,
+  sessions,
+  acquiredAt,
+  lastPlayedAt,
+  totalMinutes,
+  now,
+  scopeLabel = '',
+  scopeKey,
+  rangeKey,
+  updates,
+  unreadCount,
+  children,
   mode = 'desktop',
 }: {
-  game: LibraryGame
-  details: GameDetails
+  snapshots: PlaytimeSnapshot[]
+  sessions: Session[]
+  acquiredAt?: string | null
+  lastPlayedAt?: string | null
+  totalMinutes: number
+  now: number
+  scopeLabel?: string
+  scopeKey: string
+  rangeKey: string
+  updates: TimelineUpdate[]
+  unreadCount?: number
+  children?: ReactNode
   mode?: Mode
 }) {
-  const [ownership, setOwnership] = useViewState(
-    `${mode}:timeline:${game.workId}:ownership`,
-    game.entries[0]?.ownershipId,
-  )
-  const [tracked, setTracked] = useViewState(`${mode}:timeline:${game.workId}:tracked`, false)
+  const [tracked, setTracked] = useViewState(rangeKey, false)
   const [selected, setSelected] = useState<{ scope: string; text: string } | null>(null)
-  const entry = game.entries.find((value) => value.ownershipId === ownership) ?? game.entries[0]
-  if (!entry) return null
-  const history = details.history as Record<string, PlaytimeSnapshot[]> | undefined
-  const ownerships = details.ownerships as { id: number; acquiredAt?: string | null }[] | undefined
-  const snapshots = history?.[entry.ownershipId] ?? []
-  const sessions = details.sessions[entry.ownershipId] ?? []
-  const acquired = ownerships?.find((value) => value.id === entry.ownershipId)?.acquiredAt
-  const now = Date.parse(details.readAtUtc)
-  const series = buildTimeline(snapshots, sessions, acquired, entry.lastPlayedAt, now, tracked)
-  const hasTracked =
-    buildTimeline(snapshots, sessions, acquired, entry.lastPlayedAt, now, true).bars.length > 0
-  const flags = updateFlagState(
-    details.events.filter((event) => event.releaseId === entry.releaseId),
-    (details.acknowledgements as Record<string, string> | undefined) ?? {},
-    entry.lastPlayedAt,
-    entry.playtimeMinutes,
+  const [recordsOpen, setRecordsOpen] = useState(false)
+  const lifetime = useMemo(
+    () => buildTimeline(snapshots, sessions, acquiredAt, lastPlayedAt, now),
+    [snapshots, sessions, acquiredAt, lastPlayedAt, now],
   )
-  const updates = flags.rows
-  const scope = `${entry.ownershipId}:${tracked}`
+  const trackedSeries = useMemo(
+    () => buildTimeline(snapshots, sessions, acquiredAt, lastPlayedAt, now, true),
+    [snapshots, sessions, acquiredAt, lastPlayedAt, now],
+  )
+  const series = tracked ? trackedSeries : lifetime
+  const hasTracked = trackedSeries.bars.length > 0
+  const unread = unreadCount ?? updates.filter((update) => update.unread).length
+  const scope = `${scopeKey}:${tracked}`
   return (
     <section className={`feature-panel activity-tracker mode-${mode}`} aria-label="Your play history">
       <header className="feature-heading">
         <div>
           <h2>Your play</h2>
           <p>
-            <strong>{hours(entry.playtimeMinutes)}</strong> played · {storeLabel(entry.store)} copy
+            <strong className="activity-total">{durationText(totalMinutes)}</strong>{' '}
+            {scopeLabel ? `played · ${scopeLabel}` : 'total played'}
           </p>
           <p>
-            {entry.lastPlayedAt
-              ? `Last played ${dateLabel(entry.lastPlayedAt)}`
-              : entry.playtimeMinutes > 0
+            {lastPlayedAt
+              ? `Last played ${dateLabel(lastPlayedAt)}`
+              : totalMinutes > 0
                 ? 'Last-played date unavailable'
                 : 'No playtime recorded'}
           </p>
@@ -165,18 +181,7 @@ export function ActivityTimeline({
           </button>
         </nav>
       </header>
-      {game.entries.length > 1 && (
-        <label className="field">
-          Edition history
-          <select value={entry.ownershipId} onChange={(event) => setOwnership(Number(event.target.value))}>
-            {game.entries.map((value) => (
-              <option key={value.ownershipId} value={value.ownershipId}>
-                {storeLabel(value.store)} · {value.title}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+      {children}
       {series.end > series.start && (
         <>
           <p>
@@ -191,7 +196,7 @@ export function ActivityTimeline({
             tracked={tracked}
             onSelect={(text, switchToTracked) =>
               setSelected({
-                scope: `${entry.ownershipId}:${tracked || (switchToTracked && hasTracked) || false}`,
+                scope: `${scopeKey}:${tracked || (switchToTracked && hasTracked) || false}`,
                 text,
               })
             }
@@ -209,19 +214,97 @@ export function ActivityTimeline({
         {selected?.scope === scope ? selected.text : series.summary}
       </p>
       <p className="muted">{series.coverageNote}</p>
-      <p>{flags.caption}</p>
+      <p className="activity-update-summary">
+        {unread > 0
+          ? `${unread} unread update${unread === 1 ? '' : 's'}`
+          : updates.length
+            ? 'No unread updates'
+            : 'No updates recorded'}
+      </p>
       {!!series.bars.length && (
-        <details>
-          <summary>Recorded hours</summary>
-          <ul className="activity-records">
-            {series.bars.map((bar) => (
-              <li key={`${bar.start}:${bar.end}`}>
-                <button onClick={() => setSelected({ scope, text: bar.label })}>{bar.label}</button>
-              </li>
-            ))}
-          </ul>
+        <details open={recordsOpen} onToggle={(event) => setRecordsOpen(event.currentTarget.open)}>
+          <summary
+            onClick={(event) => {
+              event.preventDefault()
+              setRecordsOpen((open) => !open)
+            }}
+          >
+            Recorded hours
+          </summary>
+          {recordsOpen && (
+            <ul className="activity-records">
+              {series.bars.map((bar) => (
+                <li key={`${bar.start}:${bar.end}`}>
+                  <button onClick={() => setSelected({ scope, text: bar.label })}>{bar.label}</button>
+                </li>
+              ))}
+            </ul>
+          )}
         </details>
       )}
     </section>
+  )
+}
+
+const noSnapshots: PlaytimeSnapshot[] = []
+const noSessions: Session[] = []
+
+export function ActivityTimeline({
+  game,
+  details,
+  mode = 'desktop',
+}: {
+  game: LibraryGame
+  details: GameDetails
+  mode?: Mode
+}) {
+  const [ownership, setOwnership] = useViewState(
+    `${mode}:timeline:${game.workId}:ownership`,
+    game.entries[0]?.ownershipId,
+  )
+  const entry = game.entries.find((value) => value.ownershipId === ownership) ?? game.entries[0]
+  const flags = useMemo(
+    () =>
+      entry
+        ? updateFlagState(
+            details.events.filter((event) => event.releaseId === entry.releaseId),
+            (details.acknowledgements as Record<string, string> | undefined) ?? {},
+            entry.lastPlayedAt,
+            entry.playtimeMinutes,
+          )
+        : null,
+    [details.events, details.acknowledgements, entry],
+  )
+  if (!entry || !flags) return null
+  const history = details.history as Record<string, PlaytimeSnapshot[]> | undefined
+  const ownerships = details.ownerships as { id: number; acquiredAt?: string | null }[] | undefined
+  return (
+    <ActivityTracker
+      snapshots={history?.[entry.ownershipId] ?? noSnapshots}
+      sessions={details.sessions[entry.ownershipId] ?? noSessions}
+      acquiredAt={ownerships?.find((value) => value.id === entry.ownershipId)?.acquiredAt}
+      lastPlayedAt={entry.lastPlayedAt}
+      totalMinutes={entry.playtimeMinutes}
+      now={Date.parse(details.readAtUtc)}
+      scopeLabel={`${storeLabel(entry.store)} copy`}
+      scopeKey={String(entry.ownershipId)}
+      rangeKey={`${mode}:timeline:${game.workId}:tracked`}
+      updates={flags.rows}
+      unreadCount={flags.unread}
+      mode={mode}
+    >
+      {game.entries.length > 1 && (
+        <label className="field">
+          Edition history
+          <select value={entry.ownershipId} onChange={(event) => setOwnership(Number(event.target.value))}>
+            {game.entries.map((value) => (
+              <option key={value.ownershipId} value={value.ownershipId}>
+                {storeLabel(value.store)} · {value.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+    </ActivityTracker>
   )
 }

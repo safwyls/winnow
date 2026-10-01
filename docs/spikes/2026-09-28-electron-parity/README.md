@@ -45,12 +45,17 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [Details reading and lightbox checkpoint](checkpoint-seventy.md) records all
-3,718 component/live API cases, 21 distinct native cases, 21 original source cases and
-five new HTTP cases passing. Both surfaces retain achievement availability, reading
-positions, matching results and lightbox focus. Desktop explanations share the 410px
-reading measure; fullscreen prose keeps its scaled 28px typography and available width.
-All eleven assigned methods are ported; 247 pending and 56 partial methods remain.
+The [activity tracker and large-history checkpoint](checkpoint-seventy-one.md) records
+all 3,741 component/live API cases, 22 distinct native cases, ten original source cases
+and five new HTTP cases passing. Both surfaces preserve original plot geometry,
+selection, sparse evidence and acknowledgement. At the original large-history volume,
+Details readiness improves from about 3.9 seconds to 0.8 seconds; remaining measured
+cold-render pauses and machine-specific limits are documented. All eight assigned
+methods are ported; 244 pending and 51 partial methods remain.
+The preceding [Details reading and lightbox checkpoint](checkpoint-seventy.md) records
+achievement availability, reading positions, matching results and lightbox focus.
+Desktop explanations share the 410px reading measure; fullscreen prose keeps its
+scaled 28px typography and available width.
 The preceding [metadata editing and refresh checkpoint](checkpoint-sixty-nine.md)
 records field ownership, live refresh, optional editor availability and reception
 accessibility. The

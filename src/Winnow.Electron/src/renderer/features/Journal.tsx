@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useRef, useState } from 'react'
+import { Fragment, memo, useEffect, useId, useRef, useState } from 'react'
 import { SectionLabel, SectionNavigation } from '../components/SectionNavigation'
 import { FullscreenNoteReading } from './FullscreenNoteReading'
 import * as Dialog from '@radix-ui/react-dialog'
@@ -16,6 +16,7 @@ import { GameplayDashboard } from './activity-gameplay'
 import { Artwork } from '../components/Artwork'
 import './activity.css'
 import { JournalRating } from './journal-prompt-controls'
+import { activityDateLabel, activityHours } from './activity-format'
 
 const activeEditors = new Map<number, { close: () => void }>()
 interface JournalDraftState {
@@ -356,18 +357,24 @@ export function JournalDraft({
   )
 }
 
-export function SessionRows({ sessions, onEdit }: { sessions: Session[]; onEdit: (id: number) => void }) {
+export const SessionRows = memo(function SessionRows({
+  sessions,
+  onEdit,
+}: {
+  sessions: Session[]
+  onEdit: (id: number) => void
+}) {
   if (!sessions.length)
     return <Empty>No recorded sessions yet. Sessions appear here after Winnow observes you playing.</Empty>
   return (
     <div className="timeline">
       {sessions.map((session) => (
         <article className="timeline-entry" key={session.id}>
-          <time dateTime={session.startedAt}>{dateLabel(session.startedAt)}</time>
+          <time dateTime={session.startedAt}>{activityDateLabel(session.startedAt)}</time>
           <div>
             <strong>
               {session.durationSeconds != null
-                ? hours(session.durationSeconds / 60)
+                ? activityHours(session.durationSeconds / 60)
                 : session.endedAt
                   ? 'Duration unavailable'
                   : 'Session in progress'}
@@ -381,7 +388,7 @@ export function SessionRows({ sessions, onEdit }: { sessions: Session[]; onEdit:
       ))}
     </div>
   )
-}
+})
 
 export function Journal({
   mode = 'desktop',

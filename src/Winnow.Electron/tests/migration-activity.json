@@ -159,56 +159,6 @@
     ],
     "reason": "The shared editor remains mounted and preserves unsaved text when the visible library snapshot changes."
   },
-  "ActivityTimelinePlotTests.Lifetime_months_have_equal_width_and_named_pointer_and_keyboard_selection": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity-timeline.test.tsx",
-        "case": "gives lifetime months equal width and accessible selectable labels"
-      }
-    ],
-    "reason": "Month width, accessible names, click selection, focus selection and tooltips are covered. Real keyboard activation and rendered geometry require browser verification."
-  },
-  "ActivityTimelinePlotTests.Session_bars_are_ten_pixels_and_collisions_preserve_all_observations": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity-timeline.test.tsx",
-        "case": "uses ten-pixel session bars and retains every colliding observation"
-      }
-    ],
-    "reason": "The geometry projection preserves ten-pixel marks, combined count, total and longest duration. The original actual arranged bounds need browser measurement."
-  },
-  "ActivityTimelinePlotTests.Updates_cluster_without_a_count_limit_and_request_tracked_range": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity-timeline.test.tsx",
-        "case": "clusters unlimited update marks and requests tracked history on activation"
-      }
-    ],
-    "reason": "All 30 updates remain in one accessible cluster; activation changes range and acknowledgements remove unread state. Computed theme color equivalence requires visual verification."
-  },
-  "ActivityTimelinePlotTests.Narrow_layout_keeps_date_labels_and_update_targets_inside_plot": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity-timeline.test.tsx",
-        "case": "keeps narrow plot marks within its measured width"
-      }
-    ],
-    "reason": "Update hit regions fit a 180-pixel plot. Actual text layout and scaled-font label collisions remain browser checks."
-  },
-  "ActivityTrackerInteractionTests.Range_buttons_switch_units_and_keep_monthly_and_session_records_reachable": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity-timeline.test.tsx",
-        "case": "keeps monthly and individual session records reachable"
-      }
-    ],
-    "reason": "Both mode paths switch ranges, retain active toggle state and expose all recorded hours. Original 360/620-pixel overflow and plot-height assertions need rendered browser coverage."
-  },
   "ActivityTrackerInteractionTests.Grouped_updates_do_not_hide_history_when_no_sessions_exist": {
     "status": "ported",
     "tests": [

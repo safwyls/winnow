@@ -491,6 +491,12 @@ The More panel applies viewport scaling once, retaining its reference proportion
 4K while honoring interface scale, text size and percentage safe margins.
 
 Fullscreen Play history starts on Lifetime; Right then Accept selects Tracked sessions.
+Both trackers state the selected copy's compact playtime and unread-update count.
+The total uses scaled 30px monospace type; axis dates match the series' UTC calendar.
+Acknowledging updates refreshes that count and the marks while retaining the selected
+range. Timeline series and locale formatters are reused so selecting a mark does not
+rebuild every session label in a large history. Journal and Recorded hours render their
+rows when opened; every entry remains available in the continuous history.
 Refreshing Details preserves its local section and an open journal draft. Expansion
 separation names both games, initially selects Keep relationship, and sends the child
 identity only after confirmation.
