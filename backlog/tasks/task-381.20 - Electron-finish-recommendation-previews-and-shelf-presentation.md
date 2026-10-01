@@ -1,11 +1,11 @@
 ---
 id: TASK-381.20
 title: 'Electron: finish recommendation previews and shelf presentation'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:47'
-updated_date: '2026-10-01 13:13'
+updated_date: '2026-10-01 13:15'
 labels:
   - electron
   - parity
@@ -62,7 +62,7 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -81,6 +81,8 @@ Capture-enabled original execution exposed a dormant source-test defect: both sh
 Renderer preview now shares one SVG outline for surface/artwork/border with source pointer gutter, typography, SurfaceRaised color, compact/accessibility reception formatting and source playtime copy. Fullscreen no longer opens a duplicate hover bubble. Twelve focused preview cases and production build pass; frozen native bundle is index-jNzwlGYY.js. Corrected original capture-enabled gate passes all thirteen cases and four source fallback captures were produced; root reviewed wide/narrow quick-details images. Full renderer/API/native gates and artwork lifetime cases remain in progress.
 
 Final verification: complete Electron component/live gate 3,859/3,859 across 190 files in 105.37s; production build index-jNzwlGYY.js; focused renderer 55 and final preview 12; corrected capture-enabled originals 13, plus 2 artwork capture repetitions; authenticated HTTP 9; native 15 new plus 13 existing consumers all pass. Root inspected source and Electron desktop/fullscreen captures, pixel transparency/continuity and flipped gutter checks. Native harness accounts for whole-shell side rail and fullscreen 4-slot pagination at 1280; actual controller navigation reaches all 5. Source supplied bitmap/floor equality differs from real native dormancy pipeline and is documented. Physical controller hardware remains unverified. Checkpoint 75 records fixture provenance and the narrow dormant-source assertion correction.
+
+Milestone commit: fd9c3e7d. TypeScript, changed-file formatting and diff checks pass. All acceptance criteria are verified. TASK-381.11 through TASK-381.20 are complete; stop for user review without starting TASK-381.21.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
