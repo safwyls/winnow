@@ -1,11 +1,11 @@
 ---
 id: TASK-381.22
 title: 'Electron: finish artwork browsing, selection and backdrops'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:47'
-updated_date: '2026-10-01 17:13'
+updated_date: '2026-10-01 17:14'
 labels:
   - electron
   - parity
@@ -70,7 +70,7 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.30, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -85,6 +85,8 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 Started after TASK-381.21 implementation70e38edf and completion3561e712. Baseline:3904 Electron component/live API cases pass; source inventory frozen at cf45d9f1127243a987d3cf6e664a32fc767ecb67. Unrelated scc-report.html and .claude/settings.local.json remain untouched.
 
 Verification: all 3,918 Electron component/live API cases pass across 196 files, together with 17 unchanged original cases, 17 distinct native cases, 15 unique HTTP cases and two application preference regressions. Fixed live Current projection while preserving canonical writes, shared source-order publication, fullscreen page sizing/type/hints and fractional measurements at 21:9. Native fixture adaptations and reruns are documented in checkpoint77. The sixteen source methods resolve as six ported and ten retained-backend. Physical-controller validation remains separate. The 720p fullscreen preview at 140% text and source typography were visually inspected.
+
+Implementation milestone: 84c4eca4. Migration report validates 1,537 ported, 663 retained-backend, 33 framework-specific, 173 pending and 29 partial methods. All acceptance criteria and checks pass. Continuing within the authorized batch to TASK-381.23.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
