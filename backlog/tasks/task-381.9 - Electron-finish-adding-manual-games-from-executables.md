@@ -1,7 +1,7 @@
 ---
 id: TASK-381.9
 title: 'Electron: finish adding manual games from executables'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:45'
@@ -52,7 +52,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -72,6 +72,8 @@ Native visual review also covers the executable chooser itself: restore visible 
 Source audit found two executable-flow defects: late inspection could restore a discarded draft, and a typed title matching new file facts could be reclassified as a guess and overwritten on a later browse. Shared editor now guards picker lifecycle, preserves title ownership, invalidates stale metadata searches and waits for inspection before saving. Existing real HTTP/SQLite ManualGameParityTests: 6 passed, no skips; detailed component/native verification remains in progress.
 
 Native executable flows passed on both surfaces, with direct SQLite assertions before and after Save. Visual review found the fullscreen chooser hides the shell hints without its own hints; added D-pad/A/B glyphs and a filename-keyboard Y hint. Existing shared chooser tests will verify the same change for open, save and replacement states. Exact source fixtures and 26 additional async/ownership/note regressions pass in 42 component cases; final broad gate follows native verification.
+
+Review milestone: 0fe78fe6 (Finish Electron manual executable flows and chooser hints). All four acceptance criteria and the review checkpoint definition of done are verified. Stopping at TASK-381.9; TASK-381.10 remains To Do until the user prompts continuation.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
