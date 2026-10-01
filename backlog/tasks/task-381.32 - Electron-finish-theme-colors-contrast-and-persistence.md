@@ -1,11 +1,11 @@
 ---
 id: TASK-381.32
 title: 'Electron: finish theme colors, contrast and persistence'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
-updated_date: '2026-10-01 23:31'
+updated_date: '2026-10-01 23:32'
 labels:
   - electron
   - parity
@@ -70,7 +70,7 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.33 within the user-authorized TASK-381.31 through TASK-381.35 batch.
+- [x] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.33 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -85,6 +85,8 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 TASK-381.31 completed at a256cf60. Starting task two of the authorized five-task batch. Root owns official mapping, docs, Backlog, review and commits. Source/API and native test lanes remain serialized; focused Electron tests precede a frozen production build and native verification. Broad component/API gate is reserved for the batch end unless new failures justify earlier execution.
 
 All fourteen original methods expand to 31 cases and pass unchanged (main23, UI8). Underlying theme implementation and source files match frozen revision; eleven original captures retained. A reusable test-only exporter records61color tokens across9themes and756states, after46116 original round-trip comparisons. Renderer review found bundled audit warnings missing without local themes and fullscreen pressed/current underline states missing; fixes and native contrast checks are underway. No AC checked yet.
+
+Milestone commit 1d85c480 records implementation, exact source mappings and checkpoint eighty-seven. All four acceptance criteria are verified. The complete migration gate remains open for other tasks.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
