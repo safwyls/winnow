@@ -1,22 +1,4 @@
 {
-  "DetailsRefreshParityTests.Saving_metadata_refreshes_visible_facts_and_year_rules_without_replacing_other_drafts": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-details-refresh.test.tsx",
-        "case": "refreshes saved %s facts and year-filtered lists while preserving another field draft"
-      },
-      {
-        "file": "tests/electron/library-details.spec.ts",
-        "case": "saves a metadata year through the real API and refreshes its open live list without losing another draft"
-      },
-      {
-        "file": "tests/parity-details.test.tsx",
-        "case": "keeps other metadata drafts when a field saves and advances only unchanged field revisions"
-      }
-    ],
-    "reason": "The original summary/publisher/year matrix now verifies both renderer modes, retained drafts, refreshed facts and live-list membership. Both native Electron modes also save a year to a temporary backend database and verify the open live list becomes empty. Native summary/publisher saves and original controller activation/focus assertions remain."
-  },
   "GameDetailsTabInteractionTests.Keyboard_arrows_switch_tabs_and_leave_focus_on_the_selected_tab": {
     "status": "partial",
     "tests": [

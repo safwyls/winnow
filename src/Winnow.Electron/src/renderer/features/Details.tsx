@@ -12,7 +12,7 @@ import {
   openExternal,
 } from '../api/client'
 import { useApiQuery, useCommand, useDetails, useLibrary, useWorkspace } from '../api/hooks'
-import type { GameEntry, Mode, Workspace } from '../api/types'
+import type { GameEntry, Metadata, Mode, Workspace } from '../api/types'
 import { JournalEditor, SessionRows } from './Journal'
 import { Empty, Notice } from './shared'
 import { Artwork } from '../components/Artwork'
@@ -244,6 +244,7 @@ function SharedDetails({
   }
   const details = useDetails(workId)
   const igdb = useApiQuery<IgdbState>('metadata.igdb', { workId })
+  const metadata = useApiQuery<Metadata>('metadata.get', { workId })
   const journalPreferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
   const game = library.data?.games.find((item) => item.workId === workId)
   const unreadRows = (workspace.data?.buckets ?? []) as {
@@ -306,6 +307,9 @@ function SharedDetails({
   useLayoutEffect(() => {
     if (igdb.data?.available === false && tab === 'Game match') backToSection()
   }, [igdb.data?.available, tab])
+  useLayoutEffect(() => {
+    if (metadata.data?.available === false && tab === 'Metadata') backToSection()
+  }, [metadata.data?.available, tab])
   function editSession(sessionId: number) {
     setEditingSection(tab)
     setEditing(sessionId)
@@ -390,6 +394,7 @@ function SharedDetails({
       >
         {['Overview', 'History', 'Updates', 'Journal', 'Library', 'Metadata', 'Game match', 'Artwork']
           .filter((name) => name !== 'Game match' || igdb.data?.available !== false)
+          .filter((name) => name !== 'Metadata' || metadata.data?.available !== false)
           .map((name) => (
             <button
               key={name}
@@ -485,7 +490,9 @@ function SharedDetails({
               )}
             </section>
           )}
-          {tab === 'Metadata' && <MetadataEditor key={workId} workId={workId} mode={mode} />}
+          {tab === 'Metadata' && metadata.data?.available !== false && (
+            <MetadataEditor key={workId} workId={workId} mode={mode} />
+          )}
           {tab === 'Game match' && igdb.data?.available !== false && (
             <IgdbMatch
               key={workId}

@@ -167,6 +167,7 @@ export interface GameplayStats {
   topGames: { resolvedWorkId: number; recordedSeconds: number }[]
 }
 export interface Metadata {
+  available?: boolean
   workId: number
   title: string
   isPinned: boolean

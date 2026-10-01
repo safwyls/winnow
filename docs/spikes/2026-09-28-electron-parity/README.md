@@ -45,13 +45,15 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [IGDB matching and candidate presentation checkpoint](checkpoint-sixty-eight.md)
-records all 3,667 component/live API cases, 30 distinct native cases, 42 original source
-cases and 10 new HTTP cases passing. Candidates retain covers and bounded platform text;
-matching preserves sections, artwork precedence and explicit claim decisions. Mapping
-changes update the same open Details, and the production GamesDB pipeline publishes to
-both surfaces. Fifteen assigned methods are ported and three retain backend tests;
-269 pending and 60 partial methods remain. The preceding
+The [metadata editing and refresh checkpoint](checkpoint-sixty-nine.md) records all
+3,699 component/live API cases, sixteen distinct native cases, 27 original source cases
+and nine new HTTP cases passing. Field edits preserve attribution and drafts while
+sorting, filtered lists and background Details projections refresh on both surfaces.
+Optional editor/picker availability and reception accessibility retain the source
+contracts. Twelve assigned methods are ported and three retain backend tests;
+255 pending and 59 partial methods remain. The preceding
+[IGDB matching checkpoint](checkpoint-sixty-eight.md) records candidate presentation,
+matching, artwork precedence and live mapping changes; the
 [merge review checkpoint](checkpoint-sixty-seven.md) records refresh recovery and review
 layout. The user authorized continuing this batch through TASK-381.20.
 

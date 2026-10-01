@@ -22,9 +22,18 @@ export function ReceptionLine({
   const figures = receptionFigures(ratings)
   if (!figures.length) return null
   return (
-    <div className={`reception-line${compact ? ' compact' : ''}`} aria-label="Reception">
+    <div
+      className={`reception-line${compact ? ' compact' : ''}`}
+      role="group"
+      aria-label={compact ? figures.map((figure) => figure.automationName).join('; ') : 'Reception'}
+    >
       {figures.map((figure, index) => (
-        <span key={figure.source} title={figure.tooltip} aria-label={figure.automationName}>
+        <span
+          key={figure.source}
+          title={figure.tooltip}
+          role={compact ? undefined : 'group'}
+          aria-label={compact ? undefined : figure.automationName}
+        >
           {index > 0 && <span aria-hidden="true"> · </span>}
           {compact ? (
             `${figure.compactSource}: ${figure.compactValue}`

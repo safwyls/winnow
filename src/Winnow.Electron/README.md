@@ -119,6 +119,11 @@ Metadata opens in its own desktop dialog, bounded to 1440 × 1000 with a fixed B
 Fullscreen uses an ordered field menu: Back cancels the active field's draft and returns to
 its row; successful saves return with updated attribution. A edits, Y opens the keyboard,
 and B returns. Desktop retains unsaved drafts across dialog navigation.
+**Edit details** keeps its label and explanatory tooltip. Saving one field updates the
+headline, tile, sorting and filter facts without replacing other unfinished fields or
+their source attribution. If the metadata editing service is unavailable, Details remains
+usable and hides the editor. Without a file picker, both artwork fields keep their URL
+route and omit file selection.
 
 Settings groups Steam, Epic and GOG under **Platforms**, with one card at a time, attention
 markers and title counts from the whole library. Steam keeps credential guidance, account

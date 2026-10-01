@@ -1,10 +1,11 @@
 ---
 id: TASK-381.14
 title: 'Electron: finish metadata editing and refresh composition'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
+updated_date: '2026-10-01 08:54'
 labels:
   - electron
   - parity
@@ -57,18 +58,40 @@ tests/Winnow.Ui.Tests/DetailsRefreshParityTests.cs
 - DetailsRefreshParityTests.Saving_metadata_refreshes_visible_facts_and_year_rules_without_replacing_other_drafts [partial at split]
 - DetailsRefreshParityTests.Background_reads_refresh_updates_history_art_and_reception_while_journal_drafts_survive [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Keep one implementation task active, verify and commit each milestone, then continue to the next task. Pause for review after TASK-381.20.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original editor validation, save/cancel/conflict, metadata precedence and refresh contracts retain drafts and attribution on both surfaces.
-- [ ] #2 Details, reception and image metadata update from the correct source/revision; timestamp boundaries and retired reads cannot publish stale data.
-- [ ] #3 All 15 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original editor validation, save/cancel/conflict, metadata precedence and refresh contracts retain drafts and attribution on both surfaces.
+- [x] #2 Details, reception and image metadata update from the correct source/revision; timestamp boundaries and retired reads cannot publish stale data.
+- [x] #3 All 15 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit the fifteen frozen metadata editing, refresh, timestamp and image-writer contracts against current backend and Electron tests. 2. Correct demonstrated gaps and add exact equivalent coverage, preserving draft ownership and refresh on desktop/fullscreen. 3. Run source/backend, component/live API and isolated native checks; inspect changed presentation and record checkpoint 69 with per-method migration evidence. 4. Commit the verified milestone and continue to TASK-381.15.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started after IGDB matching milestone 43649dc3 and completion 775e0bcc. This is fourth of the ten authorized sequential tasks.
+
+Audit confirmed a missing optional metadata-service seam: Details construction required the editor service. Added availability to metadata state and safe unavailable mutations while preserving ordinary Details reads. Renderer is hiding only explicit unavailability, restoring the constant Edit details tooltip and gating native file selection on its picker capability. Existing save/draft logic is retained. Native verification is being expanded from year-only to the original summary/publisher/year matrix and background refresh with focused drafts and update rows.
+
+Checkpoint 69: all 3699 component/live API cases pass across 182 files in 92.29s; 27 original source and 9 new HTTP cases pass; 16 distinct native cases pass with two final accessibility reruns. Final build/typecheck, formatting and migration audit pass. Fixed a real compact reception accessibility gap; adjusted the older header locator to its aggregate name while preserving the ordering assertion. Screenshots inspected on both surfaces. Inventory now 1439 ported,650 retained-backend,32 framework-specific,255 pending,59 partial. Native controller input is simulated.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Preserved metadata drafts, field ownership, sorted and filtered library projections, and focused Details during real background publication on desktop/fullscreen. Added optional metadata-service availability, URL-only picker capability handling, stable editor copy and reception accessibility. Twelve source methods ported and three retained with executed evidence. Verification and limits: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-nine.md.
+<!-- SECTION:FINAL_SUMMARY:END -->

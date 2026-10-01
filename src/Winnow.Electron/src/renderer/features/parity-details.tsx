@@ -666,7 +666,7 @@ export function MetadataEditor({
     onBusyChange?.(Boolean(sending))
   }, [sending, onBusyChange])
   async function save(field: Metadata['fields'][number], action: 'save' | 'reset' | 'upload', file?: File) {
-    if (sending || !metadata.data) return
+    if (sending || !metadata.data || metadata.data.available === false) return
     const current = draft(field)
     const art = ['cover_url', 'background_url'].includes(field.field)
     if (action === 'save' && art && !current.value.trim()) {
@@ -782,6 +782,7 @@ export function MetadataEditor({
       setSending(null)
     }
   }
+  if (metadata.data?.available === false) return null
   return (
     <section ref={editor} className={`feature-panel metadata-editor mode-${mode}`}>
       <h2>Metadata & sources</h2>
@@ -976,7 +977,7 @@ export function MetadataEditor({
                     </button>
                   )}
                 </div>
-                {art && (
+                {art && window.winnow.importArtwork && (
                   <label className="field">
                     Choose {label.toLowerCase()} file
                     <input

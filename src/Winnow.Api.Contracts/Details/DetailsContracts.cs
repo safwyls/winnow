@@ -16,7 +16,7 @@ public sealed record DeleteJournalRequest(string ExpectedRevision);
 public sealed record UpdateAcknowledgementRequest(IReadOnlyList<long> ObservedEventIds);
 public sealed record AcknowledgementResponse(string Result, DateTime? AcknowledgedThrough);
 public sealed record MetadataFieldResponse(string Field, string? Value, string? Source);
-public sealed record MetadataResponse(long WorkId, string Title, bool IsPinned, IReadOnlyList<MetadataFieldResponse> Fields, string Revision);
+public sealed record MetadataResponse(long WorkId, string Title, bool IsPinned, IReadOnlyList<MetadataFieldResponse> Fields, string Revision, bool Available = true);
 public sealed record EditMetadataRequest(string Field, string? Value, string ExpectedRevision);
 public sealed record ResetMetadataRequest(string Field, string ExpectedRevision);
 public sealed record UploadMetadataArtRequest(string Field, byte[] Content, string ExpectedRevision);

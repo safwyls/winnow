@@ -65,7 +65,7 @@ function mount(
     }
     return { ok: true, status: 200, data: { outcome: 'Applied' } }
   })
-  Object.defineProperty(window, 'winnow', { configurable: true, value: { request } })
+  Object.defineProperty(window, 'winnow', { configurable: true, value: { request, importArtwork: vi.fn() } })
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
   })

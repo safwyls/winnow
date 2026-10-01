@@ -13,7 +13,7 @@ import { ArrowLeft, ChevronDown, ListPlus, X, Image, Pencil, Search, EyeOff } fr
 import { useApiQuery, useCommand, useDetails, useLibrary, useWorkspace } from '../api/hooks'
 import { dateLabel, hours, storeLabel } from '../api/client'
 import { primaryEntry, primaryAction, noActionSentence } from '../../shared/game-actions'
-import type { LibraryGame, Mode, Workspace } from '../api/types'
+import type { LibraryGame, Metadata, Mode, Workspace } from '../api/types'
 import { Artwork } from '../components/Artwork'
 import { EntryActions, GameLinks, HideGame, ListMembership } from './Details'
 import { IgdbMatch, LibraryFacts, Screenshots, UpdateSignals } from './parity-details'
@@ -89,6 +89,7 @@ export function AvalonDetailsLayout({
     details = useDetails(workId)
   const preferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
   const igdb = useApiQuery<IgdbState>('metadata.igdb', { workId })
+  const metadata = useApiQuery<Metadata>('metadata.get', { workId })
   const refresh = useMetadataRefresh(workId)
   const game = detailsGame(workId, library.data?.games ?? [], workspace.data)
   const provisionalTitle = workspace.data?.works.find((work) => work.id === game?.workId)?.nameIsProvisional
@@ -116,6 +117,9 @@ export function AvalonDetailsLayout({
       returnFocus.current = more.current
     }
   }, [igdb.data?.available, tool])
+  useEffect(() => {
+    if (metadata.data?.available === false) setMetadataOpen(false)
+  }, [metadata.data?.available])
   const sections = fullscreen ? televisionSections : desktopSections
   const buckets = (workspace.data?.buckets ?? []) as {
     resolvedWorkId: number
@@ -580,6 +584,7 @@ export function AvalonDetailsLayout({
               />
             )}
             <MoreActions
+              metadataAvailable={metadata.data?.available !== false}
               matchAvailable={igdb.data?.available !== false}
               addToList={game ? () => setListPrompt(true) : undefined}
               fullscreen={fullscreen}
@@ -700,7 +705,7 @@ export function AvalonDetailsLayout({
           restoreFocus={() => more.current?.focus({ preventScroll: true })}
         />
       )}
-      {metadataOpen && (
+      {metadataOpen && metadata.data?.available !== false && (
         <MetadataDialog
           workId={workId}
           title={game?.title ?? 'Game'}
@@ -770,6 +775,7 @@ export function AvalonDetailsLayout({
 }
 
 function MoreActions({
+  metadataAvailable,
   matchAvailable,
   addToList,
   fullscreen,
@@ -786,6 +792,7 @@ function MoreActions({
   management,
   hide,
 }: {
+  metadataAvailable: boolean
   matchAvailable: boolean
   addToList?(): void
   fullscreen: boolean
@@ -850,6 +857,7 @@ function MoreActions({
       />
       {tools
         .filter((tool) => tool !== 'Game match' || matchAvailable)
+        .filter((tool) => tool !== 'Metadata' || metadataAvailable)
         .map((tool) => {
           const label =
             tool === 'Game match' ? 'Wrong game?' : tool === 'Metadata' ? 'Edit details' : 'Artwork…'
@@ -863,13 +871,25 @@ function MoreActions({
               key={tool}
               label={label}
               icon={tool === 'Game match' ? Search : tool === 'Metadata' ? Pencil : Image}
-              description={tool === 'Game match' ? 'Search IGDB for the right entry' : undefined}
+              description={
+                tool === 'Game match'
+                  ? 'Search IGDB for the right entry'
+                  : tool === 'Metadata'
+                    ? 'Edit each field by hand'
+                    : undefined
+              }
               onChoose={choose}
             />
           ) : (
             <button
               key={tool}
-              title={tool === 'Game match' ? 'Search IGDB for the right entry' : undefined}
+              title={
+                tool === 'Game match'
+                  ? 'Search IGDB for the right entry'
+                  : tool === 'Metadata'
+                    ? 'Edit each field by hand'
+                    : undefined
+              }
               onClick={choose}
             >
               {label}

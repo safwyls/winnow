@@ -96,6 +96,12 @@ does not report credential readiness: missing credentials can still be configure
 changing the service. Older responses omit the field; clients retain matching support
 unless the backend explicitly reports it unavailable.
 
+`GET games/{workId}/metadata` likewise reports `available` for its optional editing
+service. When absent, the response retains the work title and pin state with no editable
+fields; Details and other reads remain usable. Metadata save, reset and artwork mutations
+return `Unavailable` without writes. Clients hide editing only for explicit `false`,
+preserving compatibility with older responses that omit the property.
+
 ## Live changes
 
 Subscribe to `GET /api/v1/events` before loading snapshots. The response is `text/event-stream`;

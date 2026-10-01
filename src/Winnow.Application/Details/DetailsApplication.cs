@@ -15,11 +15,11 @@ public sealed class DetailsApplication(ILibraryApplication library, ILibraryQuer
     IUnitOfWorkFactory transactions, IUpdateEventRepository updates, IUpdateAcknowledgementRepository acknowledgements,
     IPlaytimeSnapshotRepository snapshots, ISessionRepository sessions, IWorkRatingRepository ratings,
     IWorkImageRepository images, IAccountAcquisitionReader acquisitions, IAchievementQueryRepository achievements,
-    IGameListRepository lists, IWorkMetadataEditService metadata, IUpdateFlagService flags,
+    IGameListRepository lists, IUpdateFlagService flags,
     IActivityRepository activity, IGameplayStatsRepository gameplay, IAccountStatsRepository accounts, ILifecycleRepository lifecycle,
     ISteamPlaytimeObservationRepository steamObservations, ISettingsRepository settings,
     IApplicationChangePublisher changes, IWorkRepository works, IWorkIgdbPinRepository igdbPins,
-    IIgdbAssignmentService? igdb = null) : IDetailsApplication
+    IIgdbAssignmentService? igdb = null, IWorkMetadataEditService? metadata = null) : IDetailsApplication
 {
     public async Task<VisibilityCountsResponse> GetVisibilityCountsAsync(CancellationToken ct = default)
     {
@@ -143,14 +143,24 @@ public sealed class DetailsApplication(ILibraryApplication library, ILibraryQuer
 
     public async Task<MetadataResponse> GetMetadataAsync(long workId, CancellationToken ct = default)
     {
-        var state = await metadata.GetAsync(workId, ct) ?? throw new ApplicationNotFoundException("Game metadata was not found.");
-        var fields = state.Fields.Select(x => new MetadataFieldResponse(x.Field, x.Value, x.Source)).ToArray();
-        var response = new MetadataResponse(state.WorkId, state.Title, state.IsPinned, fields, "");
+        MetadataResponse response;
+        if (metadata is null)
+        {
+            var work = await works.GetAsync(workId, ct) ?? throw new ApplicationNotFoundException("Game metadata was not found.");
+            response = new(workId, work.Name, await igdbPins.GetAsync(workId, ct) is not null, [], "", Available: false);
+        }
+        else
+        {
+            var state = await metadata.GetAsync(workId, ct) ?? throw new ApplicationNotFoundException("Game metadata was not found.");
+            var fields = state.Fields.Select(x => new MetadataFieldResponse(x.Field, x.Value, x.Source)).ToArray();
+            response = new(state.WorkId, state.Title, state.IsPinned, fields, "");
+        }
         return response with { Revision = Hash(JsonSerializer.SerializeToUtf8Bytes(response, DetailsJsonContext.Default.MetadataResponse)) };
     }
 
     public async Task<MutationOutcome> SetMetadataAsync(long workId, EditMetadataRequest request, CancellationToken ct = default)
     {
+        if (metadata is null) return new("Unavailable");
         using var transaction = transactions.Begin();
         CheckRevision((await GetMetadataAsync(workId, ct)).Revision, request.ExpectedRevision);
         var outcome = await metadata.SetFieldAsync(workId, request.Field, request.Value, ct);
@@ -161,6 +171,7 @@ public sealed class DetailsApplication(ILibraryApplication library, ILibraryQuer
 
     public async Task<MutationOutcome> ResetMetadataAsync(long workId, ResetMetadataRequest request, CancellationToken ct = default)
     {
+        if (metadata is null) return new("Unavailable");
         using var transaction = transactions.Begin();
         CheckRevision((await GetMetadataAsync(workId, ct)).Revision, request.ExpectedRevision);
         var outcome = await metadata.ResetFieldAsync(workId, request.Field, ct);
@@ -174,6 +185,7 @@ public sealed class DetailsApplication(ILibraryApplication library, ILibraryQuer
 
     public async Task<MutationOutcome> UploadArtAsync(long workId, UploadMetadataArtRequest request, CancellationToken ct = default)
     {
+        if (metadata is null) return new("Unavailable");
         ArgumentNullException.ThrowIfNull(request.Content);
         if (request.Content.LongLength > Winnow.Covers.UserArtStore.MaxBytes) return new("TooLarge");
         var path = Path.GetTempFileName();
@@ -192,6 +204,7 @@ public sealed class DetailsApplication(ILibraryApplication library, ILibraryQuer
 
     public async Task<MutationOutcome> DownloadArtAsync(long workId, DownloadMetadataArtRequest request, CancellationToken ct = default)
     {
+        if (metadata is null) return new("Unavailable");
         using var transaction = transactions.Begin();
         CheckRevision((await GetMetadataAsync(workId, ct)).Revision, request.ExpectedRevision);
         var result = await metadata.SetArtFromUrlAsync(workId, request.Field, request.Url, ct);

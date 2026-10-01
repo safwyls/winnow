@@ -102,7 +102,7 @@ function setup(
   const artwork = vi.fn().mockResolvedValue('data:image/png;base64,aA==')
   Object.defineProperty(window, 'winnow', {
     configurable: true,
-    value: { request, artwork, openExternal: vi.fn() },
+    value: { request, artwork, openExternal: vi.fn(), importArtwork: vi.fn() },
   })
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },

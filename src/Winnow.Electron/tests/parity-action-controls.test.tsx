@@ -233,7 +233,9 @@ describe.each(['desktop', 'fullscreen'] as const)('original game actions in %s d
       ),
     ).toBeTruthy()
     if (mode === 'desktop') {
-      const reception = screen.getAllByLabelText('Reception')[0]
+      const reception = screen.getByRole('group', {
+        name: /^IGDB user rating: 83.*; Critic score aggregated by IGDB: 91.*; Overwhelmingly Positive on Steam:/,
+      })
       const about = screen.getByRole('heading', { name: 'About' })
       expect(reception.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
     }
