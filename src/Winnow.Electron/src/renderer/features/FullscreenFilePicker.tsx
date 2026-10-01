@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { FilePickerAction, FilePickerSnapshot } from '../../shared/file-picker'
 import { restoreFocusWhenReady } from './restore-focus'
+import dpad from './assets/xbox_dpad.svg?raw'
+import selectButton from './assets/xbox_button_a_outline.svg?raw'
+import backButton from './assets/xbox_button_b_outline.svg?raw'
+import keyboardButton from './assets/xbox_button_y_outline.svg?raw'
 import './fullscreen-file-picker.css'
 
 /** The renderer presents main's active chooser; it never supplies a filesystem path. */
@@ -171,6 +175,26 @@ export function FullscreenFilePicker() {
               </div>
             </>
           )}
+          <div className="file-picker-hints" role="group" aria-label="File chooser controls">
+            {[
+              [dpad, 'D-pad', 'Browse'],
+              [selectButton, 'A', 'Select'],
+              [backButton, 'B', picker?.replaceName ? 'Back' : 'Cancel'],
+              ...(picker?.mode === 'save' && picker.directory && !picker.replaceName
+                ? [[keyboardButton, 'Y', 'Keyboard']]
+                : []),
+            ].map(([artwork, button, label]) => (
+              <span key={button}>
+                <span
+                  data-picker-glyph={button}
+                  aria-hidden="true"
+                  dangerouslySetInnerHTML={{ __html: artwork.replace('<svg ', '<svg viewBox="8 8 48 48" ') }}
+                />
+                <span className="sr-only">{button} </span>
+                {label}
+              </span>
+            ))}
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

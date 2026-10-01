@@ -111,6 +111,13 @@ separate reading pages. Back returns to the originating action, and moving an ar
 source keeps controller focus on that source after its order is saved.
 Manual games in **Manage library** report
 validation and identifier conflicts beside their fields and ask before removing a named entry.
+**Add from executable…** opens the form and file chooser together. File inspection proposes
+a title and searches IGDB; choosing a match fills the form, and only **Save game** writes
+the entry. Browsing again replaces Winnow's previous guess while preserving a typed title.
+Save waits for file inspection, but an empty or failed metadata search still permits a
+manual entry. Cancel discards the draft and restores its invoking control. Leaving the
+page preserves entered fields; late inspection and search responses cannot alter a
+departed or discarded form. Fullscreen uses the controller file chooser and text keyboard.
 
 Fullscreen Settings opens on **Appearance**, followed by **Controller**, **Library**,
 **Platforms**, **Metadata & artwork**, **Plugins** and **Application**. Appearance has
@@ -375,8 +382,10 @@ filter and help sections participate in directional navigation.
 Fullscreen file selection stays inside Winnow for artwork, manual executables, appearance
 profile import/export, developer-theme folders and acquisition CSV export. The chooser
 pages through folders, filters extensions without regard to case, and asks before replacing
-an existing file, initially focusing Cancel. Choosing a path never writes the file; the
-operation that opened the chooser owns the subsequent read or write. Desktop keeps native
+an existing file, initially focusing Cancel. The chooser keeps D-pad, A and B glyph hints
+visible, with Y Keyboard for filename entry and B Back on the replacement prompt. Choosing
+a path never writes the file; the operation that opened the chooser owns the subsequent
+read or write. Desktop keeps native
 file dialogs. Saved Steam HTML pages still use the separate multi-file input, and installing
 a developer theme retains its native trust confirmation.
 

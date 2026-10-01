@@ -40,7 +40,9 @@ export function ManualEditor({
   const latest = useRef(draft),
     active = useRef(true),
     choosing = useRef(false),
-    writing = useRef(false)
+    writing = useRef(false),
+    pickerVersion = useRef(0),
+    searchController = useRef<AbortController | null>(null)
   latest.current = draft
   const [picking, setPicking] = useState(false)
   const fieldId = useId()
@@ -49,6 +51,7 @@ export function ManualEditor({
     active.current = true
     return () => {
       active.current = false
+      searchController.current?.abort()
     }
   }, [])
   useEffect(() => {
@@ -72,6 +75,8 @@ export function ManualEditor({
   const [checking, setChecking] = useState(false)
   const [checkError, setCheckError] = useState<unknown>(null)
   const close = () => {
+    pickerVersion.current++
+    searchController.current?.abort()
     clearViewState(key)
     if (active.current) onClose()
   }
@@ -81,6 +86,7 @@ export function ManualEditor({
   const [searching, setSearching] = useState(false)
   async function browse() {
     if (choosing.current || latest.current.sending || latest.current.uncertain) return
+    const version = ++pickerVersion.current
     choosing.current = true
     setPicking(true)
     setCheckError(null)
@@ -102,12 +108,13 @@ export function ManualEditor({
             publisher: null,
           }
       }
-      if (!facts) return
+      // A discarded or departed form must not be repopulated by a slow inspection.
+      if (!facts || !active.current || version !== pickerVersion.current) return
       const current = latest.current
-      const proposed =
-        facts.title && (!current.title.trim() || current.title === current.proposedTitle)
-          ? facts.title
-          : current.title
+      const replaceTitle = Boolean(
+        facts.title && (!current.title.trim() || current.title === current.proposedTitle),
+      )
+      const proposed = replaceTitle ? facts.title! : current.title
       const publisher = facts.publisher ? ` Published by ${facts.publisher}.` : ''
       const note =
         facts.titleSource === 'file-description' || facts.titleSource === 'product-name'
@@ -119,37 +126,51 @@ export function ManualEditor({
         executable: facts.executablePath,
         install: facts.installPath ?? '',
         title: proposed,
-        proposedTitle: proposed === facts.title ? proposed : current.proposedTitle,
+        proposedTitle: replaceTitle ? proposed : current.proposedTitle,
         executableNote: note,
         matchNote: null,
       })
       setCandidates(null)
-      if (proposed.trim()) await searchMatches(proposed)
+      if (proposed.trim()) void searchMatches(proposed)
     } catch {
-      setCheckError(new Error('The executable could not be selected. Enter its path instead.'))
+      if (active.current && version === pickerVersion.current)
+        setCheckError(new Error('The executable could not be selected. Enter its path instead.'))
     } finally {
       choosing.current = false
       setPicking(false)
     }
   }
   async function searchMatches(query = title) {
-    if (!query.trim() || searching) return
+    if (!query.trim()) return
+    searchController.current?.abort()
+    const controller = new AbortController()
+    searchController.current = controller
     setSearching(true)
     setCandidates(null)
     setCheckError(null)
+    update({ matchNote: null })
     try {
-      setCandidates(await request('metadata.search', { title: query }))
+      const results = await request<typeof candidates>(
+        'metadata.search',
+        { title: query.trim() },
+        undefined,
+        controller.signal,
+      )
+      if (active.current && !controller.signal.aborted) setCandidates(results)
     } catch (error) {
-      setCheckError(error)
+      if (active.current && !controller.signal.aborted) setCheckError(error)
     } finally {
-      setSearching(false)
+      if (active.current && searchController.current === controller) setSearching(false)
     }
   }
   async function save() {
-    if (draft.uncertain || draft.sending || writing.current) return
+    if (draft.uncertain || draft.sending || writing.current || choosing.current) return
     const errors = validateManualDraft(draft)
     setFieldErrors(errors)
     if (Object.keys(errors).length) return
+    searchController.current?.abort()
+    setSearching(false)
+    setCandidates(null)
     writing.current = true
     update({ sending: true })
     try {
@@ -231,7 +252,12 @@ export function ManualEditor({
             maxLength={500}
             disabled={draft.sending || draft.uncertain}
             value={title}
-            onChange={(event) => update({ title: event.target.value })}
+            onChange={(event) => {
+              searchController.current?.abort()
+              setSearching(false)
+              setCandidates(null)
+              update({ title: event.target.value, matchNote: null })
+            }}
           />
           {fieldErrors.title && (
             <span className="field-error" role="alert" id={`${fieldId}-title`}>
@@ -334,7 +360,7 @@ export function ManualEditor({
         </div>
         <button
           type="button"
-          disabled={draft.sending || draft.uncertain || searching || !title.trim()}
+          disabled={draft.sending || draft.uncertain || searching || picking || !title.trim()}
           onClick={() => void searchMatches()}
         >
           {searching ? 'Searching IGDB…' : 'Find IGDB matches'}
@@ -441,6 +467,7 @@ export function ManualEditor({
             className="primary-button"
             disabled={
               command.isPending ||
+              picking ||
               draft.sending ||
               draft.uncertain ||
               Boolean(current) ||

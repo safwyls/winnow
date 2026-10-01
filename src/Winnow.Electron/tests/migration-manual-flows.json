@@ -1,82 +1,114 @@
 {
   "ManualGameFromExecutableTests.Browsing_fills_the_executable_proposes_the_title_and_searches": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-manual-executable.test.tsx",
-        "case": "opens the form and file picker in one gesture, fills inspected facts and searches the proposed title"
+        "case": "Browsing_fills_the_executable_proposes_the_title_and_searches"
+      },
+      {
+        "file": "tests/electron/manual-executable.spec.ts",
+        "case": "browsing an executable proposes Celeste and searches with its title before any save"
       }
     ],
-    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+    "reason": "Both surfaces preserve the original D:\\Games\\Celeste\\Celeste.exe fixture, Celeste description, single IGDB candidate 1 and year 2018. One gesture opens the form and picker, fills exact executable/title and explanatory note, and searches Celeste. Native production inspection uses an inert Celeste executable under a disposable directory and independently verifies no manual API mutation or SQLite work/release/ownership/manual row before Save."
   },
   "ManualGameFromExecutableTests.A_cancelled_dialog_changes_nothing": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-manual-executable.test.tsx",
-        "case": "changes no fields or match evidence when the native picker is canceled"
+        "case": "A_cancelled_dialog_changes_nothing"
+      },
+      {
+        "file": "tests/electron/manual-executable.spec.ts",
+        "case": "cancelling executable selection preserves empty and typed drafts and restores invoking focus"
       }
     ],
-    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+    "reason": "Both surfaces cancel selection without changing empty executable/title fields, creating an executable note, searching metadata or writing. Additional typed-draft and second-browse cases preserve fields and candidate evidence. Native desktop dialog cancellation and the real fullscreen chooser with simulated B restore the chooser opener; cancelling the form returns to Add a game. Real API and SQLite remain empty."
   },
   "ManualGameFromExecutableTests.Choosing_a_candidate_fills_the_form_and_writes_nothing": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-manual-executable.test.tsx",
-        "case": "selects candidate metadata without writing until Save and records the chosen executable and its folder"
+        "case": "Choosing_a_candidate_fills_the_form_and_writes_nothing"
+      },
+      {
+        "file": "tests/electron/manual-executable.spec.ts",
+        "case": "choosing Cyberpunk metadata fills title year and identity without writing a game"
       }
     ],
-    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+    "reason": "Both surfaces retain D:\\Games\\CP\\bin\\game.exe, its actual CP folder derivation, the explicit Cyberpunk search and candidate 1877 / Cyberpunk 2077 / 2020. Selecting it fills title, year and IGDB ID, shows the match note and hides candidates. Native disposable CP/bin/game.exe executes the same production inspector, preload and renderer flow; direct readonly SQLite checks require zero works, releases, ownerships and manual entries after selection. The readonly metadata API reply is controlled like the source fake IGDB service; manual reads and writes use the real backend."
   },
   "ManualGameFromExecutableTests.Correcting_the_title_and_searching_again_overrides_the_proposal": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-manual-executable.test.tsx",
-        "case": "searches a corrected title and can dismiss candidates without changing the form or preventing a manual save"
+        "case": "Correcting_the_title_and_searching_again_overrides_the_proposal"
+      },
+      {
+        "file": "tests/electron/manual-executable.spec.ts",
+        "case": "correcting Prey to Prey 2017 searches the corrected user title"
       }
     ],
-    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+    "reason": "Both surfaces retain D:\\Games\\Prey\\prey.exe, description Prey and candidate 1 / Prey / 2006. The first search is Prey, then the edited title searches Prey 2017 exactly. Native checks verify those query strings and unchanged empty SQLite. Additional component rows cover trimmed queries and late success/failure after title correction without stale candidates or errors."
   },
   "ManualGameFromExecutableTests.Dismissing_the_proposal_leaves_the_form_as_typed": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-manual-executable.test.tsx",
-        "case": "searches a corrected title and can dismiss candidates without changing the form or preventing a manual save"
+        "case": "Dismissing_the_proposal_leaves_the_form_as_typed"
+      },
+      {
+        "file": "tests/electron/manual-executable.spec.ts",
+        "case": "dismissing a different metadata proposal preserves Iconoclasts and still saves by hand"
       }
     ],
-    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+    "reason": "Both surfaces retain D:\\Games\\Iconoclasts\\game.exe, real folder derivation and unrelated candidate 9 / Something Else / 1999. Dismissal hides candidates and the no-matches state, retains Iconoclasts and the executable, and leaves IGDB ID blank. Native checks preserve both automatic and explicit Iconoclasts searches, prove SQLite empty before Save, then require exactly one real entry titled Iconoclasts with the selected executable and null IGDB ID."
   },
   "ManualGameFromExecutableTests.An_executable_that_yields_nothing_still_saves_by_hand": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-manual-executable.test.tsx",
-        "case": "leaves an uninformative executable editable without searching and still saves a manually entered game"
+        "case": "An_executable_that_yields_nothing_still_saves_by_hand"
+      },
+      {
+        "file": "tests/electron/manual-executable.spec.ts",
+        "case": "an executable with no usable title saves a hand-typed physical game and platform"
       }
     ],
-    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+    "reason": "The literal C:\\Games\\game.exe fixture derives no title, displays an executable note, performs no search and disables search until typing. Both surfaces then save A Disc I Own / PlayStation 2. Native inspection uses an inert file beneath five generic folders so the bounded path walk also yields no title, and real HTTP/SQLite verify the exact handwritten title/platform and one saved manual entry."
   },
   "ManualGameFromExecutableTests.The_chosen_executable_is_the_one_stored": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-manual-executable.test.tsx",
-        "case": "selects candidate metadata without writing until Save and records the chosen executable and its folder"
+        "case": "The_chosen_executable_is_the_one_stored"
+      },
+      {
+        "file": "tests/electron/manual-executable.spec.ts",
+        "case": "saving Tunic persists exactly the selected executable and its own installation folder"
       }
     ],
-    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+    "reason": "Both surfaces retain D:\\Games\\Tunic\\Tunic.exe, proposed Tunic and D:\\Games\\Tunic installation folder. Native checks use the corresponding disposable Tunic.exe path, prove an empty database before Save, then read the real manual API, manual_entries.executable_path and ownerships.install_path and reopen the editor to require the selected path and its own folder exactly. No executable is launched."
   },
   "ManualGameFromExecutableTests.A_second_browse_replaces_its_own_guess_but_not_the_users": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-manual-executable.test.tsx",
-        "case": "replaces its previous proposed title on a second browse but preserves a user override on the third"
+        "case": "A_second_browse_replaces_its_own_guess_but_not_the_users"
+      },
+      {
+        "file": "tests/electron/manual-executable.spec.ts",
+        "case": "rebrowsing replaces its own title guess while retaining the user title for Braid"
       }
     ],
-    "reason": "Desktop and fullscreen renderer flows use the native facts bridge, preserve drafts and verify exact search/create requests. The original real SQLite persistence assertions still need an Electron backend integration test; native fact derivation is covered separately."
+    "reason": "Both surfaces retain the original Celeste.exe to Tunic.exe to Braid.exe sequence. The second browse replaces the previous automatic title; after typing My own title the third updates executable and folder but retains user text. Native picker/inspector checks the same sequence and all three search titles with no SQLite writes. Additional component regression preserves a typed Tunic even if the second file also proposes Tunic, preventing a third Braid selection from treating user text as an automatic guess."
   }
 }

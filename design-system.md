@@ -1175,9 +1175,13 @@ removal, account ownership scope, and the shared sign-in consent with optional p
 capture. Purchase history supports embedded sign-in and selecting several saved HTML pages;
 an explicit Read action starts the latter import and a reading page exposes every reported
 count, skipped item and warning. Acquisition CSV export uses the TV directory and filename
-chooser with overwrite confirmation. Manual game forms offer executable inspection and
-metadata candidates through the shared commands. Identity tools include kind and sort,
-selection and confirmed bulk grouping, with exact matching limited by the shared rules.
+chooser with overwrite confirmation. The fullscreen file chooser keeps visible D-pad
+Browse, A Select and B Cancel glyph hints
+inside its safe margins. Filename entry also shows Y Keyboard; overwrite confirmation
+uses B Back to return to the filename.
+Manual game forms offer executable inspection and metadata candidates through the shared
+commands. Identity tools include kind and sort, selection and confirmed bulk grouping,
+with exact matching limited by the shared rules.
 The identity page also carries the shared `Prefer ·` platform choice in a controller action
 sheet, with the same options and pending-header behavior as desktop Merges (§6).
 `Refresh suggestions` is a separate controller and keyboard row below the platform choice.
@@ -3357,6 +3361,12 @@ override uses. The user picks one, edits the form, or dismisses the proposal and
 hand. Choosing a candidate fills the title, year and IGDB id fields; nothing is written until
 Save. The status field during a search is words, not a spinner (§8). A search that returned
 nothing is not an error and says the form can still be filled by hand.
+
+Browsing again replaces the previous proposed title, but preserves a title the user typed.
+Save waits for file inspection to settle; metadata search does not block a hand-filled save.
+Cancel discards the form and restores the invoking control. Leaving the page preserves
+entered fields. Late inspection or search results cannot repopulate a closed form or
+replace a newer title's results. These rules apply to desktop and fullscreen.
 
 **Deleting a hand-added game asks first, and the question names what survives** — §12.3's
 own rule applied a second time. It removes the ownership, then the release only when no

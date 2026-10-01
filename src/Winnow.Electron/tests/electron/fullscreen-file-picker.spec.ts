@@ -101,12 +101,33 @@ async function start(
 }
 const settled = () => page.evaluate(() => (window as unknown as { pickerSettled: boolean }).pickerSettled)
 
+async function assertPickerHints(view: 'open' | 'save' | 'replace') {
+  const hints = page.getByRole('group', { name: 'File chooser controls' })
+  await expect(hints).toContainText('Browse')
+  await expect(hints).toContainText('Select')
+  await expect(hints).toContainText(view === 'replace' ? 'Back' : 'Cancel')
+  for (const glyph of ['D-pad', 'A', 'B'])
+    await expect(hints.locator(`[data-picker-glyph="${glyph}"] svg`)).toBeVisible()
+  if (view === 'save') {
+    await expect(hints).toContainText('Keyboard')
+    await expect(hints.locator('[data-picker-glyph="Y"] svg')).toBeVisible()
+  } else await expect(hints.locator('[data-picker-glyph="Y"]')).toHaveCount(0)
+  expect(
+    await hints.evaluate((element) => {
+      const bounds = element.getBoundingClientRect()
+      return bounds.left >= 0 && bounds.top >= 0 && bounds.right <= innerWidth && bounds.bottom <= innerHeight
+    }),
+  ).toBe(true)
+}
+
 test('fullscreen acquisitions export keeps existing CSV untouched until Cancel-first replacement is explicitly accepted', async ({}, info) => {
   await fullscreen()
   await start('acquisitions')
   const picker = page.getByRole('dialog', { name: 'Export acquisitions', exact: true })
   const filename = picker.getByRole('textbox', { name: 'File name' })
   await expect(filename).toBeFocused()
+  await assertPickerHints('save')
+  await page.screenshot({ path: info.outputPath('fullscreen-save-file.png'), animations: 'disabled' })
   await assertAccessibleControls(page, picker)
   await assertDirectionalReachability(page, picker, tap)
   await filename.focus()
@@ -116,12 +137,13 @@ test('fullscreen acquisitions export keeps existing CSV untouched until Cancel-f
   await tap(0)
   const confirmation = page.getByRole('dialog', { name: 'Replace report.csv?' })
   await expect(confirmation.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused()
+  await assertPickerHints('replace')
   await assertAccessibleControls(page, confirmation)
   await assertDirectionalReachability(page, confirmation, tap)
   await confirmation.getByRole('button', { name: 'Cancel', exact: true }).focus()
   expect(await settled()).toBe(false)
   expect(await readFile(join(documents, 'report.csv'), 'utf8')).toBe('keep this until export succeeds')
-  await page.screenshot({ path: info.outputPath('fullscreen-replace-file.png') })
+  await page.screenshot({ path: info.outputPath('fullscreen-replace-file.png'), animations: 'disabled' })
   await tap(0)
   await expect(filename).toBeFocused()
   expect(await settled()).toBe(false)
@@ -145,6 +167,7 @@ test('fullscreen artwork filters extensions and Back cancels all shared chooser 
   await start('artwork')
   const picker = page.locator('.fullscreen-file-picker')
   await expect(picker.getByRole('button', { name: 'File cover.PNG' })).toBeVisible()
+  await assertPickerHints('open')
   await expect(picker.getByRole('button', { name: /unrelated.exe/ })).toHaveCount(0)
   await expect(picker.getByRole('button', { name: 'Parent folder' })).toBeFocused()
   await assertAccessibleControls(page, picker)
@@ -152,7 +175,10 @@ test('fullscreen artwork filters extensions and Back cancels all shared chooser 
   await picker.getByRole('button', { name: 'Parent folder' }).focus()
   await tap(13)
   await expect(picker.getByRole('button', { name: 'File cover.PNG' })).toBeFocused()
-  await page.screenshot({ path: info.outputPath('fullscreen-artwork-file-picker.png') })
+  await page.screenshot({
+    path: info.outputPath('fullscreen-artwork-file-picker.png'),
+    animations: 'disabled',
+  })
   await tap(0)
   await expect.poll(settled).toBe(true)
   await expect(picker).toHaveCount(0)
