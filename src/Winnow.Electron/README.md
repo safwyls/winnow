@@ -144,6 +144,15 @@ manual entry. Cancel discards the draft and restores its invoking control. Leavi
 page preserves entered fields; late inspection and search responses cannot alter a
 departed or discarded form. Fullscreen uses the controller file chooser and text keyboard.
 
+IGDB candidates in Details and manual forms share a cover, title, year and single-line
+platform list, with the action kept at the trailing edge. Long platform lists trim with
+the full value available in a tooltip. Choosing a Details match preserves the current
+section, refreshes metadata and artwork, and pins the selection. A claimed entry offers
+an explicit same-game link; declining or a refused link leaves both mappings unchanged.
+Returning to automatic matching clears the pin and restores Steam capsule precedence.
+An unavailable assignment service hides the matching control; missing credentials alone
+keep it available. Closing Details and reopening it starts at Overview.
+
 Fullscreen Settings opens on **Appearance**, followed by **Controller**, **Library**,
 **Platforms**, **Metadata & artwork**, **Plugins** and **Application**. Appearance has
 directional adjustment rows, visible On/Off switches, shared theme and font pickers, and

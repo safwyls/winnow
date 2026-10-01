@@ -90,6 +90,12 @@ metadata and does not download images. `GET artwork/image` accepts decode widths
 through 3840 pixels. Clients should cancel obsolete image requests and release decoded
 resources when a view closes.
 
+`GET games/{workId}/igdb/state` includes `available`, which reports whether the backend
+has an assignment service. An explicit `false` hides the manual matching control. This
+does not report credential readiness: missing credentials can still be configured without
+changing the service. Older responses omit the field; clients retain matching support
+unless the backend explicitly reports it unavailable.
+
 ## Live changes
 
 Subscribe to `GET /api/v1/events` before loading snapshots. The response is `text/event-stream`;

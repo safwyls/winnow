@@ -45,14 +45,15 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [merge review and suggestion refresh checkpoint](checkpoint-sixty-seven.md) records
-all 3,611 component/live API cases, 33 distinct native cases, 18 original source cases and
-two new backend composition cases passing. Refresh survives initial-load recovery,
-platform choices retain focus, and unavailable members cannot open Details. Desktop
-trailing actions and fullscreen sheet typography preserve the source layout and input
-routes, including the shared Header store sheets from [checkpoint 66](checkpoint-sixty-six.md).
-Eleven assigned methods are ported and seven retain backend tests; 287 pending and 60
-partial methods remain. The user authorized continuing this batch through TASK-381.20.
+The [IGDB matching and candidate presentation checkpoint](checkpoint-sixty-eight.md)
+records all 3,667 component/live API cases, 30 distinct native cases, 42 original source
+cases and 10 new HTTP cases passing. Candidates retain covers and bounded platform text;
+matching preserves sections, artwork precedence and explicit claim decisions. Mapping
+changes update the same open Details, and the production GamesDB pipeline publishes to
+both surfaces. Fifteen assigned methods are ported and three retain backend tests;
+269 pending and 60 partial methods remain. The preceding
+[merge review checkpoint](checkpoint-sixty-seven.md) records refresh recovery and review
+layout. The user authorized continuing this batch through TASK-381.20.
 
 The [tile actions and installed store links checkpoint](checkpoint-sixty-three.md) records
 all 3,490 component/live API cases, 49 distinct native cases and three unchanged plugin

@@ -123,7 +123,8 @@ describe('original IGDB match contracts', () => {
     })
     await search()
     const rich = screen.getByRole('heading', { name: 'Prey 2017' }).closest('article')!
-    expect(within(rich).getByText('2017 · PC, PlayStation 4').title).toBe('PC, PlayStation 4')
+    expect(rich.querySelector('.igdb-candidate-detail')?.textContent).toBe('2017 · PC, PlayStation 4')
+    expect(within(rich).getByText('PC, PlayStation 4').title).toBe('PC, PlayStation 4')
     await waitFor(() => expect(artwork).toHaveBeenCalledWith('igdb', 'co2abc', 100))
     expect(
       screen.getByRole('heading', { name: 'Sparse game' }).closest('article')!.querySelector('p'),
@@ -161,7 +162,7 @@ describe('original IGDB match contracts', () => {
       expect(rows[0].textContent).toContain('ID MATCH')
       expect(rows[0].textContent).toContain('Prey 2017')
       expect(rows[1].textContent).not.toContain('ID MATCH')
-      expect(within(rows[0] as HTMLElement).getByText('2017 · PC, PlayStation 4')).toBeTruthy()
+      expect(rows[0].querySelector('.igdb-candidate-detail')?.textContent).toBe('2017 · PC, PlayStation 4')
     },
   )
   it.each(['1979 Revolution', '7 Days to Die', '0', '-1', '9007199254740992', '１２'])(
@@ -381,6 +382,29 @@ describe('original IGDB match contracts', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Yes, group these editions' }))
     expect((await screen.findByRole('alert')).textContent).toContain("Couldn't link those")
     expect(screen.getByRole('button', { name: 'Yes, group these editions' })).toBeTruthy()
+    expect(onChanged).not.toHaveBeenCalled()
+  })
+  it.each([409, 503])('retains claim-link recovery semantics for status %s', async (status) => {
+    const message =
+      status === 409
+        ? 'The identity review changed. Refresh before linking.'
+        : 'The response was interrupted. The link may have been saved.'
+    const { onChanged } = mount({
+      outcome: 'IgdbIdClaimedByAnotherWork',
+      handler: (input) => (input.route === 'identity.link' ? { ok: false, status, message } : undefined),
+    })
+    await offer()
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, group these editions' }))
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      status === 503
+        ? `${message} The response was interrupted. Check the refreshed saved state before trying the action again.`
+        : message,
+    )
+    expect(screen.getByRole('heading', { name: 'Is this the same game as Existing Prey?' })).toBeTruthy()
+    expect(
+      (screen.getByRole('button', { name: 'Yes, group these editions' }) as HTMLButtonElement).disabled,
+    ).toBe(status === 409)
+    expect(Boolean(screen.queryByRole('button', { name: 'Refresh saved match' }))).toBe(status === 409)
     expect(onChanged).not.toHaveBeenCalled()
   })
   it('preserves the query candidates and claim when the existing editor is entered again', async () => {

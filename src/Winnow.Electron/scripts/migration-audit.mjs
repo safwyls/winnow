@@ -29,6 +29,7 @@ const reviewedBackendFiles = new Set([
   'src/Winnow.Ingest.Steam/Winnow.Ingest.Steam.csproj',
   'src/Winnow.Monitor/LaunchIntents.cs',
   'src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs',
+  'src/Winnow.Enrich.Igdb/IgdbMaturitySync.cs',
   'src/Winnow.Enrich.Updates/SteamCmdBuildInfoClient.cs',
   'src/Winnow.Enrich.Updates/Model/UpdateSignalJson.cs',
   'src/Winnow.Ingest.Steam/AccountPages/SteamLicensesPageParser.cs',

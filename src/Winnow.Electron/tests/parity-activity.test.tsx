@@ -93,7 +93,7 @@ afterEach(() => {
       clearViewState(`${mode}:journal:${key}`)
     for (const key of ['section', 'period', 'store', 'from', 'until', 'applied'])
       clearViewState(`${mode}:stats:${key}`)
-    for (const key of ['tab', 'editing']) clearViewState(`${mode}:details:1:${key}`)
+    for (const key of ['tab', 'editing', 'editing-section']) clearViewState(`${mode}:details:1:${key}`)
   }
   for (const id of [101, 102, 103, 104, 105]) clearViewState(`draft:journal:${id}`)
 })
@@ -465,6 +465,7 @@ describe('details history and journal parity', () => {
       )
       fireEvent.click(screen.getByRole('button', { name: 'Save note' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(screen.getByRole('button', { name: 'Journal' }).getAttribute('aria-pressed')).toBe('true')
       expect(screen.getByText('Found the key behind the waterfall.')).toBeTruthy()
       fireEvent.click(screen.getByRole('button', { name: 'Edit note' }))
       fireEvent.click(await screen.findByRole('button', { name: 'Delete note' }))
@@ -475,6 +476,37 @@ describe('details history and journal parity', () => {
       expect(
         screen.getByText('Journal prompts are off. Turn them on in Display preferences after a game.'),
       ).toBeTruthy()
+    },
+  )
+  it.each(['desktop', 'fullscreen'] as const)(
+    'returns a navigation-restored editor to its History origin in %s',
+    async (mode) => {
+      bridge((input) =>
+        input.route === 'game.details'
+          ? ok(facts)
+          : input.route === 'library.workspace'
+            ? ok(workspace)
+            : input.route === 'journal.get'
+              ? ok({ sessionId: 101, note: 'Looking for the key.', revision: 'r1' })
+              : input.route === 'journal.put'
+                ? ok({ sessionId: 101, note: 'Found the key.', revision: 'r2' })
+                : undefined,
+      )
+      const first = host(<Details mode={mode} workId={1} />)
+      await screen.findByRole('heading', { name: 'Dragonwilds', level: 1 })
+      fireEvent.click(screen.getByRole('button', { name: 'History' }))
+      const sessions = screen.getByRole('heading', { name: 'Recorded sessions' }).closest('section')!
+      fireEvent.click(await within(sessions).findByRole('button', { name: 'Journal' }))
+      fireEvent.change(await screen.findByLabelText('Your note'), { target: { value: 'Found the key.' } })
+      first.unmount()
+      host(<Details mode={mode} workId={1} />, first.client)
+      expect(((await screen.findByLabelText('Your note')) as HTMLTextAreaElement).value).toBe(
+        'Found the key.',
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Save note' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(screen.getByRole('button', { name: 'History' }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByRole('heading', { name: 'Recorded sessions' })).toBeTruthy()
     },
   )
   it.each(['desktop', 'fullscreen'] as const)(

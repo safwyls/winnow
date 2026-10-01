@@ -32,6 +32,7 @@ import { noActionSentence } from '../../shared/game-actions'
 import { createGameLink } from '../../shared/external-links'
 import { useLaunchFeedback } from './LaunchFeedback'
 import { usePrimaryActions } from './PrimaryActions'
+import type { IgdbState } from './igdb-match'
 
 const detailScrollPositions = new WeakMap<QueryClient, Map<string, number>>()
 const editorSections = new Set(['Metadata', 'Game match', 'Artwork'])
@@ -216,7 +217,7 @@ export function Details(props: {
   return props.presentation === 'avalon' ? (
     <AvalonDetailsLayout key={props.workId} {...props} />
   ) : (
-    <SharedDetails {...props} />
+    <SharedDetails key={props.workId} {...props} />
   )
 }
 
@@ -242,6 +243,7 @@ function SharedDetails({
     detailScrollPositions.set(client, detailPositions)
   }
   const details = useDetails(workId)
+  const igdb = useApiQuery<IgdbState>('metadata.igdb', { workId })
   const journalPreferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
   const game = library.data?.games.find((item) => item.workId === workId)
   const unreadRows = (workspace.data?.buckets ?? []) as {
@@ -259,12 +261,15 @@ function SharedDetails({
             .map((row) => row.game.unreadUpdateCount),
         )
       : 0
-  const [tab, setTab] = useViewState(`${mode}:details:${workId}:tab`, 'Overview')
-  const [matchNote, setMatchNote] = useState('')
-  const [previousSection, setPreviousSection] = useViewState(
-    `${mode}:details:${workId}:previous-section`,
-    'Overview',
+  const [editing, setEditing] = useViewState<number | null>(`${mode}:details:${workId}:editing`, null)
+  const [editingSection, setEditingSection] = useViewState(
+    `${mode}:details:${workId}:editing-section`,
+    'Journal',
   )
+  // An unfinished editor resumes its originating section; an ordinary opening starts at Overview.
+  const [tab, setTab] = useState(() => (editing == null ? 'Overview' : editingSection))
+  const [matchNote, setMatchNote] = useState('')
+  const [previousSection, setPreviousSection] = useState('Overview')
   const page = useRef<HTMLElement>(null),
     tabs = useRef<HTMLElement>(null)
   const viewport = useRef<HTMLElement | null>(null)
@@ -298,7 +303,17 @@ function SharedDetails({
     focusAfterReturn.current = true
     changeTab(previousSection)
   }
-  const [editing, setEditing] = useViewState<number | null>(`${mode}:details:${workId}:editing`, null)
+  useLayoutEffect(() => {
+    if (igdb.data?.available === false && tab === 'Game match') backToSection()
+  }, [igdb.data?.available, tab])
+  function editSession(sessionId: number) {
+    setEditingSection(tab)
+    setEditing(sessionId)
+  }
+  function closeDetails() {
+    setEditing(null)
+    onClose?.()
+  }
   const command = useCommand()
   const sessions = Object.values(details.data?.sessions ?? {})
     .flat()
@@ -321,7 +336,7 @@ function SharedDetails({
       }}
     >
       {onClose && (
-        <button className="back-button" onClick={onClose}>
+        <button className="back-button" onClick={closeDetails}>
           <ArrowLeft size={16} /> Back to your library
         </button>
       )}
@@ -373,8 +388,9 @@ function SharedDetails({
           buttons[next]?.click()
         }}
       >
-        {['Overview', 'History', 'Updates', 'Journal', 'Library', 'Metadata', 'Game match', 'Artwork'].map(
-          (name) => (
+        {['Overview', 'History', 'Updates', 'Journal', 'Library', 'Metadata', 'Game match', 'Artwork']
+          .filter((name) => name !== 'Game match' || igdb.data?.available !== false)
+          .map((name) => (
             <button
               key={name}
               data-controller-tab
@@ -383,8 +399,7 @@ function SharedDetails({
             >
               {name}
             </button>
-          ),
-        )}
+          ))}
       </nav>
       {editorSections.has(tab) && (
         <button className="back-button" onClick={backToSection}>
@@ -439,7 +454,7 @@ function SharedDetails({
               {game && details.data && <ActivityTimeline game={game} details={details.data} mode={mode} />}
               <section className="feature-panel">
                 <h2>Recorded sessions</h2>
-                <SessionRows sessions={sessions} onEdit={setEditing} />
+                <SessionRows sessions={sessions} onEdit={editSession} />
               </section>
               {game && <SteamReportedActivity games={[game]} mode={mode} />}
             </>
@@ -464,14 +479,14 @@ function SharedDetails({
                       <blockquote>{note.note || 'A session to remember.'}</blockquote>
                       {note.rating && <p>{note.rating} / 5</p>}
                     </div>
-                    <button onClick={() => setEditing(note.sessionId)}>Edit note</button>
+                    <button onClick={() => editSession(note.sessionId)}>Edit note</button>
                   </article>
                 ))
               )}
             </section>
           )}
           {tab === 'Metadata' && <MetadataEditor key={workId} workId={workId} mode={mode} />}
-          {tab === 'Game match' && (
+          {tab === 'Game match' && igdb.data?.available !== false && (
             <IgdbMatch
               key={workId}
               workId={workId}
@@ -506,7 +521,7 @@ function SharedDetails({
             />
           )}
           <ListMembership workId={workId} mode={mode} />
-          <HideGame key={`visibility:${workId}`} workId={workId} onHidden={onClose} />
+          <HideGame key={`visibility:${workId}`} workId={workId} onHidden={closeDetails} />
         </aside>
       </div>
       {editing != null && (

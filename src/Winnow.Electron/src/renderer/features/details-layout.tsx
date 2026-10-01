@@ -41,6 +41,7 @@ import { restoreFocusWhenReady } from './restore-focus'
 import { AvalonAction, AvalonActions } from '../themes/avalon-actions'
 import { ChooseLaunchVersion } from './choose-launch-version'
 import { ReleaseAchievements } from './detail-achievements'
+import type { IgdbState } from './igdb-match'
 import './details-layout.css'
 
 const desktopSections = ['Overview', 'Activity', 'Updates', 'Journal', 'Library'] as const
@@ -87,6 +88,7 @@ export function AvalonDetailsLayout({
     workspace = useWorkspace(),
     details = useDetails(workId)
   const preferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
+  const igdb = useApiQuery<IgdbState>('metadata.igdb', { workId })
   const refresh = useMetadataRefresh(workId)
   const game = detailsGame(workId, library.data?.games ?? [], workspace.data)
   const provisionalTitle = workspace.data?.works.find((work) => work.id === game?.workId)?.nameIsProvisional
@@ -108,6 +110,12 @@ export function AvalonDetailsLayout({
     returnFocus = useRef<HTMLElement | null>(null)
   const opener = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null)
   const region = tool ?? reading ?? section
+  useEffect(() => {
+    if (igdb.data?.available === false && tool === 'Game match') {
+      setTool(null)
+      returnFocus.current = more.current
+    }
+  }, [igdb.data?.available, tool])
   const sections = fullscreen ? televisionSections : desktopSections
   const buckets = (workspace.data?.buckets ?? []) as {
     resolvedWorkId: number
@@ -421,7 +429,7 @@ export function AvalonDetailsLayout({
     </section>
   )
   let panel: ReactNode
-  if (tool === 'Game match')
+  if (tool === 'Game match' && igdb.data?.available !== false)
     panel = (
       <IgdbMatch
         workId={workId}
@@ -572,6 +580,7 @@ export function AvalonDetailsLayout({
               />
             )}
             <MoreActions
+              matchAvailable={igdb.data?.available !== false}
               addToList={game ? () => setListPrompt(true) : undefined}
               fullscreen={fullscreen}
               open={moreOpen}
@@ -761,6 +770,7 @@ export function AvalonDetailsLayout({
 }
 
 function MoreActions({
+  matchAvailable,
   addToList,
   fullscreen,
   open,
@@ -776,6 +786,7 @@ function MoreActions({
   management,
   hide,
 }: {
+  matchAvailable: boolean
   addToList?(): void
   fullscreen: boolean
   open: boolean
@@ -837,32 +848,34 @@ function MoreActions({
           buttonRef.current?.focus({ preventScroll: true })
         }}
       />
-      {tools.map((tool) => {
-        const label =
-          tool === 'Game match' ? 'Wrong game?' : tool === 'Metadata' ? 'Edit details' : 'Artwork…'
-        const choose = () => {
-          skipRestore.current = true
-          setOpen(false)
-          onChoose(tool)
-        }
-        return fullscreen ? (
-          <AvalonAction
-            key={tool}
-            label={label}
-            icon={tool === 'Game match' ? Search : tool === 'Metadata' ? Pencil : Image}
-            description={tool === 'Game match' ? 'Search IGDB for the right entry' : undefined}
-            onChoose={choose}
-          />
-        ) : (
-          <button
-            key={tool}
-            title={tool === 'Game match' ? 'Search IGDB for the right entry' : undefined}
-            onClick={choose}
-          >
-            {label}
-          </button>
-        )
-      })}
+      {tools
+        .filter((tool) => tool !== 'Game match' || matchAvailable)
+        .map((tool) => {
+          const label =
+            tool === 'Game match' ? 'Wrong game?' : tool === 'Metadata' ? 'Edit details' : 'Artwork…'
+          const choose = () => {
+            skipRestore.current = true
+            setOpen(false)
+            onChoose(tool)
+          }
+          return fullscreen ? (
+            <AvalonAction
+              key={tool}
+              label={label}
+              icon={tool === 'Game match' ? Search : tool === 'Metadata' ? Pencil : Image}
+              description={tool === 'Game match' ? 'Search IGDB for the right entry' : undefined}
+              onChoose={choose}
+            />
+          ) : (
+            <button
+              key={tool}
+              title={tool === 'Game match' ? 'Search IGDB for the right entry' : undefined}
+              onClick={choose}
+            >
+              {label}
+            </button>
+          )
+        })}
       {fullscreen ? (
         <AvalonAction
           label="Hide game…"

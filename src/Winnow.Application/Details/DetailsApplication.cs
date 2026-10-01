@@ -242,7 +242,7 @@ public sealed class DetailsApplication(ILibraryApplication library, ILibraryQuer
     private async Task<IgdbStateResponse> ReadIgdbStateAsync(long workId, CancellationToken ct)
     {
         var work = await works.GetAsync(workId, ct) ?? throw new ApplicationNotFoundException("Game was not found.");
-        var state = new IgdbStateResponse(workId, work.IgdbMappingRevision, await igdbPins.GetAsync(workId, ct), "");
+        var state = new IgdbStateResponse(workId, work.IgdbMappingRevision, await igdbPins.GetAsync(workId, ct), "", Available: igdb is not null);
         return state with { Revision = Hash(JsonSerializer.SerializeToUtf8Bytes(state, DetailsJsonContext.Default.IgdbStateResponse)) };
     }
 

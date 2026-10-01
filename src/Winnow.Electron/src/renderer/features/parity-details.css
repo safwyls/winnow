@@ -35,27 +35,6 @@
     max-height: var(--screenshot-preview-height, 240px);
     object-fit: contain;
   }
-  .igdb-candidates {
-    max-height: 340px;
-    overflow: auto;
-    padding-inline-end: 12px;
-  }
-  .igdb-candidates .metadata-row {
-    flex-wrap: nowrap;
-    align-items: center;
-  }
-  .igdb-candidates .metadata-row > div {
-    min-width: 0;
-    flex: 1;
-  }
-  .igdb-candidates .metadata-row img {
-    flex: 0 0 34px;
-    object-fit: cover;
-    border-radius: 4px;
-  }
-  .igdb-candidates .metadata-row p {
-    overflow-wrap: anywhere;
-  }
   .metadata-art-preview {
     max-width: 380px;
     max-height: 200px;
@@ -136,10 +115,5 @@
     border-top: 1px solid var(--line);
     padding-block-start: 24px;
     margin-block-start: 24px;
-  }
-  @media (max-width: 680px) {
-    .igdb-candidates .metadata-row {
-      flex-wrap: wrap;
-    }
   }
 }

@@ -1,6 +1,12 @@
 using Winnow.App.Services;
 using Winnow.Backend;
 using Winnow.Electron.Fixtures;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http;
+using Winnow.Core.Ingest;
+using Winnow.Core.Repositories;
+using Winnow.Enrich.GamesDb;
+using Winnow.Enrich.Igdb;
 
 var directoryIndex = Array.IndexOf(args, "--data-dir");
 if (directoryIndex < 0 || directoryIndex + 1 >= args.Length)
@@ -10,6 +16,7 @@ var visibility = Path.GetFileName(directory).StartsWith("winnow-electron-visibil
 var pluginActions = Path.GetFileName(directory).StartsWith("winnow-electron-plugin-actions-", StringComparison.Ordinal);
 var editions = Path.GetFileName(directory).StartsWith("winnow-electron-editions-", StringComparison.Ordinal);
 var merges = Path.GetFileName(directory).StartsWith("winnow-electron-merges-", StringComparison.Ordinal);
+var matching = Path.GetFileName(directory).StartsWith("winnow-electron-matching-", StringComparison.Ordinal);
 var marker = Path.Combine(directory, ".visibility-fixture");
 if (visibility)
 {
@@ -18,12 +25,32 @@ if (visibility)
     Directory.CreateDirectory(directory);
     await File.WriteAllTextAsync(marker, "Winnow Electron visibility test fixture");
 }
-else if (!(pluginActions || editions || merges || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
+else if (!(pluginActions || editions || merges || matching || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
     || File.Exists(Path.Combine(directory, "winnow.db")))
     throw new ArgumentException("Composition fixtures require a new test-owned directory.");
 
 await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"], services =>
 {
+    if (matching)
+    {
+        services.AddSingleton<PluginActionShellGuard>();
+        services.AddSingleton<IUriDispatcher>(provider => provider.GetRequiredService<PluginActionShellGuard>());
+        services.AddSingleton<MatchingIgdbClient>();
+        services.AddSingleton<IgdbMatchingFixture>();
+        services.AddSingleton<IHttpMessageHandlerBuilderFilter, MatchingOfflineHttp>();
+        if (Path.GetFileName(directory).Contains("-pipeline-", StringComparison.Ordinal))
+        {
+            services.RemoveAll<IStoreArtifactAliasSource>();
+            services.AddSingleton<IStoreArtifactAliasSource, MatchingAliases>();
+            services.AddSingleton<IGameIdentityGraph, MatchingGraph>();
+        }
+        else services.AddSingleton<IIgdbClient>(provider => provider.GetRequiredService<MatchingIgdbClient>());
+        if (Path.GetFileName(directory).Contains("-noservice-", StringComparison.Ordinal))
+            services.RemoveAll<IIgdbAssignmentService>();
+        if (Path.GetFileName(directory).Contains("-refused-", StringComparison.Ordinal))
+            services.AddSingleton<IIdentityLinkRepository, MatchingRefusingLinks>();
+        return;
+    }
     if (merges)
     {
         services.AddSingleton<PluginActionShellGuard>();
@@ -70,7 +97,23 @@ if (pluginActions)
 
 // BackendApplication's normal loopback, authority and bearer-token middleware covers these routes.
 // Only this separately built test executable exposes fixture control; the production backend does not.
-if (merges)
+if (matching)
+{
+    app.MapPost("/__fixture/matching/seed", (MatchingSeed input, IgdbMatchingFixture fixture) => fixture.SeedAsync(input.Kind));
+    app.MapPost("/__fixture/matching/publish", async (IgdbMatchingFixture fixture) =>
+    {
+        await fixture.PublishAsync();
+        return Results.NoContent();
+    });
+    app.MapPost("/__fixture/matching/pipeline", async (LibraryRefreshPipeline pipeline, IRemoteOwnershipSync remote) =>
+    {
+        if (remote is not OwnershipRefreshCoordinator) throw new InvalidOperationException("Production ownership coordinator is required.");
+        await pipeline.RunAsync();
+        return Results.NoContent();
+    });
+    app.MapGet("/__fixture/matching/state", (IgdbMatchingFixture fixture) => fixture.Snapshot());
+}
+else if (merges)
 {
     app.MapPost("/__fixture/merges/seed-pair", (MergePairSeed input, MergeReviewFixture fixture)
         => fixture.SeedPairAsync(input));
@@ -153,3 +196,4 @@ internal sealed record StartRefresh(bool Fail);
 internal sealed record VisibilitySeed(string Kind);
 internal sealed record PluginObservation(string State);
 internal sealed record CapturedActionCheck(bool AfterRemoval);
+internal sealed record MatchingSeed(string Kind);

@@ -1,21 +1,16 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { ApiError, request } from '../api/client'
 import { useApiQuery } from '../api/hooks'
 import type { IdentityReview } from '../api/types'
 import { useViewState } from '../viewState'
 import { Empty, Notice } from './shared'
-interface IgdbCandidate {
-  igdbId: number
-  name: string
-  coverUrl?: string | null
-  firstReleaseYear?: number | null
-  platforms: string[]
-}
-interface IgdbState {
+import { IgdbCandidateRow, IgdbCover, type IgdbCandidate } from './igdb-candidate'
+export interface IgdbState {
   workId: number
   mappingRevision: number
   pin?: { igdbId: number } | null
   revision: string
+  available?: boolean
 }
 interface Holder {
   workId: number
@@ -184,14 +179,24 @@ export function IgdbMatch({
       setHolder(null)
       await changed(`Linked with ${holder.title}.`)
     } catch (failure) {
+      const refused =
+        failure instanceof ApiError &&
+        failure.current !== null &&
+        typeof failure.current === 'object' &&
+        'refusal' in failure.current
       failureResult(
-        failure instanceof ApiError ? failure : new Error("Couldn't link those. Nothing changed."),
+        refused
+          ? new ApiError(failure.status, "Couldn't link those. Nothing changed.", failure.current)
+          : failure instanceof ApiError && (failure.conflict || failure.uncertain)
+            ? failure
+            : new Error("Couldn't link those. Nothing changed."),
       )
     } finally {
       setSending(false)
     }
   }
   const conflict = error instanceof ApiError && error.conflict
+  if (state.data?.available === false) return null
   return (
     <section className="feature-panel">
       <h2>Wrong game?</h2>
@@ -246,20 +251,11 @@ export function IgdbMatch({
       )}
       <div className="igdb-candidates">
         {draft.results.map((candidate) => (
-          <article className="metadata-row" key={candidate.igdbId}>
-            <IgdbCover url={candidate.coverUrl} />
-            <div>
-              <h3>
-                {draft.idMatch === candidate.igdbId && <span className="store-chip">ID MATCH</span>}{' '}
-                {candidate.name}
-              </h3>
-              {(candidate.firstReleaseYear || candidate.platforms.length > 0) && (
-                <p title={candidate.platforms.join(', ')}>
-                  {[candidate.firstReleaseYear, candidate.platforms.join(', ')].filter(Boolean).join(' · ')}
-                </p>
-              )}
-              <small>IGDB {candidate.igdbId}</small>
-            </div>
+          <IgdbCandidateRow
+            candidate={candidate}
+            idMatch={draft.idMatch === candidate.igdbId}
+            key={candidate.igdbId}
+          >
             <button
               title={`Use ${candidate.name}`}
               disabled={sending || searching || conflict || !draft.revision}
@@ -267,7 +263,7 @@ export function IgdbMatch({
             >
               Use this match
             </button>
-          </article>
+          </IgdbCandidateRow>
         ))}
       </div>
       {holder && (
@@ -329,23 +325,5 @@ export function IgdbMatch({
         </div>
       )}
     </section>
-  )
-}
-
-function IgdbCover({ url }: { url?: string | null }) {
-  const id = url?.match(/\/([^/.]+)\.[a-z]+(?:\?.*)?$/i)?.[1]
-  const art = useQuery({
-    queryKey: ['artwork', 'igdb', id, 100],
-    queryFn: () => window.winnow.artwork('igdb', id!, 100),
-    enabled: Boolean(id),
-    retry: false,
-    staleTime: 120_000,
-  })
-  return art.data ? (
-    <img src={art.data} width={34} height={51} alt="" />
-  ) : (
-    <span className="art-placeholder" aria-hidden="true">
-      —
-    </span>
   )
 }

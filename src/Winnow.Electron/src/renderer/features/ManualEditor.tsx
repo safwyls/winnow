@@ -6,6 +6,7 @@ import { Notice } from './shared'
 import { clearViewState, useViewState } from '../viewState'
 import type { ExecutableFacts } from '../../shared/executable-facts'
 import { manualFieldConflict, validateManualDraft, type ManualFieldErrors } from './manual-validation'
+import { IgdbCandidateRow, type IgdbCandidate } from './igdb-candidate'
 export function ManualEditor({
   initial,
   onClose,
@@ -80,9 +81,7 @@ export function ManualEditor({
     clearViewState(key)
     if (active.current) onClose()
   }
-  const [candidates, setCandidates] = useState<
-    { igdbId: number; name: string; firstReleaseYear?: number | null; platforms: string[] }[] | null
-  >(null)
+  const [candidates, setCandidates] = useState<IgdbCandidate[] | null>(null)
   const [searching, setSearching] = useState(false)
   async function browse() {
     if (choosing.current || latest.current.sending || latest.current.uncertain) return
@@ -371,13 +370,7 @@ export function ManualEditor({
         {candidates && candidates.length > 0 && (
           <div className="igdb-candidates">
             {candidates.map((candidate) => (
-              <article className="metadata-row" key={candidate.igdbId}>
-                <div>
-                  <strong>{candidate.name}</strong>
-                  <p>
-                    {[candidate.firstReleaseYear, candidate.platforms.join(', ')].filter(Boolean).join(' · ')}
-                  </p>
-                </div>
+              <IgdbCandidateRow candidate={candidate} key={candidate.igdbId}>
                 <button
                   type="button"
                   disabled={draft.sending || draft.uncertain}
@@ -394,7 +387,7 @@ export function ManualEditor({
                 >
                   Use these details
                 </button>
-              </article>
+              </IgdbCandidateRow>
             ))}
             <button type="button" onClick={() => setCandidates(null)}>
               Keep my own details

@@ -1,10 +1,11 @@
 ---
 id: TASK-381.13
 title: 'Electron: finish IGDB matching and candidate presentation'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
+updated_date: '2026-10-01 08:26'
 labels:
   - electron
   - parity
@@ -56,18 +57,42 @@ tests/Winnow.Ui.Tests/GamesDbRefreshCompositionTests.cs
 tests/Winnow.Ui.Tests/IgdbMappingRefreshTests.cs
 - IgdbMappingRefreshTests.Correcting_the_mapping_refreshes_open_details_and_removes_old_visibility_evidence [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Keep one implementation task active, verify and commit each milestone, then continue to the next task. Pause for review after TASK-381.20.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The original matching modal and candidate-row matrices preserve geometry, keyboard/controller routes, search results and confirmation behavior.
-- [ ] #2 Observation isolation and mapping/GamesDB refresh maintain attribution, stale-write protection and immediate consistent library/Details updates on both surfaces.
-- [ ] #3 All 18 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 The original matching modal and candidate-row matrices preserve geometry, keyboard/controller routes, search results and confirmation behavior.
+- [x] #2 Observation isolation and mapping/GamesDB refresh maintain attribution, stale-write protection and immediate consistent library/Details updates on both surfaces.
+- [x] #3 All 18 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit the eighteen frozen IGDB assignment, candidate layout, observation isolation and refresh contracts against production Electron/backend behavior and current tests. 2. Implement only demonstrated gaps and add equivalent tests preserving the original fixtures and assertions on both surfaces. 3. Run focused backend/component and native checks, including mapping/artwork and immediate Details/library refresh; record checkpoint 68 and per-method migration evidence. 4. Commit the verified milestone and continue to TASK-381.14.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started after merge review milestone 61746e74 and completion 4bc01656. Batch tasks 381.11 and 381.12 are done; 381.13 is third of ten.
+
+Audit found missing Settings candidate covers, wrapping platform lines and incorrect candidate/list sizing. Implementing a shared source-sized candidate row for Details and manual-game search. Existing assignment and claim flows are being tested with exact Prey fixtures. The optional backend assignment seam lacked availability in its response; adding an optional available flag to IGDB state, defaulting to supported for older responses. Missing credentials do not remove the matching control. Native coverage will use actual HTTP, repositories and publication with external-service substitutes.
+
+All 42 original source cases and 10 new HTTP cases pass. Native matching matrix passes 30/30; final structural-refusal copy rerun passes 2/2 with the exact source sentence and conflict recovery retained. Desktop/fullscreen candidate screenshots reviewed. Full component/live API gate currently 3663 passed, 2 failed: shared Details restores an active journal editor after navigation but saves back to Overview. Correcting that lifecycle distinction before finalizing.
+
+Final gate passes 3667/3667 component/live API cases across181 files (94.06s), with no skips; build/typecheck, formatting and migration audit pass. Draft regression fixed with original assertions retained and History-origin coverage added. Checkpoint68 records source42, HTTP10, native30 plus final refusal2 reruns and inspected desktop/fullscreen screenshots. Inventory:15 ported and3 retained backend for this task;1427 ported647 retained32 framework-specific,269 pending60 partial overall.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed IGDB candidate layout and matching parity on desktop/fullscreen, optional-service visibility, persisted assignment/claim/artwork behavior and live mapping/GamesDB refresh. All 18 source contracts accounted for. Verified 3,667 component/API, 42 original, 10 new HTTP and 30 native cases; both final affected refusal reruns passed. See checkpoint-sixty-eight.md. Continue to TASK-381.14 within the authorized batch.
+<!-- SECTION:FINAL_SUMMARY:END -->

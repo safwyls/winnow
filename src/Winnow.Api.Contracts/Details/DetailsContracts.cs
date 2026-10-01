@@ -26,7 +26,7 @@ public sealed record IgdbCandidateResponse(long IgdbId, string Name, string? Cov
 public sealed record IgdbClaimingGameResponse(long WorkId, string Title, string? CoverUrl, int? FirstReleaseYear);
 public sealed record AssignIgdbRequest(long IgdbId, string ExpectedRevision);
 public sealed record ClearIgdbRequest(string ExpectedRevision);
-public sealed record IgdbStateResponse(long WorkId, long MappingRevision, WorkIgdbPin? Pin, string Revision);
+public sealed record IgdbStateResponse(long WorkId, long MappingRevision, WorkIgdbPin? Pin, string Revision, bool Available = true);
 public sealed record ActivityRequest(DateTime FromUtc, DateTime UntilUtc, ActivitySection Section,
     ActivityCursor? After = null, int PageSize = 50, long? WorkId = null);
 public sealed record GameplayStatisticsRequest(DateTime FromUtc, DateTime UntilUtc, DateTime AsOfUtc,
