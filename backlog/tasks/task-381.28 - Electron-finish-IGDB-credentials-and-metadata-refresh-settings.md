@@ -1,11 +1,11 @@
 ---
 id: TASK-381.28
 title: 'Electron: finish IGDB credentials and metadata refresh settings'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:48'
-updated_date: '2026-10-01 21:02'
+updated_date: '2026-10-01 21:03'
 labels:
   - electron
   - parity
@@ -54,7 +54,7 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -69,6 +69,8 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 Started after TASK-381.27 implementation83ecbbf5/completion28137610. Read-only preparation .tmp/task38128-prep.md identifies no production defect; existing HTTP storage tests do not warm the runtime token cache. Root reviewed TwitchTokenProvider, ChainedIgdbCredentialProvider, CredentialSources, SqliteSettingsStore and IGDB ServiceCollectionExtensions before any audit allowance. No-sync native hosts establish form/API behavior, not execution of the automatic metadata queue.
 
 Verified nine unchanged original cases, fifteen HTTP cases (three new warm-runtime cases), 38 component cases and three distinct native journeys. Desktop passed initial run; fullscreen normal/140% text passed final4 after correcting the test for documented0.85 density and Chromium pixel quantization. No production change. Checkpoint83 records precise no-sync, protection-fixture and physical-device limits. Audit:1606 ported,696 retained,35 framework,80 pending,18 partial.
+
+Milestone commit ff2396a6. Verified native evidence and reviewed desktop/fullscreen captures; continue with TASK-381.29 under the authorized batch.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
