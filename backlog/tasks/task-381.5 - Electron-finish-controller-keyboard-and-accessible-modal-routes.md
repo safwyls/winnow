@@ -1,11 +1,11 @@
 ---
 id: TASK-381.5
 title: 'Electron: finish controller keyboard and accessible modal routes'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:44'
-updated_date: '2026-10-01 00:51'
+updated_date: '2026-10-01 00:52'
 labels:
   - electron
   - parity
@@ -58,7 +58,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -85,4 +85,6 @@ User-reviewed keyboard hint correction: fullscreen now uses the original bundled
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
 Completed in milestone c355f48b. Restored five-row keyboard geometry and controller edits, accessible settings/modal routes, fullscreen file selection with explicit overwrite consent, and exact opener focus. Build/typecheck, Prettier, diff checks, all 3,388 component/live API cases across 166 files, and 65 distinct native cases pass. All ten assigned source contracts now have executed replacement evidence; 467 remain unresolved elsewhere. Checkpoint sixty records logs, screenshots, initial failures and validation limits. Stopped for user review; TASK-381.6 remains To Do until the next continuation prompt.
+
+Keyboard glyph correction committed after user review; original fullscreen controller silhouettes and labels now have native geometry, color and accessibility assertions. Nine native and 19 focused component cases pass. The user explicitly authorized continuing to TASK-381.6 after this correction.
 <!-- SECTION:FINAL_SUMMARY:END -->

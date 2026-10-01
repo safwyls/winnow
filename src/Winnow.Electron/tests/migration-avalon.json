@@ -128,24 +128,28 @@
     "reason": "Unmount removes the portal/described-by association; late metadata cannot restore it."
   },
   "LibraryRefreshOrderingTests.Slower_manual_reload_cannot_replace_newer_settings_and_metadata_refresh": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/parity-library-publication.test.tsx",
         "case": "a slow manual read cannot overwrite a newer committed visibility and metadata snapshot"
+      },
+      {
+        "file": "tests/electron/library-live.spec.ts",
+        "case": "${mode} delayed library cannot replace the committed ${preference} and open metadata editor snapshot"
       }
     ],
-    "reason": "Production query hooks cancel the superseded read and reject late bridge results; the replacement verifies count, visible identities and summary after a winning snapshot. The complete composed maturity/account/non-game settings matrix with an open metadata editor still needs source-equivalent evidence."
+    "reason": "Both native surfaces run the original two-game maturity/account/non-game matrix through the real API. A captured old read remains gated while stored visibility and an open metadata editor commit Current summary; the winning single game, retained Details node, saved rendered summary and valid selection survive the late response. The production query component test separately proves exactly one successful publication, explicit cancellation, and identical winning envelope/game/detail objects after the stale completion."
   },
   "LibraryRefreshOrderingTests.Winning_visibility_snapshot_closes_hidden_details_and_keeps_valid_selection": {
-    "status": "partial",
+    "status": "ported",
     "tests": [
       {
         "file": "tests/app.test.tsx",
-        "case": "a winning visibility snapshot closes excluded details while keeping the remaining game"
+        "case": "a winning visibility snapshot closes details for game 2 while retaining independently selected game 1, fullscreen %s"
       }
     ],
-    "reason": "Both App surfaces close excluded Details and preserve remaining visible games using the same published library. Original independent valid-primary-selection retention still needs a composed assertion."
+    "reason": "Both production App surfaces open Game 2, then independently select Game 1 through a test-only observer of the production view-state store, matching the source view-model fixture. Assertions establish selected 1 with Details 2 before publication; a winning snapshot removes Game 2, closes Details, and retains selected 1 and its sole visible card. A normal click would replace both selection and Details and is deliberately not used to claim independence."
   },
   "LibraryRefreshOrderingTests.Cancelled_or_disposed_load_never_publishes_even_when_the_reader_ignores_cancellation": {
     "status": "ported",
@@ -166,10 +170,6 @@
       }
     ],
     "reason": "The complete App tests close, replacement selection, exclusion and newer facts while a reader deliberately ignores cancellation. Both desktop and fullscreen retain only current navigation and facts when the earlier response arrives."
-  },
-  "LibraryPreparationResponsivenessTests.Input_runs_during_preparation_without_publishing_partial_or_stale_tiles": {
-    "status": "pending",
-    "reason": "Theme filters prepare synchronously. Large-library input responsiveness and atomic stale-result publication must be measured; virtualization alone does not establish this invariant."
   },
   "YearFilterParityTests.Both_surfaces_validate_the_same_range_and_invalid_edits_preserve_the_applied_filter": {
     "status": "ported",

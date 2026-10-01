@@ -1,0 +1,194 @@
+{
+  "ApiLibraryViewModelTests.MetadataConflictPreservesObservedRevisionForReview": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-api-library-contracts.test.tsx",
+        "case": "MetadataConflictPreservesObservedRevisionForReview: both rejected writes keep seen and the name draft"
+      }
+    ],
+    "reason": "The original empty-field metadata response remains accepted by the API client. Each surface then exposes the name field needed by its actual editor and rejects both name writes with 409. Both requests retain expectedRevision seen and value Draft; the inline conflict keeps the draft and disables another save until review. Remounting the editor supplies the second attempt while verifying that session state never silently advances the captured revision."
+  },
+  "ApiLibraryViewModelTests.FrontendDependencyGraphContainsNoBackendImplementationAssemblies": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/frontend-dependency-boundary.test.ts",
+        "case": "recursively keeps renderer, main and preload imports outside backend implementation and database packages"
+      },
+      {
+        "file": "tests/frontend-dependency-boundary.test.ts",
+        "case": "ships the backend as a separate resource and exposes only the named preload bridge to a sandboxed renderer"
+      }
+    ],
+    "reason": "Recursive TypeScript import traversal replaces CLR assembly traversal and inspects renderer, main, preload and worker dependencies. Backend implementation and database packages are forbidden; renderer imports remain inside renderer/shared code and use no direct transport or Node/Electron API. The separate backend resource, frozen named bridge and every production BrowserWindow's sandbox, context isolation and disabled Node integration are asserted. Both presentation paths belong to the inspected renderer graph."
+  },
+  "ApiLibraryViewModelTests.FrontendCompositionBuildsBothSurfacesWithoutStorageOrWorkers": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-api-library-contracts.test.tsx",
+        "case": "FrontendCompositionBuildsBothSurfacesWithoutStorageOrWorkers: the named bridge composes separate desktop and fullscreen library state"
+      },
+      {
+        "file": "tests/frontend-dependency-boundary.test.ts",
+        "case": "recursively keeps renderer, main and preload imports outside backend implementation and database packages"
+      }
+    ],
+    "reason": "The real App composes desktop and fullscreen through the named API bridge without frontend repositories or backend workers. Switching surface creates the separate presentation and preserves each surface's independent search. Recursive dependency evidence replaces the original DI GetService-null checks; the worker exclusion concerns backend ingest/enrichment/session workers, not the renderer's animation worker."
+  },
+  "ApiLibraryViewModelTests.LibraryUsesBackendGroupingAndMetadataWithoutRepositories": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-api-library-contracts.test.tsx",
+        "case": "LibraryUsesBackendGroupingAndMetadataWithoutRepositories: projects one backend work with both storefront entries"
+      }
+    ],
+    "reason": "Both real App surfaces receive the source Shared title work, Steam 100-minute and GOG 50-minute editions, bounced bucket, 2007 year and Shared metadata through library/workspace API snapshots. They display one grouped tile with both entries and preserve the 150-minute aggregate in the query cache; Details visibly exposes the title, year, summary and formatted playtime. The server-grouped library response is the Electron equivalent of the original API view model's workspace projection."
+  },
+  "ApiLibraryViewModelTests.ListEditsUseDisplayedRevisionAndPreserveStateOnConflict": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-api-library-contracts.test.tsx",
+        "case": "ListEditsUseDisplayedRevisionAndPreserveStateOnConflict: rename retains Next and the rejected draft"
+      }
+    ],
+    "reason": "Desktop and fullscreen edit source list 7, Next, with release 1 and displayed-revision. The rejected rename sends that revision with Changed elsewhere, exposes the 409 conflict, retains the entered draft and leaves both the displayed original heading and authoritative cached list unchanged."
+  },
+  "ApiLibraryViewModelTests.SettingsLoadsRemoteHiddenAndManualEntriesWithoutRepositories": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-api-library-contracts.test.tsx",
+        "case": "SettingsLoadsRemoteHiddenAndManualEntriesWithoutRepositories: preserves server titles, edition count and addedAt"
+      }
+    ],
+    "reason": "The actual Library tools on both surfaces load Hidden with three editions and Manual with year 2001 and platform PC from named API routes. The response cache preserves the original addedAt and updatedAt values and identity fields. Lazy Hidden games and Manual games sections replace the original settings view model's eager aggregate refresh; its unused visibility-count read is unnecessary for these rendered sections."
+  },
+  "ApiLibraryViewModelTests.RemoteManualIdentifierConflictRemainsAnInlineFieldError": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-api-library-contracts.test.tsx",
+        "case": "RemoteManualIdentifierConflictRemainsAnInlineFieldError: create-time MappingChanged stays on IGDB"
+      }
+    ],
+    "reason": "The real create editor submits Manual and IGDB ID 42 and receives the source 409 IgdbId/MappingChanged payload. On both surfaces the single problem is associated with IGDB by aria-invalid and aria-describedby, both fields retain their draft values, the form stays open and no generic request problem is shown."
+  },
+  "BackendLiveUpdatesTests.FullscreenActivityJournalAndSummaryUseApiOnlyFrontendServices": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/library-live.spec.ts",
+        "case": "${mode} Activity journal and Spending use API-only services with a real twenty-minute manual session"
+      },
+      {
+        "file": "tests/frontend-dependency-boundary.test.ts",
+        "case": "recursively keeps renderer, main and preload imports outside backend implementation and database packages"
+      }
+    ],
+    "reason": "Native desktop and fullscreen use an isolated real backend. The fixture creates Journal game through the API and inserts the source 1,200-second manual session into test-owned SQLite, outside the renderer. Actual Activity opens its note editor, saves Saved through the API and verifies the saved note through journal.get; Spending finishes its API read without a problem. The import-boundary test replaces original null session/activity/account repository registrations."
+  },
+  "BackendLiveUpdatesTests.IndependentDesktopAndFullscreenClientsRefreshCommittedEditsAndRetainTheirSearch": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/library-live.spec.ts",
+        "case": "independent desktop and fullscreen API clients retain Alpha and Beta searches through committed edits"
+      }
+    ],
+    "reason": "Two independent Electron processes and renderer profiles share one isolated backend. Their actual search fields contain Alpha and Beta before creation, both receive committed creation and hiding through live events, and Beta's revision-checked rename to Gamma reaches both caches. Searches remain unchanged through those edits; clearing each filter reveals exactly the single committed Gamma tile."
+  },
+  "BackendLiveUpdatesTests.FrontendResynchronizesAfterBackendRestart": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/library-live.spec.ts",
+        "case": "${mode} API client resynchronizes its open library after a real backend restart"
+      }
+    ],
+    "reason": "Each native presentation remains open while the real backend restarts. The named restart route must produce a connected discovery epoch different from the original. Creating After restart then updates the same visible library to contain both source titles Before restart and After restart, with no remaining connection banner or renderer error."
+  },
+  "LazyPaneTests.Panes_are_absent_from_the_tree_until_they_are_first_shown": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-lazy-panes.test.tsx",
+        "case": "mounts only activated panes and restores Appearance state after returning from Library"
+      },
+      {
+        "file": "tests/electron/lazy-panes.spec.ts",
+        "case": "${mode} mounts panes only on entry, stretches Merges, retains Appearance and opens bound Stardew details"
+      }
+    ],
+    "reason": "Both actual App surfaces begin without Details, lightbox, Merges, Spending, Platforms or Settings panes. Activating identity review creates one queue without Spending; native bounds verify its containing pane exceeds 900 by 600 at the source 1280x820 desktop size and 1920x1080 fullscreen reference. Appearance has no unrelated mounted panes and preserves its selected tab and saved setting across Library and reentry. React unmounts inactive routes instead of retaining Avalonia view objects: exact instance identity and IsVisible become one mounted pane, real removal on exit and logical state restoration on return. This preserves the source lazy allocation, visibility and state contract."
+  },
+  "LazyPaneTests.A_panes_visibility_follows_its_container_without_a_change_at_birth": {
+    "status": "framework-specific",
+    "tests": [
+      {
+        "file": "tests/parity-lazy-panes.test.tsx",
+        "case": "mounts only activated panes and restores Appearance state after returning from Library"
+      },
+      {
+        "file": "tests/electron/lazy-panes.spec.ts",
+        "case": "${mode} mounts panes only on entry, stretches Merges, retains Appearance and opens bound Stardew details"
+      }
+    ],
+    "reason": "This method tests only Avalonia LazyPane and VisibilitySpy property-system events: Pane starts null, OnAttachedToVisualTree sees IsVisible true without a first change notification, then subsequent notifications equal [false, true]. React has no IsVisible dependency property, attach notification or retained template child to reproduce. Actual conditional mounting, removal and reentry are covered separately, and the native bound-details case verifies closing removes the modal and restores focus. This classification applies to the exact framework event contract, not deferred screen behavior; the companion behavior contract is ported."
+  },
+  "LazyPaneTests.The_detail_modal_is_built_with_its_data_when_a_game_is_opened": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-lazy-panes.test.tsx",
+        "case": "constructs one detail pane with the selected Stardew Valley work and no stale data on the next game"
+      },
+      {
+        "file": "tests/electron/lazy-panes.spec.ts",
+        "case": "${mode} mounts panes only on entry, stretches Merges, retains Appearance and opens bound Stardew details"
+      }
+    ],
+    "reason": "Before activation neither surface mounts Details or requests game.details. Activating the source Stardew Valley title creates one pane whose API request has the selected work ID and whose visible journal comes from that work's response. Component coverage opens a second game and rejects stale Stardew content; native coverage uses the real seeded Stardew work, closes the pane and restores its tile focus. Work-ID props and query data replace Avalonia DataContext object identity."
+  },
+  "LibraryPreparationResponsivenessTests.Input_runs_during_preparation_without_publishing_partial_or_stale_tiles": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/library-preparation.test.tsx",
+        "case": "processes input during 512-game preparation and publishes only the winning complete snapshot: %s"
+      },
+      {
+        "file": "tests/library-preparation.test.tsx",
+        "case": "keeps small library passthrough data and the public schema diagnostics while large responses yield"
+      }
+    ],
+    "reason": "The production useLibrary/request/query-cache/projection boundary receives 512 games, and observed first-array enumeration posts real DOM input as in the source ObservedList fixture. Shared preparation yields every 128 records and honors its AbortSignal. For complete, cancel, dispose and replace on both surface cases, input sees zero all/visible/total games and no published query data; final counts are respectively 512, 0, 0 and 1, with exactly one complete publication or none. Disposal removes the live query observers; replacement cancels the old read before fetching the one-game snapshot. Small responses retain their direct schema path, passthrough fields and exact public Zod diagnostics."
+  },
+  "LibraryViewModelTests.The_toggle_works_without_a_settings_store": {
+    "status": "framework-specific",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "shares persisted appearance and dormancy while keeping fullscreen motion and sizing independent on reentry"
+      },
+      {
+        "file": "tests/electron/library-lifecycle.spec.ts",
+        "case": "${mode} saves dormancy independently of reduced motion without replacing cover elements"
+      }
+    ],
+    "reason": "The exact fixture constructs legacy DisplaySettingsViewModel with a DormancyRamp and no optional ISettingsRepository, then verifies DimDormantCovers false yields full alpha and a completed no-op save. Production Electron has neither that optional DI constructor nor a renderer-owned settings store: preferences are required API data. Its actual shared dormancy toggle remains covered on both surfaces, including filter none when dimming is disabled, unchanged cover elements, saving through the real backend and persistence after reload. Introducing an offline no-store save fallback would change the API failure contract rather than port this legacy construction seam."
+  },
+  "OwnershipRefreshCompositionTests.Scheduled_acquisition_and_later_metadata_reach_the_open_surface_despite_partial_failure": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/ownership-refresh.spec.ts",
+        "case": "${mode} scheduled acquisition and gated metadata update the visible feed with partial failure ${fail}"
+      }
+    ],
+    "reason": "A separately built fixture backend composes the production remote scheduler, OwnershipRefreshCoordinator, LibraryRefreshPipeline and live-event publisher. Authenticated fixture controls supply acquisition data, gate metadata and reproduce both source failure points: the remote operation throws after acquisition commits, and the later optional stage throws after metadata commits. Production renderer and bridge remain intact. Both visible native feeds first display New acquisition before metadata completes, then Enriched acquisition after release. Exactly those two publication phases remain committed with and without partial failure, the scheduler stays running and at least two library.changed events arrive. Fullscreen late entry also consumes the updated shared snapshot."
+  }
+}

@@ -2,52 +2,17 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { useLayoutEffect, useRef } from 'react'
 import { z } from 'zod'
 import { request } from './client'
+import { prepareLibrary } from './prepare-library'
+export { librarySchema } from './prepare-library'
 import type {
   ActivityCursor,
   ActivityPage,
   FeedSnapshot,
   GameDetails,
   GameplayStats,
-  LibraryResponse,
   Workspace,
 } from './types'
 
-const entry = z
-  .object({
-    ownershipId: z.number(),
-    releaseId: z.number(),
-    workId: z.number(),
-    title: z.string(),
-    store: z.string(),
-    installed: z.boolean(),
-    playtimeMinutes: z.number(),
-  })
-  .passthrough()
-const game = z
-  .object({
-    workId: z.number(),
-    title: z.string(),
-    bucket: z.string(),
-    playtimeMinutes: z.number(),
-    entries: z.array(entry),
-  })
-  .passthrough()
-export const librarySchema = z
-  .object({
-    games: z.array(game),
-    lists: z.array(
-      z
-        .object({
-          id: z.number(),
-          name: z.string(),
-          isLive: z.boolean(),
-          releaseIds: z.array(z.number()),
-          revision: z.string(),
-        })
-        .passthrough(),
-    ),
-  })
-  .passthrough()
 const feedItemSchema = z.object({
   ownershipId: z.number(),
   releaseId: z.number(),
@@ -97,7 +62,7 @@ export function useLibrary(enabled = true) {
   return useQuery({
     queryKey: ['api', 'library.get'],
     queryFn: async ({ signal }) =>
-      librarySchema.parse(await request('library.get', undefined, undefined, signal)) as LibraryResponse,
+      prepareLibrary(await request('library.get', undefined, undefined, signal), signal),
     enabled,
     retry: false,
     staleTime: 30_000,

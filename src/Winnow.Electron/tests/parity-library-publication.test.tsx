@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { useLibrary, useWorkspace, useDetails } from '../src/renderer/api/hooks'
 import { refreshSnapshots } from '../src/renderer/refresh'
 import type { ApiRequest } from '../src/shared/bridge'
+import type { LibraryResponse } from '../src/renderer/api/types'
 
 const clients: QueryClient[] = []
 afterEach(() => {
@@ -82,6 +83,18 @@ it('a slow manual read cannot overwrite a newer committed visibility and metadat
         : { workId: 1 },
   )
   await waitFor(() => expect(screen.getByLabelText('Count').textContent).toBe('2'))
+  const publications: LibraryResponse[] = []
+  const unsubscribe = client.getQueryCache().subscribe((event) => {
+    if (
+      event.type === 'updated' &&
+      event.query.queryKey[1] === 'library.get' &&
+      event.action.type === 'success'
+    )
+      publications.push(event.query.state.data as LibraryResponse)
+  })
+  const detailNode = screen.getByLabelText('Details')
+  const details = client.getQueryData(['api', 'game.details', { workId: 1 }])
+  expect(details).toEqual({ workId: 1 })
   fireEvent.click(screen.getByRole('button', { name: 'Reload library' }))
   await waitFor(() => expect(reads).toBe(2))
   await act(async () => {
@@ -89,6 +102,13 @@ it('a slow manual read cannot overwrite a newer committed visibility and metadat
   })
   await waitFor(() => expect(screen.getByLabelText('Count').textContent).toBe('1'))
   expect(screen.getByLabelText('Games').textContent).toBe('1:Current summary')
+  const winning = client.getQueryData<LibraryResponse>(['api', 'library.get'])!
+  expect(publications).toHaveLength(1)
+  expect(publications[0]).toBe(winning)
+  expect(winning.games).toHaveLength(1)
+  expect(winning.games[0].entries[0].ownershipId).toBe(1)
+  expect(screen.getByLabelText('Details')).toBe(detailNode)
+  expect(client.getQueryData(['api', 'game.details', { workId: 1 }])).toBe(details)
   const retired = request.mock.calls.filter(([input]) => input.route === 'library.get')[1][0].requestId
   expect(retired).toMatch(/^[a-f0-9]{32}$/)
   expect(cancelRequest).toHaveBeenCalledWith(retired)
@@ -98,6 +118,12 @@ it('a slow manual read cannot overwrite a newer committed visibility and metadat
   })
   expect(screen.getByLabelText('Count').textContent).toBe('1')
   expect(screen.getByLabelText('Games').textContent).toBe('1:Current summary')
+  expect(publications).toHaveLength(1)
+  expect(client.getQueryData(['api', 'library.get'])).toBe(winning)
+  expect(client.getQueryData<LibraryResponse>(['api', 'library.get'])!.games[0]).toBe(winning.games[0])
+  expect(screen.getByLabelText('Details')).toBe(detailNode)
+  expect(client.getQueryData(['api', 'game.details', { workId: 1 }])).toBe(details)
+  unsubscribe()
 })
 
 it.each(['cancel', 'unmount'])(

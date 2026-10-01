@@ -8,7 +8,7 @@ import { App } from '../src/renderer/App'
 import { DEFAULT_PROFILE, selectThemeProfile } from '../src/shared/theme'
 import { afterglow } from '../src/renderer/themes/afterglow'
 import { AVALON_PALETTES } from '../src/renderer/themes/avalon-palettes'
-import { clearViewState } from '../src/renderer/viewState'
+import { clearViewState, useViewState } from '../src/renderer/viewState'
 import { mergeFixture } from './parity-merge-fixtures'
 
 // Whole-app hydration can exceed the one-second query default under parallel worker load.
@@ -917,21 +917,33 @@ describe('integrated frontend', () => {
     },
   )
   it.each([false, true])(
-    'a winning visibility snapshot closes excluded details while keeping the remaining game, fullscreen %s',
+    'a winning visibility snapshot closes details for game 2 while retaining independently selected game 1, fullscreen %s',
     async (fullscreenMode) => {
+      const first = { ...game, title: 'Game 1' }
       const second = {
         ...game,
         workId: 2,
-        title: 'Remaining game',
+        title: 'Game 2',
         entries: [{ ...game.entries[0], workId: 2, releaseId: 2, ownershipId: 2 }],
+      }
+      const selectionKey = `avalon:library:${fullscreenMode ? 'fullscreen' : 'desktop'}:selected`
+      clearViewState(selectionKey)
+      let select!: (id: number) => void
+      // The source fixture opens details2 then independently selects tile1 through its view model.
+      // This probe uses the production selection store; a DOM click would also replace details.
+      function SelectionProbe() {
+        const [selected, setSelected] = useViewState<number | null>(selectionKey, null)
+        select = setSelected
+        return <output aria-label="Library selection fixture">{selected}</output>
       }
       const original = window.winnow.request
       window.winnow.request = vi.fn(async (input) =>
         input.route === 'library.get'
-          ? { ok: true, status: 200, data: { games: [game, second], lists: [] } }
+          ? { ok: true, status: 200, data: { games: [first, second], lists: [] } }
           : original(input),
       ) as WinnowBridge['request']
       const client = mount()
+      render(<SelectionProbe />)
       await screen.findByRole('navigation', { name: 'Main navigation' })
       await changeSurface(fullscreenMode)
       fireEvent.click(
@@ -939,13 +951,22 @@ describe('integrated frontend', () => {
           name: 'Library',
         }),
       )
-      fireEvent.click(await screen.findByRole('button', { name: `View ${game.title}` }))
+      fireEvent.click(await screen.findByRole('button', { name: 'View Game 2' }))
       await screen.findByRole('tab', { name: 'Overview' })
-      act(() => client.setQueryData(['api', 'library.get'], { games: [second], lists: [] }))
+      expect(screen.getByLabelText('Library selection fixture').textContent).toBe('2')
+      act(() => select(1))
+      expect(screen.getByLabelText('Library selection fixture').textContent).toBe('1')
+      expect(screen.getByRole('heading', { name: 'Game 2', level: 1 })).toBeTruthy()
+      act(() => client.setQueryData(['api', 'library.get'], { games: [first], lists: [] }))
       await waitFor(() => expect(document.querySelector('.avalon-details')).toBeNull())
-      expect(await screen.findByRole('button', { name: 'View Remaining game' })).toBeTruthy()
-      expect(screen.queryByRole('button', { name: `View ${game.title}` })).toBeNull()
+      expect(screen.getByLabelText('Library selection fixture').textContent).toBe('1')
+      expect((await screen.findByRole('button', { name: 'View Game 1' })).getAttribute('data-selected')).toBe(
+        'true',
+      )
+      expect(document.querySelectorAll('[data-avalon-game]')).toHaveLength(1)
+      expect(screen.queryByRole('button', { name: 'View Game 2' })).toBeNull()
       client.clear()
+      clearViewState(selectionKey)
     },
   )
   it.each(

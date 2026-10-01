@@ -28,6 +28,12 @@ Cover images remain visible while a larger size loads. Shrinking a realized tile
 best decoded image, and recycling one tile leaves other surfaces showing that game intact.
 Dormancy changes reuse the same pixels on desktop, fullscreen and desktop merge thumbnails.
 
+Library responses validate in batches of 128 games or lists so input and cancellation can
+run before a large response finishes. The query cache receives one complete snapshot;
+cancelled or superseded reads cannot publish partial data. Desktop and fullscreen share
+this preparation path. Inactive panes unmount, while saved Appearance choices and each
+surface's navigation state remain available on reentry.
+
 Desktop **Merges** opens directly from the rail. Its label and tooltip stay present when
 the queue is empty. Details returns to the same member, and Escape returns to Library.
 Up/Down moves the row cursor, Space chooses the header, S or Enter accepts the group and
