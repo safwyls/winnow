@@ -1,11 +1,11 @@
 ---
 id: TASK-381.31
 title: 'Electron: finish update acknowledgement composition'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
-updated_date: '2026-10-01 22:55'
+updated_date: '2026-10-01 22:57'
 labels:
   - electron
   - parity
@@ -53,7 +53,7 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.32 within the user-authorized TASK-381.31 through TASK-381.35 batch.
+- [x] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.32 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -70,6 +70,8 @@ The user authorized five more sequential tasks: TASK-381.31 through TASK-381.35.
 All 15 unchanged source cases pass for the nine assigned methods; original file matches frozen revision cf45d9f1127243a987d3cf6e664a32fc767ecb67. Renderer review found Patched action eligibility, synchronous duplicate suppression and already-saved release retry gaps. Exact grouped API fixture and desktop/fullscreen native journeys are in progress; no acceptance criteria checked yet.
 
 All 15 unchanged source cases, 13 backend cases and 203 renderer cases across four files pass. TypeScript and production build pass. Independent review found no actionable issues. Native initial run has eight passing journeys and five harness mismatches under repair; no native completion claim yet. The original direct-repository count method will be ported through its exact four-row HTTP replacement, preserving the audit rules unchanged.
+
+Milestone commit a256cf60 records all nine resolved contracts and checkpoint eighty-six. Final paired native refusal checks pass after the fullscreen error-size correction; the root visually inspected desktop/fullscreen selected actions, read Details and the complete wrapped fullscreen error. Proceeding to TASK-381.32 within the authorized batch.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
