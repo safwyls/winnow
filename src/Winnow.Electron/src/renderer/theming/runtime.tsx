@@ -195,6 +195,8 @@ export interface ThemeRuntime {
   packages: ThemePackage[]
   builtins: ThemeDefinition[]
   loading: boolean
+  profileSaving: boolean
+  profileSaveError: string | null
   notice: string | null
   clearNotice(): void
   selectTheme(id: string): void
@@ -247,6 +249,9 @@ export function useThemeRuntime(
   const [notice, setNotice] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileSaveError, setProfileSaveError] = useState<string | null>(null)
+  const profileWriteRevision = useRef(0)
   const writes = useRef<Promise<void>>(Promise.resolve())
   const loadTheme = options?.loadTheme ?? loadExternalTheme
   const profileRef = useRef(profile)
@@ -359,6 +364,9 @@ export function useThemeRuntime(
 
   useEffect(() => {
     if (!hydrated || profile === unsavedInitialProfile.current) return
+    const revision = ++profileWriteRevision.current
+    setProfileSaving(true)
+    setProfileSaveError(null)
     // Serialize saves so rapid sliders and theme switches cannot let an older write win.
     writes.current = writes.current
       .catch(() => {})
@@ -367,7 +375,12 @@ export function useThemeRuntime(
         await window.winnow.savePreferences(profile)
       })
       .catch(() => {
-        setNotice('Appearance changes could not be saved. You can export a profile to keep them.')
+        const failure = 'Appearance changes could not be saved. You can export a profile to keep them.'
+        setNotice(failure)
+        if (revision === profileWriteRevision.current) setProfileSaveError(failure)
+      })
+      .finally(() => {
+        if (revision === profileWriteRevision.current) setProfileSaving(false)
       })
   }, [profile, hydrated])
 
@@ -498,6 +511,8 @@ export function useThemeRuntime(
     packages,
     builtins,
     loading: loading || !hydrated,
+    profileSaving,
+    profileSaveError,
     notice,
     clearNotice: () => setNotice(null),
     selectTheme,

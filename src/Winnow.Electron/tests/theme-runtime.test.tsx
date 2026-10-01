@@ -35,6 +35,39 @@ afterEach(() => {
 })
 
 describe('theme runtime recovery and lifecycle', () => {
+  it('keeps saving true across serialized profile writes and publishes only the latest failure state', async () => {
+    const { result } = renderHook(() => useThemeRuntime(builtins))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    await waitFor(() => expect(result.current.profileSaving).toBe(false))
+    let rejectFirst!: (reason: unknown) => void
+    let completeSecond!: () => void
+    const first = new Promise<void>((_, reject) => {
+      rejectFirst = reject
+    })
+    const second = new Promise<void>((resolve) => {
+      completeSecond = resolve
+    })
+    const save = vi.mocked(window.winnow.savePreferences)
+    save.mockClear()
+    save.mockImplementationOnce(() => first).mockImplementationOnce(() => second)
+    act(() =>
+      result.current.setProfile((value) => ({ ...value, appearance: { ...value.appearance, radius: 7 } })),
+    )
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1))
+    expect(result.current.profileSaving).toBe(true)
+    act(() =>
+      result.current.setProfile((value) => ({ ...value, appearance: { ...value.appearance, radius: 8 } })),
+    )
+    expect(save).toHaveBeenCalledTimes(1)
+    await act(async () => rejectFirst(Error('stale failed write')))
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2))
+    expect(result.current.profileSaving).toBe(true)
+    expect(result.current.profileSaveError).toBeNull()
+    expect(save.mock.calls[1]![0]).toMatchObject({ appearance: { radius: 8 } })
+    await act(async () => completeSecond())
+    await waitFor(() => expect(result.current.profileSaving).toBe(false))
+    expect(result.current.profileSaveError).toBeNull()
+  })
   it.each(['a-theme-from-the-future', 'cold-storage', 'phosphor', null])(
     'restores Winnow for the original unknown stored palette %s',
     async (palette) => {

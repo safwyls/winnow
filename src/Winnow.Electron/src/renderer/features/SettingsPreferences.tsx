@@ -530,6 +530,8 @@ export function AccountVisibility({
     'connections.visibility.get',
   )
   const command = useCommand()
+  useSetupBusy(command.isPending)
+  useSetupPreferenceError(state.error || command.error)
   return (
     <div>
       {mode === 'fullscreen' ? (

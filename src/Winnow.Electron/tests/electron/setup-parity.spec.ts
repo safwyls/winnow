@@ -59,19 +59,35 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await application.evaluate(({ BrowserWindow }, mode) => {
         const window = BrowserWindow.getAllWindows()[0]
         window.setFullScreen(false)
-        window.setContentSize(mode === 'desktop' ? 1000 : 1280, mode === 'desktop' ? 640 : 720)
+        window.setMinimumSize(0, 0)
+        window.setContentSize(mode === 'desktop' ? 1200 : 1920, mode === 'desktop' ? 604 : 1080)
         window.webContents.send('winnow:fullscreen:changed', mode === 'fullscreen')
       }, mode)
       const wizard = page.locator(`.setup-dialog.mode-${mode}`)
       await expect(wizard).toBeVisible()
       const tap = await controller(page)
+      await expect
+        .poll(() => page.evaluate(() => [innerWidth, innerHeight]))
+        .toEqual(mode === 'desktop' ? [1200, 604] : [1920, 1080])
       for (let step = 0; step < 9; step++) {
         await expect(wizard.getByText(`SETUP · ${step + 1} OF 9`)).toBeVisible()
         const next = wizard.getByRole('button', {
           name: step === 0 ? 'Get started' : step === 8 ? 'Open my library' : 'Continue',
           exact: true,
         })
-        await expect(next).toBeFocused()
+        const providerLabels = [
+          '',
+          'Set up IGDB metadata',
+          'Set up Steam',
+          'Set up Epic',
+          'Check GOG Galaxy',
+          'Choose theme and appearance',
+          'Choose app settings',
+          'Choose library settings',
+        ]
+        if (mode === 'fullscreen' && step > 0 && step < 8)
+          await expect(wizard.getByRole('button', { name: providerLabels[step], exact: true })).toBeFocused()
+        else await expect(next).toBeFocused()
         const bounds = await wizard.evaluate((element) => {
           const targets = [...element.querySelectorAll('.setup-footer button, .setup-header h2')]
           return targets.map((target) => {
@@ -81,8 +97,35 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         })
         expect(bounds.every(Boolean)).toBe(true)
         if (step === 1) {
+          if (mode === 'fullscreen') await tap(0)
           const secret = wizard.getByLabel('Client secret')
           await expect(secret).toHaveAttribute('type', 'password')
+          if (mode === 'desktop') {
+            const actions = wizard.getByRole('button', {
+              name: /^(Save credentials|Remove saved credentials)$/,
+            })
+            await expect(actions).toHaveCount(2)
+            for (const action of await actions.all()) {
+              const measured = await action.evaluate((node) => {
+                const box = node.getBoundingClientRect()
+                const scrollParents = []
+                for (let parent = node.parentElement; parent; parent = parent.parentElement)
+                  if (/auto|scroll/.test(getComputedStyle(parent).overflowY))
+                    scrollParents.push(parent.className)
+                return {
+                  inside:
+                    box.width > 0 &&
+                    box.height > 0 &&
+                    box.x >= 0 &&
+                    box.y >= 0 &&
+                    box.right <= innerWidth + 1 &&
+                    box.bottom <= innerHeight + 1,
+                  scrollParents,
+                }
+              })
+              expect(measured).toEqual({ inside: true, scrollParents: [] })
+            }
+          }
           await secret.fill('unsaved-fixture-secret')
           if (mode === 'fullscreen') {
             await secret.focus()
@@ -94,22 +137,62 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
             await tap(1)
             await expect(keyboard).toHaveCount(0)
             await expect(secret).toBeFocused()
+            await tap(1)
+            await expect(
+              wizard.getByRole('heading', { name: 'Fill in the details', exact: true }),
+            ).toBeVisible()
+            await expect(
+              wizard.getByRole('button', { name: providerLabels[step], exact: true }),
+            ).toBeFocused()
           }
         }
+        if ([2, 3, 4].includes(step))
+          await expect(wizard.getByRole('heading', { name: 'Platforms', exact: true })).toHaveCount(0)
+        if (step === 6) {
+          await expect(wizard.getByRole('button', { name: 'Run setup again', exact: true })).toHaveCount(0)
+          await expect(wizard.locator('.igdb-connection-panel')).toHaveCount(0)
+        }
         if (step === 2) {
+          if (mode === 'fullscreen') await tap(0)
           await wizard.getByRole('button', { name: 'Sign in to Steam', exact: true }).click()
           const consent = page.getByRole('dialog', { name: 'Before you sign in' })
+          await expect(consent).toBeVisible()
+          for (const action of await wizard.locator('.setup-footer button').all())
+            await expect(action).toBeDisabled()
           for (let i = 0; i < 10; i++) {
             await page.keyboard.press('Tab')
             expect(await consent.evaluate((element) => element.contains(document.activeElement))).toBe(true)
           }
+          for (let cycle = 0; cycle < 4; cycle++)
+            for (const direction of [5, 13, 15, 4]) {
+              await tap(direction)
+              expect(await consent.evaluate((element) => element.contains(document.activeElement))).toBe(true)
+            }
           if (mode === 'fullscreen') {
             await tap(9)
             await expect(page.getByRole('dialog', { name: 'Quick menu' })).toHaveCount(0)
             await tap(1)
-          } else await page.keyboard.press('Escape')
+          } else await tap(1)
           await expect(consent).toHaveCount(0)
-          await expect(wizard.getByRole('heading', { name: 'Your Steam library' })).toBeVisible()
+          for (const action of await wizard.locator('.setup-footer button').all())
+            await expect(action).toBeEnabled()
+          await expect(
+            wizard.locator('.setup-header').getByRole('heading', {
+              name: mode === 'fullscreen' ? 'Steam' : 'Your Steam library',
+              exact: true,
+            }),
+          ).toBeVisible()
+          const progress = await page.evaluate(() =>
+            window.winnow.request<{ step: number }>({ route: 'setup.get' }),
+          )
+          expect(progress.ok && progress.data?.step).toBe(2)
+          if (mode === 'fullscreen') {
+            await tap(1)
+            await expect(wizard.getByRole('heading', { name: 'Your Steam library' })).toBeVisible()
+            await expect(
+              wizard.getByRole('button', { name: providerLabels[step], exact: true }),
+            ).toBeFocused()
+          }
         }
         if (step === 4) {
           await application.evaluate(({ BrowserWindow }) =>

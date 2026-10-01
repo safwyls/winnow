@@ -45,7 +45,16 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [artwork state and backdrop checkpoint](checkpoint-seventy-seven.md) records all
+The [startup and first-run setup checkpoint](checkpoint-seventy-eight.md) records
+3,958 component/live API cases, twenty-five unchanged source cases, five HTTP cases
+and twenty-four distinct native cases passing. Later picker hints and scrolling pass
+focused checks and the two fullscreen native cases again. Fatal startup boundaries,
+saved initial presentation, coherent library reads and both setup surfaces retain
+their source contracts. Sixteen assigned methods are ported and one C# lifecycle
+scanner is framework-specific, leaving 162 pending and 23 partial methods. Work
+continues through the authorized batch ending at TASK-381.30.
+
+The preceding [artwork state and backdrop checkpoint](checkpoint-seventy-seven.md) records all
 3,918 component/live API cases, seventeen unchanged source cases, seventeen distinct
 native cases, fifteen HTTP cases and two application regressions passing. Current
 cover projection, live source order, fullscreen artwork presentation and fractional

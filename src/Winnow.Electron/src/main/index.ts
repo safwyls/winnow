@@ -61,7 +61,13 @@ import { EpicSignInController } from './epic-auth'
 import type { EpicSignInOptions } from '../shared/epic'
 import { RequestLifetimes } from './request-lifetimes'
 import { quitDrain } from './quit-drain'
-import { dataDirectoryRefusalCode, reportStartupFailure } from './startup-failure'
+import { dataDirectoryRefusalCode, isStartupCancellation, reportStartupFailure } from './startup-failure'
+import {
+  BackendStartupFailure,
+  prepareBackendStartup,
+  StartupWindowGate,
+  waitForStartupOperation,
+} from './startup-backend'
 import { openLinkBrowser } from './link-browser'
 import { routeLink } from './link-routing'
 import { openInstallFolder, type InstallationWorkspace } from './install-folder'
@@ -141,6 +147,7 @@ let safeTheme = process.argv.includes('--safe-theme')
 const captureAppearance = appearanceSession(startupArgs, app.isPackaged)
 const sessionAppearance = captureAppearance ? new SessionAppearance(captureAppearance) : null
 let quitting = false
+const startupLifetime = new AbortController()
 let windowTray: WindowTrayController | undefined
 let rendererAcceptsActivation = false
 const pendingActivations = new ActivationQueue()
@@ -335,27 +342,30 @@ async function initialize(): Promise<void> {
     }
   })
   let preferences: Record<string, string | null> = {}
+  let preferencesLoaded = false
+  let preferencesRead: Promise<void> | undefined
   const preferencesRefresh = new SnapshotRefresh(async () => {
     const result = await transport!.request<Array<{ preference: string; value: string | null }>>({
       route: 'preferences.presentation.get',
     })
     if (!result.ok || !Array.isArray(result.data)) return
     preferences = Object.fromEntries(result.data.map((entry) => [entry.preference, entry.value]))
+    preferencesLoaded = true
     windowTray?.preferences(preferences)
     void updater?.refreshPreferences().catch(() => {})
   })
+  const refreshPreferences = () => (preferencesRead = preferencesRefresh.request())
   transport = new BackendTransport({
     discover: () => discoverBackend(dataDirectory),
     onEvent: (event) => {
       emit('winnow:event', event)
-      if (event.kind === 'preferences.changed' || event.kind === 'resync-required')
-        void preferencesRefresh.request()
+      if (event.kind === 'preferences.changed' || event.kind === 'resync-required') void refreshPreferences()
       if (event.kind === 'library.changed' || event.kind === 'resync-required') void jumpListRefresh.request()
     },
     onConnection: (state) => {
       emit('winnow:connection', state)
       if (state.connected) {
-        void preferencesRefresh.request()
+        void refreshPreferences()
         void jumpListRefresh.request()
       }
     },
@@ -471,7 +481,7 @@ async function initialize(): Promise<void> {
         ? sessionAppearance.request(request, () => transport!.request(request, signal))
         : transport!.request(request, signal))
       // Native window actions must observe a confirmed setting before the renderer can act on it.
-      if (response.ok && request.route === 'preferences.presentation.put') await preferencesRefresh.request()
+      if (response.ok && request.route === 'preferences.presentation.put') await refreshPreferences()
       return response
     })
   })
@@ -760,7 +770,8 @@ async function initialize(): Promise<void> {
     journalNotifications.get(sessionId)?.close()
     journalNotifications.delete(sessionId)
   })
-  function createWindow(): void {
+  async function createWindow(): Promise<void> {
+    const windowLifetime = new AbortController()
     rendererAcceptsActivation = false
     presentationVisible = !process.argv.includes('--background')
     window = new BrowserWindow({
@@ -820,14 +831,21 @@ async function initialize(): Promise<void> {
     })
     window.on('close', (event) => {
       if (!quitting && windowTray?.closing()) event.preventDefault()
+      if (!event.defaultPrevented) windowLifetime.abort(new DOMException('Window closed', 'AbortError'))
     })
     window.on('closed', () => {
       filePicker.cancel()
       controllerProbe.dispose()
+      windowLifetime.abort(new DOMException('Window closed', 'AbortError'))
       window = undefined
     })
     windowTray?.prepare()
-    void window.loadURL(rendererUrl)
+    if (preferencesLoaded) windowTray?.preferences(preferences)
+    const loadingWindow = window
+    await waitForStartupOperation(
+      () => loadingWindow.loadURL(rendererUrl),
+      AbortSignal.any([startupLifetime.signal, windowLifetime.signal]),
+    )
   }
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
@@ -866,12 +884,13 @@ async function initialize(): Promise<void> {
       },
     ]),
   )
-  showPrimary = () => {
+  const startupWindow = new StartupWindowGate(() => {
     if (quitting) return
-    if (!window) createWindow()
+    if (!window) void createWindow().catch(failStartup)
     windowTray?.restore()
     showRequested = false
-  }
+  })
+  showPrimary = startupWindow.request
   windowTray = new WindowTrayController({
     background: process.argv.includes('--background'),
     window: () => window,
@@ -898,45 +917,59 @@ async function initialize(): Promise<void> {
       }
     },
   })
-  createWindow()
+  const initialDeadline = Date.now() + 45_000
+  transport.start()
+  const problem = await prepareBackendStartup({
+    healthy: () =>
+      backendResponds(() => discoverBackend(dataDirectory, startupLifetime.signal), startupLifetime.signal),
+    running: () => backendProcessIsRunning(() => discoverBackend(dataDirectory)),
+    start: () =>
+      startBackend({
+        appPath: app.getAppPath(),
+        resourcesPath: process.resourcesPath,
+        packaged: app.isPackaged,
+        dataDirectory,
+        args: startupArgs,
+      }),
+    signal: startupLifetime.signal,
+  })
+  if (problem) transport.setStartupProblem(problem)
+  startupLifetime.signal.throwIfAborted()
+  if (!problem && !preferencesLoaded) {
+    const remaining = Math.max(0, initialDeadline - Date.now())
+    if (remaining > 0)
+      try {
+        await waitForStartupOperation(
+          () => preferencesRead ?? refreshPreferences(),
+          AbortSignal.any([startupLifetime.signal, AbortSignal.timeout(remaining)]),
+        )
+      } catch {
+        // A failed or timed-out preference read keeps the ordinary recoverable presentation.
+        startupLifetime.signal.throwIfAborted()
+      }
+  }
+  startupLifetime.signal.throwIfAborted()
+  await createWindow()
+  startupWindow.resolve()
   app.on('activate', () => {
     showPrimary()
   })
   if (showRequested) showPrimary()
-  transport.start()
-  // Starting a companion is independent of renderer readiness, so connection failures remain visible.
-  if (!(await backendResponds(() => discoverBackend(dataDirectory)))) {
-    // A slow startup or an in-progress restart can have a published endpoint before health responds.
-    // Let that backend finish instead of racing it with another companion process.
-    if (!(await backendProcessIsRunning(() => discoverBackend(dataDirectory)))) {
-      try {
-        const started = await startBackend({
-          appPath: app.getAppPath(),
-          resourcesPath: process.resourcesPath,
-          packaged: app.isPackaged,
-          dataDirectory,
-          args: startupArgs,
-        })
-        void started.exited.then(async (code) => {
-          if (
-            code !== 0 &&
-            !transport!.connection().connected &&
-            !(await backendResponds(() => discoverBackend(dataDirectory)))
-          )
-            transport?.setStartupProblem(
-              `The Winnow backend stopped before connecting (exit ${code ?? 'unknown'}). Check the backend logs, then start the backend again. This window will reconnect automatically.`,
-            )
-        })
-      } catch (error) {
-        transport.setStartupProblem(
-          error instanceof Error
-            ? error.message
-            : 'Could not start the backend. Start it separately; this window will reconnect automatically.',
-        )
-      }
-    }
-  }
   void updater.initialize()
+}
+
+function failStartup(error: unknown): void {
+  if (isStartupCancellation(error)) return
+  transport?.stop()
+  windowTray?.dispose()
+  startupLifetime.abort(new DOMException('Startup closed', 'AbortError'))
+  app.exit(
+    reportStartupFailure(error, {
+      directory: dataDirectory,
+      surface: dialog.showErrorBox,
+      exitCode: error instanceof BackendStartupFailure ? error.exitCode : undefined,
+    }),
+  )
 }
 
 if (!ownsInstance) app.quit()
@@ -947,19 +980,14 @@ else if (startupArgumentError) {
       surface: dialog.showErrorBox,
     }),
   )
-} else
-  app
-    .whenReady()
-    .then(initialize)
-    .catch((error) => {
-      app.exit(reportStartupFailure(error, { directory: dataDirectory, surface: dialog.showErrorBox }))
-    })
+} else app.whenReady().then(initialize).catch(failStartup)
 const drainUpdates = quitDrain(
   () => updater?.dispose() ?? Promise.resolve(),
   () => app.quit(),
 )
 app.on('before-quit', (event) => {
   quitting = true
+  startupLifetime.abort(new DOMException('Startup closed', 'AbortError'))
   windowTray?.dispose()
   if (updater && drainUpdates(event)) return
   transport?.stop()

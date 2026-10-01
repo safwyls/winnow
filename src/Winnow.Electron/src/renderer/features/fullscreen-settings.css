@@ -222,15 +222,54 @@
   font: calc(clamp(16px, 1.25vw, 24px) * var(--settings-scale))/1.5 var(--font-body);
 }
 .fullscreen-settings-picker {
+  --settings-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
   font: calc(24px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1))/1.35 var(--font-body);
+}
+.fullscreen-settings-picker > * {
+  flex-shrink: 0;
+}
+.fullscreen-settings-picker-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.fullscreen-settings-picker-body > * {
+  flex-shrink: 0;
+}
+.fullscreen-settings-picker .field {
+  font: inherit;
 }
 .fullscreen-settings-picker button,
 .fullscreen-settings-picker input {
   min-height: 64px;
   font: inherit;
+}
+.fullscreen-settings-picker-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  color: var(--muted);
+  font-size: calc(clamp(16px, 1.25vw, 24px) * var(--settings-scale));
+}
+.fullscreen-settings-picker-hints > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.fullscreen-settings-picker-hints svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+}
+.fullscreen-settings-picker-hints path {
+  fill: currentColor;
 }
 .fullscreen-font-options {
   display: flex;

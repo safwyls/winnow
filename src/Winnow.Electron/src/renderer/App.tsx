@@ -29,6 +29,7 @@ import { useThemeRuntime, ThemeBoundary, installThemeSDK } from './theming/runti
 import { ThemeStudio } from './theming/ThemeStudio'
 import { FullscreenThemeSettings } from './features/FullscreenThemeSettings'
 import { boundedSetting } from './features/FullscreenAppearance'
+import { SetupAppearance } from './features/SetupAppearance'
 import { GameCard, Impression } from './components/primitives'
 import { Artwork } from './components/Artwork'
 import { GamePreview } from './components/GamePreview'
@@ -698,22 +699,9 @@ export function App() {
               mode={mode}
               suspended={setupSuspended || startup.visible}
               onOpenChange={setSetupOpen}
-              appearance={
-                <label className="field">
-                  Winnow design
-                  <select
-                    value={runtime.profile.themeId}
-                    onChange={(event) => runtime.selectTheme(event.target.value)}
-                  >
-                    {runtime.builtins.map((theme) => (
-                      <option key={theme.id} value={theme.id}>
-                        {theme.name}
-                      </option>
-                    ))}
-                  </select>
-                  <small>You can adjust colors and typography in Theme Studio.</small>
-                </label>
-              }
+              appearanceSaving={runtime.profileSaving}
+              appearanceSaveError={runtime.profileSaveError}
+              appearance={<SetupAppearance runtime={runtime} mode={mode} />}
             />
             {readsStarted && (
               <SessionNotifications

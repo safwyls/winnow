@@ -29,21 +29,6 @@
     ],
     "reason": "The nested consent dialog owns focus and Escape closes consent without changing setup progress on either surface."
   },
-  "FirstRunSetupDesktopTests.Every_step_keeps_navigation_inside_a_short_desktop_window": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/electron/setup-parity.spec.ts",
-        "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
-      }
-    ],
-    "reason": "Native Chromium checks headings, Back, Skip setup and Continue bounds and Next focus through all 9 steps at 1000×640 desktop and 1280×720 fullscreen. The original additional requirement that IGDB Save/Remove actions sit outside the body scroller remains unported."
-  },
-  "FirstRunSetupDesktopTests.Header_and_footer_fills_stay_inside_the_rounded_frame": {
-    "status": "partial",
-    "tests": [],
-    "reason": "The Electron wizard uses one clipped 8px frame for its header and footer. Equivalent rendered pixel checks for rounded corners in both themes remain required."
-  },
   "FirstRunSetupDesktopTests.Tab_cycles_inside_setup_and_skip_all_restores_the_invoking_control": {
     "status": "ported",
     "tests": [
@@ -58,16 +43,6 @@
     ],
     "reason": "Both native presentations cycle Tab and Shift+Tab inside Welcome, whose two buttons are verified by the component test, then Skip setup restores the real replay button. Regression covers native disabling/blur before the replay progress write resolves."
   },
-  "FirstRunSetupFullscreenTests.Controller_setup_blocks_root_navigation_and_returns_from_provider_to_same_step": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-setup.test.tsx",
-        "case": "uses the presentation-specific Escape action after nested editors close"
-      }
-    ],
-    "reason": "The fullscreen wizard shares its saved cursor and Back/Escape moves to the previous step. Electron embeds configuration inside the step; physical controller root-navigation isolation and separate provider-page return need additional integration coverage."
-  },
   "FirstRunSetupFullscreenTests.Application_settings_replay_opens_setup_instead_of_leaving_settings_stack_active": {
     "status": "ported",
     "tests": [
@@ -77,30 +52,6 @@
       }
     ],
     "reason": "The production fullscreen Settings Application replay opens Welcome as a modal; Tab stays in setup and completing it restores its invoking settings control. Native rendering uses the saved backend cursor."
-  },
-  "FirstRunSetupShellTests.New_install_opens_setup_after_startup_in_the_selected_presentation": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-setup.test.tsx",
-        "case": "resumes every step, persists navigation, and completes only at Ready"
-      }
-    ],
-    "reason": "Both presentation modes load and display persisted Welcome state. Full native application startup with a new backend data directory is outside the component test."
-  },
-  "FirstRunSetupShellTests.Controller_stays_in_steam_consent_and_back_closes_only_that_layer": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/electron/setup-parity.spec.ts",
-        "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
-      },
-      {
-        "file": "tests/parity-setup.test.tsx",
-        "case": "closes Steam consent before navigating the wizard and traps the active layer"
-      }
-    ],
-    "reason": "Native fullscreen Chromium consumes simulated gamepad Menu without opening a root menu and Back dismisses only Steam consent, retaining the Steam setup cursor. The original method invokes desktop gamepad directions and Back; the desktop sampler currently leaves those inactive. Directional containment therefore remains incomplete despite passing keyboard Tab containment in both modes."
   },
   "IgdbSettingsInteractionTests.Presentation_switches_clear_unsaved_secret": {
     "status": "ported",

@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Winnow.Electron.Fixtures/StartupBoundaryFixture.cs" Link="Fixtures/StartupBoundaryFixture.cs" />
     <Compile Include="../Winnow.Electron.Fixtures/ArtworkStateFixture.cs" Link="Fixtures/ArtworkStateFixture.cs" />
     <Compile Include="../Winnow.Electron.Fixtures/CoverBehaviorFixture.cs" Link="Fixtures/CoverBehaviorFixture.cs" />
     <Compile Include="../Winnow.Electron.Fixtures/RecommendationPreviewFixture.cs" Link="Fixtures/RecommendationPreviewFixture.cs" />

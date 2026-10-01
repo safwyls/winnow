@@ -210,15 +210,5 @@
       }
     ],
     "reason": "The shared Steam card receives no importer in Setup and omits the purchase section on both surfaces while its key and session actions remain available."
-  },
-  "FirstRunSetupShellTests.Setup_keyboard_is_above_enabled_overlay_and_types_into_masked_field": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/electron/setup-parity.spec.ts",
-        "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
-      }
-    ],
-    "reason": "The real fullscreen OSK opens above setup, accepts a character into a masked IGDB field and restores the field after controller Back. The original desktop gamepad keyboard activation is not yet provided by the fullscreen-only controller sampler."
   }
 }

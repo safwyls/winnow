@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { FullscreenThemeSettings } from '../src/renderer/features/FullscreenThemeSettings'
 import { DEFAULT_PROFILE, resolvedTypography, typographyKey, type ThemeProfile } from '../src/shared/theme'
@@ -8,7 +8,7 @@ import { DEFAULT_TYPOGRAPHY } from '../src/shared/typography'
 import type { ThemeRuntime } from '../src/renderer/theming/runtime'
 
 afterEach(cleanup)
-function fixture(profile = structuredClone(DEFAULT_PROFILE)) {
+function fixture(profile = structuredClone(DEFAULT_PROFILE), setup = false) {
   let current = profile
   const openStudio = vi.fn(),
     listFonts = vi.fn(async () => ['Fixture Display', 'Fixture Sans', 'Fixture Mono', 'url:invalid'])
@@ -20,6 +20,7 @@ function fixture(profile = structuredClone(DEFAULT_PROFILE)) {
       <FullscreenThemeSettings
         runtime={{ profile: value, setProfile, theme: { name: 'Avalon' } } as unknown as ThemeRuntime}
         openStudio={openStudio}
+        setup={setup}
       />
     )
   }
@@ -42,6 +43,47 @@ it('selects the shared palette without overwriting other composition settings an
   fireEvent.click(screen.getByRole('button', { name: 'Theme Studio' }))
   expect(f.openStudio).toHaveBeenCalledOnce()
 })
+
+it.each([false, true])(
+  'shows picker-local controller hints that follow font input focus (setup=%s)',
+  async (setup) => {
+    const f = fixture(structuredClone(DEFAULT_PROFILE), setup)
+    render(<f.Harness />)
+    const theme = screen.getByRole('button', { name: 'Theme' })
+    act(() => theme.focus())
+    fireEvent.click(theme)
+    const palette = screen.getByRole('dialog', { name: 'Theme' })
+    const paletteHints = within(palette).getByRole('group', { name: 'Theme picker controls' })
+    expect(paletteHints.textContent).toContain('A Select')
+    expect(paletteHints.textContent).toContain('B Back')
+    expect(paletteHints.textContent).not.toContain('Keyboard')
+    expect(paletteHints.querySelector('[data-theme-picker-glyph="A"] svg')).toBeTruthy()
+    expect(paletteHints.querySelector('[data-theme-picker-glyph="B"] svg')).toBeTruthy()
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    await waitFor(() => expect(document.activeElement).toBe(theme))
+
+    const origin = screen.getByRole('button', { name: 'Interface font' })
+    act(() => origin.focus())
+    fireEvent.click(origin)
+    const picker = screen.getByRole('dialog', { name: 'Interface font' })
+    const hints = within(picker).getByRole('group', { name: 'Theme picker controls' })
+    expect(hints.textContent).not.toContain('Keyboard')
+    const input = within(picker).getByRole('textbox', { name: 'Font family' })
+    act(() => input.focus())
+    expect(hints.textContent).toContain('Y Keyboard')
+    expect(hints.querySelector('[data-theme-picker-glyph="Y"] svg')).toBeTruthy()
+    act(() => within(picker).getByRole('button', { name: 'Back' }).focus())
+    expect(hints.textContent).not.toContain('Keyboard')
+    expect(hints.querySelector('[data-theme-picker-glyph="Y"]')).toBeNull()
+    act(() => input.focus())
+    expect(hints.textContent).toContain('Y Keyboard')
+    fireEvent.keyDown(input, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(origin))
+    fireEvent.click(origin)
+    expect(screen.getByRole('group', { name: 'Theme picker controls' }).textContent).not.toContain('Keyboard')
+  },
+)
 
 it.each([
   ['Heading font', 'headingFont'],

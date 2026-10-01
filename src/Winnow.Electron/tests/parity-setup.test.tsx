@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Setup } from '../src/renderer/features/Setup'
 import type { ApiRequest } from '../src/shared/bridge'
@@ -40,6 +40,21 @@ function fixture(step: number | null, override?: (request: ApiRequest) => unknow
   })
   return { request, client }
 }
+async function openIgdb(mode: 'desktop' | 'fullscreen') {
+  if (mode === 'fullscreen')
+    fireEvent.click(await screen.findByRole('button', { name: 'Set up IGDB metadata' }))
+  return (await screen.findByLabelText('Client secret')) as HTMLInputElement
+}
+const providerEntries = [
+  '',
+  'Set up IGDB metadata',
+  'Set up Steam',
+  'Set up Epic',
+  'Check GOG Galaxy',
+  'Choose theme and appearance',
+  'Choose app settings',
+  'Choose library settings',
+]
 
 describe.each(['desktop', 'fullscreen'] as const)('%s setup parity', (mode) => {
   it('closes Steam consent before navigating the wizard and traps the active layer', async () => {
@@ -50,12 +65,24 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup parity', (mode) => {
         <Setup mode={mode} />
       </QueryClientProvider>,
     )
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign in to Steam' }))
+    if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Set up Steam' }))
+    const signIn = await screen.findByRole('button', { name: 'Sign in to Steam' })
+    const navigation = (
+      mode === 'fullscreen' ? ['Back to setup'] : ['Back', 'Continue', 'Skip this step', 'Skip setup']
+    ).map((name) => screen.getByRole('button', { name }) as HTMLButtonElement)
+    await waitFor(() => expect(navigation.every((button) => !button.disabled)).toBe(true))
+    fireEvent.click(signIn)
     const consent = screen.getByRole('dialog', { name: 'Before you sign in' })
     expect(consent.contains(document.activeElement)).toBe(true)
+    await waitFor(() => expect(navigation.every((button) => button.disabled)).toBe(true))
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Before you sign in' })).toBeNull())
-    expect(screen.getByRole('heading', { name: 'Your Steam library' })).toBeTruthy()
+    await waitFor(() =>
+      expect(navigation.every((button) => button.isConnected && !button.disabled)).toBe(true),
+    )
+    expect(screen.getByRole('dialog').querySelector('.setup-header h2')?.textContent).toBe(
+      mode === 'fullscreen' ? 'Steam' : 'Your Steam library',
+    )
     expect(request.mock.calls.some(([input]) => input.route === 'setup.put')).toBe(false)
   })
 
@@ -89,6 +116,20 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup parity', (mode) => {
     for (let index = 0; index < 9; index++) {
       await screen.findByText(`SETUP · ${index + 1} OF 9`)
       expect(completed).not.toHaveBeenCalled()
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          screen.getByRole('button', {
+            name:
+              mode === 'fullscreen' && index > 0 && index < 8
+                ? providerEntries[index]
+                : index === 0
+                  ? 'Get started'
+                  : index === 8
+                    ? 'Open my library'
+                    : 'Continue',
+          }),
+        ),
+      )
       fireEvent.click(
         screen.getByRole('button', {
           name: index === 0 ? 'Get started' : index === 8 ? 'Open my library' : 'Continue',
@@ -113,7 +154,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup parity', (mode) => {
         <Setup mode={mode} />
       </QueryClientProvider>,
     )
-    const secret = (await screen.findByLabelText('Client secret')) as HTMLInputElement
+    const secret = await openIgdb(mode)
     expect(secret.type).toBe('password')
     fireEvent.change(secret, { target: { value: 'unsaved-secret' } })
     const otherMode = mode === 'desktop' ? 'fullscreen' : 'desktop'
@@ -122,12 +163,13 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup parity', (mode) => {
         <Setup mode={otherMode} />
       </QueryClientProvider>,
     )
-    expect(((await screen.findByLabelText('Client secret')) as HTMLInputElement).value).toBe('')
+    expect((await openIgdb(otherMode)).value).toBe('')
     fireEvent.change(screen.getByLabelText('Client secret'), { target: { value: 'discard-again' } })
+    if (otherMode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Back to setup' }))
     fireEvent.click(screen.getByRole('button', { name: 'Skip this step' }))
     await screen.findByRole('heading', { name: 'Your Steam library' })
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
-    expect(((await screen.findByLabelText('Client secret')) as HTMLInputElement).value).toBe('')
+    expect((await openIgdb(otherMode)).value).toBe('')
     expect(request.mock.calls.some(([input]) => input.route === 'connections.igdb.put')).toBe(false)
   })
 
@@ -144,10 +186,16 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup parity', (mode) => {
         <Setup mode={mode} />
       </QueryClientProvider>,
     )
-    fireEvent.change(await screen.findByLabelText('Client secret'), { target: { value: 'secret' } })
+    fireEvent.change(await openIgdb(mode), { target: { value: 'secret' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save credentials' }))
     await waitFor(() =>
-      expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(true),
+      expect(
+        (
+          screen.getByRole('button', {
+            name: mode === 'fullscreen' ? 'Back to setup' : 'Continue',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true),
     )
     expect(request.mock.calls.some(([input]) => input.route === 'setup.put')).toBe(false)
     finish({ ok: true, status: 200, data: 0 })
@@ -156,8 +204,15 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup parity', (mode) => {
     )
     expect((screen.getByLabelText('Client secret') as HTMLInputElement).value).toBe('')
     await waitFor(() =>
-      expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(false),
+      expect(
+        (
+          screen.getByRole('button', {
+            name: mode === 'fullscreen' ? 'Back to setup' : 'Continue',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false),
     )
+    if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Back to setup' }))
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     await screen.findByRole('heading', { name: 'Your Steam library' })
     expect(request.mock.calls.filter(([input]) => input.route === 'connections.igdb.put')).toHaveLength(1)
@@ -192,10 +247,15 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup parity', (mode) => {
         <Setup mode={mode} />
       </QueryClientProvider>,
     )
-    const checkbox = await screen.findByRole('checkbox', { name: /Start in fullscreen/ })
+    if (mode === 'fullscreen')
+      fireEvent.click(await screen.findByRole('button', { name: 'Choose app settings' }))
+    const checkbox = await screen.findByRole(mode === 'fullscreen' ? 'switch' : 'checkbox', {
+      name: /Start in fullscreen/,
+    })
     await waitFor(() => expect((checkbox as HTMLInputElement).disabled).toBe(false))
     fireEvent.click(checkbox)
     await screen.findByRole('alert')
+    if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Back to setup' }))
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     await screen.findByText(/A preference could not be saved/)
     expect(request.mock.calls.some(([input]) => input.route === 'setup.put')).toBe(false)
@@ -206,6 +266,117 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup parity', (mode) => {
     fireEvent.click(screen.getByRole('button', { name: 'Skip setup' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
+})
+
+it('keeps desktop IGDB saves and feedback outside the field scroller', async () => {
+  const { request, client } = fixture(1)
+  render(
+    <QueryClientProvider client={client}>
+      <Setup mode="desktop" />
+    </QueryClientProvider>,
+  )
+  const secret = await openIgdb('desktop')
+  const form = screen.getByRole('form', { name: 'IGDB credentials' })
+  const fields = form.querySelector('.igdb-settings-fields')!
+  expect(fields.contains(secret)).toBe(true)
+  expect(fields.contains(screen.getByLabelText('Client ID'))).toBe(true)
+  for (const name of ['Save credentials', 'Remove saved credentials']) {
+    const action = within(form).getByRole('button', { name })
+    expect(fields.contains(action)).toBe(false)
+    expect(action.closest('.igdb-settings-actions')).toBeTruthy()
+  }
+  fireEvent.click(within(form).getByRole('button', { name: 'Save credentials' }))
+  const failure = await screen.findByRole('alert')
+  expect(fields.contains(failure)).toBe(false)
+  expect(document.activeElement).toBe(secret)
+  expect(request.mock.calls.some(([input]) => input.route === 'connections.igdb.put')).toBe(false)
+})
+
+it.each(['Escape', 'button'] as const)(
+  'fullscreen provider %s returns to the same IGDB step and discards the draft',
+  async (back) => {
+    const { request, client } = fixture(1)
+    render(
+      <QueryClientProvider client={client}>
+        <Setup mode="fullscreen" />
+      </QueryClientProvider>,
+    )
+    const entry = await screen.findByRole('button', { name: 'Set up IGDB metadata' })
+    await waitFor(() => expect(document.activeElement).toBe(entry))
+    expect(screen.queryByLabelText('Client secret')).toBeNull()
+    const secret = await openIgdb('fullscreen')
+    expect(screen.getByRole('heading', { name: 'IGDB metadata' })).toBeTruthy()
+    fireEvent.change(secret, { target: { value: 'discard-provider-draft' } })
+    if (back === 'Escape') fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    else fireEvent.click(screen.getByRole('button', { name: 'Back to setup' }))
+    await screen.findByRole('heading', { name: 'Fill in the details' })
+    expect(screen.getByText('SETUP · 2 OF 9')).toBeTruthy()
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Set up IGDB metadata' })),
+    )
+    expect(
+      request.mock.calls.some(
+        ([input]) => input.route === 'setup.put' || input.route === 'connections.igdb.put',
+      ),
+    ).toBe(false)
+    expect((await openIgdb('fullscreen')).value).toBe('')
+  },
+)
+
+describe.each(['Escape', 'button'] as const)('fullscreen %s provider return', (back) => {
+  it.each([
+    [2, 'Steam'],
+    [3, 'Epic'],
+    [4, 'GOG'],
+    [5, 'Appearance'],
+    [6, 'Application'],
+    [7, 'Library'],
+  ] as const)('step %i opens %s and restores its cursor and focused entry', async (step, title) => {
+    const { request, client } = fixture(step)
+    render(
+      <QueryClientProvider client={client}>
+        <Setup mode="fullscreen" appearance={<button>Choose theme</button>} />
+      </QueryClientProvider>,
+    )
+    const entry = await screen.findByRole('button', { name: providerEntries[step] })
+    await waitFor(() => expect(document.activeElement).toBe(entry))
+    fireEvent.click(entry)
+    expect(screen.getByRole('dialog').querySelector('.setup-header h2')?.textContent).toBe(title)
+    expect(screen.getByRole('dialog').getAttribute('data-setup-provider')).toBe(String(step))
+    if (back === 'Escape') fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    else fireEvent.click(screen.getByRole('button', { name: 'Back to setup' }))
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: providerEntries[step] })),
+    )
+    expect(screen.getByText(`SETUP · ${step + 1} OF 9`)).toBeTruthy()
+    expect(request.mock.calls.some(([input]) => input.route === 'setup.put')).toBe(false)
+    expect(screen.getByRole('dialog').hasAttribute('data-setup-provider')).toBe(false)
+  })
+})
+
+it('fullscreen controller hints follow wizard depth and focused editable fields', async () => {
+  const { client } = fixture(0)
+  render(
+    <QueryClientProvider client={client}>
+      <Setup mode="fullscreen" />
+    </QueryClientProvider>,
+  )
+  const hints = await screen.findByRole('group', { name: 'Setup controls' })
+  const labels = () => [...hints.children].map((hint) => hint.textContent?.replace(/\s+/g, ' ').trim())
+  expect(labels()).toEqual(['A Select'])
+  expect(hints.querySelectorAll('svg')).toHaveLength(1)
+  fireEvent.click(screen.getByRole('button', { name: 'Get started' }))
+  await screen.findByRole('button', { name: 'Set up IGDB metadata' })
+  expect(labels()).toEqual(['A Select', 'B Previous step'])
+  const secret = await openIgdb('fullscreen')
+  expect(labels()).toEqual(['A Select', 'B Back'])
+  act(() => secret.focus())
+  expect(labels()).toEqual(['A Select', 'B Back', 'Y Keyboard'])
+  expect(hints.querySelectorAll('svg')).toHaveLength(3)
+  act(() => screen.getByRole('button', { name: 'Back to setup' }).focus())
+  expect(labels()).toEqual(['A Select', 'B Back'])
+  fireEvent.click(screen.getByRole('button', { name: 'Back to setup' }))
+  expect(labels()).toEqual(['A Select', 'B Previous step'])
 })
 
 it('does not interrupt an existing or completed library', async () => {

@@ -242,6 +242,19 @@ taking navigation back. Progress, cancellation and retry share one state across 
 An interrupted response retains its operation identity for retry. Setup pauses for a
 handoff and **Resume setup** returns to the same saved step.
 
+First-run setup keeps its saved cursor across desktop and fullscreen. Desktop uses a
+bounded overlay with fixed navigation; IGDB Save, Remove and status stay outside the
+field scroller. Fullscreen uses a separate page with controller hints. Its provider and
+settings pages return to the same step when closed. Leaving a credential step or changing
+presentation clears unsaved secrets. Steam consent and the controller keyboard keep their
+own focus scope above setup.
+
+The Theme step includes ordinary palette, font, layout and transparency choices on
+desktop, and the shared TV appearance controls on fullscreen. Pending saves keep the
+wizard in place; failed saves can be retried or skipped. Fullscreen appearance keeps
+its adjustment and reset hints, with nested pickers above the setup page. Pickers keep
+their own Select and Back hints, with Keyboard shown when the font-family field has focus.
+
 Each data directory owns one Electron session. Additional launches restore its window
 and deliver requests in order. Before the renderer is ready, the queue holds up to 64
 requests and coalesces adjacent duplicates; after readiness, repeated requests each
@@ -251,8 +264,13 @@ Shell activation IDs above JavaScript's safe integer range travel as canonical d
 strings. The backend selects their current primary action, preserving the exact ownership
 ID and the ordinary operation retry rules.
 
-The first backend attachment allows 45 seconds for discovery and the event handshake before
-initial snapshot requests fail. Preparation remains visible while those requests wait.
+Before opening the library window, Electron waits up to 45 seconds for a healthy backend
+and its initial presentation preferences, or a newly started companion's failure.
+The preference read uses the remaining deadline so a slow saved-mode read cannot open
+setup in the wrong presentation first. A deterministic companion startup refusal exits
+without opening the library. A missing companion or timeout opens the recoverable connection
+screen. After the window opens, preparation remains visible while primary snapshots wait
+for discovery and the event handshake, with the same 45-second initial request deadline.
 After a successful connection, requests during a disconnect wait up to 12 seconds for
 reconnection. Canceling a queued request prevents it from being sent later.
 
@@ -388,8 +406,11 @@ Set `WINNOW_BACKEND_PATH` to an absolute backend executable or DLL to use anothe
 Startup switches configure a newly started backend, not one already running. Closing the
 frontend leaves the backend running, as described in the [API guide](../../docs/frontend-api.md).
 
-An invalid startup argument or unusable frontend data directory exits with code 2. A failure
-during frontend initialization shows a diagnostic message and exits with code 3; cancellation
+An invalid startup argument or unusable frontend data directory exits with code 2. A newly
+started companion's refusal preserves exit 2 or 3, including malformed configuration,
+invalid logging settings and an unsupported database schema. Backend configuration comes
+from its installation directory. A failure during frontend initialization shows a diagnostic
+message and exits with code 3, including a failed primary renderer load; cancellation
 exits cleanly. Messages redact credentials and incidental paths. When the selected library
 directory exists, initialization failures also write a bounded, redacted log in its `logs`
 folder. An unavailable logger or native alert does not replace the original exit status.

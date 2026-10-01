@@ -135,11 +135,19 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup account and recovery
     'setup signs out of %s through the real named route and holds navigation until it finishes',
     async (platform) => {
       const h = fixture(mode, platform === 'Steam' ? 2 : 3)
+      if (mode === 'fullscreen')
+        fireEvent.click(await screen.findByRole('button', { name: `Set up ${platform}` }))
       const gate = deferred<void>()
       h.gate(gate.promise)
       fireEvent.click(await screen.findByRole('button', { name: `Sign out of ${platform}` }))
       await waitFor(() =>
-        expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(true),
+        expect(
+          (
+            screen.getByRole('button', {
+              name: mode === 'fullscreen' ? 'Back to setup' : 'Continue',
+            }) as HTMLButtonElement
+          ).disabled,
+        ).toBe(true),
       )
       expect(h.request).toHaveBeenCalledWith({
         route: `connections.${platform.toLowerCase()}.signOut`,
@@ -151,11 +159,18 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup account and recovery
       await waitFor(() =>
         expect(screen.queryByRole('button', { name: `Sign out of ${platform}` })).toBeNull(),
       )
-      expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(false)
+      expect(
+        (
+          screen.getByRole('button', {
+            name: mode === 'fullscreen' ? 'Back to setup' : 'Continue',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false)
     },
   )
   it('setup shares Steam key removal and omits purchase import without a composed importer', async () => {
     const h = fixture(mode, 2)
+    if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Set up Steam' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Remove saved API key' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Remove saved API key' })).toBeNull())
     expect(h.stores.steam.hasSession).toBe(true)
@@ -165,6 +180,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup account and recovery
   it('an expired Epic account in setup retains its identity and offers reconnect without signing in automatically', async () => {
     const h = fixture(mode, 3)
     h.stores.epic!.isLive = false
+    if (mode === 'fullscreen') fireEvent.click(await screen.findByRole('button', { name: 'Set up Epic' }))
     await h.client.invalidateQueries({ queryKey: ['api', 'connections.get'] })
     await screen.findByText(/Epic sign-in expired for Fixture account/)
     expect(h.bridge.prepareEpicSignIn).not.toHaveBeenCalled()
@@ -220,14 +236,21 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup account and recovery
     fireEvent.click(await screen.findByRole('button', { name: 'Get started' }))
     for (let step = 1; step <= 7; step++) {
       await screen.findByText(`SETUP · ${step + 1} OF 9`)
-      if (step === 1)
+      if (step === 1) {
+        if (mode === 'fullscreen')
+          fireEvent.click(screen.getByRole('button', { name: 'Set up IGDB metadata' }))
         fireEvent.change(await screen.findByLabelText('Client secret'), {
           target: { value: 'unsaved-secret' },
         })
-      if (step === 2)
+        if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Back to setup' }))
+      }
+      if (step === 2) {
+        if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Set up Steam' }))
         fireEvent.change(await screen.findByLabelText('Steam Web API key'), {
           target: { value: 'unsaved-key' },
         })
+        if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Back to setup' }))
+      }
       fireEvent.click(screen.getByRole('button', { name: 'Skip this step' }))
     }
     fireEvent.click(await screen.findByRole('button', { name: 'Open my library' }))
@@ -256,12 +279,19 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup account and recovery
         <Setup mode={mode} />
       </>,
     )
-    const close = (await screen.findByRole('checkbox', {
-      name: /Close to notification area/,
+    if (mode === 'fullscreen')
+      fireEvent.click(await screen.findByRole('button', { name: 'Choose app settings' }))
+    const close = (await screen.findByRole(mode === 'fullscreen' ? 'switch' : 'checkbox', {
+      name: mode === 'fullscreen' ? 'Close to tray' : /Close to notification area/,
     })) as HTMLInputElement
     await waitFor(() => expect(close.disabled).toBe(false))
     fireEvent.click(close)
-    await waitFor(() => expect(close.checked).toBe(true))
+    await waitFor(() =>
+      expect(mode === 'fullscreen' ? close.getAttribute('aria-checked') === 'true' : close.checked).toBe(
+        true,
+      ),
+    )
+    if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Back to setup' }))
     fireEvent.click(screen.getByRole('button', { name: 'Skip setup' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(h.preferences.get('CloseToTray')).toBe('true')

@@ -8,6 +8,7 @@ import { Notice } from './shared'
 import { useLibrary } from '../api/hooks'
 import { Artwork } from '../components/Artwork'
 import { dormancy } from '../themes/avalon-data'
+import { useSetupBusy, useSetupPreferenceError } from './settingsState'
 
 export function boundedSetting(value: string | null | undefined, fallback: number, min: number, max: number) {
   if (value == null || !value.trim()) return fallback
@@ -22,7 +23,13 @@ const resetValues = {
   FullscreenFitUltrawide: 'false',
 }
 
-export function FullscreenAppearance({ themeControls }: { themeControls?: ReactNode }) {
+export function FullscreenAppearance({
+  themeControls,
+  setup = false,
+}: {
+  themeControls?: ReactNode
+  setup?: boolean
+}) {
   const preferences = usePresentationPreferences(),
     client = useQueryClient()
   const [confirm, setConfirm] = useState(false),
@@ -31,6 +38,8 @@ export function FullscreenAppearance({ themeControls }: { themeControls?: ReactN
   const resetButton = useRef<HTMLButtonElement>(null)
   const surface = useRef<HTMLElement>(null)
   const disabled = !preferences.loaded || preferences.pending || resetting
+  useSetupBusy(preferences.pending || resetting || confirm)
+  useSetupPreferenceError(preferences.error || failure)
   useEffect(() => {
     if (!preferences.loaded) return
     const timer = setTimeout(() => {
@@ -175,9 +184,9 @@ export function FullscreenAppearance({ themeControls }: { themeControls?: ReactN
           }}
         >
           <Dialog.Portal>
-            <Dialog.Overlay className="dialog-overlay" />
+            <Dialog.Overlay className={`dialog-overlay${setup ? ' setup-nested-overlay' : ''}`} />
             <Dialog.Content
-              className="dialog-content fullscreen-settings-reset"
+              className={`dialog-content fullscreen-settings-reset${setup ? ' setup-nested-dialog' : ''}`}
               role="alertdialog"
               aria-describedby="fullscreen-reset-description"
               onCloseAutoFocus={(event) => {

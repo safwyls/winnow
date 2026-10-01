@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 173,
-    "partial": 29,
-    "ported": 1537,
+    "pending": 162,
+    "partial": 23,
+    "ported": 1553,
     "retained-backend": 663,
-    "framework-specific": 33
+    "framework-specific": 34
   },
   "tests": [
     {
@@ -3390,17 +3390,102 @@
     {
       "id": "StartupBoundaryTests.Frontend_subscriptions_wait_for_native_platform_services_and_no_backend_workers_are_started",
       "source": "tests/Winnow.Tests/Enforcement/StartupBoundaryTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "reuses a healthy external backend without another companion or startup waiter"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "waits for a live published backend without initializing its workers again"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "starts one companion and constructs no library until its initial health succeeds"
+        },
+        {
+          "file": "tests/frontend-dependency-boundary.test.ts",
+          "case": "recursively keeps renderer, main and preload imports outside backend implementation and database packages"
+        },
+        {
+          "file": "tests/parity-architecture.test.ts",
+          "case": "the compiled renderer and drawing worker dependency graphs stay in presentation and shared contracts"
+        },
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "saved startup shows a responsive native window with one exact first library snapshot and backend-only read leases"
+        }
+      ],
+      "reason": "The source textual AfterPlatformServicesSetup/host.Start/classic-lifetime ordering and forbidden repository/worker registrations are replaced by actual Electron native-readiness observations and the recursive frontend dependency boundary. The native wrapper records app.isReady for every real loopback fetch, including SSE subscription, and every BrowserWindow; the real companion owns repositories and workers in a separate process. Main reuses an already healthy or published live backend and starts at most one companion otherwise. The renderer animation worker remains permitted; it is not a backend ingest/enrichment/session worker. Desktop and fullscreen run the same external-backend boundary."
     },
     {
       "id": "StartupBoundaryTests.Every_async_void_lifecycle_override_carries_an_error_boundary",
       "source": "tests/Winnow.Tests/Enforcement/StartupBoundaryTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "tests": [
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "a rejected primary renderer load reaches the exit-three boundary with its useful diagnostic"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "%s cancels a pending primary renderer load and consumes its late failure without an alert"
+        },
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "unloadable renderer startup reports exit three without an unhandled rejection and leaves its independent backend available until explicit cleanup"
+        }
+      ],
+      "reason": "The original recursively scans C# App files for protected override async void methods, requires a nonempty result, parses each method body by brace depth and requires catch. Electron/React has no Avalonia lifecycle override or C# async-void method, so that literal scanner and its nonempty-set assertion do not apply. This disposition does not waive asynchronous error handling: the real primary renderer-load Promise is observed through the startup failure boundary, failed native loading reports exit 3 once, and closed-window/quit cancellation consumes late rejection without an alert. The separate backend retains its independent lifetime."
     },
     {
       "id": "StartupBoundaryTests.The_startup_spine_is_bounded",
       "source": "tests/Winnow.Tests/Enforcement/StartupBoundaryTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "a rejected primary renderer load reaches the exit-three boundary with its useful diagnostic"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "quitting aborts the actual health fetch without waiting for its timeout"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "queues activation while fatal startup is pending instead of constructing a library window"
+        },
+        {
+          "file": "tests/parity-startup-failure.test.ts",
+          "case": "preserves the original fault when logger construction fails"
+        },
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "failure stays covered and retry runs a fresh load"
+        },
+        {
+          "file": "tests/parity-startup-preparation.test.ts",
+          "case": "a rendering failure cancels the presentation and late data cannot reveal it"
+        },
+        {
+          "file": "tests/theme-runtime.test.tsx",
+          "case": "restores a safe profile when stored appearance is incompatible"
+        },
+        {
+          "file": "tests/theme-runtime.test.tsx",
+          "case": "returns to the built-in composition after a module load error"
+        },
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "startup exits three without a library window and preserves database bytes"
+        },
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "unloadable renderer startup reports exit three without an unhandled rejection and leaves its independent backend available until explicit cleanup"
+        }
+      ],
+      "reason": "All three original source rows remain represented: Program startup reporting becomes the guarded app.whenReady/initialize chain; MainWindow startup-load reporting becomes awaited primary loadURL plus the controlled renderer preparation failure/retry boundary; theme.LoadAsync becomes validated appearance hydration and a guarded module-load fallback. Actual process failures retain useful redacted diagnostics and exit 3. The primary load rejects into that same boundary rather than becoming an unhandled Promise, and initial activations cannot construct a window while a fatal companion result is still pending. Startup health and preference waiting share the existing 45-second frontend deadline; missing/slow backend attachment remains recoverable and cancellation closes timers/listeners cleanly."
     },
     {
       "id": "VisualDisciplineTests.Flare_is_attached_to_the_unread_signal_and_to_nothing_else",
@@ -16494,37 +16579,126 @@
     {
       "id": "StartupProcessTests.Windows_startup_opens_a_responsive_native_window",
       "source": "tests/Winnow.Tests/StartupProcessTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "saved startup shows a responsive native window with one exact first library snapshot and backend-only read leases"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "held initial preferences apply saved fullscreen before renderer loading without scheduling a second refresh"
+        },
+        {
+          "file": "tests/electron/setup-contracts.spec.ts",
+          "case": "cold saved presentation opens Welcome only after startup in its original native mode"
+        }
+      ],
+      "reason": "Both saved desktop and fullscreen cases launch the actual isolated Electron process and real 20-work backend before renderer publication. They require a nonzero native window handle and visible, undestroyed window within 30 seconds, real Win32 WaitForInputIdle(10000), then a further one-second alive/Responding check. Saved fullscreen is applied before the first renderer loads. The cold-mode native cases additionally hold the first real presentation response: no BrowserWindow or setup is published until its release, then the first visible Welcome uses the saved mode. The backend remains external and all data lives in a disposable directory."
     },
     {
       "id": "StartupProcessTests.Malformed_configuration_is_reported_before_the_library_is_opened",
       "source": "tests/Winnow.Tests/StartupProcessTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "startup exits three without a library window and preserves database bytes"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "an owned startup exit %s preserves its status and useful diagnostic before any library window"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "the real spawn boundary keeps backend configuration at its executable root and bounds, redacts and unreferences stderr"
+        }
+      ],
+      "reason": "Both saved modes preserve the exact malformed JSON `{ invalid-json`, actual child-process exit 3, one useful Winnow could not start alert, no native library window or uncaught failure, and byte-identical seeded database. Independent-backend configuration already belongs to its installation/AppContext root; the fixture copies the real backend to an isolated installation and writes appsettings.local.json there instead of changing the frontend working directory into a new configuration source. The wrapper records the actual native error-box content without opening a blocking test dialog. Process completion remains bounded to 30 seconds; stderr capture is bounded and redacted."
     },
     {
       "id": "StartupProcessTests.Invalid_host_logging_configuration_is_reported_without_starting_the_ui",
       "source": "tests/Winnow.Tests/StartupProcessTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "startup exits three without a library window and preserves database bytes"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "an owned startup exit %s preserves its status and useful diagnostic before any library window"
+        }
+      ],
+      "reason": "Both saved modes use the original Logging.LogLevel.Default value invalid-review-level against the actual backend host. Its failure is observed before a library window exists, retains exit 3 and one useful diagnostic, produces no unhandled exception, and leaves the exact database bytes unchanged. The isolated installation-root appsettings.local.json is the documented external-backend counterpart of the source CWD appsettings.json; no renderer or backend response is fabricated."
     },
     {
       "id": "StartupProcessTests.Unsupported_schema_is_refused_before_services_or_either_surface_start",
       "source": "tests/Winnow.Tests/StartupProcessTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "startup exits three without a library window and preserves database bytes"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "an owned startup exit %s preserves its status and useful diagnostic before any library window"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "a concurrent healthy owner takes precedence over our companion ownership refusal"
+        }
+      ],
+      "reason": "Both saved modes insert the exact future SchemaVersions row Winnow.Data.Migrations.9999_future_schema.sql at 2026-09-11 00:00:00, checkpoint/truncate WAL, and launch the actual backend. The process returns3 before any native library window, includes does not support in its useful failure diagnostic, has no uncaught exception, and preserves database bytes. A healthy concurrent backend owner is separately distinguished from a fatal owned startup so another frontend never creates a second backend lifetime."
     },
     {
       "id": "StartupProcessTests.Unusable_data_directory_still_returns_exit_two",
       "source": "tests/Winnow.Tests/StartupProcessTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "unusable explicit data directory exits two before any native library window"
+        },
+        {
+          "file": "tests/parity-startup-failure.test.ts",
+          "case": "keeps startup faults distinct from invalid data-directory refusals"
+        }
+      ],
+      "reason": "The explicit data directory is an actual file containing the original a file cannot be the data directory text. Real Electron startup returns2, creates no BrowserWindow, records one startup diagnostic and no uncaught failure, and leaves the file contents unchanged. This refusal remains distinct from fatal host/framework exit 3 and never falls back to the user library."
     },
     {
       "id": "StartupReadsOnceTests.The_window_does_not_build_the_merge_screen_on_open",
       "source": "tests/Winnow.Tests/StartupReadsOnceTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-lazy-panes.test.tsx",
+          "case": "mounts only activated panes and restores Appearance state after returning from Library"
+        },
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "saved startup shows a responsive native window with one exact first library snapshot and backend-only read leases"
+        }
+      ],
+      "reason": "Both actual App surfaces initially mount no merge pane or other unopened lazy settings panes; the real native first-start request ledger contains zero identity-review calls. Entering Identity review mounts the production queue and performs its real API read. This behavior replaces the Avalonia source-text check that LoadOnOpenAsync does not eagerly run MergeQueue.LoadCommand; ordinary lazy entry remains supported."
     },
     {
       "id": "StartupReadsOnceTests.The_window_scores_the_feed_only_when_no_library_load_will",
       "source": "tests/Winnow.Tests/StartupReadsOnceTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "saved startup shows a responsive native window with one exact first library snapshot and backend-only read leases"
+        },
+        {
+          "file": "tests/frontend-dependency-boundary.test.ts",
+          "case": "recursively keeps renderer, main and preload imports outside backend implementation and database packages"
+        }
+      ],
+      "reason": "The source protects an optional-library view-model path from scoring the feed twice. React always owns an API library/query provider and performs no frontend scoring, so the equivalent actual startup invariant is one initial feed request while the one coherent library snapshot publishes. Both native surfaces assert exactly one initial feed call and unchanged feed-call count after entering Library. The explicit backend request replaces the source library-load invalidation/optional-DI branch without inventing a second scoring implementation or a nullable React library model."
     },
     {
       "id": "SteamAccountPagePolicyTests.Only_the_store_origin_can_be_read",
@@ -25538,21 +25712,34 @@
     {
       "id": "FirstRunSetupDesktopTests.Header_and_footer_fills_stay_inside_the_rounded_frame",
       "source": "tests/Winnow.Ui.Tests/FirstRunSetupDesktopTests.cs",
-      "status": "partial",
-      "tests": [],
-      "reason": "The Electron wizard uses one clipped 8px frame for its header and footer. Equivalent rendered pixel checks for rounded corners in both themes remain required."
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/setup-contracts.spec.ts",
+          "case": "source seven pixel inner corners clip every header and footer fill"
+        }
+      ],
+      "reason": "Both source palettes, Winnow and Rose Pine Dawn, run at 1200×604. Native browser measurements preserve the 1px outer border, 8px outer radius and 7px inner clipped radius. For each of the four 7×7 corner regions, actual rendered pixels differ when clipping is deliberately removed; header/footer fills are therefore proven to stay inside the rounded frame. The browser screenshot comparison replaces Avalonia RenderTargetBitmap capture while retaining the complete per-corner test, rather than relying only on CSS declarations."
     },
     {
       "id": "FirstRunSetupDesktopTests.Every_step_keeps_navigation_inside_a_short_desktop_window",
       "source": "tests/Winnow.Ui.Tests/FirstRunSetupDesktopTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/electron/setup-parity.spec.ts",
-          "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+          "file": "tests/electron/setup-contracts.spec.ts",
+          "case": "desktop source all nine steps retain navigation and fixed IGDB actions at 1200 by 604 then restore the replay origin"
+        },
+        {
+          "file": "tests/parity-setup.test.tsx",
+          "case": "keeps desktop IGDB saves and feedback outside the field scroller"
+        },
+        {
+          "file": "tests/parity-setup.test.tsx",
+          "case": "resumes every step, persists navigation, and completes only at Ready"
         }
       ],
-      "reason": "Native Chromium checks headings, Back, Skip setup and Continue bounds and Next focus through all 9 steps at 1000×640 desktop and 1280×720 fullscreen. The original additional requirement that IGDB Save/Remove actions sit outside the body scroller remains unported."
+      "reason": "The exact short desktop 1200×604 content area visits Welcome, IGDB, Steam, Epic, GOG, Appearance, Application, Library and Ready. Every heading and Next/Back/Skip action has positive bounds inside the window, each step initially focuses Next, and completing setup restores the original replay control. IGDB Save/Remove and feedback stay outside the field scroller; embedded platform headers are absent; Application does not contain setup or IGDB cards. The nine-step source sequence and actual browser geometry are retained."
     },
     {
       "id": "FirstRunSetupDesktopTests.Tab_cycles_inside_setup_and_skip_all_restores_the_invoking_control",
@@ -25609,14 +25796,26 @@
     {
       "id": "FirstRunSetupFullscreenTests.Controller_setup_blocks_root_navigation_and_returns_from_provider_to_same_step",
       "source": "tests/Winnow.Ui.Tests/FirstRunSetupFullscreenTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
+          "file": "tests/electron/setup-contracts.spec.ts",
+          "case": "fullscreen source setup blocks root routes and provider Back restores every unchanged step at"
+        },
+        {
           "file": "tests/parity-setup.test.tsx",
-          "case": "uses the presentation-specific Escape action after nested editors close"
+          "case": "fullscreen provider %s returns to the same IGDB step and discards the draft"
+        },
+        {
+          "file": "tests/parity-setup.test.tsx",
+          "case": "step %i opens %s and restores its cursor and focused entry"
+        },
+        {
+          "file": "tests/parity-setup.test.tsx",
+          "case": "fullscreen controller hints follow wizard depth and focused editable fields"
         }
       ],
-      "reason": "The fullscreen wizard shares its saved cursor and Back/Escape moves to the previous step. Electron embeds configuration inside the step; physical controller root-navigation isolation and separate provider-page return need additional integration coverage."
+      "reason": "Actual simulated controller Next/Menu/Back at Welcome cannot navigate the root or open Quick Menu. Advancing to IGDB and accepting its entry opens the provider page; Back restores the unchanged IGDB step and focused entry, and skips proceed without saving credentials. Native coverage also exercises each remaining provider/settings entry and return before SkipAll restores root navigation. The original 1920×1080 scope is retained and supplemented with 1280×720 at text 1.4; the full-canvas shell, local A/B/Y hints and safe-area typography are verified independently from the desktop overlay."
     },
     {
       "id": "FirstRunSetupFullscreenTests.Application_settings_replay_opens_setup_instead_of_leaving_settings_stack_active",
@@ -25649,31 +25848,47 @@
     {
       "id": "FirstRunSetupShellTests.New_install_opens_setup_after_startup_in_the_selected_presentation",
       "source": "tests/Winnow.Ui.Tests/FirstRunSetupShellTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
+          "file": "tests/electron/setup-contracts.spec.ts",
+          "case": "cold saved presentation opens Welcome only after startup in its original native mode"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "held initial preferences apply saved fullscreen before renderer loading without scheduling a second refresh"
+        },
+        {
+          "file": "tests/parity-startup-boundaries.test.ts",
+          "case": "the initial preference wait uses only the remaining startup deadline and clears its listener"
+        },
+        {
           "file": "tests/parity-setup.test.tsx",
-          "case": "resumes every step, persists navigation, and completes only at Ready"
+          "case": "does not interrupt an existing or completed library"
         }
       ],
-      "reason": "Both presentation modes load and display persisted Welcome state. Full native application startup with a new backend data directory is outside the component test."
+      "reason": "The real fixture seeds an unfinished new-install cursor 0 and each saved native presentation before host exposure. Both native first-publication observers require Welcome only after startup presentation disappears and in the original saved desktop/fullscreen mode; SkipAll persists completion. Holding the actual initial preferences response proves a slow main request cannot briefly publish desktop setup first. The wait reuses the active read and spends only the remaining startup deadline, with a recoverable ordinary presentation if preferences fail or time out. Existing/completed libraries remain uninterrupted."
     },
     {
       "id": "FirstRunSetupShellTests.Setup_keyboard_is_above_enabled_overlay_and_types_into_masked_field",
       "source": "tests/Winnow.Ui.Tests/FirstRunSetupShellTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/electron/setup-parity.spec.ts",
-          "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+          "file": "tests/electron/setup-contracts.spec.ts",
+          "case": "desktop source masked keyboard owns the setup input layer and mode flips clear its unsaved draft"
+        },
+        {
+          "file": "tests/parity-setup.test.tsx",
+          "case": "discards an unsaved masked secret on skip and on presentation change"
         }
       ],
-      "reason": "The real fullscreen OSK opens above setup, accepts a character into a masked IGDB field and restores the field after controller Back. The original desktop gamepad keyboard activation is not yet provided by the fullscreen-only controller sampler."
+      "reason": "At the source 1200×640 size, the actual desktop setup opens IGDB and focuses a password input. Simulated Y opens the production keyboard above the setup layer; its initial 1 key is enabled, focused and topmost at its measured hit point, and simulated Accept inserts text while the input remains masked. Back dismisses only the keyboard and returns focus to the secret without advancing step 1. A fullscreen→desktop round trip clears the unsaved secret and returns focus inside setup; no credential write occurs. SkipAll restores shell input. The source disabled underlying ShellContent is represented by the App overlay input barrier, with native assertions retained in the completed test."
     },
     {
       "id": "FirstRunSetupShellTests.Controller_stays_in_steam_consent_and_back_closes_only_that_layer",
       "source": "tests/Winnow.Ui.Tests/FirstRunSetupShellTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
           "file": "tests/electron/setup-parity.spec.ts",
@@ -25684,7 +25899,7 @@
           "case": "closes Steam consent before navigating the wizard and traps the active layer"
         }
       ],
-      "reason": "Native fullscreen Chromium consumes simulated gamepad Menu without opening a root menu and Back dismisses only Steam consent, retaining the Steam setup cursor. The original method invokes desktop gamepad directions and Back; the desktop sampler currently leaves those inactive. Directional containment therefore remains incomplete despite passing keyboard Tab containment in both modes."
+      "reason": "The actual setup reaches Steam and opens its sign-in consent as the active nested layer. Four complete cycles of Next, Down, Right and Previous keep focus inside that visible dialog, followed by controller Back dismissing only consent and preserving the Steam cursor. The desktop source 1200×640 interaction is exercised in the stricter 1200×604 native content window, with fullscreen assessed separately at 1920×1080. The same test also retains Tab confinement, provider handoff/resumption and final replay-focus restoration. Wizard navigation remains disabled throughout consent and is enabled again after dismissal on both surfaces."
     },
     {
       "id": "FullscreenAccessibilityTests.Rendered_settings_and_filter_controls_expose_names_and_controller_routes",
@@ -30295,7 +30510,22 @@
     {
       "id": "StartupReadThreadTests.Library_and_startup_models_read_off_UI_thread_and_publish_on_UI_thread",
       "source": "tests/Winnow.Ui.Tests/StartupReadThreadTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/StartupBoundaryParityTests.cs",
+          "case": "First_library_read_preserves_twenty_works_one_snapshot_lease_and_the_saved_list_before_all_startup_models_read"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/StartupBoundaryParityTests.cs",
+          "case": "Startup_read_ledger_requires_the_real_backend_bearer_token"
+        },
+        {
+          "file": "tests/electron/startup-boundary.spec.ts",
+          "case": "saved startup shows a responsive native window with one exact first library snapshot and backend-only read leases"
+        }
+      ],
+      "reason": "The fixture retains exact LibraryReadFixtures.Seed(20): 20 works/releases/Steam ownerships and the ordered Try next release list [20, 1], seeded before the first host response. The actual first API library request records one coherent snapshot lease and 20/20/20 work/ownership/bucket publication; the HTTP adapter additionally performs three explicit preference leases, all recorded rather than claimed to be the source total 1. Both real renderers visibly publish 20 games and the list in Game 20/Game 1 order, then load the actual Merge queue, Appearance and Library settings. Every recorded repository lease belongs to the backend process, distinct from both Electron main and renderer; HTTP thread-pool reads have no UI synchronization context, and actual DOM publication establishes the browser UI boundary. This process separation replaces Avalonia Dispatcher.CheckAccess/PropertyChanged-thread instrumentation without omitting the three later startup models."
     },
     {
       "id": "SteamReportedActivityTests.Scope_filters_other_accounts_hidden_games_and_covered_increases",

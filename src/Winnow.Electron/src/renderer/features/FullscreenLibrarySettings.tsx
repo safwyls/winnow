@@ -11,6 +11,7 @@ import { RatingCapPreference, useLibraryPreferenceChange } from './RatingCap'
 import { parseExpansionGrouping } from './parity-library-grain'
 import { Notice } from './shared'
 import { ExplicitVisibility } from './ExplicitVisibility'
+import { useSetupBusy, useSetupPreferenceError } from './settingsState'
 
 export const librarySortChoices = [
   ['DormantLongest', 'Dormant longest'],
@@ -25,14 +26,18 @@ export function FullscreenLibrarySettings({
   onTools,
   onSpending,
   onRecommendations,
+  setup = false,
 }: {
-  onTools(): void
-  onSpending(): void
-  onRecommendations(): void
+  onTools?(): void
+  onSpending?(): void
+  onRecommendations?(): void
+  setup?: boolean
 }) {
   const presentation = usePresentationPreferences()
   const library = useApiQuery<LibraryPreferences>('preferences.library.get')
   const change = useLibraryPreferenceChange()
+  useSetupBusy(presentation.pending || change.pending)
+  useSetupPreferenceError(library.error || change.error || presentation.error)
   const entry = useFullscreenSettingsEntry(presentation.loaded)
   const sortIndex = Math.max(
     0,
@@ -99,10 +104,16 @@ export function FullscreenLibrarySettings({
       />
       <AccountVisibility mode="fullscreen" />
       <Notice error={library.error || change.error || presentation.error} />
-      <h2 className="fullscreen-settings-group">Manage library</h2>
-      <FullscreenSettingsAction label="Library tools" onClick={onTools} />
-      <FullscreenSettingsAction label="Spending" onClick={onSpending} />
-      <FullscreenSettingsAction label="Recommendations" onClick={onRecommendations} />
+      {!setup && (
+        <>
+          <h2 className="fullscreen-settings-group">Manage library</h2>
+          {onTools && <FullscreenSettingsAction label="Library tools" onClick={onTools} />}
+          {onSpending && <FullscreenSettingsAction label="Spending" onClick={onSpending} />}
+          {onRecommendations && (
+            <FullscreenSettingsAction label="Recommendations" onClick={onRecommendations} />
+          )}
+        </>
+      )}
     </section>
   )
 }

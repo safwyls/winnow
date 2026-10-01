@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { avalonPaletteId, resolvedThemeColors, type ThemeProfile } from '../../shared/theme'
 import type { WindowAppearanceResult } from '../../shared/windowAppearance'
 import { usePresentationPreferences } from '../features/SettingsPreferences'
+import { useSetupBusy, useSetupPreferenceError } from '../features/settingsState'
 import { avalonPalette, type AvalonPalette } from './avalon-palettes'
 import {
   aaCeiling,
@@ -116,6 +117,8 @@ export function useAvalonAppearance(profile: ThemeProfile, fullscreen: boolean, 
 export function AvalonAppearanceControls({ profile }: { profile: ThemeProfile }) {
   const preferences = usePresentationPreferences(),
     palette = paletteForProfile(profile)
+  useSetupBusy(preferences.pending)
+  useSetupPreferenceError(preferences.error)
   const [material, setMaterial] = useState(noMaterial)
   useEffect(() => {
     // The shell owns material changes. Read its last capability result through the

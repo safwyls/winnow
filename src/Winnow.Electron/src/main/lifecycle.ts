@@ -3,6 +3,7 @@ import { access, mkdir } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { readDiscovery, type Discovery } from './transport'
+import { scrubStartupDiagnostic } from './startup-failure'
 
 export function dataDirectoryArgument(args: string[]): string | undefined {
   const index = args.findIndex((arg) => arg === '--data-dir' || arg.startsWith('--data-dir='))
@@ -16,7 +17,8 @@ export function defaultDataRoot(): string {
   if (process.platform === 'win32') return process.env.LOCALAPPDATA ?? join(homedir(), 'AppData', 'Local')
   return process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share')
 }
-export async function discoverBackend(explicitDirectory?: string): Promise<Discovery> {
+export async function discoverBackend(explicitDirectory?: string, signal?: AbortSignal): Promise<Discovery> {
+  signal?.throwIfAborted()
   if (explicitDirectory) return readDiscovery(explicitDirectory)
   // The backend decides migration and can continue at the legacy location if migration fails.
   const root = defaultDataRoot()
@@ -26,25 +28,28 @@ export async function discoverBackend(explicitDirectory?: string): Promise<Disco
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
-  if (current && (await backendResponds(async () => current!))) return current
+  if (current && (await backendResponds(async () => current!, signal))) return current
   let legacy: Discovery | undefined
   try {
     legacy = await readDiscovery(join(root, 'Hoard'))
   } catch (error) {
     if (!current || (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
-  if (legacy && (await backendResponds(async () => legacy!))) return legacy
+  if (legacy && (await backendResponds(async () => legacy!, signal))) return legacy
   if (current) return current
   if (legacy) return legacy
   throw new Error('The backend has not published its connection yet')
 }
-export async function backendResponds(discover: () => Promise<Discovery>): Promise<boolean> {
+export async function backendResponds(
+  discover: () => Promise<Discovery>,
+  signal?: AbortSignal,
+): Promise<boolean> {
   try {
     const connection = await discover()
     const response = await fetch(new URL('/api/v1/health', connection.address), {
       headers: { Authorization: `Bearer ${connection.token}` },
       redirect: 'error',
-      signal: AbortSignal.timeout(1500),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(1500)]) : AbortSignal.timeout(1500),
     })
     if (!response.ok) return false
     const health = (await response.json()) as { apiVersion?: string; epoch?: string }
@@ -65,6 +70,7 @@ export async function backendProcessIsRunning(discover: () => Promise<Discovery>
 export interface StartedBackend {
   processId: number
   exited: Promise<number | null>
+  diagnostic(): string
 }
 export async function startBackend(options: {
   appPath: string
@@ -108,12 +114,24 @@ export async function startBackend(options: {
     cwd = resolve(options.appPath, '..', '..')
     args.unshift('run', '--project', project, '--')
   }
-  const child = spawn(command, args, { cwd, detached: true, windowsHide: true, stdio: 'ignore' })
-  const exited = new Promise<number | null>((resolve) => child.once('exit', (code) => resolve(code)))
+  const child = spawn(command, args, {
+    cwd,
+    detached: true,
+    windowsHide: true,
+    stdio: ['ignore', 'ignore', 'pipe'],
+  })
+  let diagnostic = ''
+  child.stderr?.setEncoding('utf8')
+  child.stderr?.on('data', (chunk: string) => {
+    diagnostic = (diagnostic + chunk).slice(-32768)
+  })
+  // The detached companion may outlive this frontend; its diagnostic pipe must not keep Electron alive.
+  ;(child.stderr as (NodeJS.ReadableStream & { unref?(): void }) | null)?.unref?.()
+  const exited = new Promise<number | null>((resolve) => child.once('close', (code) => resolve(code)))
   await new Promise<void>((resolve, reject) => {
     child.once('spawn', resolve)
     child.once('error', reject)
   })
   child.unref()
-  return { processId: child.pid!, exited }
+  return { processId: child.pid!, exited, diagnostic: () => scrubStartupDiagnostic(diagnostic) }
 }

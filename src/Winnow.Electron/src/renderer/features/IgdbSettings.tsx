@@ -22,9 +22,11 @@ export const igdbSavedStatus = (snapshot: IgdbConnection) =>
 export function IgdbConnectionPanel({
   mode = 'desktop',
   sectioned = false,
+  bounded = false,
 }: {
   mode?: Mode
   sectioned?: boolean
+  bounded?: boolean
 }) {
   const query = useApiQuery<IgdbConnection>('connections.igdb.get')
   const entry = useFullscreenSettingsEntry(
@@ -47,7 +49,9 @@ export function IgdbConnectionPanel({
         </>
       )}
       {!query.data && !query.error && <p role="status">Loading IGDB settings…</p>}
-      {query.data && <IgdbForm snapshot={query.data} mode={mode} sectioned={sectioned} key={mode} />}
+      {query.data && (
+        <IgdbForm snapshot={query.data} mode={mode} sectioned={sectioned} bounded={bounded} key={mode} />
+      )}
     </section>
   )
 }
@@ -56,10 +60,12 @@ export function IgdbForm({
   snapshot,
   mode = 'desktop',
   sectioned = false,
+  bounded = false,
 }: {
   snapshot: IgdbConnection
   mode?: Mode
   sectioned?: boolean
+  bounded?: boolean
 }) {
   const [clientId, setClientId] = useState(snapshot.clientId)
   const [secret, setSecret] = useState('')
@@ -153,16 +159,8 @@ export function IgdbForm({
       setFailure('Could not open the page. Visit dev.twitch.tv/console/apps to create a Twitch application.')
     }
   }
-  return (
-    <form
-      className={`igdb-settings-form mode-${mode}`}
-      aria-label="IGDB credentials"
-      noValidate
-      onSubmit={(event) => {
-        event.preventDefault()
-        void change(false)
-      }}
-    >
+  const fields = (
+    <>
       <p>
         IGDB adds game details and artwork. Enter the client ID and secret from your Twitch developer
         application.
@@ -213,25 +211,40 @@ export function IgdbForm({
         The secret is stored securely on this device. Changes take effect immediately.
       </p>
       {sectioned && <hr className="fullscreen-information-rule" />}
-      <div className="form-actions">
-        <button ref={saveButton} disabled={command.isPending}>
-          Save credentials
-        </button>
-        <button
-          type="button"
-          disabled={command.isPending}
-          onClick={() => {
-            void change(true)
-          }}
-        >
-          Remove saved credentials
-        </button>
-      </div>
-      <div ref={feedback}>
-        <Notice
-          error={failure ? new Error(failure) : undefined}
-          message={message || igdbSavedStatus(snapshot)}
-        />
+    </>
+  )
+  return (
+    <form
+      className={`igdb-settings-form mode-${mode}${bounded ? ' igdb-settings-bounded' : ''}`}
+      aria-label="IGDB credentials"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault()
+        void change(false)
+      }}
+    >
+      {bounded ? <div className="igdb-settings-fields">{fields}</div> : fields}
+      <div className="igdb-settings-actions">
+        <div className="form-actions">
+          <button ref={saveButton} disabled={command.isPending}>
+            Save credentials
+          </button>
+          <button
+            type="button"
+            disabled={command.isPending}
+            onClick={() => {
+              void change(true)
+            }}
+          >
+            Remove saved credentials
+          </button>
+        </div>
+        <div ref={feedback}>
+          <Notice
+            error={failure ? new Error(failure) : undefined}
+            message={message || igdbSavedStatus(snapshot)}
+          />
+        </div>
       </div>
     </form>
   )
