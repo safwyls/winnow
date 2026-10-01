@@ -17,6 +17,6 @@ export function Notice({ error, message }: { error?: unknown; message?: string |
     </p>
   ) : null
 }
-export function Empty({ children }: { children: ReactNode }) {
-  return <div className="empty-state">{children}</div>
+export function Empty({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <div className={`empty-state${className ? ` ${className}` : ''}`}>{children}</div>
 }

@@ -1,0 +1,21 @@
+/* Prose has a reading measure; surrounding controls and data rows keep their own layout. */
+.reading-prose {
+  display: block;
+  max-width: 410px;
+  min-width: 0;
+  width: 100%;
+  justify-self: start;
+  align-self: flex-start;
+  margin-inline: 0;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+.reading-prose.game-summary {
+  white-space: pre-line;
+}
+:is([data-mode='fullscreen'], .mode-fullscreen, .fullscreen) .reading-prose {
+  max-width: none;
+  font-size: calc(28px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+  line-height: 1.45;
+}

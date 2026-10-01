@@ -9,12 +9,13 @@
     isolation: isolate;
   }
   .avalon-details.desktop {
+    --details-width-cap: clamp(860px, 50vw, 1582px);
     position: fixed;
     z-index: 61;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: min(calc(100vw - 80px), clamp(860px, 50vw, 1582px));
+    width: min(calc(100vw - 80px), var(--details-width-cap));
     max-width: none;
     max-height: none;
     padding: 0;
@@ -151,7 +152,7 @@
   }
   .avalon-details-tabs button:focus-visible {
     outline: 0;
-    box-shadow: 0 3px 0 var(--accent-foreground, var(--accent));
+    box-shadow: 0 2px 0 var(--accent-foreground, var(--accent));
   }
   .avalon-details-unread {
     width: 5px;

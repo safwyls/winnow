@@ -110,7 +110,9 @@ export function RatingCapControl({
           />
         </>
       )}
-      <p id={`${id}-help`}>Hides games rated above this level. Unrated games always stay.</p>
+      <p id={`${id}-help`} className="reading-prose">
+        Hides games rated above this level. Unrated games always stay.
+      </p>
       <p id={`${id}-count`} role="status">
         {countFailed
           ? 'Hidden-title count is unavailable.'
@@ -119,7 +121,9 @@ export function RatingCapControl({
             : ratingCapHiddenText(hiddenCount)}
       </p>
       {index === 5 && !adultContentAllowed && (
-        <p id={`${id}-clamp`}>Adults-only content is still hidden by the toggle in Settings › Library.</p>
+        <p id={`${id}-clamp`} className="reading-prose">
+          Adults-only content is still hidden by the toggle in Settings › Library.
+        </p>
       )}
     </section>
   )

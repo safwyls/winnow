@@ -134,7 +134,9 @@ export function Settings({
               <>
                 <p className="eyebrow">A PLACE FOR EVERYTHING</p>
                 <h1>Make yourself at home.</h1>
-                <p>Your library stays on this computer. Connections enrich what is already yours.</p>
+                <p className="reading-prose">
+                  Your library stays on this computer. Connections enrich what is already yours.
+                </p>
               </>
             )}
           </div>
@@ -648,12 +650,14 @@ export function SteamAccount({
             <div className="setup-body">
               <Dialog.Title>Before you sign in</Dialog.Title>
               <Dialog.Description>Connect your account through Steam’s own sign-in page.</Dialog.Description>
-              <p>
+              <p className="reading-prose">
                 Sign in on Steam’s own page in a private window. Winnow reads the account identity and session
                 credentials Steam provides after you sign in. Winnow does not read or save your password.
               </p>
-              <p>Your session is kept on this computer. Purchase history is a separate, optional import.</p>
-              <p className="muted">
+              <p className="reading-prose">
+                Your session is kept on this computer. Purchase history is a separate, optional import.
+              </p>
+              <p className="muted reading-prose">
                 Steam sessions last about a day. Winnow can try to renew them when Steam supplies a refresh
                 token. An API key does not expire.
               </p>
@@ -675,7 +679,7 @@ export function SteamAccount({
                 />
                 Also capture purchase history and licences
               </label>
-              <p className="muted">{steamCapturePermissionExplanation}</p>
+              <p className="muted reading-prose">{steamCapturePermissionExplanation}</p>
               <div className="form-actions">
                 <button disabled={pending} onClick={() => void signIn()}>
                   Continue to Steam
@@ -738,7 +742,7 @@ export function LibraryPreferenceForm({ initial }: { initial: LibraryPreferences
         Show explicit content
       </label>
       <ExplicitVisibility />
-      <p className="muted">
+      <p className="muted reading-prose">
         Unrated games remain visible. These preferences apply to every frontend attached to this library.
       </p>
       <Notice error={error} />

@@ -161,7 +161,8 @@ export function AvalonDetailsLayout({
       const focus = () => {
         const input = root.current?.querySelector<HTMLInputElement>('.avalon-details-reading input')
         if (!input) return false
-        input.focus()
+        if (fullscreen) restoreFocusWhenReady(input)
+        else input.focus()
         return true
       }
       if (focus()) return
@@ -198,11 +199,11 @@ export function AvalonDetailsLayout({
   }, [tool, reading, fullscreen])
   useEffect(() => {
     if (!fullscreen) return
-    const frame = requestAnimationFrame(() =>
-      root.current
-        ?.querySelector<HTMLElement>('[data-controller-play], .avalon-details-more > button')
-        ?.focus(),
-    )
+    const frame = requestAnimationFrame(() => {
+      const page = root.current
+      if (!page || page.closest('[inert]') || page.contains(document.activeElement)) return
+      page.querySelector<HTMLElement>('[data-controller-play], .avalon-details-more > button')?.focus()
+    })
     return () => cancelAnimationFrame(frame)
   }, [fullscreen, Boolean(primary)])
   function change(next: string) {
@@ -450,7 +451,7 @@ export function AvalonDetailsLayout({
     panel = (
       <section className="feature-panel">
         <h2>About</h2>
-        <p className="game-summary">{summary}</p>
+        <p className="game-summary reading-prose">{summary}</p>
         {game?.publisher && <p>Published by {game.publisher}</p>}
         <ReceptionLine ratings={details.data?.ratings} />
         {game && workspace.data && (

@@ -432,7 +432,9 @@ export function IdentityTools({
         <div className="feature-heading">
           <div>
             <h2>Are these the same game?</h2>
-            <p>Similar names are suggestions. You decide whether editions belong together.</p>
+            <p className="reading-prose">
+              Similar names are suggestions. You decide whether editions belong together.
+            </p>
           </div>
           {!facts && <MergeRefreshControl mode={mode} state={refresh} />}
         </div>
@@ -488,7 +490,9 @@ export function IdentityTools({
       </section>
       <section className="feature-panel">
         <h2>Group editions and related games</h2>
-        <p>Choose a main game and the editions, expansions or demos that belong with it.</p>
+        <p className="reading-prose">
+          Choose a main game and the editions, expansions or demos that belong with it.
+        </p>
         {!draft ? (
           <button disabled={!facts || command.isPending || queueBusy} onClick={() => prepare(0, [])}>
             Create a relationship

@@ -53,20 +53,20 @@ function SteamConnectionContent({
           {state.label}
         </p>
       </header>
-      <p>{state.connectionMessage}</p>
+      <p className="reading-prose">{state.connectionMessage}</p>
       <h3>
         Local files <small>On</small>
       </h3>
       <details>
         <summary>What local files cover</summary>
-        <p>Always on. Reads playtime and last-played from Steam's local files.</p>
+        <p className="reading-prose">Always on. Reads playtime and last-played from Steam's local files.</p>
       </details>
       <h3>
         Web API <small>{state.keyInUse ? 'On - API' : state.signInInUse ? 'On - Login' : 'Off'}</small>
       </h3>
-      <p>Two ways to connect to Steam's Web API. You only need one.</p>
+      <p className="reading-prose">Two ways to connect to Steam's Web API. You only need one.</p>
       {steam.hasApiKey && steam.hasSession && (
-        <p>Scheduled updates use the API key because keys do not expire.</p>
+        <p className="reading-prose">Scheduled updates use the API key because keys do not expire.</p>
       )}
       <SteamInformationDialog
         name="methods"
@@ -74,11 +74,11 @@ function SteamConnectionContent({
         title="Ways to connect Steam"
         description="Choose the credential that fits how you use Winnow."
       >
-        <p>
+        <p className="reading-prose">
           Sign-in identifies your account and can read your purchase history. It lasts about a day; automatic
           renewal depends on Steam supplying a refresh token.
         </p>
-        <p>
+        <p className="reading-prose">
           An API key never expires, so scheduled updates keep working. It confirms your account during a Steam
           import and cannot read purchase history.
         </p>
@@ -109,8 +109,8 @@ function SteamConnectionContent({
         )}
         <details>
           <summary>About signing in</summary>
-          {!state.healthAttention && <p>{state.healthMessage}</p>}
-          <p>
+          {!state.healthAttention && <p className="reading-prose">{state.healthMessage}</p>}
+          <p className="reading-prose">
             Identifies your account and can read your purchase history. Lasts about a day. Winnow renews it
             automatically, but this may not work against live servers. An API key does not expire.
           </p>
@@ -123,12 +123,12 @@ function SteamConnectionContent({
               .
             </p>
           )}
-          <p>
+          <p className="reading-prose">
             Signing out deletes the stored session. Your local Steam games stay, and an API key keeps working.
             Winnow also forgets which account the sign-in identified as yours unless a key has already
             confirmed it.
           </p>
-          <p>{steamCapturePermissionExplanation}</p>
+          <p className="reading-prose">{steamCapturePermissionExplanation}</p>
         </details>
       </section>
       <section aria-label="Steam API key method">
@@ -147,14 +147,14 @@ function SteamConnectionContent({
         )}
         <details>
           <summary>About API keys</summary>
-          <p>
+          <p className="reading-prose">
             Never expires, so scheduled updates keep working. The account filter is unavailable until a Steam
             import confirms your account. A key cannot read your purchase history.
           </p>
           {steam.hasApiKey && !steam.apiKeyIsAppManaged && (
-            <p>
-              This key is supplied by configuration, such as Steam__ApiKey. A key saved here takes
-              precedence. Winnow cannot remove the configured key; remove it from its source to clear it.
+            <p className="reading-prose">
+              This key is supplied by configuration, such as Steam__ApiKey. A key saved here takes precedence.
+              Winnow cannot remove the configured key; remove it from its source to clear it.
             </p>
           )}
         </details>
@@ -173,7 +173,7 @@ function SteamConnectionContent({
         title="Steam account scope"
         description="Local playtime belongs to the computer where it was recorded."
       >
-        <p>
+        <p className="reading-prose">
           Winnow cannot attribute local playtime to an individual account. The filter uses the Steam account
           Winnow has confirmed as yours. It can hide games from other local accounts; it does not remove
           ownership or delete games.

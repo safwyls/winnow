@@ -33,12 +33,12 @@ export function AvalonJsonControls({ runtime }: { runtime: ThemeRuntime }) {
   return (
     <section className="studio-panel" aria-labelledby="avalon-json-heading">
       <h2 id="avalon-json-heading">Authored palettes</h2>
-      <p>
+      <p className="reading-prose">
         Edit JSON files in your library’s themes folder to change the original Winnow color roles and
         typography. Saved edits reload automatically.
       </p>
-      {palette?.document?.reason && <p>{palette.document.reason}</p>}
-      {report && <p>{report.headline}</p>}
+      {palette?.document?.reason && <p className="reading-prose">{palette.document.reason}</p>}
+      {report && <p className="reading-prose">{report.headline}</p>}
       <div className="inline-actions">
         <button
           disabled={busy}

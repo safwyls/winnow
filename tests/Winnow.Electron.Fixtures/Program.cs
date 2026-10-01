@@ -18,6 +18,7 @@ var editions = Path.GetFileName(directory).StartsWith("winnow-electron-editions-
 var merges = Path.GetFileName(directory).StartsWith("winnow-electron-merges-", StringComparison.Ordinal);
 var matching = Path.GetFileName(directory).StartsWith("winnow-electron-matching-", StringComparison.Ordinal);
 var metadataEditing = Path.GetFileName(directory).StartsWith("winnow-electron-metadata-editing-", StringComparison.Ordinal);
+var detailsReading = Path.GetFileName(directory).StartsWith("winnow-electron-details-reading-", StringComparison.Ordinal);
 var marker = Path.Combine(directory, ".visibility-fixture");
 if (visibility)
 {
@@ -26,12 +27,22 @@ if (visibility)
     Directory.CreateDirectory(directory);
     await File.WriteAllTextAsync(marker, "Winnow Electron visibility test fixture");
 }
-else if (!(pluginActions || editions || merges || matching || metadataEditing || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
+else if (!(pluginActions || editions || merges || matching || metadataEditing || detailsReading || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
     || File.Exists(Path.Combine(directory, "winnow.db")))
     throw new ArgumentException("Composition fixtures require a new test-owned directory.");
 
 await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"], services =>
 {
+    if (detailsReading)
+    {
+        services.AddSingleton<PluginActionShellGuard>();
+        services.AddSingleton<IUriDispatcher>(provider => provider.GetRequiredService<PluginActionShellGuard>());
+        services.AddSingleton<DetailsReadingFixture>();
+        services.AddSingleton<DetailsReadingIgdbClient>();
+        services.AddSingleton<IIgdbClient>(provider => provider.GetRequiredService<DetailsReadingIgdbClient>());
+        services.AddSingleton<IHttpMessageHandlerBuilderFilter, MatchingOfflineHttp>();
+        return;
+    }
     if (metadataEditing)
     {
         services.AddSingleton<PluginActionShellGuard>();
@@ -108,7 +119,13 @@ if (pluginActions)
 
 // BackendApplication's normal loopback, authority and bearer-token middleware covers these routes.
 // Only this separately built test executable exposes fixture control; the production backend does not.
-if (metadataEditing)
+if (detailsReading)
+{
+    app.MapPost("/__fixture/details-reading/seed", (DetailsReadingSeed input, DetailsReadingFixture fixture)
+        => fixture.SeedAsync(input.Kind, input.State));
+    app.MapGet("/__fixture/details-reading/state", (DetailsReadingFixture fixture) => fixture.Snapshot());
+}
+else if (metadataEditing)
 {
     app.MapPost("/__fixture/metadata-editing/seed", (MetadataEditingSeed input, MetadataEditingFixture fixture)
         => fixture.SeedAsync(input.Kind));
@@ -230,3 +247,4 @@ internal sealed record PluginObservation(string State);
 internal sealed record CapturedActionCheck(bool AfterRemoval);
 internal sealed record MatchingSeed(string Kind);
 internal sealed record MetadataEditingSeed(string Kind);
+internal sealed record DetailsReadingSeed(string Kind, int State = 0);

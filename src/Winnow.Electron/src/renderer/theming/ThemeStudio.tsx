@@ -191,7 +191,7 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
         <div>
           <p className="studio-kicker">Make room for your taste</p>
           <h1>Your Winnow</h1>
-          <p>Choose a composition. Make the details yours.</p>
+          <p className="reading-prose">Choose a composition. Make the details yours.</p>
         </div>
         <div className="studio-actions">
           <button type="button" onClick={() => void runtime.importProfile()}>
@@ -220,7 +220,9 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               <LayoutTemplate size={18} />
               <h2 id="studio-composition">Composition</h2>
             </div>
-            <p>Choose an independent design. Each remembers its colors and layout when you switch.</p>
+            <p className="reading-prose">
+              Choose an independent design. Each remembers its colors and layout when you switch.
+            </p>
             <div className="studio-theme-options">
               {themes.map((item) => (
                 <button
@@ -243,7 +245,9 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                     <strong>{item.name}</strong>
                     {profile.themeId === item.id && <Check size={16} />}
                   </span>
-                  <small>{item.description ?? `Installed theme · ${item.version}`}</small>
+                  <small className="reading-prose">
+                    {item.description ?? `Installed theme · ${item.version}`}
+                  </small>
                 </button>
               ))}
             </div>
@@ -251,7 +255,9 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               <button type="button" onClick={() => void runtime.installTheme()}>
                 <Upload size={16} /> Install a theme
               </button>
-              <small>Choose an unpacked theme folder from an author you trust.</small>
+              <small className="reading-prose">
+                Choose an unpacked theme folder from an author you trust.
+              </small>
             </div>
             {runtime.loading && <p role="status">Loading your theme…</p>}
           </section>
@@ -653,8 +659,12 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               </fieldset>
             </section>
           )}
-          {theme.id === 'avalon' && window.winnow.windowAppearance && <AvalonAppearanceControls profile={profile} />}
-          {theme.id === 'avalon' && window.winnow.listAvalonThemes && <AvalonJsonControls runtime={runtime} />}
+          {theme.id === 'avalon' && window.winnow.windowAppearance && (
+            <AvalonAppearanceControls profile={profile} />
+          )}
+          {theme.id === 'avalon' && window.winnow.listAvalonThemes && (
+            <AvalonJsonControls runtime={runtime} />
+          )}
           {theme.id === 'avalon' && (
             <AvalonTypographyControls
               profile={profile}

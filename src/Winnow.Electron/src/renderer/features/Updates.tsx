@@ -143,7 +143,9 @@ export function ApplicationUpdates({ mode = 'desktop' }: { mode?: 'desktop' | 'f
       }}
     >
       <h2 className={mode === 'fullscreen' ? 'fullscreen-settings-group' : undefined}>Updates</h2>
-      <p>Winnow can download updates in the background. Restart to install when you are ready.</p>
+      <p className="reading-prose">
+        Winnow can download updates in the background. Restart to install when you are ready.
+      </p>
       {mode === 'fullscreen' ? (
         <FullscreenSwitch
           label="Automatic background updates"
@@ -159,10 +161,17 @@ export function ApplicationUpdates({ mode = 'desktop' }: { mode?: 'desktop' | 'f
           <input
             type="checkbox"
             checked={value?.automatic ?? true}
+            aria-label="Download updates automatically"
+            aria-description="Download updates in the background. Restart when you are ready."
             disabled={!value || update.pending || (!!value.busy && !value.canCancel)}
             onChange={(event) => void update.action('automatic', event.target.checked)}
           />
-          Download updates automatically
+          <span>
+            Download updates automatically
+            <small className="reading-prose">
+              Download updates in the background. Restart when you are ready.
+            </small>
+          </span>
         </label>
       )}
       {mode === 'fullscreen' ? (
@@ -180,10 +189,15 @@ export function ApplicationUpdates({ mode = 'desktop' }: { mode?: 'desktop' | 'f
           <input
             type="checkbox"
             checked={value?.includeBeta ?? false}
+            aria-label="Include beta releases"
+            aria-description="Receive preview releases as well as stable updates."
             disabled={!value || update.pending || (!!value.busy && !value.canCancel)}
             onChange={(event) => void update.action('beta', event.target.checked)}
           />
-          Include beta releases
+          <span>
+            Include beta releases
+            <small className="reading-prose">Receive preview releases as well as stable updates.</small>
+          </span>
         </label>
       )}
       {value && (

@@ -98,6 +98,8 @@
 }
 .studio-panel > p {
   font-size: calc(12px * var(--theme-text-scale, 1));
+}
+.studio-panel > p:not(.reading-prose) {
   max-width: 60ch;
 }
 .studio-theme-options {
@@ -218,6 +220,8 @@
 .studio-install small {
   color: var(--muted);
   font-size: calc(11px * var(--theme-text-scale, 1));
+}
+.studio-install small:not(.reading-prose) {
   max-width: 35ch;
 }
 .studio-fieldset {

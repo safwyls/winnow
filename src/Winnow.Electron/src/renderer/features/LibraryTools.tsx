@@ -512,7 +512,7 @@ function HiddenGames() {
           </article>
         ))
       ) : (
-        <Empty>No hidden games.</Empty>
+        <Empty className="reading-prose">No hidden games.</Empty>
       )}
     </section>
   )

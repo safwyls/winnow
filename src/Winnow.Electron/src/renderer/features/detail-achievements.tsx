@@ -27,7 +27,8 @@ export function ReleaseAchievements({ game, details }: { game?: LibraryGame; det
     }) ?? []
   if (!rows.length) return null
   return (
-    <div className="detail-achievements" aria-label="Achievements by release">
+    <div className="detail-achievements" role="group" aria-label="Achievements by release">
+      <h3>Achievements</h3>
       {rows.map(({ item, entry, count, percent }) => (
         <p key={item.releaseId} data-release-id={item.releaseId}>
           {entry.title} · {storeLabel(entry.store)}: {count}

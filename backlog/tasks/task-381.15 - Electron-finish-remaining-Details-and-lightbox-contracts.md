@@ -1,10 +1,11 @@
 ---
 id: TASK-381.15
 title: 'Electron: finish remaining Details and lightbox contracts'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
+updated_date: '2026-10-01 09:22'
 labels:
   - electron
   - parity
@@ -51,18 +52,40 @@ tests/Winnow.Ui.Tests/ProseMeasureTests.cs
 - ProseMeasureTests.Desktop_prose_keeps_its_measure_and_left_edge_across_reading_surfaces [pending at split]
 - ProseMeasureTests.Fullscreen_prose_retains_the_TV_typography_and_available_width [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Keep one implementation task active, verify and commit each milestone, then continue to the next task. Pause for review after TASK-381.20.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Every assigned original Details tab, achievement, prose/scale and lightbox contract has complete equivalent assertions using the original data/geometry boundaries.
-- [ ] #2 Desktop modal and fullscreen reading/gallery paths keep complete images, readable text, correct tab ownership and keyboard/controller origin restoration.
-- [ ] #3 All 11 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Every assigned original Details tab, achievement, prose/scale and lightbox contract has complete equivalent assertions using the original data/geometry boundaries.
+- [x] #2 Desktop modal and fullscreen reading/gallery paths keep complete images, readable text, correct tab ownership and keyboard/controller origin restoration.
+- [x] #3 All 11 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit the eleven frozen Details, achievement, prose/scale and lightbox methods against current source and replacement evidence. 2. Correct demonstrated gaps and preserve original fixture, geometry and input boundaries on both surfaces. 3. Execute original and equivalent component/API/native tests; inspect screenshots and record checkpoint 70 and exact per-method migration evidence. 4. Commit the verified milestone and continue to TASK-381.16.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started after metadata composition milestone e2be2a53. Fifth of the ten authorized sequential tasks.
+
+All21 original cases and5 HTTP achievement cases pass. Added2px tab focus, screenshot tooltips, accessible achievement heading/group, and shared desktop/fullscreen prose policy. Focused tests found fullscreen matching focus raced the closing action panel and initial Details focus; both paths now respect existing focus and modal release. Source audit includes Themes descriptions/typography and settings help, with exact empty PreviewMergeCandidateRepository and unloaded AccountStats state. Native lightbox checks retain strict token equality while awaiting image readiness and settled CSS transitions; final regression is pending.
+
+Final gate: 3718 component/live API cases across183 files pass in93.97s. All21 native cases,21 unchanged original cases and5 HTTP cases pass. Visual review includes both lightboxes, achievements, matching, tab focus and desktop/fullscreen prose; original empty Merges and unloaded Spending fixtures preserved. Audit:1450 ported,650 retained,32 framework-specific,247 pending,56 partial. Checkpoint70 records exact evidence and simulated-controller limits.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed all11 Details/lightbox contracts:2px tab focus, shared410px desktop prose and scaled28px fullscreen prose, screenshot tooltips, accessible achievement grouping and robust fullscreen matching focus. Verified3718 component/API,21 native,21 original and5 HTTP cases; build, formatting and migration audit pass. Evidence:docs/spikes/2026-09-28-electron-parity/checkpoint-seventy.md.
+<!-- SECTION:FINAL_SUMMARY:END -->

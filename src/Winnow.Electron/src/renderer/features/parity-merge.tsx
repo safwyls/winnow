@@ -851,7 +851,10 @@ export function MergeQueue({
                             </div>
                           ))}
                         </div>
-                        <p className="merge-reason" data-row-detail={hovered?.card === card.key}>
+                        <p
+                          className="merge-reason reading-prose"
+                          data-row-detail={hovered?.card === card.key}
+                        >
                           {hovered?.card === card.key
                             ? (() => {
                                 const row = card.rows.find((member) => member.workId === hovered.work)!

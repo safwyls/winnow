@@ -98,7 +98,7 @@ export function AvalonTypographyControls({
   return (
     <section className="studio-panel" aria-labelledby="avalon-typography-heading">
       <h2 id="avalon-typography-heading">Theme typography</h2>
-      <p>
+      <p className="reading-prose">
         Fonts and text size follow this Avalon palette. Unavailable fonts use the bundled font for that role.
       </p>
       <div className="studio-field-grid">

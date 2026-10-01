@@ -68,7 +68,7 @@ export function Platforms({
             <section className="feature-panel" aria-label="GOG connection">
               <h2>GOG</h2>
               <p className="connection-state">Not needed</p>
-              <p>
+              <p className="reading-prose">
                 Installed games and playtime are read from GOG Galaxy’s local files. There is nothing to sign
                 into here.
               </p>

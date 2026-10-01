@@ -145,7 +145,7 @@ export function ApplicationPreferences({
       <h2 className={fullscreen ? 'fullscreen-settings-group' : undefined}>
         {fullscreen ? 'Startup & window' : 'Application'}
       </h2>
-      {!fullscreen && <p>Preferences save as you change them.</p>}
+      {!fullscreen && <p className="reading-prose">Preferences save as you change them.</p>}
       {[
         [
           'MinimizeToTray',
@@ -186,7 +186,7 @@ export function ApplicationPreferences({
               />
               <span>
                 {label}
-                <small>{note}</small>
+                <small className="reading-prose">{note}</small>
               </span>
             </label>
           ),
@@ -217,7 +217,7 @@ export function ApplicationPreferences({
             />
             <span>
               Start with {info.data.platform === 'win32' ? 'Windows' : 'my computer'}
-              <small>
+              <small className="reading-prose">
                 {info.data.autostartSupported
                   ? 'Start quietly in the notification area when you sign in.'
                   : 'Startup registration is unavailable in this build.'}
@@ -243,6 +243,8 @@ export function ApplicationPreferences({
         <label className="field">
           Open links in
           <select
+            aria-label="Open links in"
+            aria-description="Choose where store pages and external links open."
             value={
               preferences.values.LinkDestination === 'store' && info.data?.steamStoreAvailable === false
                 ? 'browser'
@@ -257,6 +259,7 @@ export function ApplicationPreferences({
               <option value="store">Steam client, when available</option>
             )}
           </select>
+          <small className="reading-prose">Choose where store pages and external links open.</small>
         </label>
       )}
       {!setup &&
@@ -304,6 +307,9 @@ export function LibraryPresentationPreferences() {
   return (
     <section className="feature-panel">
       <h2>Library presentation</h2>
+      <p className="reading-prose">
+        The order used when Winnow starts. You can still change the sort while browsing.
+      </p>
       <label className="field">
         Default library sort
         <select
@@ -454,7 +460,9 @@ export function FullscreenPreferences({ mode }: { mode: Mode }) {
   return (
     <section className="feature-panel">
       <h2>Fullscreen appearance</h2>
-      <p>These settings apply to the TV interface{mode === 'fullscreen' ? ' immediately' : ''}.</p>
+      <p className="reading-prose">
+        These settings apply to the TV interface{mode === 'fullscreen' ? ' immediately' : ''}.
+      </p>
       {[
         ['FullscreenTextScale', 'Text size', 0.7, 1.4, 0.05, 1],
         ['FullscreenInterfaceScale', 'Interface scale', 0.8, 1.2, 0.05, 1],
@@ -559,7 +567,7 @@ export function AccountVisibility({
         </label>
       )}
       {!state.data?.accountConfirmed && <p className="muted">Account confirmation pending</p>}
-      <p className="muted">
+      <p className="muted reading-prose">
         {state.data?.accountConfirmed
           ? `${state.data.hiddenCount} games from other accounts are affected.`
           : credentials?.hasSession

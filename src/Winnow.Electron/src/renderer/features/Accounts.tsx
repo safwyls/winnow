@@ -90,7 +90,9 @@ function LargestTransaction({ value, allowMoney = true }: { value: AccountStats;
       </p>
       {purchase.occurredAt && <p>{capturedDate(purchase.occurredAt)}</p>}
       {purchase.isBundle && (
-        <p className="muted">This amount belongs to the whole bundle. No per-game price is inferred.</p>
+        <p className="muted reading-prose">
+          This amount belongs to the whole bundle. No per-game price is inferred.
+        </p>
       )}
     </section>
   )
@@ -170,7 +172,9 @@ function CapturedCounts({ value }: { value: AccountStats }) {
   return (
     <section className="feature-panel" aria-label="Captured transaction counts">
       <h3>Captured transactions</h3>
-      <p className="muted">Counts remain available. Amounts from different currencies are never combined.</p>
+      <p className="muted reading-prose">
+        Counts remain available. Amounts from different currencies are never combined.
+      </p>
       <dl className="capture-facts">
         {counts
           .filter(([, count]) => count > 0)
@@ -250,7 +254,9 @@ function AccountCharts({ value }: { value: AccountStats }) {
         )}
       </div>
       {negativeKinds && (
-        <p>Some categories have negative totals. Their signed amounts are shown in the spending breakdown.</p>
+        <p className="reading-prose">
+          Some categories have negative totals. Their signed amounts are shown in the spending breakdown.
+        </p>
       )}
       {peak && (
         <p>
@@ -273,7 +279,7 @@ function CompositionChart({ rows }: { rows: { label: string; value: number; form
   return (
     <section className="account-chart account-composition" aria-label="Product spending by kind">
       <h3>Where the money went</h3>
-      <p className="muted">Kept product transactions. Wallet credit is excluded.</p>
+      <p className="muted reading-prose">Kept product transactions. Wallet credit is excluded.</p>
       {total > 0 ? (
         <div className="account-donut-layout">
           <svg className="account-donut" viewBox="0 0 160 160" aria-hidden="true">
@@ -363,7 +369,9 @@ function SpendDetails({ value }: { value: AccountStats }) {
   ]
   return (
     <section aria-label={`Spending details in ${value.currencySymbol}`}>
-      <p>Currency: {value.currencySymbol}. Amounts describe captured transactions.</p>
+      <p className="reading-prose">
+        Currency: {value.currencySymbol}. Amounts describe captured transactions.
+      </p>
       <table aria-label="Spending by kind details">
         <thead>
           <tr>
@@ -384,7 +392,7 @@ function SpendDetails({ value }: { value: AccountStats }) {
             ))}
         </tbody>
       </table>
-      <p className="muted">
+      <p className="muted reading-prose">
         Wallet credit stays separate from product spend. Separate refund rows are not subtracted a second
         time. Bundle amounts belong to the whole transaction.
       </p>
@@ -420,7 +428,7 @@ function SpendDetails({ value }: { value: AccountStats }) {
       )}
       <LargestTransaction value={value} />
       {value.discountedPurchases?.count > 0 && (
-        <p>
+        <p className="reading-prose">
           On {value.discountedPurchases.count} purchases with a captured list price:{' '}
           {money(value.discountedPurchases.cents)} paid against {money(value.discountedPurchaseListCents)}{' '}
           listed. This is not total savings.
@@ -499,7 +507,7 @@ export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
       <header className="feature-heading">
         <div>
           <h2>What you brought home</h2>
-          <p>Spending and licences from your captured Steam account pages.</p>
+          <p className="reading-prose">Spending and licences from your captured Steam account pages.</p>
         </div>
         <div className="account-actions">
           <button disabled={stats.isFetching} onClick={() => void stats.refetch()}>
@@ -545,30 +553,30 @@ export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
               <dd>{percentage(data.bundlePurchases.count, data.netProductTransactionCount)}</dd>
             </div>
           </dl>
-          <p className="muted">
+          <p className="muted reading-prose">
             Product transactions with recorded prices only. Wallet credit and standalone refund rows are
             excluded. Percentages count transactions, not games or money; missing-price rows and uncaptured
             pages are outside these figures.
           </p>
           <CaptureCoverage value={data} />
-          <p className="muted">
+          <p className="muted reading-prose">
             These totals cover only the pages you captured. Purchases from other shops are absent. Currencies
             are never converted or added together.
           </p>
           {data.transactionsWithoutCurrency > 0 && (
-            <p>
+            <p className="reading-prose">
               {data.transactionsWithoutCurrency} transactions have no currency and are excluded from monetary
               totals.
             </p>
           )}
           {data.unknownAccountFactCount > 0 && (
-            <p>
+            <p className="reading-prose">
               {data.unknownAccountFactCount} facts have no captured account identity. Signing in does not
               assign them to an account.
             </p>
           )}
           {ambiguous ? (
-            <p>
+            <p className="reading-prose">
               Records with an unknown account may overlap identified captures. Monetary totals and percentages
               are unavailable; counts describe captured records.
             </p>
@@ -645,12 +653,14 @@ export function AccountStatistics({ mode = 'desktop' }: { mode?: Mode }) {
                 </li>
               ))}
             </ul>
-            <p className="muted">Licence counts describe packages, which may contain more than one game.</p>
+            <p className="muted reading-prose">
+              Licence counts describe packages, which may contain more than one game.
+            </p>
           </section>
         </>
       ) : (
         !stats.error && (
-          <Empty>
+          <Empty className="reading-prose">
             No Steam spending has been captured. Import your saved purchase-history and licence pages in
             Settings → Platforms.
           </Empty>

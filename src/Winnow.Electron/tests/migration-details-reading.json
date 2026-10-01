@@ -1,0 +1,156 @@
+{
+  "DetailsModalScaleTests.The_width_floor_stays_above_the_cards_own_minimum": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-remaining-contracts.test.tsx",
+        "case": "The_width_floor_stays_above_the_cards_own_minimum for unmeasured 0 and 1 inputs"
+      }
+    ],
+    "reason": "The test reads the production CSS width-cap policy and evaluates both original unmeasured inputs, zero and one, against the card's 700px minimum. Both remain above the minimum with the source 860px floor. The viewport clamp still keeps the rendered desktop card within the available window; fullscreen retains its separate page layout."
+  },
+  "ScreenshotLightboxStructureTests.The_overlay_is_not_a_popup": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-remaining-contracts.test.tsx",
+        "case": "keeps the lightbox in the document above Details with complete non-placeholder copy and one-layer close"
+      },
+      {
+        "file": "tests/electron/details-reading.spec.ts",
+        "case": "five-shot lightbox stays in its window above Details with resolved theme fills and complete copy"
+      }
+    ],
+    "reason": "Both surfaces mount the lightbox into the same document as Details. Component checks exclude iframe/webview roots; native Electron keeps exactly one window and verifies close focus, a topmost control and Tab containment. Escape closes only the lightbox and restores its thumbnail origin. These checks preserve the source same-root overlay and focus behavior without reproducing Avalonia Popup/Flyout tag names."
+  },
+  "ScreenshotLightboxStructureTests.It_is_declared_in_the_windows_grid_after_the_modal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-remaining-contracts.test.tsx",
+        "case": "keeps the lightbox in the document above Details with complete non-placeholder copy and one-layer close"
+      },
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "shows no screenshot frames for missing data or artwork-only rows"
+      },
+      {
+        "file": "tests/electron/details-reading.spec.ts",
+        "case": "five-shot lightbox stays in its window above Details with resolved theme fills and complete copy"
+      }
+    ],
+    "reason": "The body portal appears after Details in document order, retains the original Details DOM and places the lightbox controls above it on both surfaces. Native measures the modal scrim at the full 1200x640 desktop and 1920x1080 fullscreen viewport, starting at zero, and keeps underlying controls outside the active focus scope. React owns explicit screenshot open state and conditionally mounts the dialog, so absent screenshot data cannot create a visible overlay through a null Details binding. Document order, layering and lifecycle replace the source Grid/column-span/LazyPane assertions."
+  },
+  "ScreenshotLightboxStructureTests.Control_fills_use_theme_tokens_without_deferred_runtime_bindings": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-remaining-contracts.test.tsx",
+        "case": "Control_fills_use_theme_tokens_without_deferred_runtime_bindings"
+      },
+      {
+        "file": "tests/electron/details-reading.spec.ts",
+        "case": "five-shot lightbox stays in its window above Details with resolved theme fills and complete copy"
+      }
+    ],
+    "reason": "Production CSS uses the lightbox normal and active theme tokens. Both native surfaces resolve the control background against the corresponding token, verify a nontransparent normal fill and a distinct keyboard-focused fill after the real 180ms transition settles, and retain working keyboard focus. Avalonia's deferred resource-dictionary binding failure has no React runtime analogue; the token-backed rendering contract is exercised directly."
+  },
+  "ScreenshotLightboxTests.No_string_the_overlay_speaks_is_ever_a_placeholder": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-remaining-contracts.test.tsx",
+        "case": "keeps the lightbox in the document above Details with complete non-placeholder copy and one-layer close"
+      },
+      {
+        "file": "tests/electron/details-reading.spec.ts",
+        "case": "five-shot lightbox stays in its window above Details with resolved theme fills and complete copy"
+      }
+    ],
+    "reason": "Both surfaces open the original second-of-five position and validate the dialog name, visible caption, thumbnail tooltip, and close/previous/next accessible names and tooltips. All nine string roles are nonblank and contain neither TODO nor PLACEHOLDER, case-insensitively. The native image is decoded, fits without cropping, and returns focus to the selected second thumbnail after close."
+  },
+  "AchievementPresentationTests.Both_surfaces_render_ingested_account_states_without_inventing_zero": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/DetailsReadingParityTests.cs",
+        "case": "Exact_ingested_achievement_states_reach_Details_without_inventing_progress_over_HTTP"
+      },
+      {
+        "file": "tests/parity-details-remaining-contracts.test.tsx",
+        "case": "Both_surfaces_render_ingested_account_states_without_inventing_zero: state %s"
+      },
+      {
+        "file": "tests/electron/details-reading.spec.ts",
+        "case": "source account 12345 achievement state ${state} displays ${expected}"
+      }
+    ],
+    "reason": "All five original ingestion states run on both surfaces at 1920x1080 through the real achievement repository and Details API: account 12345, Achievement fixture, schema A/First, unanswered, explicit empty schema, complete zero unlocks, failed fetch and retained one-of-one progress after failure. HTTP asserts every projection field and timestamp, null versus numeric percentages, stale qualification and account isolation. Native rows show Not fetched, No achievements, 0 of 1 unlocked · 0%, Unavailable and 1 of 1 unlocked · 100% · last known under an explicit Achievements heading. The established Electron words and release/store labels replace the source slash notation and fullscreen prefix without inventing zero or blending progress."
+  },
+  "GameDetailsTabInteractionTests.Keyboard_arrows_switch_tabs_and_leave_focus_on_the_selected_tab": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-remaining-contracts.test.tsx",
+        "case": "Keyboard_arrows_switch_tabs_and_leave_focus_on_the_selected_tab"
+      },
+      {
+        "file": "tests/electron/details-reading.spec.ts",
+        "case": "desktop original Right Right Left End Home sequence selects each tab and retains two-pixel theme focus"
+      },
+      {
+        "file": "tests/electron/details-reading.spec.ts",
+        "case": "fullscreen tab arrows retain manual activation and original Home End focus boundaries"
+      }
+    ],
+    "reason": "The sparse An unplayed game fixture follows the original desktop Right, Right, Left, End, Home sequence from Overview through Activity, Updates, Activity, Library and Overview. Each selected tab keeps keyboard focus and a 2px bottom focus ring resolved against the Volt foreground token. Fullscreen independently verifies its four source sections: arrows/Home/End move focus, then simulated Gamepad A activates the focused tab. This preserves fullscreen manual activation rather than adding a desktop Activity tab."
+  },
+  "GameDetailsTabInteractionTests.Long_overview_keeps_its_scroll_position_when_activity_is_opened": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-remaining-contracts.test.tsx",
+        "case": "Long_overview_keeps_its_scroll_position_when_activity_is_opened"
+      },
+      {
+        "file": "tests/electron/details-reading.spec.ts",
+        "case": "exact forty-paragraph Overview keeps its scroll position across history navigation"
+      }
+    ],
+    "reason": "Both surfaces receive A game with a long description and all forty exact source paragraphs. Native tests open the summary disclosure, reach a real positive end offset and retain that exact offset and Details DOM after history navigation. Desktop switches specifically to Activity and back to Overview; fullscreen returns through Overview, opens its History page and reopens About. Component tests separately verify the retained scroll state without claiming jsdom layout measurements."
+  },
+  "GameDetailsTabInteractionTests.Wrong_game_menu_focuses_search_and_returns_without_losing_query_or_results": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-remaining-contracts.test.tsx",
+        "case": "Wrong_game_menu_focuses_search_and_returns_without_losing_query_or_results"
+      },
+      {
+        "file": "tests/electron/details-reading.spec.ts",
+        "case": "Library Wrong game returns with its exact Astral query and five cached candidates after Back and Escape"
+      }
+    ],
+    "reason": "Both surfaces use sparse An unplayed game with Library selected. Keyboard navigation through the actual More actions opens matching with search focused; preceding production actions remain present although the source fixture supplies only matching. Astral cartographers returns the exact five The Astral Cartographers candidates, IDs 1..5, years 2020..2024, null covers and PC/PlayStation 5 platforms. Back preserves Library and restores More focus; reopening restores query focus, query text and all five results; Escape again retains Library. Components assert the same cached results array, while native verifies one production search, retained Details DOM and unchanged work/pin/source tables with no metadata request or OS dispatch."
+  },
+  "ProseMeasureTests.Desktop_prose_keeps_its_measure_and_left_edge_across_reading_surfaces": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/details-reading.spec.ts",
+        "case": "preserves all six reading-surface prose measures and wrapping Steam consent"
+      }
+    ],
+    "reason": "Native desktop measures both source widths, 700 and 1400, at height 900 across Platforms, Spending, Application, Library, Appearance/Theme Studio and Merges, preserving all six source reading surfaces. The harness lowers only its test window minimum to exercise 700px; the production minimum is unchanged. Actual theme descriptions, typography notes and application helper prose are included. Every visible prose block has a 410px maximum, left alignment, wrapping and bounded measured width. Merges remains empty and Spending has no imported facts, matching PreviewData's empty merge repository and unloaded AccountStats model. The actual Steam sign-in consent costs paragraph wraps beyond 18px high and remains within 1..410px."
+  },
+  "ProseMeasureTests.Fullscreen_prose_retains_the_TV_typography_and_available_width": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/details-reading.spec.ts",
+        "case": "fullscreen 1200px exact television paragraph retains 28px typography and the available reading width"
+      }
+    ],
+    "reason": "The real fullscreen About page at 1200x900 renders eight repetitions of the exact source television paragraph. Native computed styles verify the 28px authored typography with current theme/text preference factors, wrapping, no maximum-width cap and a measured width greater than 410px. Existing fullscreen viewport zoom applies once; desktop reading measure does not constrain the fullscreen paragraph."
+  }
+}

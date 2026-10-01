@@ -66,7 +66,7 @@ export function ManualGames({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (wo
           />
         </div>
       )}
-      {!games.data?.length && !editing && <Empty>No manual games yet.</Empty>}
+      {!games.data?.length && !editing && <Empty className="reading-prose">No manual games yet.</Empty>}
       <div className="feature-grid">
         {games.data?.map((game) => (
           <section className="feature-panel" key={game.ownershipId}>

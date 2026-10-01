@@ -6,16 +6,16 @@ export function ExplicitVisibility() {
   return (
     <div className="muted" aria-label="Explicit content visibility" aria-live="polite">
       {counts.error ? (
-        <p>
+        <p className="reading-prose">
           The explicit content count could not be loaded.{' '}
           <button onClick={() => void counts.refetch()}>Retry count</button>
         </p>
       ) : counts.data?.explicitHidden === undefined ? (
-        <p>Reading explicit content count…</p>
+        <p className="reading-prose">Reading explicit content count…</p>
       ) : counts.data.explicitHidden === 0 ? (
-        <p>No titles identified as explicit yet.</p>
+        <p className="reading-prose">No titles identified as explicit yet.</p>
       ) : (
-        <p>
+        <p className="reading-prose">
           <span className="avalon-feed-date">{counts.data.explicitHidden.toLocaleString()}</span>{' '}
           {counts.data.explicitHidden === 1 ? 'title hidden' : 'titles hidden'} when explicit content is off.
         </p>

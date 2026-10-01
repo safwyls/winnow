@@ -45,13 +45,15 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [metadata editing and refresh checkpoint](checkpoint-sixty-nine.md) records all
-3,699 component/live API cases, sixteen distinct native cases, 27 original source cases
-and nine new HTTP cases passing. Field edits preserve attribution and drafts while
-sorting, filtered lists and background Details projections refresh on both surfaces.
-Optional editor/picker availability and reception accessibility retain the source
-contracts. Twelve assigned methods are ported and three retain backend tests;
-255 pending and 59 partial methods remain. The preceding
+The [Details reading and lightbox checkpoint](checkpoint-seventy.md) records all
+3,718 component/live API cases, 21 distinct native cases, 21 original source cases and
+five new HTTP cases passing. Both surfaces retain achievement availability, reading
+positions, matching results and lightbox focus. Desktop explanations share the 410px
+reading measure; fullscreen prose keeps its scaled 28px typography and available width.
+All eleven assigned methods are ported; 247 pending and 56 partial methods remain.
+The preceding [metadata editing and refresh checkpoint](checkpoint-sixty-nine.md)
+records field ownership, live refresh, optional editor availability and reception
+accessibility. The
 [IGDB matching checkpoint](checkpoint-sixty-eight.md) records candidate presentation,
 matching, artwork precedence and live mapping changes; the
 [merge review checkpoint](checkpoint-sixty-seven.md) records refresh recovery and review

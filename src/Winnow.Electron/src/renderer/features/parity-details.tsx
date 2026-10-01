@@ -137,6 +137,7 @@ export function Screenshots({ details, previewCount }: { details?: GameDetails; 
           <button
             key={`${shot.provider}:${shot.id}`}
             aria-label={`Open screenshot ${index + 1} of ${shots.length}`}
+            title={`View screenshot ${index + 1} of ${shots.length}`}
             aria-pressed={`${shot.provider}:${shot.id}` === selected}
             onFocus={(event) => event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })}
             onClick={(event) => {

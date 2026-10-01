@@ -75,6 +75,12 @@ keeps its relationships in Library. Technical facts are visible directly in Libr
 reports progress and completion in a persistent footer outside the reading area; fullscreen
 uses its own text scale. Refreshing keeps the selected section and returns focus to More.
 
+Desktop reading paragraphs in Platforms, account statistics, Settings, Merges and Steam
+consent share the same left-aligned 410px measure. Fullscreen prose uses the available
+width and 28px base text, adjusted by the saved text scales. Details tabs retain a 2px
+keyboard focus underline. Screenshot thumbnails name their position in both accessible
+labels and tooltips; their lightbox stays above Details in the same window.
+
 Owned copies retain their own titles, store badges, playtime and last-played dates. Achievement
 counts and percentages belong to each release; unsupported stores, unfetched Steam progress,
 unavailable progress and games without achievements have distinct labels. Expansions and

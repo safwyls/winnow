@@ -1,3 +1,4 @@
+@import './components/reading-prose.css';
 @layer base, components, themes;
 @layer base {
   :root {
