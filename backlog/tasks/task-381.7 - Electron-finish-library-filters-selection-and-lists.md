@@ -1,11 +1,11 @@
 ---
 id: TASK-381.7
 title: 'Electron: finish library filters, selection and lists'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:45'
-updated_date: '2026-10-01 02:37'
+updated_date: '2026-10-01 02:38'
 labels:
   - electron
   - parity
@@ -89,7 +89,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -106,6 +106,8 @@ Review boundary: work on this task only after the user prompts continuation from
 
 <!-- SECTION:NOTES:BEGIN -->
 Restored fullscreen Browse/Refine filters, choice pages, staged counts, source typography, A/B/Y hints and controller year editing. Added captured-selection Hide with post-refresh visible focus, explicit-content counts, Derelict-only removal, complete collection explanations, store chips and desktop STATS. Membership refresh waits for queued and compensating writes. Fullscreen Library tools now uses readable single-column editors; native measurement caught and corrected a narrow-window heading override. Desktop and fullscreen have separate native evidence. All 24 source contracts are resolved: 23 ported and one retained backend atomicity method with all six original cases passing. Build/typecheck and formatting pass; complete component/live API suite: 3464 cases in 173 files, 85.40 seconds, no skips. Native ledger: 87 distinct passing cases, including controller keyboard, deep 900-game viewport, list failure/retry and both scaled layouts. Inventory: 1352 ported, 626 retained backend, 32 framework-specific, 351 pending, 74 partial; overall migration gate remains incomplete with 425 unresolved. See checkpoint-sixty-two.md for exact per-method evidence, fixture corrections and limitations. Physical devices, full .NET suite and packaged releases were not checked. Existing merge-sheet typography finding is recorded in TASK-381.12; it remains To Do. Stop here for user review before TASK-381.8.
+
+Reviewable implementation and verification milestone: 47becfbb (Finish Electron library filters, selection and lists). All acceptance criteria are verified. TASK-381.7 is complete and paused at the user review boundary; TASK-381.8 remains To Do until the user prompts continuation.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
