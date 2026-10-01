@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { setTextValue } from '../controller'
 import type { ThemePage } from '../../shared/theme'
+import type { Mode } from '../api/types'
+import dpad from './assets/xbox_dpad.svg?raw'
+import acceptButton from './assets/xbox_button_a_outline.svg?raw'
+import backspaceButton from './assets/xbox_button_x_outline.svg?raw'
+import enterTrigger from './assets/xbox_rt_outline.svg?raw'
+import closeButton from './assets/xbox_button_b_outline.svg?raw'
 import './controller.css'
 import { QuickUpdate } from './Updates'
 
@@ -129,15 +135,33 @@ const keyCenter = (row: number, column: number) =>
 export function OnScreenKeyboard({
   input,
   close,
+  mode = 'desktop',
 }: {
   input: HTMLInputElement | HTMLTextAreaElement
   close(): void
+  mode?: Mode
 }) {
   if (!keyboardTargets.has(input)) keyboardTargets.set(input, ++nextKeyboardTarget)
-  return <KeyboardSession key={keyboardTargets.get(input)} input={input} close={close} />
+  return <KeyboardSession key={keyboardTargets.get(input)} input={input} close={close} mode={mode} />
 }
 
-function KeyboardSession({ input, close }: { input: HTMLInputElement | HTMLTextAreaElement; close(): void }) {
+const keyboardHints = [
+  ['D-pad', 'Move', dpad],
+  ['A', 'Type', acceptButton],
+  ['X', 'Backspace', backspaceButton],
+  ['RT', 'Enter', enterTrigger],
+  ['B', 'Close', closeButton],
+] as const
+
+function KeyboardSession({
+  input,
+  close,
+  mode,
+}: {
+  input: HTMLInputElement | HTMLTextAreaElement
+  close(): void
+  mode: Mode
+}) {
   const [shift, setShift] = useState(false)
   const [isClosed, setClosed] = useState(false)
   const keys = useRef<Array<Array<HTMLButtonElement | null>>>([])
@@ -348,7 +372,25 @@ function KeyboardSession({ input, close }: { input: HTMLInputElement | HTMLTextA
           }}
         >
           <Dialog.Title>Enter text</Dialog.Title>
-          <Dialog.Description>D-pad moves · A types · X backspaces · RT enters · B closes</Dialog.Description>
+          <Dialog.Description className={mode === 'fullscreen' ? 'keyboard-hints' : undefined}>
+            {mode === 'fullscreen'
+              ? keyboardHints.map(([button, label, artwork]) => (
+                  <span className="keyboard-hint" key={button}>
+                    <span
+                      className="keyboard-hint-icon"
+                      data-keyboard-glyph={button}
+                      aria-hidden="true"
+                      dangerouslySetInnerHTML={{
+                        // Match the source geometry-sized glyph, excluding the asset's 8px padding.
+                        __html: artwork.replace('<svg ', '<svg viewBox="8 8 48 48" '),
+                      }}
+                    />
+                    <span className="sr-only">{button} </span>
+                    <span>{label}</span>
+                  </span>
+                ))
+              : 'D-pad moves · A types · X backspaces · RT enters · B closes'}
+          </Dialog.Description>
           <output className="keyboard-preview" aria-label="Current text">
             {secure ? '•'.repeat(value.length) : value || ' '}
           </output>

@@ -9,6 +9,9 @@ The keyboard restores all 57 keys, shifted letters and symbols, a wide Space key
 inverted-T caret cluster. Directional movement follows the original weighted rows. Back
 closes once, stops edits and restores the original field, even if its owner retains the
 component. Fullscreen sizing now overrides the generic dialog width cap.
+Fullscreen also retains the original bundled Kenney D-pad, A, X, RT and B silhouettes
+beside Move, Type, Backspace, Enter and Close. The icons use the active text color and
+keep a complete accessible description; desktop retains its text hints.
 
 Fullscreen file selection stays inside Winnow for artwork, executables, appearance
 profiles, theme folders and acquisition CSV export. The main process owns directory
@@ -85,6 +88,13 @@ names executed replacement tests and the preserved assertion scope.
   reference and constrained sizes, list prompts, file browsing and Cancel-first overwrite
   confirmation. A final bounded review found no remaining picker race or preference-focus
   issue after their fixes.
+- The keyboard hint correction passes all **nine native keyboard cases** again in
+  **46.1 seconds**, including exact glyph order, visible vector widths, theme color,
+  accessible description, desktop text-only hints and bounds at both fullscreen sizes.
+  Evidence: `.tmp/keyboard-hints-native.log`, `.tmp/keyboard-hints-results/` and the
+  inspected `keyboard-fullscreen-1920.png` and `keyboard-fullscreen-1280.png` screenshots
+  under that result directory. Build/typecheck and all **19 focused component cases**
+  pass: `.tmp/keyboard-hints-build.log` and `.tmp/keyboard-hints-components.log`.
 - Changed Electron files pass Prettier and `git diff --check` passes. The migration report regenerates successfully.
   `.tmp/task3815-migration-gate.log` records the expected failing complete-migration gate.
 

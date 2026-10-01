@@ -345,7 +345,8 @@ and TV-distance validation remain outstanding.
 
 The shared text keyboard uses five QWERTY rows, a wide Space key and an inverted-T
 caret cluster. Case changes the letters and symbols; X deletes backward and RT invokes
-Enter. B and Done close once and return focus to the original field. Activity and game
+Enter. Fullscreen shows the bundled D-pad, A, X, RT and B glyphs beside their action labels;
+desktop retains text hints. B and Done close once and return focus to the original field. Activity and game
 details journal editors use larger fullscreen fields and an explicit Edit note action. Expandable
 filter and help sections participate in directional navigation.
 

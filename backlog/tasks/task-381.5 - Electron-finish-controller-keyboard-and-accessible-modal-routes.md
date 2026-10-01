@@ -1,11 +1,11 @@
 ---
 id: TASK-381.5
 title: 'Electron: finish controller keyboard and accessible modal routes'
-status: Done
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:44'
-updated_date: '2026-09-30 23:42'
+updated_date: '2026-10-01 00:51'
 labels:
   - electron
   - parity
@@ -58,7 +58,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -69,12 +69,16 @@ Review boundary: work on this task only after the user prompts continuation from
 3. Verify accessible names/enabled states and directional reachability across all ten source screens, prompt empty/busy/error transitions, both journal entry points, dynamic modal return and keyboard return. Verify file filters, cancellation, overwrite consent and no picker writes with disposable fixtures.
 4. Run focused tests, full component/live API checks and affected native regressions on desktop and fullscreen. Inspect screenshots, map only these ten source contracts, update documentation and commit.
 5. Stop after TASK-381.5 for review; do not begin TASK-381.6 until the user prompts continuation.
+
+6. User review correction: replace fullscreen keyboard text-only hints with the existing controller glyph strip for D-pad, A, X, RT and B. Preserve the desktop text treatment and accessible description. Verify the glyph sequence, layout and keyboard interactions at both fullscreen sizes, then commit the correction before beginning TASK-381.6 as requested.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Implemented the five-row 57-key controller keyboard, main-owned fullscreen file chooser with Cancel-first overwrite consent and pending-action cancellation, journal keyboard actions and return focus, disclosure navigation, settings save-time focus retention and age-limit row alignment. Desktop and fullscreen are independently exercised. Final build/typecheck, Prettier and diff checks pass. All 3,388 component/live API cases across 166 files pass with eight workers in 49.41 seconds. All 65 distinct native cases pass in serialized batches; the joined latest-results report has no skips or retries. Initial runs exposed a zoom-sensitive underline assertion and a Search test timeout; the corrected zoom reference passes and Search passed alone then in the full bounded run without changing its assertions or timeout. All ten assigned source methods are now ported: 1,313 ported, 625 retained backend, 30 framework-specific, 384 pending and 83 partial (467 unresolved). Evidence and limitations: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty.md. Physical devices remain unverified; native desktop chooser options are checked at the Electron boundary. Existing TASK-381.7 records fullscreen Filters visual comparison. Stop after this milestone; TASK-381.6 is not started.
+
+User-reviewed keyboard hint correction: fullscreen now uses the original bundled D-pad/A/X/RT/B vectors with Move/Type/Backspace/Enter/Close labels, source-sized visible geometry, live theme color and an accessible description. Desktop retains plain text hints. Build/typecheck, 19 focused component cases and all nine native keyboard cases pass; inspected both fullscreen screenshots. Evidence: .tmp/keyboard-hints-build.log, .tmp/keyboard-hints-components.log, .tmp/keyboard-hints-native.log and .tmp/keyboard-hints-results/. User explicitly authorized proceeding to TASK-381.6 after committing this correction.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

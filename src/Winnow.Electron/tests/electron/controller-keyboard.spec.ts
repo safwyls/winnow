@@ -156,6 +156,35 @@ for (const surface of surfaces) {
     expect(bounds.y).toBeGreaterThanOrEqual(0)
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(surface.width + 1)
     expect(bounds.y + bounds.height).toBeLessThanOrEqual(surface.height + 1)
+    const glyphs = keyboard.locator('[data-keyboard-glyph]')
+    if (surface.mode === 'fullscreen') {
+      expect(
+        await glyphs.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-keyboard-glyph'))),
+      ).toEqual(['D-pad', 'A', 'X', 'RT', 'B'])
+      await expect(keyboard).toHaveAccessibleDescription('D-pad Move A Type X Backspace RT Enter B Close')
+      for (const glyph of await glyphs.all()) {
+        await expect(glyph.locator('svg path').first()).toBeVisible()
+        expect((await glyph.locator('svg path').first().boundingBox())!.width).toBeCloseTo(
+          32 * (surface.width / 1920) * 0.85,
+          1,
+        )
+        const hint = glyph.locator('..')
+        const hintBox = (await hint.boundingBox())!
+        expect(hintBox.x).toBeGreaterThanOrEqual(bounds.x)
+        expect(hintBox.x + hintBox.width).toBeLessThanOrEqual(bounds.x + bounds.width)
+        expect(hintBox.y).toBeGreaterThanOrEqual(bounds.y)
+        expect(hintBox.y + hintBox.height).toBeLessThanOrEqual(bounds.y + bounds.height)
+        await expect(glyph.locator('svg path').first()).toHaveCSS(
+          'fill',
+          await glyph.evaluate((node) => getComputedStyle(node).color),
+        )
+      }
+    } else {
+      await expect(glyphs).toHaveCount(0)
+      await expect(keyboard).toHaveAccessibleDescription(
+        'D-pad moves · A types · X backspaces · RT enters · B closes',
+      )
+    }
     for (const [row, names] of expected.entries()) {
       await expect(rows.nth(row).getByRole('button')).toHaveCount(names.length)
       for (const name of names) {

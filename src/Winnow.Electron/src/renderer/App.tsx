@@ -730,7 +730,9 @@ export function App() {
             />
           )}
           <FullscreenFilePicker />
-          {keyboardInput && <OnScreenKeyboard input={keyboardInput} close={() => setKeyboardInput(null)} />}
+          {keyboardInput && (
+            <OnScreenKeyboard input={keyboardInput} close={() => setKeyboardInput(null)} mode={mode} />
+          )}
           <button
             className="recovery-shortcut"
             disabled={startup.visible}
