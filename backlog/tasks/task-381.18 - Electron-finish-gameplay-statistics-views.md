@@ -1,7 +1,7 @@
 ---
 id: TASK-381.18
 title: 'Electron: finish gameplay statistics views'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
@@ -57,7 +57,7 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -76,6 +76,8 @@ All 23 unchanged source cases pass (11 view-model and 12 UI). First renderer pas
 Focused renderer coverage now passes 72 cases, including 33 new exact gameplay cases. It reproduced and fixed failed-refresh cached figures and invalid applied dates being lost on section return; selected fullscreen choices now have visible styling. The final HTTP gate passes 11 cases, plus 63 transaction/repository regressions and 23 original cases. Corrected native request classification excludes incidental History queries and preserves final store/ownership scope through canceled intermediate reads. Native final2 passes 24 of 26; only two shell hint assertions incorrectly searching for SVG glyph text remain to rerun. Production bundle is frozen at index-BIyID6oS.js.
 
 Final verification: all 3,822 component/live API cases across 188 files pass in 95.16 seconds (task38118-components-final2.log). Restored fullscreen Spending transaction/licence counts after the first full gate exposed their omission; 59 focused cases and a final native changed-view recheck pass on index-CxNyF6F6.js. Native evidence records 28 distinct passing cases plus that recheck, exact scope ledgers and nine inspected original final captures plus the restored-count capture. TypeScript/build, formatting, whitespace and migration audit pass. All eleven assigned source methods are ported; inventory is 1,487 ported, 650 retained, 32 framework-specific, 231 pending and 35 partial. Checkpoint73 records methods, measured bounds and framework adaptations. Controller checks use simulated Gamepad frames; physical devices/Linux/release CI remain separate.
+
+Milestone commit: 804c1c66 (Finish Electron gameplay statistics parity). Final evidence and all acceptance criteria are recorded; continuing to TASK-381.19 within the authorized batch.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
