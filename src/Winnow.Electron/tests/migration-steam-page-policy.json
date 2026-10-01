@@ -473,16 +473,6 @@
     ],
     "reason": "Actual nine-further-page completion and fifty-further-page cap verify the source counter definition and stop reason, independently from history clicks."
   },
-  "SteamAccountPagesContractTests.A_caller_that_ignores_the_licences_walk_still_compiles_and_reads_sensibly": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-native-steam-capture.test.ts",
-        "case": "a complete run reports twelve history expansions and both captured documents with their timestamp"
-      }
-    ],
-    "reason": "Electron reports zero further pages for a single-page capture, and its bridge fields remain optional for existing renderer callers. The original test also pins a C# factory overload defaulting an omitted stop reason to null. That factory is not part of the production Electron capture composition, so its exact source-compatibility assertion is not claimed as migrated."
-  },
   "SteamAccountPagesContractTests.A_partial_run_still_hands_over_what_it_got": {
     "status": "ported",
     "tests": [

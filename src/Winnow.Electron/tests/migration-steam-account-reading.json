@@ -1,0 +1,265 @@
+{
+  "SteamAccountPageTruncationTests.The_session_reports_completeness_from_what_it_watched_happen": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "keeps independent history and licence completion at the original counts with capped=%s"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "reports a stalled history as incomplete instead of clicking forever"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "keeps an unsigned-in timeout neutral and a recognizable-page failure actionable"
+      },
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "Both_pages_are_judged_by_one_rule"
+      }
+    ],
+    "reason": "The unchanged source passes its complete12-history/9-licence, Cap/Stalled/Continue and null/zero matrix. The actual Electron DOM walk now executes both12/9 exhaustion and100/50 cap together. While the page rule says continue its promise remains pending; Continue is an internal step, never a terminal success field. Stalled and untouched/no-session runs retain incomplete or absent pages with independent stop/count fields. This replaces the legacy result wrapper with actual producer evidence, not a claim that that C# wrapper is used by Electron."
+  },
+  "SteamAccountPageTruncationTests.A_cap_that_stopped_the_walk_is_not_completeness": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "keeps independent history and licence completion at the original counts with capped=%s"
+      }
+    ],
+    "reason": "The original parser/result assertion passes unchanged. The replacement executes the actual sanitized original licence/history DOM loops to exactly50 further licence pages and100 history expansions. Both report cap/partial, with the final licence next marker and history load-more marker preserved for the unchanged shared parser; neither is reported exhausted."
+  },
+  "SteamAccountPagesContractTests.A_caller_that_ignores_the_licences_walk_still_compiles_and_reads_sensibly": {
+    "status": "framework-specific",
+    "tests": [
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "a complete run reports twelve history expansions and both captured documents with their timestamp"
+      }
+    ],
+    "reason": "The unchanged source compiles the legacy C# three-argument SteamPageHarvestResult.Captured factory and checks that omitted licence-walk arguments default to zero/null. That source-compatibility overload is used by the Avalonia capture host, not the independent Electron composition, and has no TypeScript-call compatibility obligation. Electron single-page zero-walk behavior is separately executed; it correctly reports exhausted after observing the final page and is not falsely claimed to preserve an omitted null stop reason."
+  },
+  "SteamPageHarvesterAvailabilityTests.A_console_less_host_is_told_so_rather_than_left_waiting": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "capture consent refusal and browser unavailability return reasons and zero counts without pages"
+      }
+    ],
+    "reason": "The source missing-Avalonia-runtime case passes unchanged. Actual Electron capture coordinator browser/profile initialization failure yields unavailable, a readable saved-page fallback explanation, no pages and zero counters; this adapts host availability without depending on an Avalonia Application singleton."
+  },
+  "SteamPageHarvesterAvailabilityTests.Nothing_opens_without_consent_having_been_recorded": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "capture consent refusal and browser unavailability return reasons and zero counts without pages"
+      },
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "declined consent cancels before any window or backend request even with purchase capture=%s"
+      }
+    ],
+    "reason": "The actual dedicated capture coordinator returns cancelled with readable detail and no pages before any profile/window creation when consent is false. Sign-in with either optional purchase-capture flag also creates no window or backend request on declined consent. The original consent-before-runtime case passes unchanged."
+  },
+  "SteamPageHarvesterAvailabilityTests.A_null_request_is_a_programming_error_not_an_outcome": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "rejects a null capture request before opening a profile or returning a cancellation outcome"
+      }
+    ],
+    "reason": "The unchanged CLR source throws ArgumentNullException. The named Electron capture coordinator rejects a null runtime request before creating a profile/window, calling the capture reader or requesting backend work. It preserves invalid-call rejection rather than converting the programming error into a cancelled or successful result; JavaScript does not expose the CLR exception type."
+  },
+  "SteamAccountPageProvenanceTests.Changed_or_lost_capture_identity_is_rejected_permanently": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "terminates a rejected identity %s / %s / %s without reviving discarded pages"
+      }
+    ],
+    "reason": "All four original expected/before/after rows pass unchanged. The actual Electron capture runs the same matrix with valid-format fake Steam IDs: a/a/b, a/a/null, a/null/null and unspecified/a/b. Each fails after the first page, drops every page, removes the navigation listener and performs no later reads even after the document identity returns to a. Rejection terminates that capture promise; it cannot be revived by a later acceptable page. Starting a separately authorized new capture is outside this terminal attempt."
+  },
+  "AcquisitionExportTests.Export_preserves_acquisition_facts_and_quotes_titles": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/AcquisitionExport.cs",
+      "src/Winnow.Application/Details/ImportApplication.cs",
+      "src/Winnow.Backend/ImportEndpoints.cs",
+      "src/Winnow.Application/Details/ImportServiceCollectionExtensions.cs"
+    ],
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamAccountReadingParityTests.cs",
+        "case": "Exact_three_owner_export_keeps_quoted_multiline_title_zero_unknown_and_read_only_count"
+      },
+      {
+        "file": "tests/electron/steam-account-reading.spec.ts",
+        "case": "Library acquisition export preserves exact three-owner quoted CSV and retained Accounts entry"
+      }
+    ],
+    "reason": "The unchanged source and the actual authenticated exporter preserve one work titled A, \"game\" CRLF part two, Store title, and the same three owners. The new HTTP assertion compares the entire ten-column CRLF CSV including escaped multiline title, Steam 2024-02-03 UTC/purchase/1299/source, GOG quoted zero versus Epic empty value, and OwnershipCount3. Repeated export leaves all raw rows unchanged. The production importer application calls the same registered AcquisitionExport inside its transaction; frontend destinations are covered by the separate command method."
+  },
+  "SteamAccountPageProvenanceTests.Unknown_saved_pages_never_borrow_the_current_account_or_fill_its_projection": {
+    "status": "ported",
+    "implementation": [
+      "src/Winnow.Application/Details/ImportApplication.cs",
+      "src/Winnow.Backend/ImportEndpoints.cs",
+      "src/Winnow.Application/Services/SteamAccountPageImportService.cs",
+      "src/Winnow.Application/Services/AccountAcquisitionReader.cs",
+      "src/Winnow.Data/Repositories/AccountStatsRepository.cs"
+    ],
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamAccountReadingParityTests.cs",
+        "case": "Complete_original_unknown_pages_never_borrow_10001_and_named_10002_cannot_fill_Lantern"
+      },
+      {
+        "file": "tests/parity-accounts.test.tsx",
+        "case": "Statistics_render_known_and_unknown_account_scope_without_ambiguous_money_totals on %s"
+      },
+      {
+        "file": "tests/electron/steam-account-reading.spec.ts",
+        "case": "complete unknown saved pages never borrow the confirmed account and mixed provenance withholds money"
+      }
+    ],
+    "reason": "The actual API fixture preserves the entire two sanitized source HTML files, Lantern Hollow Steam ownership AccountRef10001, confirmed10001/own, and Sep10 capture. The real saved-file loader receives only a fixed clock through its existing TimeProvider constructor. Import stores only null provenance, fills raw ownership date but withholds own-account projected date/price; all scope restores date. Explicit10002 re-import fills zero ownerships and leaves the sole acquisition observation null while separate named facts are recorded. Real statistics retain one known account plus unknown facts and observed monetary values; both executed renderer/native presentations withhold money as the original AccountStatsViewModel did. No current credentials are substituted and no DTO is rewritten."
+  },
+  "SteamAccountPageProvenanceTests.Captured_pages_must_agree_on_account_and_parser_retains_it_without_reading_HTML_identity": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamAccountReadingParityTests.cs",
+        "case": "Original_parser_retains_only_explicit_10001_identity_and_never_renders_it_in_diagnostics"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "discards every earlier page if the account changes between page types"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+        "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+      }
+    ],
+    "reason": "The source first unknown/a/a acceptance followed by unknown/b/b refusal maps to the real capture loop discarding earlier pages on account change. The new parser/HTTP case uses the entire original saved pages: explicit10001 survives parser and persistence, null stays null, and the page diagnostic string omits SteamId. Shared Core SteamAccountPages and the parser remain production backend types, but the legacy stateful identity validator is replaced by Electron capture logic."
+  },
+  "AcquisitionExportTests.Command_reports_saved_cancelled_and_failed_destinations": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-acquisition-export.test.tsx",
+        "case": "Command_reports_saved_cancelled_and_failed_destinations (%s, %s)"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamAccountReadingParityTests.cs",
+        "case": "Empty_export_is_exact_header_count_zero_and_does_not_create_ownerships"
+      },
+      {
+        "file": "tests/parity-acquisition-preload.test.ts",
+        "case": "forwards the acquisition destination result and source count"
+      },
+      {
+        "file": "tests/electron/steam-account-reading.spec.ts",
+        "case": "empty acquisition export reports held saved zero cancelled and safe failed destinations"
+      }
+    ],
+    "reason": "saved zero reports Exported 0 ownership records.. cancel reports Export cancelled.. Disk full/private destination failure reports only Could not save the export. Try another location.. Status is polite; explicit bridge called once; control recovers; renderer sends no independent write request. The source saved/cancelled/IOException Disk full theory uses an empty exporter and requires exact status text, header handed to every destination and an unchanged empty database. The new real HTTP empty fixture proves header/count0 and no ownership writes; root main destination tests and both renderer surfaces supply save/cancel/failure results and safe copy. Native desktop/fullscreen journeys hold then write the actual CSV bytes, cancel without writing, and inject the source Disk full destination failure without changing the API response."
+  },
+  "AcquisitionExportTests.Missing_export_service_disables_the_command": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-acquisition-export.test.tsx",
+        "case": "Missing_export_service_disables_the_command"
+      }
+    ],
+    "reason": "Absent optional exportAcquisitions capability leaves command visible and disabled."
+  },
+  "SteamReportedActivityTests.Scope_filters_other_accounts_hidden_games_and_covered_increases": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-activity-contracts.test.tsx",
+        "case": "Scope_filters_other_accounts_hidden_games_and_covered_increases (renderer request, error and confirmation boundary)"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamAccountReadingParityTests.cs",
+        "case": "Source_activity_scope_normalizes_000123_and_keeps_failure_and_missing_confirmation_separate"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamAccountReadingParityTests.cs",
+        "case": "Real_SQLite_activity_excludes_hidden_other_account_and_covered_increases_without_creating_sessions"
+      }
+    ],
+    "reason": "Exact Dragonwilds ownership1 request; source Sept14 18:00–19:00 UTC31-minute row. Additional ownership99 response excluded by renderer; only one row visible. Failed refresh removes rows and gives Couldn't read; subsequent confirmation-required response suppresses even included activity. The source-controlled repository returns exact ids1/2/3/4 including account other, ownership99 and zero-unexplained row; real API normalizes confirmed000123 to123, intersects request scope with visible ownership1, excludes other-account and covered rows, and preserves explicit failure456 versus missing confirmation without another read. The actual renderer additionally excludes deliberately over-returned ownership99. Separate real SQLite observations corroborate hidden-game/account filtering and fully covered31-minute exclusion, leaving one31-minute estimate without creating/changing sessions. Do not describe the controlled source rows as reconciled raw observations."
+  },
+  "SteamReportedActivityTests.Both_presentations_label_estimates_and_bounds_without_changing_sessions": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-activity-contracts.test.tsx",
+        "case": "Both_presentations_label_estimates_and_bounds_without_changing_sessions (%s)"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamAccountReadingParityTests.cs",
+        "case": "Exact_two_source_estimates_cross_HTTP_without_changing_the_recorded_600_second_sitting"
+      },
+      {
+        "file": "tests/electron/steam-account-reading.spec.ts",
+        "case": "exact reported Steam bounds and observation reading leave the recorded 600 seconds unchanged"
+      }
+    ],
+    "reason": "Exact source normal31-minute row and comparison-unavailable/null-unexplained row, Sept14 bounds. Required estimate, no-exact-session, no-added-recorded-total, observation bounds and overlap copy. 600-second process session and tracker total unchanged after reported read; no session/journal mutations. Fullscreen row opens observation reader with local Up/Down/B hints; Back closes only observation then projection, restoring row then entry, never closing Details. Original source attaches a separate PreviewData GOG tracker with a600-second process session. Replacement uses actual Steam Dragonwilds Details with the same600-second process session, strengthening same-game non-mutation while retaining the original unchanged-total assertion. Does not invent raw observations to force a matching lifetime figure. The source recording repository supplies Sep14 18:00–19:00 UTC row31 and a comparison-unavailable/null-unexplained row for ownership1; the actual API transports those unchanged. Real Details holds the same600-second sitting before/after. Source used a separate PreviewData GOG tracker with detection string process; native uses genuine Steam Dragonwilds Details and valid persisted process_watch, preserving the unchanged-total assertion without claiming contradictory raw reconciliation outputs. Executed component/native checks cover estimate/bounds/overlap text, recorded600-second preservation and fullscreen Accept/Back reading behavior."
+  },
+  "SteamReportedActivityTests.Non_Steam_games_hide_the_section_on_both_surfaces_but_mixed_games_keep_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-activity-contracts.test.tsx",
+        "case": "Non_Steam_games_hide_the_section_on_both_surfaces_but_mixed_games_keep_it (%s)"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamAccountReadingParityTests.cs",
+        "case": "Original_non_Steam_and_mixed_populations_preserve_zero_facts_and_the_Steam_scope"
+      }
+    ],
+    "reason": "Actual Avalon desktop Activity/fullscreen Play history. Epic and GOG omit section and request. Mixed GOGownership1 + Steamownership2 retains section/entry and submits exact ownershipIds[2]. Exact isolated Epic, GOG and mixed GOGownership1/Steamownership2 populations retain no play facts or sessions. Real API library/Details projection preserves those store scopes; the mixed request contains only ownership2. Component actual Details/history matrix supplies absence on both pure-store surfaces and visible mixed entry/request. API evidence alone does not claim control visibility."
+  },
+  "SteamReportedActivityTests.Fullscreen_activity_and_per_game_history_offer_separate_entry_points": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-activity-contracts.test.tsx",
+        "case": "Fullscreen_activity_and_per_game_history_offer_separate_entry_points (global Activity)"
+      },
+      {
+        "file": "tests/electron/steam-account-reading.spec.ts",
+        "case": "exact reported Steam bounds and observation reading leave the recorded 600 seconds unchanged"
+      }
+    ],
+    "reason": "Global Journal Activity named Steam entry opens projection; B returns History with focus. Per-game history has its own named entry to full-canvas projection and nested reader; both use shared application reads. The actual global entry retains focus on its tab; immediate B/Escape returns to History without opening the root menu. Nested observation Back closes only that reader. Native computed and painted-text checks verify headings32, body24, bounds/time22 and actions28 in both the global host and per-game portal, allowing subpixel viewport rounding."
+  },
+  "SavedLicensePagesTests.Both_presentations_import_two_saved_pages_and_repeat_without_duplicate_facts": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fullscreen-platform-tools.test.tsx",
+        "case": "Both_presentations_import_two_saved_pages_and_repeat_without_duplicate_facts (fullscreen reported file outcomes)"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamAccountReadingParityTests.cs",
+        "case": "Original_Alpha_and_Beta_saved_pages_load_and_import_twice_without_duplicate_facts"
+      },
+      {
+        "file": "tests/electron/steam-account-reading.spec.ts",
+        "case": "exact Alpha and Beta saved licence pages require Read and repeat without duplicate facts"
+      }
+    ],
+    "reason": "Exact first.html Alpha/second.html Beta with Sept1 2026 Steam Store and paginator1/2of2 sent through explicit selection/Read. No import until Read; passes1/2 invoke importer once/twice. Both fullscreen rows read filename · LOADED; no duplicate-page warning; exact pages sent. Exact first.html Alpha and second.html Beta licence pages retain Sep1 2026 Steam Store rows and paginator1/2 of2. Each pass uploads actual bytes through the normal loader and imports once; raw licence facts stay2, second report has0 new/2 already recorded, and every loaded result is Loaded with no duplicate outcome. Native tests use the desktop multi-file input and real fullscreen chooser, then the real loader/importer twice; database facts and call counts are checked separately from displayed outcomes. The loader clock is fixed Sep10 as additional deterministic capture metadata; source only pins the licence date, not wall clock."
+  }
+}

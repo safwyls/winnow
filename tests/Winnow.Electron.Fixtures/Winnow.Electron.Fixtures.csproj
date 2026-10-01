@@ -4,6 +4,8 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="../fixtures/steam-account-pages/licenses-page1.html" Link="fixtures/steam-account-pages/licenses-page1.html" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../fixtures/steam-account-pages/purchase-history.html" Link="fixtures/steam-account-pages/purchase-history.html" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../../src/Winnow.App/Design/PreviewLibrary.cs" Link="SourceFixtures/PreviewLibrary.cs" />
     <Compile Include="../../src/Winnow.App/Design/PreviewGameplayStatsRepository.cs" Link="SourceFixtures/PreviewGameplayStatsRepository.cs" />
     <ProjectReference Include="../../src/Winnow.Backend/Winnow.Backend.csproj" />

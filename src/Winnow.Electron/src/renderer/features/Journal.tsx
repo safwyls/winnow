@@ -601,6 +601,21 @@ export function Journal({
       onKeyDown={(event) => {
         if (
           mode === 'fullscreen' &&
+          panel === 'steam' &&
+          event.key === 'Escape' &&
+          !event.defaultPrevented &&
+          !(event.target as HTMLElement).closest('[role="dialog"]')
+        ) {
+          event.preventDefault()
+          event.stopPropagation()
+          setPanel('history')
+          event.currentTarget
+            .querySelector<HTMLButtonElement>('[aria-label="Activity pages"] button')
+            ?.focus()
+          return
+        }
+        if (
+          mode === 'fullscreen' &&
           panel === 'history' &&
           event.key === 'ArrowUp' &&
           event.target === event.currentTarget &&
@@ -682,7 +697,15 @@ export function Journal({
       {panel === 'summary' ? (
         <GameplayDashboard mode={mode} onOpenGame={onOpenGame} />
       ) : panel === 'steam' ? (
-        <SteamReportedActivity games={library.data?.games ?? []} mode={mode} onOpenGame={onOpenGame} />
+        <SteamReportedActivity
+          games={library.data?.games ?? []}
+          mode={mode}
+          onOpenGame={onOpenGame}
+          onBack={() => {
+            setPanel('history')
+            document.querySelector<HTMLButtonElement>('[aria-label="Activity pages"] button')?.focus()
+          }}
+        />
       ) : (
         <>
           {statistics.data && (

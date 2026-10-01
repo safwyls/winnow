@@ -124,6 +124,15 @@ afterEach(() => {
 })
 
 describe('Steam native sign-in races and credential boundaries', () => {
+  it('rejects a null capture request before opening a profile or returning a cancellation outcome', async () => {
+    await expect(captureSteamPages(new EventEmitter() as BrowserWindow, null as never)).rejects.toThrow(
+      'Agree to read your Steam account pages',
+    )
+    expect(native.partition).not.toHaveBeenCalled()
+    expect(native.windows).toHaveLength(0)
+    expect(native.capture).not.toHaveBeenCalled()
+    expect(request).not.toHaveBeenCalled()
+  })
   it('capture consent refusal and browser unavailability return reasons and zero counts without pages', async () => {
     const parent = new EventEmitter() as BrowserWindow
     const refused = await captureSteamPages(parent, { consentGranted: false })

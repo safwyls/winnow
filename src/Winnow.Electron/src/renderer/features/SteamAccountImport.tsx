@@ -240,18 +240,21 @@ export function SteamPageImport({ mode = 'desktop' }: { mode?: Mode } = {}) {
           <ul>
             {loaded.files.map((file, index) => (
               <li key={index}>
-                {file.path}:{' '}
-                {file.outcome === 0
-                  ? file.kind === 0
-                    ? 'Licence page ready'
-                    : 'Purchase history ready'
-                  : {
-                      1: 'Not found',
-                      2: 'Unreadable',
-                      3: 'Not recognized',
-                      4: 'Already read',
-                      5: 'Different account',
-                    }[file.outcome] || 'Not recognized'}
+                {file.path}
+                {mode === 'fullscreen' && file.outcome === 0 ? ' · ' : ': '}
+                {mode === 'fullscreen' && file.outcome === 0
+                  ? 'LOADED'
+                  : file.outcome === 0
+                    ? file.kind === 0
+                      ? 'Licence page ready'
+                      : 'Purchase history ready'
+                    : {
+                        1: 'Not found',
+                        2: 'Unreadable',
+                        3: 'Not recognized',
+                        4: 'Already read',
+                        5: 'Different account',
+                      }[file.outcome] || 'Not recognized'}
                 {file.outcome !== 0 && file.detail && <span> — {file.detail}</span>}
               </li>
             ))}

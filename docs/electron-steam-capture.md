@@ -37,8 +37,10 @@ change the page identity. The document checks the same rule again before capture
 redirects follow the navigation policy and never become token or page-capture callbacks.
 The window title reports progress; closing the window stops further reads. In the dedicated
 purchase-import route, agreeing to capture also authorizes import of the available pages,
-including a partial capture. Selecting saved HTML files likewise reads and imports them in
-one operation. Optional capture during ordinary account sign-in remains separate: its pages
+including a partial capture. Saved HTML files are listed without reading their contents;
+**Read** loads and imports them together. Desktop accepts multiple files in one selection.
+Fullscreen accumulates individual choices in its controller browser, then offers **Read
+selected pages**. Optional capture during ordinary account sign-in remains separate: its pages
 are offered for explicit import or discard after sign-in succeeds.
 
 The licence walker follows at most fifty further pages by default. Purchase history permits

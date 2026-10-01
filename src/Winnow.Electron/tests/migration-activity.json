@@ -169,36 +169,6 @@
     ],
     "reason": "Late save completion invokes only a currently mounted shared editor; a disposed editor cannot navigate. The existing remount test verifies completion can still close the replacement editor."
   },
-  "SteamReportedActivityTests.Scope_filters_other_accounts_hidden_games_and_covered_increases": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity.test.tsx",
-        "case": "retries failed reads and distinguishes missing account confirmation from an empty result"
-      }
-    ],
-    "reason": "Renderer honors the backend account-confirmation result and suppresses observations until confirmed. Account matching, hidden ownership and covered-increase filtering remain backend responsibilities and need live API integration evidence."
-  },
-  "SteamReportedActivityTests.Both_presentations_label_estimates_and_bounds_without_changing_sessions": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity.test.tsx",
-        "case": "keeps estimates separate and pages twenty observations"
-      }
-    ],
-    "reason": "Both modes label approximate/unmatched increases, overlap uncertainty and observed bounds, and issue no session or statistics mutation. Original controller reading-page activation and tracker-total assertion remain."
-  },
-  "SteamReportedActivityTests.Non_Steam_games_hide_the_section_on_both_surfaces_but_mixed_games_keep_it": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity.test.tsx",
-        "case": "hides non-Steam scope and discards pending observations after a scope change"
-      }
-    ],
-    "reason": "The shared projection hides for non-Steam scope and discards pending data. The original mixed-store Details matrix needs additional assertions."
-  },
   "SteamReportedActivityTests.Desktop_details_activity_hosts_the_separate_projection": {
     "status": "ported",
     "tests": [
@@ -222,15 +192,5 @@
       }
     ],
     "reason": "A scope replacement removes old observations and obsolete reads cannot repopulate them; a separate test retries an initial failed read."
-  },
-  "SteamReportedActivityTests.Fullscreen_activity_and_per_game_history_offer_separate_entry_points": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-activity.test.tsx",
-        "case": "exposes separate Steam history and a prompt-off empty journal in details"
-      }
-    ],
-    "reason": "Per-game History exposes Steam observations in both modes; global Activity has a separate Steam page. Global fullscreen navigation needs an explicit entry-point test."
   }
 }

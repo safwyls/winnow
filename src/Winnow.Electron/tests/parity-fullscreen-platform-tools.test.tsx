@@ -290,6 +290,65 @@ it('Platform_tool_directional_focus_matches_the_vertical_layout', async () => {
   }
 })
 
+it('Both_presentations_import_two_saved_pages_and_repeat_without_duplicate_facts (fullscreen reported file outcomes)', async () => {
+  const h = fixture()
+  h.rerender(<SteamPageImport mode="fullscreen" />)
+  const names = ['first.html', 'second.html']
+  const page = (title: string, number: number) =>
+    `<div class="license_paginator_ctn"><span>Showing licenses ${number}-${number} of 2</span></div><table class="account_table"><tr><th class="license_date_col">Date</th><th>Item</th></tr><tr><td class="license_date_col">Sep 1, 2026</td><td>${title}</td><td class="license_acquisition_col">Steam Store</td></tr></table>`
+  const pages = {
+    source: 1,
+    licensesHtml: page('Alpha', 1),
+    additionalLicensesHtml: [page('Beta', 2)],
+    capturedAt: '2026-09-01T00:00:00Z',
+    steamId: null,
+  }
+  h.bridge.readSavedSteamPages.mockResolvedValue(
+    names.map((name, index) => ({
+      name,
+      content: btoa(index === 0 ? pages.licensesHtml : pages.additionalLicensesHtml[0]),
+    })),
+  )
+  h.bridge.request.mockImplementation(async (input) => ({
+    ok: true,
+    status: 200,
+    data:
+      input.route === 'imports.steam.load'
+        ? { anythingLoaded: true, pages, files: names.map((path) => ({ path, outcome: 0, kind: 0 })) }
+        : {
+            licensesOutcome: 'Parsed',
+            historyOutcome: 'NotSupplied',
+            licenseRowsParsed: 2,
+            licenseFactsRecorded: 2,
+            licenseFactsAlreadyRecorded: 0,
+          },
+  }))
+  for (let pass = 0; pass < 2; pass++) {
+    for (const name of names) {
+      h.bridge.chooseSavedSteamPage.mockResolvedValueOnce({ id: name, name })
+      fireEvent.click(screen.getByRole('button', { name: 'Choose a page' }))
+      await waitFor(() =>
+        expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Choose a page' }).disabled).toBe(false),
+      )
+    }
+    expect(
+      h.bridge.request.mock.calls.filter(([input]) => input.route === 'imports.steam.pages'),
+    ).toHaveLength(pass)
+    fireEvent.click(screen.getByRole('button', { name: 'Read selected pages' }))
+    for (const name of names) expect(await screen.findByText(`${name} · LOADED`)).toBeTruthy()
+    await waitFor(() =>
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Choose a page' }).disabled).toBe(false),
+    )
+    expect(
+      h.bridge.request.mock.calls.filter(([input]) => input.route === 'imports.steam.pages'),
+    ).toHaveLength(pass + 1)
+    expect(screen.queryByText(/Duplicate licence pages were skipped/)).toBeNull()
+    expect(h.bridge.request).toHaveBeenCalledWith(
+      expect.objectContaining({ route: 'imports.steam.pages', body: pages }),
+    )
+  }
+})
+
 it('controller horizontal movement stays in the masked key field while physical arrow defaults remain available', async () => {
   const h = fixture()
   await h.provider('Steam')

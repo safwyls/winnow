@@ -176,7 +176,7 @@ function setup(
           : read(input),
   )
   const cancelRequest = vi.fn(async () => undefined),
-    exportAcquisitions = vi.fn(async () => true)
+    exportAcquisitions = vi.fn(async () => ({ saved: true, ownershipCount: 3 }))
   Object.defineProperty(window, 'winnow', {
     configurable: true,
     value: { request, cancelRequest, exportAcquisitions },

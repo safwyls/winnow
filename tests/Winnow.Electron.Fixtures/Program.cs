@@ -24,6 +24,7 @@ var diagnostics = Path.GetFileName(directory).StartsWith("winnow-electron-diagno
 var ownershipSnapshot = Path.GetFileName(directory).StartsWith("winnow-electron-ownership-snapshot-", StringComparison.Ordinal);
 var platformContext = Path.GetFileName(directory).StartsWith("winnow-electron-platform-context-", StringComparison.Ordinal);
 var pluginProvenance = Path.GetFileName(directory).StartsWith("winnow-electron-plugin-provenance-", StringComparison.Ordinal);
+var steamAccountReading = Path.GetFileName(directory).StartsWith("winnow-electron-steam-account-reading-", StringComparison.Ordinal);
 if (args.Contains("--inspect-frontend-activation"))
 {
     if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Windows activation inspection only.");
@@ -54,12 +55,19 @@ if (visibility)
     Directory.CreateDirectory(directory);
     await File.WriteAllTextAsync(marker, "Winnow Electron visibility test fixture");
 }
-else if (!(pluginProvenance || platformContext || diagnostics || pluginActions || editions || merges || matching || metadataEditing || detailsReading || activityRemaining || journalActivity || gameplayStats || recommendationState || recommendationPreview || coverBehavior || artworkState || startupBoundary || nativeHost || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
+else if (!(steamAccountReading || pluginProvenance || platformContext || diagnostics || pluginActions || editions || merges || matching || metadataEditing || detailsReading || activityRemaining || journalActivity || gameplayStats || recommendationState || recommendationPreview || coverBehavior || artworkState || startupBoundary || nativeHost || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
     || File.Exists(Path.Combine(directory, "winnow.db")))
     throw new ArgumentException("Composition fixtures require a new test-owned directory.");
 
 await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"], services =>
 {
+    if (steamAccountReading)
+    {
+        SteamAccountReadingFixture.Register(services);
+        services.AddSingleton<PluginActionShellGuard>();
+        services.AddSingleton<IUriDispatcher>(provider => provider.GetRequiredService<PluginActionShellGuard>());
+        return;
+    }
     if (pluginProvenance)
     {
         PluginProvenanceFixture.Register(services);
@@ -248,6 +256,7 @@ await using var app = BackendApplication.Build(["--data-dir", directory, "--no-s
         provider.GetRequiredService<ILogger<OwnershipRefreshCoordinator>>()));
 });
 await app.Services.GetRequiredService<FirstRunSetupService>().SaveAsync(null);
+if (steamAccountReading) app.Services.GetRequiredService<SteamAccountReadingFixture>().Initialize(directory);
 if (pluginProvenance) await app.Services.GetRequiredService<PluginProvenanceFixture>().InitializeAsync(directory);
 if (diagnostics) app.Services.GetRequiredService<DiagnosticsFixture>().Initialize(directory);
 if (nativeHost) await app.Services.GetRequiredService<NativeHostFixture>().InitializeAsync(directory);
@@ -263,7 +272,9 @@ if (pluginActions)
 
 // BackendApplication's normal loopback, authority and bearer-token middleware covers these routes.
 // Only this separately built test executable exposes fixture control; the production backend does not.
-if (pluginProvenance)
+if (steamAccountReading)
+    SteamAccountReadingFixture.Map(app);
+else if (pluginProvenance)
     PluginProvenanceFixture.Map(app);
 else if (platformContext)
     PlatformContextFixture.Map(app);

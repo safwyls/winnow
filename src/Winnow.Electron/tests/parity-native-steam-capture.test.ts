@@ -80,6 +80,99 @@ async function capture(browser: Browser, options = {}) {
 }
 
 describe('bounded Steam account capture using sanitized real-page fixtures', () => {
+  it.each([
+    [steamId, steamId, '76561198000000002'],
+    [steamId, steamId, null],
+    [steamId, null, null],
+    [undefined, steamId, '76561198000000002'],
+  ])(
+    'terminates a rejected identity %s / %s / %s without reviving discarded pages',
+    async (expectedSteamId, before, after) => {
+      const browser = new Browser(() => ({ fixture: 'licenses-final-page', identity: before }))
+      const execute = browser.webContents.executeJavaScript.getMockImplementation()!
+      browser.webContents.executeJavaScript.mockImplementation(async (script) => {
+        if (script.includes('action = "capture"'))
+          browser.document
+            .getElementById('application_config')!
+            .setAttribute('data-userinfo', JSON.stringify({ steamid: after }))
+        return execute(script)
+      })
+      const result = await capture(browser, { expectedSteamId })
+      expect(result).toMatchObject({ captureOutcome: 'failed', licensesPagesWalked: 0, loadMoreClicks: 0 })
+      expect(result.pages).toBeUndefined()
+      expect(result.captureDetail).toContain('identity changed')
+      expect(browser.loaded).toHaveLength(1)
+      const calls = browser.webContents.executeJavaScript.mock.calls.length
+      browser.document
+        .getElementById('application_config')!
+        .setAttribute('data-userinfo', JSON.stringify({ steamid: steamId }))
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(browser.webContents.executeJavaScript).toHaveBeenCalledTimes(calls)
+      expect(browser.webContents.listenerCount('did-start-navigation')).toBe(0)
+      expect(result.pages).toBeUndefined()
+      expect(result.captureOutcome).toBe('failed')
+    },
+  )
+
+  it.each([false, true])(
+    'keeps independent history and licence completion at the original counts with capped=%s',
+    async (capped) => {
+      const further = capped ? 50 : 9
+      const expansions = capped ? 100 : 12
+      let clicks = 0
+      const browser = new Browser((url) => ({
+        fixture: url.includes('/history/') ? 'purchase-history' : 'licenses-page1',
+        identity: steamId,
+        mutate: (doc) => {
+          if (url.includes('/licenses/')) {
+            const index = Number(new URL(url).searchParams.get('index') || '0')
+            for (const span of doc.querySelectorAll('.license_paginator_ctn span'))
+              span.textContent = `Showing licenses ${index + 1}-${index + 1} of ${further + (capped ? 2 : 1)}`
+            for (const next of doc.querySelectorAll('a.license_paginator_next')) {
+              if (index === further && !capped) next.remove()
+              else
+                next.setAttribute(
+                  'href',
+                  `https://store.steampowered.com/account/licenses/?index=${index + 1}`,
+                )
+            }
+          }
+          const more = doc.querySelector<HTMLButtonElement>('#load_more_button')
+          if (more)
+            more.onclick = () => {
+              const row = doc.querySelector('tr.wallet_table_row')!
+              row.parentElement!.append(row.cloneNode(true))
+              if (++clicks === expansions && !capped) more.remove()
+            }
+        },
+      }))
+      let settled = false
+      const pending = captureSteamAccountPages(browser as unknown as BrowserWindow).then((result) => {
+        settled = true
+        return result
+      })
+      await vi.advanceTimersByTimeAsync(100)
+      expect(clicks).toBe(1)
+      expect(settled).toBe(false)
+      await vi.advanceTimersByTimeAsync(30_000)
+      const result = await pending
+      expect(result).toMatchObject({
+        captureOutcome: capped ? 'partial' : 'captured',
+        licensesPagesWalked: further,
+        loadMoreClicks: expansions,
+        licensesStoppedBecause: capped ? 'cap' : 'exhausted',
+        historyStoppedBecause: capped ? 'cap' : 'exhausted',
+        licensesTruncated: capped,
+        historyTruncated: capped,
+      })
+      expect(result.pages!.additionalLicensesHtml).toHaveLength(further)
+      const lastLicense = result.pages!.additionalLicensesHtml.at(-1)!
+      expect(lastLicense.includes('license_paginator_next')).toBe(capped)
+      expect(result.pages!.historyHtml!.includes('load_more_button')).toBe(capped)
+      expect(clicks).toBe(expansions)
+    },
+    20_000,
+  )
   it.each(['licenses', 'history'] as const)(
     'recognizes the original signed-in %s fixture and refuses its login form',
     async (kind) => {

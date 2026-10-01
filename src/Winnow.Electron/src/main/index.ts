@@ -723,7 +723,8 @@ async function initialize(): Promise<void> {
       route: 'acquisitions.export',
     })
     if (!result.ok || !result.data) throw new Error('Acquisitions could not be exported. Try again.')
-    return saveAcquisitions(result.data.content, chooseFile)
+    const saved = await saveAcquisitions(result.data.content, chooseFile)
+    return { saved, ownershipCount: result.data.ownershipCount }
   })
   handle('winnow:steam:signin', (options: SteamSignInOptions) =>
     signInToSteam(window!, transport!, options, (message) => {

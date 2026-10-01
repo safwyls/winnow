@@ -165,6 +165,13 @@ consent separate. Epic asks before signing out, and cancelling preserves the cur
 Saved Steam pages are selected first and imported only after **Read**. Fullscreen uses
 the controller file browser; leaving the page discards its selection. CSV exports retain
 the UTF-8 signature and the backend's original contents. Cancelling the save writes nothing.
+**Export acquisition CSV** in Library settings and **Export acquisitions** in account
+statistics share one pending operation. They report the exported ownership count, cancellation
+or a safe save failure, and remain disabled when the host has no export capability.
+Steam-reported activity stays separate from recorded sessions. Desktop Details shows its
+observations inline; fullscreen Play history opens a separate projection, then a reading
+page for the selected observation. Each reader includes its observed interval, uncertainty
+and explanation, with local controller hints and Back focus restoration.
 **Show only your account**
 becomes available after Steam confirms the account. Its separate count uses the data
 font and appears only when games from other accounts can be hidden. Games without
@@ -542,14 +549,15 @@ details journal editors use larger fullscreen fields and an explicit Edit note a
 filter and help sections participate in directional navigation.
 
 Fullscreen file selection stays inside Winnow for artwork, manual executables, appearance
-profile import/export, developer-theme folders and acquisition CSV export. The chooser
+profile import/export, developer-theme folders, saved Steam pages and acquisition CSV export. The chooser
 pages through folders, filters extensions without regard to case, and asks before replacing
 an existing file, initially focusing Cancel. The chooser keeps D-pad, A and B glyph hints
 visible, with Y Keyboard for filename entry and B Back on the replacement prompt. Choosing
 a path never writes the file; the operation that opened the chooser owns the subsequent
-read or write. Desktop keeps native
-file dialogs. Saved Steam HTML pages still use the separate multi-file input, and installing
-a developer theme retains its native trust confirmation.
+read or write. Desktop keeps native file dialogs and the multi-file input for saved Steam
+HTML. Fullscreen selects saved pages one at a time, then **Read selected pages** imports
+the accumulated selection.
+Installing a developer theme retains its native trust confirmation.
 
 Fullscreen keeps LB/RB glyphs on either side of the centered main menu. Library, Activity
 and Settings keep LT/RT glyphs beside their local sections.

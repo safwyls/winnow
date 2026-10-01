@@ -522,7 +522,10 @@ describe('details history and journal parity', () => {
       host(<Details mode={mode} workId={1} />)
       await screen.findByRole('heading', { name: 'Dragonwilds', level: 1 })
       fireEvent.click(screen.getByRole('button', { name: 'History' }))
+      if (mode === 'fullscreen')
+        fireEvent.click(await screen.findByRole('button', { name: 'Steam-reported activity' }))
       expect(await screen.findByRole('region', { name: 'Steam-reported activity' })).toBeTruthy()
+      if (mode === 'fullscreen') fireEvent.click(screen.getByRole('button', { name: 'Back' }))
       expect(screen.getByRole('region', { name: 'Your play history' })).toBeTruthy()
       fireEvent.click(
         within(screen.getByRole('navigation', { name: 'Game information' })).getByRole('button', {

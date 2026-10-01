@@ -12,6 +12,7 @@ import { parseExpansionGrouping } from './parity-library-grain'
 import { Notice } from './shared'
 import { ExplicitVisibility } from './ExplicitVisibility'
 import { useSetupBusy, useSetupPreferenceError } from './settingsState'
+import { AcquisitionExport } from './AcquisitionExport'
 
 export const librarySortChoices = [
   ['DormantLongest', 'Dormant longest'],
@@ -107,6 +108,7 @@ export function FullscreenLibrarySettings({
       {!setup && (
         <>
           <h2 className="fullscreen-settings-group">Manage library</h2>
+          <AcquisitionExport row />
           {onTools && <FullscreenSettingsAction label="Library tools" onClick={onTools} />}
           {onSpending && <FullscreenSettingsAction label="Spending" onClick={onSpending} />}
           {onRecommendations && (

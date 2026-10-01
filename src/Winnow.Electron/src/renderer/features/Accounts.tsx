@@ -6,6 +6,7 @@ import type { Mode } from '../api/types'
 import { useViewState } from '../viewState'
 import { Empty, Notice } from './shared'
 import './accounts.css'
+import { AcquisitionExport } from './AcquisitionExport'
 
 interface Slice {
   count: number
@@ -505,8 +506,6 @@ export function AccountStatistics({
     if (document.activeElement === document.body || document.activeElement === refreshButton.current)
       refreshButton.current?.focus({ preventScroll: true })
   }, [stats.isFetching])
-  const [error, setError] = useState<unknown>(null)
-  const [message, setMessage] = useState('')
   const [selected, setSelected] = useViewState<string | null>(`${mode}:stats:currency`, null)
   const data = stats.data
   const ambiguous = !!data && data.knownAccountCount > 0 && data.unknownAccountFactCount > 0
@@ -542,21 +541,7 @@ export function AccountStatistics({
             ? 'Try again'
             : 'Refresh Steam spending'}
       </button>
-      {window.winnow.exportAcquisitions && (
-        <button
-          onClick={() => {
-            setError(null)
-            setMessage('')
-            void window.winnow.exportAcquisitions!()
-              .then((saved) => {
-                if (saved) setMessage('Acquisitions exported.')
-              })
-              .catch(setError)
-          }}
-        >
-          Export acquisitions
-        </button>
-      )}
+      <AcquisitionExport label="Export acquisitions" />
     </div>
   )
   const figures = (
@@ -594,7 +579,6 @@ export function AccountStatistics({
           Couldn't read Steam spending. Try again.
         </p>
       )}
-      <Notice error={error} message={message} />
       {stats.isPending ? (
         <p role="status">Reading your account statistics…</p>
       ) : data?.hasAnything ? (
@@ -632,8 +616,8 @@ export function AccountStatistics({
           )}
           {data.unknownAccountFactCount > 0 && (
             <p className="reading-prose">
-              {data.unknownAccountFactCount} facts have no captured account identity. Signing in does not
-              assign them to an account.
+              {data.unknownAccountFactCount} {data.unknownAccountFactCount === 1 ? 'fact has' : 'facts have'}{' '}
+              no captured account identity. Signing in does not assign them to an account.
             </p>
           )}
           {ambiguous ? (

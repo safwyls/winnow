@@ -157,7 +157,7 @@ export interface WinnowBridge {
   openInstallFolder?(ownershipId: number): Promise<void>
   chooseManualExecutable?(): Promise<string | null>
   chooseManualExecutableFacts?(): Promise<import('./executable-facts').ExecutableFacts | null>
-  exportAcquisitions?(): Promise<boolean>
+  exportAcquisitions?(): Promise<{ saved: boolean; ownershipCount: number }>
   chooseSavedSteamPage?(): Promise<SavedSteamPage | null>
   readSavedSteamPages?(ids: string[]): Promise<SavedSteamPageUpload[]>
   clearSavedSteamPages?(): Promise<void>

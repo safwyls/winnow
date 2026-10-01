@@ -527,7 +527,7 @@ function SharedDetails({
                 <h2>Recorded sessions</h2>
                 <SessionRows sessions={sessions} onEdit={editSession} />
               </section>
-              {game && <SteamReportedActivity games={[game]} mode={mode} />}
+              {game && <SteamReportedActivity games={[game]} mode={mode} entryPoint />}
             </>
           )}
           {tab === 'Updates' && (

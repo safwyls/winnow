@@ -137,25 +137,30 @@ describe.each(['desktop', 'fullscreen'] as const)('%s setup account and recovery
       const h = fixture(mode, platform === 'Steam' ? 2 : 3)
       if (mode === 'fullscreen')
         fireEvent.click(await screen.findByRole('button', { name: `Set up ${platform}` }))
+      const navigation = (await screen.findByRole('button', {
+        name: mode === 'fullscreen' ? 'Back to setup' : 'Continue',
+      })) as HTMLButtonElement
       const gate = deferred<void>()
       h.gate(gate.promise)
       fireEvent.click(await screen.findByRole('button', { name: `Sign out of ${platform}` }))
+      if (platform === 'Epic') {
+        const confirmation = await screen.findByRole('dialog', { name: 'Sign out of Epic?' })
+        expect(document.activeElement).toBe(within(confirmation).getByRole('button', { name: 'Cancel' }))
+        expect(h.request.mock.calls.some(([input]) => input.route === 'connections.epic.signOut')).toBe(false)
+        fireEvent.click(within(confirmation).getByRole('button', { name: 'Sign out' }))
+      }
+      await waitFor(() => expect(navigation.disabled).toBe(true))
       await waitFor(() =>
-        expect(
-          (
-            screen.getByRole('button', {
-              name: mode === 'fullscreen' ? 'Back to setup' : 'Continue',
-            }) as HTMLButtonElement
-          ).disabled,
-        ).toBe(true),
+        expect(h.request).toHaveBeenCalledWith({
+          route: `connections.${platform.toLowerCase()}.signOut`,
+          params: undefined,
+          body: undefined,
+        }),
       )
-      expect(h.request).toHaveBeenCalledWith({
-        route: `connections.${platform.toLowerCase()}.signOut`,
-        params: undefined,
-        body: undefined,
-      })
       expect(h.cursor()).toBe(platform === 'Steam' ? 2 : 3)
       await act(async () => gate.resolve())
+      if (platform === 'Epic')
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Sign out of Epic?' })).toBeNull())
       await waitFor(() =>
         expect(screen.queryByRole('button', { name: `Sign out of ${platform}` })).toBeNull(),
       )

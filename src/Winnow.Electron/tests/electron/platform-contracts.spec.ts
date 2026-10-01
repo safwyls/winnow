@@ -415,8 +415,13 @@ async function exportCsv() {
     await activate(picker.getByRole('button', { name: 'Save here', exact: true }))
     await expect(picker).toHaveCount(0)
   }
-  await expect(page.getByText('Acquisitions exported.', { exact: true })).toBeVisible()
   const expected = await api('acquisitions.export')
+  await expect(
+    page.getByText(
+      `Exported ${expected.ownershipCount.toLocaleString()} ownership ${expected.ownershipCount === 1 ? 'record' : 'records'}.`,
+      { exact: true },
+    ),
+  ).toBeVisible()
   const bytes = await readFile(destination)
   expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
   expect(bytes.subarray(3).equals(Buffer.from(expected.content, 'utf8'))).toBe(true)

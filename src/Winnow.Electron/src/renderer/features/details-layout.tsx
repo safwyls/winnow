@@ -345,7 +345,7 @@ export function AvalonDetailsLayout({
         <h2>Recorded sessions</h2>
         <SessionRows sessions={sessions} onEdit={setEditing} />
       </section>
-      {game && <SteamReportedActivity games={[game]} mode={mode} />}
+      {game && <SteamReportedActivity games={[game]} mode={mode} entryPoint />}
     </>
   )
   const journal = (

@@ -79,7 +79,7 @@ describe('account summary parity with AccountStatsSummaryTests', () => {
       )
       await screen.findByText(/2 identified accounts/)
       expect(screen.getByText(/unknown account may overlap identified/)).toBeTruthy()
-      expect(screen.getByText(/1 facts have no captured account identity/)).toBeTruthy()
+      expect(screen.getByText(/1 fact has no captured account identity/)).toBeTruthy()
       expect(screen.queryByText('$15.00')).toBeNull()
       expect(screen.queryByRole('table')).toBeNull()
       expect(screen.queryByRole('region', { name: 'Captured spending charts' })).toBeNull()

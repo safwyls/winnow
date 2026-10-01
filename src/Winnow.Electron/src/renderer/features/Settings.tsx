@@ -41,6 +41,7 @@ import { FullscreenMetadataChild, FullscreenMetadataSettings } from './Fullscree
 import { MetadataSyncSettings } from './MetadataSyncSettings'
 import { useMetadataSync } from './metadata-sync'
 import { FullscreenPlatforms } from './FullscreenPlatforms'
+import { AcquisitionExport, acquisitionExportDescription } from './AcquisitionExport'
 import { PlatformConfirmation, PlatformHints, platformVerticalFocus } from './PlatformControls'
 
 export function Settings({
@@ -245,6 +246,11 @@ export function Settings({
               <AccountVisibility />
             </section>
             <LibraryPresentationPreferences />
+            <section className="feature-panel" aria-label="Acquisition export">
+              <h2>Acquisition export</h2>
+              <p>{acquisitionExportDescription}</p>
+              <AcquisitionExport />
+            </section>
           </>
         ))}
       {tab === 'Application' &&

@@ -45,17 +45,23 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [plugin source and sign-in checkpoint](checkpoint-eighty-four.md) records eighteen
+The [Steam capture and reported activity checkpoint](checkpoint-eighty-five.md) records
+24 unchanged source cases, 19 backend cases, all 4,130 component/live API cases across
+216 files, and thirteen distinct native journeys passing. Both surfaces preserve
+acquisition export outcomes, exact saved-page facts and Steam observation bounds;
+fullscreen adds separate reading and corrected typography. The inventory has 1,626
+ported, 705 retained-backend and 37 framework-specific methods, with 54 pending and
+thirteen partial. TASK-381.21–381.30 are complete; work pauses for user review before
+TASK-381.31. The complete migration and release gates remain outstanding.
+
+The preceding [plugin source and sign-in checkpoint](checkpoint-eighty-four.md) records eighteen
 unchanged source cases, twenty backend cases, 272 focused renderer cases, 121 Epic
 component/main/preload cases and eleven distinct native journeys passing. Grouped
 provider explanations, PlayStation labels, plugin settings and Epic fallback retain
 their source contracts. The [runtime metadata credentials checkpoint](checkpoint-eighty-three.md)
 records nine source cases, fifteen HTTP cases, 38 component cases and three native
-journeys passing. The inventory has 1,611 ported, 704 retained-backend and 36
-framework-specific methods, with 66 pending and eighteen partial.
-The [native identity checkpoint](checkpoint-seventy-nine.md)
-records the most recent broad 3,992-case component/live API gate. Work continues
-through TASK-381.30.
+journeys passing. The [native identity checkpoint](checkpoint-seventy-nine.md)
+records the earlier broad 3,992-case component/live API gate.
 
 The preceding [startup and first-run setup checkpoint](checkpoint-seventy-eight.md) records
 3,958 component/live API cases, twenty-five unchanged source cases, five HTTP cases

@@ -3,6 +3,7 @@ import electronPath from 'electron'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { closeFixture } from './fixture-cleanup'
+import { prebuiltBackend, prebuiltActivationHelper } from './prebuilt-backend'
 import { assertAccessibleControls, assertDirectionalReachability } from './controller-accessibility-helpers'
 
 let application: ElectronApplication, page: Page, directory: string, documents: string
@@ -24,11 +25,15 @@ test.beforeEach(async () => {
       '--seed-sample',
       '--no-sync',
     ],
-    env: Object.fromEntries(
-      Object.entries(process.env).filter(
-        ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-      ),
-    ) as Record<string, string>,
+    env: {
+      ...(Object.fromEntries(
+        Object.entries(process.env).filter(
+          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+        ),
+      ) as Record<string, string>),
+      WINNOW_BACKEND_PATH: prebuiltBackend,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+    },
     chromiumSandbox: true,
   })
   page = await application.firstWindow()
@@ -156,6 +161,18 @@ test('fullscreen acquisitions export keeps existing CSV untouched until Cancel-f
   await tap(0)
   await expect.poll(settled).toBe(true)
   await expect(page.locator('.fullscreen-file-picker')).toHaveCount(0)
+  const exportProof = await page.evaluate(async () => {
+    const response = await window.winnow.request({ route: 'acquisitions.export' })
+    if (!response.ok || !response.data) throw Error('Actual export read failed')
+    return {
+      result: (window as any).pickerResult,
+      csv: response.data as { content: string; ownershipCount: number },
+    }
+  })
+  expect(exportProof.result).toEqual({ saved: true, ownershipCount: exportProof.csv.ownershipCount })
+  const saved = await readFile(join(documents, 'report.csv'))
+  expect([...saved.subarray(0, 3)]).toEqual([239, 187, 191])
+  expect(saved.subarray(3).equals(Buffer.from(exportProof.csv.content, 'utf8'))).toBe(true)
   expect(await readFile(join(documents, 'report.csv'), 'utf8')).not.toBe('keep this until export succeeds')
   expect(
     await application.evaluate(() => (globalThis as unknown as { pickerDialogs: unknown[] }).pickerDialogs),

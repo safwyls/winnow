@@ -33,6 +33,7 @@
 .fullscreen-settings-content > p,
 .fullscreen-settings-content > div > p,
 .fullscreen-settings-content .rating-cap.mode-fullscreen > p {
+  width: auto;
   margin: 0 24px;
   font: calc(clamp(14.67px, 1.146vw, 22px) * var(--settings-scale))/1.45 var(--font-body);
 }
