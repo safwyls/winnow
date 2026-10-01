@@ -1,11 +1,11 @@
 ---
 id: TASK-381.26
 title: 'Electron: finish ownership, install state and snapshot scheduling'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:48'
-updated_date: '2026-10-01 20:04'
+updated_date: '2026-10-01 20:05'
 labels:
   - electron
   - parity
@@ -83,7 +83,7 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -100,6 +100,8 @@ Started after TASK-381.25 implementation d66f7617. Inventory1584 ported/665 reta
 All30 assigned original source cases pass without skips in task38126-source-results/task38126-source.trx. The retained service fixtures preserve exact lifecycle50/51 attempts, remote inventory six outcomes, two cancellation/resolver failures, Steam install stability and snapshot244-to281 timing. Source title limitations (no history row seeded; cancellation before resolver) will remain explicit in checkpoint81. Renderer restoration is in progress; final promotion waits API/components/native.
 
 Final checks pass:30 source cases,10 HTTP cases (6new+4management),307 focused renderer cases,13 typography leaf cases and8 distinct native cases. TypeScript/format/production build and fixture build pass. Both surfaces visually inspected; native1234 count uses actual1235-to1 library and persisted choice; cached Panzer/Hades links use saved browser destination with captured OS boundary. Original misconfigured destination runs retained in evidence. All23 methods resolved:5ported17retained1narrow framework scanner. Inventory1589/682/33/111pending/20partial. Checkpoint-eighty-one.md and task38126-native-evidence.json record scope/limits; no physical-device or held-initial-startup claim.
+
+Reviewable implementation milestone e8473317. All criteria verified; continuing TASK-381.27 within the authorized batch.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
