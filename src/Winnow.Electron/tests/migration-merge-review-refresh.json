@@ -1,0 +1,283 @@
+{
+  "MergeScreenRegistrationTests.The_screen_resolves_from_the_container_and_loads_every_list": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeCompositionParityTests.cs",
+        "case": "Production_merge_composition_loads_all_empty_review_sources_and_refreshes_through_HTTP"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps all five empty sections and distinguishes an unfinished sweep from nothing left to decide"
+      }
+    ],
+    "reason": "Original resolves MergeQueueViewModel from real DI, loads, asserts IsLoaded, every section empty and PendingCount 0. Equivalent production backend resolves IdentityReviewApplication and PluginSyncService, confirms IMergeSuggestionRefresh is the same concrete singleton in a child scope, and authenticated HTTP loads empty candidates/history/acts/expansions/workspace. Real HTTP refresh completes with zero queued and zero auto-merged, revision 1 and completed-sweep=true. Existing both-surface component empty-sections case covers loaded five-section presentation and nothing-waiting state."
+  },
+  "MergeScreenRegistrationTests.Omitting_the_link_registration_breaks_the_container_by_name": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeCompositionParityTests.cs",
+        "case": "Omitting_identity_links_from_production_composition_fails_review_resolution_naming_the_repository"
+      }
+    ],
+    "reason": "The source test removes IIdentityLinkRepository from DI, then explicitly resolves MergeQueueViewModel and requires InvalidOperationException naming the missing interface. Equivalent test removes every link registration from production BackendApplication services, explicitly resolves IdentityReviewApplication, and asserts the same exception and interface name. This is failure during required review composition resolution, not a claim that the HTTP host eagerly validates every dependency at startup."
+  },
+  "MergeSuggestionRefreshTests.Requests_are_serial_and_a_later_request_runs_again_after_the_first_snapshot": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/MergeSuggestionRefreshTests.cs",
+        "case": "Requests_are_serial_and_a_later_request_runs_again_after_the_first_snapshot"
+      }
+    ],
+    "implementation": [
+      "src/Winnow.Application/Services/MergeSuggestionRefresh.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "The controlled first sweep blocks; a second refresh remains pending with one sweep call and revision zero. Releasing the first causes two complete passes and revision two. The production backend uses the same singleton MergeSuggestionRefresh class and endpoint dispatches directly to it."
+  },
+  "MergeSuggestionRefreshTests.Failed_and_cancelled_passes_release_the_gate_without_advancing_revision": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/MergeSuggestionRefreshTests.cs",
+        "case": "Failed_and_cancelled_passes_release_the_gate_without_advancing_revision"
+      }
+    ],
+    "implementation": [
+      "src/Winnow.Application/Services/MergeSuggestionRefresh.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "Synthetic failure throws without advancing revision; the next active pass is cancelled after entry and also leaves revision zero; a third pass succeeds and reaches revision one. The SemaphoreSlim/Task.Run/try-finally implementation is unchanged and remains in Winnow.Application."
+  },
+  "MergeSuggestionRefreshTests.Cancelling_a_waiter_does_not_cancel_another_surfaces_active_pass": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/MergeSuggestionRefreshTests.cs",
+        "case": "Cancelling_a_waiter_does_not_cancel_another_surfaces_active_pass"
+      }
+    ],
+    "implementation": [
+      "src/Winnow.Application/Services/MergeSuggestionRefresh.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "The active pass stays incomplete after cancelling only the queued waiter's token. Releasing the active pass yields exactly one sweep call and revision one. Separate frontend requests reach the same backend singleton, so caller cancellation ownership remains the original application behavior."
+  },
+  "MergeSuggestionRefreshTests.Synchronous_matching_work_is_dispatched_away_from_the_requesting_thread": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/MergeSuggestionRefreshTests.cs",
+        "case": "Synchronous_matching_work_is_dispatched_away_from_the_requesting_thread"
+      }
+    ],
+    "implementation": [
+      "src/Winnow.Application/Services/MergeSuggestionRefresh.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ],
+    "reason": "A dedicated LongRunning requester records its managed thread ID; the synchronous sweep records a distinct worker thread ID. Truncated=true is returned intact and revision becomes one. This still executes production Task.Run offloading in Winnow.Application; no Avalonia dispatcher is part of the fixture."
+  },
+  "PluginMergeSuggestionTests.Imported_console_entry_gets_one_suggestion_without_linking_or_replacing_source_records": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/PluginMergeSuggestionTests.cs",
+        "case": "Imported_console_entry_gets_one_suggestion_without_linking_or_replacing_source_records"
+      }
+    ],
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSyncService.cs",
+      "src/Winnow.Application/Services/MergeSuggestionRefresh.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Resolve/LibrarySoftMatchSweep.cs",
+      "src/Winnow.Resolve/SoftMatchResolver.cs",
+      "src/Winnow.Data/Repositories/MergeCandidateRepository.cs",
+      "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ],
+    "reason": "The real ExternalIdResolver imports Hollow Knight with native ID 367520. PluginSyncService imports plugin:<psn|xbox>/fixture-hollow-knight for fixture-account-a with 120 minutes, a last-played time of 2026-09-01T12:00Z, the Played history source label and OpenStore action. All six plugin/native-store pairs retain separate works. The first refresh queues one suggestion without auto-merging; the second queues none and reports one already pending. Assertions retain singleton identity across scopes, revision two, exact candidate endpoints and status, unchanged releases, ownerships, action cache and identity history, and the original plugin facts."
+  },
+  "PluginMergeSuggestionTests.Reimport_and_refresh_preserve_the_users_answer_and_source_entries": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/PluginMergeSuggestionTests.cs",
+        "case": "Reimport_and_refresh_preserve_the_users_answer_and_source_entries"
+      }
+    ],
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSyncService.cs",
+      "src/Winnow.Application/Services/MergeSuggestionRefresh.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Resolve/LibrarySoftMatchSweep.cs",
+      "src/Winnow.Resolve/SoftMatchResolver.cs",
+      "src/Winnow.Data/Repositories/MergeCandidateRepository.cs",
+      "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ],
+    "reason": "The original Steam plus PSN/Xbox fixture covers both confirmation and rejection. Reimport returns the same console release. A later refresh queues no suggestions, auto-merges nothing and leaves no pending rows. Confirmation removes the candidate while retaining the same-game resolution; rejection retains the candidate ID and rejected status. Identity history stays unchanged, exactly two release identities and two ownerships remain, and the original 120-minute playtime, date, provider and action facts are preserved."
+  },
+  "PluginMergeSuggestionTests.Account_changes_and_repeated_imports_do_not_duplicate_releases_or_suggestions": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/PluginMergeSuggestionTests.cs",
+        "case": "Account_changes_and_repeated_imports_do_not_duplicate_releases_or_suggestions"
+      }
+    ],
+    "implementation": [
+      "src/Winnow.Application/Services/PluginSyncService.cs",
+      "src/Winnow.Application/Services/MergeSuggestionRefresh.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Resolve/LibrarySoftMatchSweep.cs",
+      "src/Winnow.Resolve/SoftMatchResolver.cs",
+      "src/Winnow.Data/Repositories/MergeCandidateRepository.cs",
+      "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+      "src/Winnow.Data/Repositories/OwnershipAccountRepository.cs"
+    ],
+    "reason": "The original GOG plus PSN/Xbox fixture starts with fixture-account-a and 120 minutes. It then imports account b with 30 minutes, account a with 120 minutes, and account b with 30 minutes, running the real refresh after each import. The release and candidate IDs remain stable. Assertions retain one pending candidate, no identity links, two release identities, one console ownership, separate account observations of 120 and 30 minutes, and the matching plugin source on both observations. The fixture constructs no renderer or Avalonia object."
+  },
+  "MergesDetailsTests.A_row_click_opens_the_librarys_detail_modal_for_that_entry": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "%s merge Details keeps the requested Prey identity and rejects a row without a visible library tile"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop Details establishes the member cursor before notifying navigation without changing its header"
+      },
+      {
+        "file": "tests/electron/merge-review.spec.ts",
+        "case": "${surfaceName} source Prey member opens its exact Details entry and returns focus without changing header"
+      }
+    ],
+    "reason": "The original fixture has two separately owned Steam releases named Prey, left year 2017 and right year unknown, both on Windows, with one pending candidate scored 0.8. The production App test preserves those facts and requires the right member to request game.details for work 2 through the shared shell. The queue remains available and the first header stays selected. The focused queue test establishes the requested member cursor before the navigation callback without promoting it. Native desktop and fullscreen cases additionally open that member through the real backend, return focus to its row or proposal, retain the first header, and preserve review revision and history. DOM identity and the requested API work ID replace Avalonia view-model reference equality."
+  },
+  "MergesDetailsTests.A_row_with_no_tile_opens_nothing_and_says_so": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "%s merge Details keeps the requested Prey identity and rejects a row without a visible library tile"
+      },
+      {
+        "file": "tests/electron/merge-review.spec.ts",
+        "case": "${surfaceName} a Prey member without an owned tile refuses Details and preserves review choices"
+      }
+    ],
+    "reason": "The source inserts a Windows Prey release without ownership into an otherwise empty library and requires the library open operation to return false without opening Details. The App regression empties the visible library while retaining the Prey review, then requires both surfaces to refuse navigation, leave the queue visible and issue no additional game.details request. The native fixture supplies an actual unowned Prey member, requires no Details dialog, shows the unavailable-library notice and preserves the review revision. The visible refusal replaces the source boolean result; the source method itself does not assert its named notice."
+  },
+  "MergePlatformPickerTests.Fullscreen_controller_selects_platform_and_remembers_it_on_reopen": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-review-contracts.test.tsx",
+        "case": "applies and remembers Steam while exposing the current platform and restoring the picker origin"
+      },
+      {
+        "file": "tests/electron/merge-review.spec.ts",
+        "case": "${surfaceName} source platform picker chooses Steam accessibly and persists on reopen"
+      }
+    ],
+    "reason": "The source uses an empty review at 1920 by 1080, opens the preferred-platform actions, starts on None, moves Down to Steam and accepts it, then requires the stored value steam and the Steam preference after reopening. The component case preserves None-to-Steam focus, closes the sheet, returns to its origin and retains the saved selected option on reentry. The native fullscreen case drives the production standard Gamepad API with simulated frames, checks Chromium accessibility and directional reachability, reaches the platform trigger from Sort with two Down presses, uses Down and A inside the sheet, reads the real saved preference and reloads the window to verify persistence. This verifies simulated controller routing, not a physical device."
+  },
+  "MergePlatformPickerTests.Desktop_picker_applies_option_closes_and_updates_accessible_status": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-review-contracts.test.tsx",
+        "case": "applies and remembers Steam while exposing the current platform and restoring the picker origin"
+      },
+      {
+        "file": "tests/electron/merge-review.spec.ts",
+        "case": "${surfaceName} source platform picker chooses Steam accessibly and persists on reopen"
+      }
+    ],
+    "reason": "The source focuses and activates Steam in a flyout at a 980 by 640 pane, requires that picker to close, and exposes the resulting Steam preference in the trigger name and ItemStatus. It also bounds the trigger inside its bar before the proposal count. Electron retains a native HTML select: the component checks the selected Steam option and current accessible description, while the native case opens it with Alt+Down, selects with Down and Enter, retains focus, checks the accessible current preference, reads storage and reloads. Native select value and description provide the approved framework equivalent of the source name/ItemStatus pair. The desktop filter bar now keeps the select before the proposal count, and the native case asserts that ordering in addition to containment."
+  },
+  "MergeRowActionsTests.Long_titles_keep_cards_and_trailing_actions_inside_the_desktop_pane_when_resized": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/merge-review.spec.ts",
+        "case": "desktop source long title multi-store rows retain trailing actions through1670 950 1030 950pane resizes"
+      }
+    ],
+    "reason": "The native fixture retains Metal Gear Solid V: The Phantom Pain — The Definitive Experience Collector's Edition, year 2011, Supergiant Games and Windows, with Steam and GOG ownerships on the first release and Epic on the second. It measures the actual merge pane at 1670, 950, 1030 and 950 pixels by 700 pixels, including both visits to the minimum width. Each pass checks horizontal containment and scroll overflow, headline before confidence badge before Same game, and row title before header mark before store chips. Details opens the second member without promoting it; its include checkbox toggles off and on at every size. A real same-game mutation replaces source MarkResolved(123), then the saved strip and its controls must remain contained at 950 pixels."
+  },
+  "MergeRowActionsTests.Row_body_promotes_while_details_and_radio_have_independent_pointer_and_keyboard_actions": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop row body promotes while Details, include and radio remain separate actions"
+      },
+      {
+        "file": "tests/parity-merge-review-contracts.test.tsx",
+        "case": "refuses further promotion after the original Bastion Steam/Epic row fixture is resolved"
+      },
+      {
+        "file": "tests/electron/merge-review.spec.ts",
+        "case": "desktop exact Bastion row body radio and Details keep pointer and keyboard actions independent"
+      }
+    ],
+    "reason": "The original Bastion Steam/Epic pair retains year 2011, Supergiant Games and Windows at a 1200 by 900 pane. Native pointer activation on the second row promotes it without opening Details; its Header mark changes, and keyboard Enter on its named Details control opens the member without changing that choice. Space on the first radio promotes the first member; pointer Details on the second leaves the first selected. Raw source records stay unchanged until the explicit same-game answer, after which pending rows disappear and the saved relationship retains parent 1. The component counterpart asserts the source's otherwise inaccessible post-resolution command directly: act 123 rejects promotion to member 2 and returns the identical card with parent 1."
+  },
+  "MergeSuggestionRefreshTests.Desktop_pointer_and_keyboard_refresh_report_busy_failure_and_recovery_within_minimum_pane": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-review-contracts.test.tsx",
+        "case": "owns refresh beside review actions and reports idle, duplicate-blocked busy, failure and successful retry without answering"
+      },
+      {
+        "file": "tests/parity-merge-review-contracts.test.tsx",
+        "case": "keeps one pending refresh owner when an initial read failure recovers before sweep %s"
+      },
+      {
+        "file": "tests/electron/merge-review.spec.ts",
+        "case": "${surfaceName} source refresh reports busy failure recovery and one real pending match in its minimum pane"
+      }
+    ],
+    "reason": "The original empty review gains a Bastion pair with Steam and PSN ownerships, year 2011, Supergiant Games and Windows. At the measured 950 by 740 desktop pane, the native case requires an accessible Refresh suggestions icon without visible text, no idle status, matching vertical centers and a gap of zero to twelve pixels before Merge selected. Pointer activation starts exactly one disabled request and polite busy message; duplicate dispatch is suppressed. A controlled failure restores the button and failure copy, then keyboard Enter retries and succeeds with one pending candidate and no identity history. Screenshots assert the status remains within the viewport at busy, failure and completion. Integrated component cases verify the shared cached review and both success and failure/retry while an initial failed read recovers during the same pending sweep."
+  },
+  "MergeSuggestionRefreshTests.Fullscreen_controller_and_keyboard_refresh_report_busy_failure_and_recovery": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-review-contracts.test.tsx",
+        "case": "owns refresh beside review actions and reports idle, duplicate-blocked busy, failure and successful retry without answering"
+      },
+      {
+        "file": "tests/parity-merge-review-contracts.test.tsx",
+        "case": "keeps one pending refresh owner when an initial read failure recovers before sweep %s"
+      },
+      {
+        "file": "tests/electron/merge-review.spec.ts",
+        "case": "${surfaceName} source refresh reports busy failure recovery and one real pending match in its minimum pane"
+      }
+    ],
+    "reason": "The original 1280 by 720 fullscreen fixture adds the same Bastion Steam/PSN pair to an empty review. Controller A starts a disabled request with busy feedback; failure restores the control and polite failure copy; keyboard Enter retries, then completion displays Bastion with one pending candidate and no relationship history. The native case uses the actual production Gamepad API with simulated frames and bounds each status within the viewport. Integrated component tests retain the Sort, Kind, Preferred platform, Refresh order, duplicate suppression, shared review on the opposite surface, and a stable request owner through initial-read recovery. The native route starts on Sort and sends three Down presses before asserting Refresh focus and accepting with A."
+  },
+  "MergeSuggestionRefreshTests.Automatic_publication_updates_fullscreen_when_pending_count_is_unchanged": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-review-contracts.test.tsx",
+        "case": "publishes Bastion to Hades after an automatic sweep with the same one-proposal count"
+      },
+      {
+        "file": "tests/electron/merge-review.spec.ts",
+        "case": "${surfaceName} source automatic publication replaces Bastion with Hades while pending count remains one"
+      }
+    ],
+    "reason": "The source first presents one Bastion Steam/PSN proposal, removes that pending pair and inserts Hades with the same 2011, Supergiant Games and Windows facts. Publication must display Hades, remove Bastion and retain pending count one. Both component modes apply the exact title and count change through the shared production query and assert no manual identity.refresh request. Native desktop and 1280 by 720 fullscreen cases replace the real temporary database candidate, publish the backend event through an authenticated test-only fixture boundary, and require the actual renderer to update without a canned snapshot. This matches the source refresh stub, which publishes completion without running another sweep."
+  }
+}

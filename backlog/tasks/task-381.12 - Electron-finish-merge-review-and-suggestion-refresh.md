@@ -1,11 +1,11 @@
 ---
 id: TASK-381.12
 title: 'Electron: finish merge review and suggestion refresh'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
-updated_date: '2026-10-01 02:20'
+updated_date: '2026-10-01 07:49'
 labels:
   - electron
   - parity
@@ -61,24 +61,36 @@ tests/Winnow.Ui.Tests/MergeSuggestionRefreshTests.cs
 - MergeSuggestionRefreshTests.Fullscreen_controller_and_keyboard_refresh_report_busy_failure_and_recovery [partial at split]
 - MergeSuggestionRefreshTests.Automatic_publication_updates_fullscreen_when_pending_count_is_unchanged [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Keep one implementation task active, verify and commit each milestone, then continue to the next task. Pause for review after TASK-381.20.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original merge screen composition, plugin suggestion and manual-refresh contracts preserve cancellation, stale-result rejection and selected members.
-- [ ] #2 Platform pickers, row actions and Details return retain source identity choices, safe confirmations and focus routes on both surfaces.
-- [ ] #3 All 18 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original merge screen composition, plugin suggestion and manual-refresh contracts preserve cancellation, stale-result rejection and selected members.
+- [x] #2 Platform pickers, row actions and Details return retain source identity choices, safe confirmations and focus routes on both surfaces.
+- [x] #3 All 18 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit the eighteen frozen merge composition, refresh, plugin, Details, platform and row-action contracts against current Electron/backend tests. 2. Close demonstrated gaps, including shared fullscreen merge-sheet typography, with original fixture data and separate surface coverage. 3. Verify focused backend/component and native interactions plus affected regressions; record per-method migration evidence and checkpoint 67. 4. Commit this milestone and continue to 381.13 within the authorized batch.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-TASK-381.7 visual evidence: fullscreen merge member sheets still use compact desktop-sized title/action text (roughly 14px) beside 16px store chips. Compare MergeMemberSheet and parity-merge.css with the source fullscreen tokens while completing this merge-review checkpoint. Evidence: .tmp/task3817-labels-initial-results/library-labels-fullscreen--aaaf7-mber-store-without-clipping/fullscreen-merge-2.png. Store labels and no-clipping assertions are covered by TASK-381.7; they do not establish overall merge-sheet typography parity. This task remains To Do; no implementation has started.
+Completed all eighteen source contracts. Refresh keeps one request owner across initial-load recovery; desktop preserves picker/count and trailing-action geometry; fullscreen uses original sheet typography, complete A/B hints and exact D-pad routes. Owned Details keeps member/header identity and return focus; unavailable entries report refusal. All 3,611 component/live API cases (180 files, 90.12 seconds), 33 distinct native cases, 18 original .NET cases and two new backend composition cases pass. Production build/typecheck, formatting and migration audit pass. Inventory: 1,412 ported, 644 retained backend, 32 framework-specific, 287 pending and 60 partial; 347 remain unresolved. Native checks use simulated controllers and throwaway libraries. Physical devices, the full .NET suite and installers are outside this checkpoint. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-seven.md.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Finished merge review and refresh parity on desktop and fullscreen. All eighteen assigned contracts have executed evidence: eleven ported and seven retained backend. The full Electron gate passes 3,611 cases, and 33 distinct native cases pass. Checkpoint 67 records fixtures, visual checks, recovery fixes and remaining limits. Continue to TASK-381.13 after the milestone commit within the authorized ten-task batch.
+<!-- SECTION:FINAL_SUMMARY:END -->

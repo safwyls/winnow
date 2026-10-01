@@ -7,7 +7,7 @@ import { Empty, Notice } from './shared'
 import './parity-library.css'
 import { useInlineEditorFocus } from './parity-library-focus'
 import { MergeQueue, MergeQueueLoading } from './parity-merge'
-import { MergeRefresh } from './parity-merge-refresh'
+import { MergeRefreshControl, useMergeRefresh } from './parity-merge-refresh'
 import { useIdentityReview } from './parity-merge-query'
 
 type Facet = { id: number; kind: string; slug: string; name: string }
@@ -391,6 +391,7 @@ export function IdentityTools({
   const [queueWriting] = useViewState('identity:queue-busy', false)
   // Cached proposals remain readable during a refresh, but their revision cannot authorize a new decision.
   const queueBusy = queueWriting || refreshBusy || review.isFetching
+  const refresh = useMergeRefresh({ disabled: command.isPending || queueBusy, onBusy: setRefreshBusy })
   const facts = review.data
   const works = facts?.workspace.works ?? []
   const title = (id: number) => works.find((work) => work.id === id)?.name ?? `Game ${id}`
@@ -433,7 +434,7 @@ export function IdentityTools({
             <h2>Are these the same game?</h2>
             <p>Similar names are suggestions. You decide whether editions belong together.</p>
           </div>
-          <MergeRefresh disabled={command.isPending || queueBusy} onBusy={setRefreshBusy} />
+          {!facts && <MergeRefreshControl mode={mode} state={refresh} />}
         </div>
         <Notice error={review.error || command.error} message={message} />
         {facts && review.isFetching && !queueWriting && !refreshBusy && (
@@ -480,6 +481,7 @@ export function IdentityTools({
             review={facts}
             onReview={prepare}
             onOpenGame={onOpenGame}
+            refresh={<MergeRefreshControl mode={mode} state={refresh} />}
             disabled={command.isPending || queueBusy || refreshBusy}
           />
         )}

@@ -27,30 +27,6 @@
     ],
     "reason": "Native 1920px and 1280px windows retain separate Open game and Make header controls for a long title, promote by Enter, and remove Make header from the chosen parent. Fixed expansion members retain Open game without promotion."
   },
-  "MergeRowActionsTests.Long_titles_keep_cards_and_trailing_actions_inside_the_desktop_pane_when_resized": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/electron/library-details.spec.ts",
-        "case": "keeps long merge members and independent actions inside the pane with correct focus hierarchy"
-      }
-    ],
-    "reason": "Native resizing from 1920 to 1200 to 1280 to 1200 verifies trailing controls stay inside each card, independent radio/include/Details actions and Details return focus. The original multiple-store chip fixture and resolved-strip geometry matrix remain."
-  },
-  "MergeRowActionsTests.Row_body_promotes_while_details_and_radio_have_independent_pointer_and_keyboard_actions": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-merge.test.tsx",
-        "case": "desktop row body promotes while Details, include and radio remain separate actions"
-      },
-      {
-        "file": "tests/electron/library-details.spec.ts",
-        "case": "keeps long merge members and independent actions inside the pane with correct focus hierarchy"
-      }
-    ],
-    "reason": "Pointer body promotion, independent Details, include and native Space radio activation are covered. The original resolved-row visibility and automation ItemStatus assertions are not fully migrated."
-  },
   "MergeSuggestionRefreshTests.Leaving_fullscreen_cancels_manual_refresh_without_late_page_updates": {
     "status": "ported",
     "tests": [

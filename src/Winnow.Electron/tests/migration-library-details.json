@@ -161,26 +161,6 @@
     ],
     "reason": "The original method records an ungroup callback for child 99 after Down and Accept confirm the safe-first dialog. Native Electron reproduces that child-end interaction through the real preload/action route, records DELETE identity/links/99 with the expected link ID, and verifies opening dispatches nothing. The desktop interaction, cancellation and retained failure are also covered. This method's recording seam does not claim new database-persistence evidence; repository and broader identity workflows remain separate tests."
   },
-  "MergeSuggestionRefreshTests.Desktop_pointer_and_keyboard_refresh_report_busy_failure_and_recovery_within_minimum_pane": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-library.test.tsx",
-        "case": "reports suggestion refresh busy, failure, retry and truncated completion without accepting a match"
-      }
-    ],
-    "reason": "Desktop component coverage verifies disabled refresh while busy, duplicate suppression, failure/retry, new pending proposals and truthful truncated completion without any relationship writes. Original native keyboard activation, icon alignment and minimum-pane geometry still require rendered coverage."
-  },
-  "MergeSuggestionRefreshTests.Fullscreen_controller_and_keyboard_refresh_report_busy_failure_and_recovery": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/parity-library.test.tsx",
-        "case": "reports suggestion refresh busy, failure, retry and truncated completion without accepting a match"
-      }
-    ],
-    "reason": "Fullscreen component coverage verifies busy status, duplicate suppression, failure/retry and refreshed pending proposals without accepting matches. Original native controller/keyboard activation and live-region geometry remain unverified."
-  },
   "ScreenshotScrollInteractionTests.Wheel_scrolls_screenshots_sideways_without_moving_the_details_body": {
     "status": "ported",
     "tests": [

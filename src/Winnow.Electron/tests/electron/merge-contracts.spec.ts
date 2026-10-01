@@ -4,6 +4,7 @@ import { test, expect, _electron as electron, type ElectronApplication, type Pag
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
+import { DatabaseSync } from 'node:sqlite'
 import type { ApiRequest } from '../../src/shared/bridge'
 import type { ManualGame } from '../../src/renderer/api/types'
 import {
@@ -57,6 +58,21 @@ async function surface(mode: 'desktop' | 'fullscreen') {
   await page.getByRole('button', { name: 'Identity review', exact: true }).click()
 }
 test('dedicated desktop Merges keeps its rail identity and Details cursor then Escape returns to Library', async ({}, info) => {
+  // Seeded review-only releases intentionally have no tile. This Details route needs an owned member.
+  const review = await api<MergeReview>({ route: 'identity.get' })
+  const firstMember = buildMergeCards(review).find((card) => !card.actId)!.rows[0]!
+  const database = new DatabaseSync(join(directory, 'winnow.db'))
+  try {
+    database.exec('PRAGMA busy_timeout=5000')
+    database
+      .prepare("INSERT INTO ownerships(release_id,store,installed) VALUES(?,'steam',0)")
+      .run(firstMember.releaseIds[0]!)
+  } finally {
+    database.close()
+  }
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible()
+  await expect(page.locator('.startup-presentation')).toHaveCount(0)
   await app.evaluate(({ BrowserWindow }) => {
     const window = BrowserWindow.getAllWindows()[0]!
     window.setFullScreen(false)

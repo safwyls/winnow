@@ -47,6 +47,13 @@ Metadata and editing still belong to the canonical game, and an installed, reach
 keeps priority for Play. Header saves retain focus and show refusals beside the choices.
 Fullscreen keeps its choice sheet open while saving and returns to Header store after success.
 
+Merge suggestions refresh beside the review actions. Busy, failed and completed checks
+have a persistent status; previous answers stay intact. A background library update can
+replace proposals even when their count stays the same. Details opens the selected owned
+member without promoting it; a missing library entry leaves the review open with a message.
+Fullscreen review sheets use large action text, a fixed title and controller hints, and
+scroll their choices within the window. Desktop keeps group answers beside the title.
+
 Desktop Library and Merges share a compact sort menu. Its button states the selected order;
 choosing a row closes the menu and returns focus. Arrow keys, Home/End and typed initials
 move within it; Escape returns to the button and Tab continues to the next control.

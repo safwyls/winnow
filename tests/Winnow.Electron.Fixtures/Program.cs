@@ -9,6 +9,7 @@ var directory = Path.GetFullPath(args[directoryIndex + 1]);
 var visibility = Path.GetFileName(directory).StartsWith("winnow-electron-visibility-", StringComparison.Ordinal);
 var pluginActions = Path.GetFileName(directory).StartsWith("winnow-electron-plugin-actions-", StringComparison.Ordinal);
 var editions = Path.GetFileName(directory).StartsWith("winnow-electron-editions-", StringComparison.Ordinal);
+var merges = Path.GetFileName(directory).StartsWith("winnow-electron-merges-", StringComparison.Ordinal);
 var marker = Path.Combine(directory, ".visibility-fixture");
 if (visibility)
 {
@@ -17,12 +18,19 @@ if (visibility)
     Directory.CreateDirectory(directory);
     await File.WriteAllTextAsync(marker, "Winnow Electron visibility test fixture");
 }
-else if (!(pluginActions || editions || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
+else if (!(pluginActions || editions || merges || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
     || File.Exists(Path.Combine(directory, "winnow.db")))
     throw new ArgumentException("Composition fixtures require a new test-owned directory.");
 
 await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"], services =>
 {
+    if (merges)
+    {
+        services.AddSingleton<PluginActionShellGuard>();
+        services.AddSingleton<IUriDispatcher>(provider => provider.GetRequiredService<PluginActionShellGuard>());
+        services.AddSingleton<MergeReviewFixture>();
+        return;
+    }
     if (editions)
     {
         services.AddSingleton<PluginActionShellGuard>();
@@ -62,7 +70,17 @@ if (pluginActions)
 
 // BackendApplication's normal loopback, authority and bearer-token middleware covers these routes.
 // Only this separately built test executable exposes fixture control; the production backend does not.
-if (editions)
+if (merges)
+{
+    app.MapPost("/__fixture/merges/seed-pair", (MergePairSeed input, MergeReviewFixture fixture)
+        => fixture.SeedPairAsync(input));
+    app.MapPost("/__fixture/merges/publish", async (MergeReviewFixture fixture) =>
+    {
+        await fixture.PublishAsync();
+        return Results.NoContent();
+    });
+}
+else if (editions)
 {
     app.MapPost("/__fixture/edition/seed", async (EditionIdentityFixture fixture) =>
     {

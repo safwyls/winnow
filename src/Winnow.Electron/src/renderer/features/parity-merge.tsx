@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ApiError, request, storeLabel } from '../api/client'
 import { useApiQuery } from '../api/hooks'
@@ -61,12 +61,14 @@ export function MergeQueue({
   review,
   onReview,
   onOpenGame,
+  refresh: refreshControl,
   disabled = false,
   mode = 'desktop',
 }: {
   review: MergeReview
   onReview: (parent: number, children: number[], kind: string, label: string) => void
   onOpenGame?: (workId: number) => void
+  refresh?: ReactNode
   disabled?: boolean
   mode?: Mode
 }) {
@@ -414,11 +416,12 @@ export function MergeQueue({
       if (mounted.current) setNotice('Decision undone. Your games and play history are kept.')
     })
   }
-  async function savePreferred(value: string) {
+  async function savePreferred(value: string, origin?: HTMLElement) {
     if (writing.current || blocked) return
     writing.current = true
     setBusy(true)
     setProblem(undefined)
+    if (origin) restoreFocusWhenReady(origin)
     try {
       await client.cancelQueries({
         queryKey: ['api', 'preferences.presentation.get', undefined],
@@ -473,6 +476,23 @@ export function MergeQueue({
       restoreFocusWhenReady(saved ? origin : (root.current?.querySelector('[data-merge-recheck]') ?? null))
     return saved
   }
+  const proposalCount = (
+    <p className="muted merge-proposal-count" role="status">
+      {(() => {
+        const count = shown.filter((card) => !card.actId).length
+        return count
+          ? `${count} ${count === 1 ? 'proposal' : 'proposals'} · non-destructive`
+          : 'nothing waiting'
+      })()}
+      {section !== 'all' && (
+        <span className="merge-count-cut" aria-label={mergeScreenCopy.filteredProposals}>
+          {cards.filter((card) => !card.actId).length}
+          {mergeScreenCopy.countArrow}
+          {shown.filter((card) => !card.actId).length}
+        </span>
+      )}
+    </p>
+  )
   return (
     <div
       className="merge-queue"
@@ -527,6 +547,7 @@ export function MergeQueue({
               {mergeScreenCopy.platformPrefix}
               {platformOptions.find((option) => option.value === preferred)?.label ?? storeLabel(preferred)}
             </button>
+            {refreshControl}
           </>
         ) : (
           <>
@@ -538,21 +559,6 @@ export function MergeQueue({
                 setPositions({ sort: value as MergeSort, keys: [] })
               }}
             />
-            <label>
-              {mergeScreenCopy.preferredMainPlatform}
-              <select
-                aria-label={mergeScreenCopy.preferredMainPlatform}
-                value={preferred}
-                disabled={blocked}
-                onChange={(event) => void savePreferred(event.target.value)}
-              >
-                {platformOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
           </>
         )}
         <button
@@ -567,6 +573,7 @@ export function MergeQueue({
             ? `Accept ${exact.length} exact ${exact.length === 1 ? 'match' : 'matches'}`
             : 'No exact matches left'}
         </button>
+        {mode === 'desktop' && refreshControl}
         <button
           className="primary"
           disabled={blocked || !selected.length}
@@ -580,29 +587,34 @@ export function MergeQueue({
         </button>
       </div>
       {mode === 'desktop' && (
-        <nav className="tabs" aria-label={mergeScreenCopy.proposalKinds}>
-          {(['all', ...mergeSections] as const).map((kind) => (
-            <button key={kind} aria-pressed={section === kind} onClick={() => setSection(kind)}>
-              {kind === 'all' ? 'All proposals' : sectionNames[kind]}
-            </button>
-          ))}
-        </nav>
+        <div className="merge-filter-bar">
+          <nav className="tabs" aria-label={mergeScreenCopy.proposalKinds}>
+            {(['all', ...mergeSections] as const).map((kind) => (
+              <button key={kind} aria-pressed={section === kind} onClick={() => setSection(kind)}>
+                {kind === 'all' ? 'All proposals' : sectionNames[kind]}
+              </button>
+            ))}
+          </nav>
+          <label className="merge-platform-choice">
+            {mergeScreenCopy.preferredMainPlatform}
+            <select
+              aria-label={mergeScreenCopy.preferredMainPlatform}
+              aria-description={`${mergeScreenCopy.platformPrefix}${platformOptions.find((option) => option.value === preferred)?.label ?? storeLabel(preferred)}`}
+              value={preferred}
+              disabled={blocked}
+              onChange={(event) => void savePreferred(event.target.value, event.currentTarget)}
+            >
+              {platformOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {proposalCount}
+        </div>
       )}
-      <p className="muted" role="status">
-        {(() => {
-          const count = shown.filter((card) => !card.actId).length
-          return count
-            ? `${count} ${count === 1 ? 'proposal' : 'proposals'} · non-destructive`
-            : 'nothing waiting'
-        })()}
-        {section !== 'all' && (
-          <span className="merge-count-cut" aria-label={mergeScreenCopy.filteredProposals}>
-            {cards.filter((card) => !card.actId).length}
-            {mergeScreenCopy.countArrow}
-            {shown.filter((card) => !card.actId).length}
-          </span>
-        )}
-      </p>
+      {mode === 'fullscreen' && proposalCount}
       <Notice error={problem} message={busy ? 'Saving your review…' : notice} />
       {mustRefresh && (
         <button data-merge-recheck disabled={busy} onClick={() => void recheck()}>
@@ -666,6 +678,23 @@ export function MergeQueue({
                               title={mergeActionCopy.unreadTip}
                             />
                           )}
+                          <button
+                            className="primary"
+                            disabled={blocked || !mergeAnswer(card).childWorkIds.length}
+                            aria-label={mergeActionNames(card).same}
+                            title={mergeActionCopy.sameTip}
+                            onClick={() => void link([card])}
+                          >
+                            {mergeActionCopy.same}
+                          </button>
+                          <button
+                            disabled={blocked}
+                            aria-label={mergeActionNames(card).different}
+                            title={mergeActionCopy.differentTip}
+                            onClick={() => void dismiss(card)}
+                          >
+                            {mergeActionCopy.different}
+                          </button>
                           <label className="checkbox">
                             <input
                               type="checkbox"
@@ -832,23 +861,6 @@ export function MergeQueue({
                         </p>
                         <p className="muted">{mergeRollup(card)}</p>
                         <div className="form-actions">
-                          <button
-                            className="primary"
-                            disabled={blocked || !mergeAnswer(card).childWorkIds.length}
-                            aria-label={mergeActionNames(card).same}
-                            title={mergeActionCopy.sameTip}
-                            onClick={() => void link([card])}
-                          >
-                            {mergeActionCopy.same}
-                          </button>
-                          <button
-                            disabled={blocked}
-                            aria-label={mergeActionNames(card).different}
-                            title={mergeActionCopy.differentTip}
-                            onClick={() => void dismiss(card)}
-                          >
-                            {mergeActionCopy.different}
-                          </button>
                           <button
                             disabled={blocked}
                             onClick={() =>

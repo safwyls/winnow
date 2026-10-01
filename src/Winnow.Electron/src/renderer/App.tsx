@@ -218,7 +218,12 @@ export function App() {
       const game = library.data?.games.find(
         (game) => game.workId === workId || game.entries.some((entry) => entry.workId === workId),
       )
-      detailOwners.current[mode] = { workId, ids: game?.entries.map((entry) => entry.ownershipId) ?? [] }
+      if (!game) {
+        setNotice('This game is not available in the current library view.')
+        return
+      }
+      setNotice('')
+      detailOwners.current[mode] = { workId, ids: game.entries.map((entry) => entry.ownershipId) }
       setPositions((all) => ({
         ...all,
         [mode]: {

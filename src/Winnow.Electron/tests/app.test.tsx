@@ -10,7 +10,7 @@ import { afterglow } from '../src/renderer/themes/afterglow'
 import { AVALON_PALETTES } from '../src/renderer/themes/avalon-palettes'
 import { clearViewState, useViewState } from '../src/renderer/viewState'
 import { mergeFixture } from './parity-merge-fixtures'
-import { chooseFilterSelect } from './library-controls'
+import { chooseFilterSelect, libraryRole } from './library-controls'
 
 // Whole-app hydration can exceed the one-second query default under parallel worker load.
 configure({ asyncUtilTimeout: 5000 })
@@ -353,6 +353,139 @@ describe('integrated frontend', () => {
       }),
     ).toBeNull()
   })
+
+  it.each(['desktop', 'fullscreen'] as const)(
+    '%s merge Details keeps the requested Prey identity and rejects a row without a visible library tile',
+    async (mode) => {
+      for (const key of [
+        'queue-section',
+        'queue-sort',
+        'queue-choices',
+        'queue-positions',
+        'queue-answered-keys',
+        'queue-applied-platform',
+        'review-undo',
+        'queue-busy',
+        'queue-problem',
+        'queue-refresh-required',
+        `${mode}:detail-return`,
+      ])
+        clearViewState(`identity:${key}`)
+      for (const key of ['tools', 'query', 'bucket', 'store', 'list', 'rules'])
+        clearViewState(`avalon:library:${mode}:${key}`)
+      clearViewState(`${mode}:library-tools:tab`)
+      const review = mergeFixture()
+      const works = [
+        { id: 1, name: 'Prey', firstReleaseYear: 2017 },
+        { id: 2, name: 'Prey', firstReleaseYear: null },
+      ]
+      review.workspace.works = works
+      review.workspace.releases = [1, 2].map((id) => ({ id, workId: id, name: 'Prey', platform: 'windows' }))
+      review.workspace.ownerships = [1, 2].map((id) => ({ id, releaseId: id, store: 'steam' }))
+      review.workspace.buckets = []
+      review.candidates = [{ id: 1, leftReleaseId: 1, rightReleaseId: 2, score: 0.8, status: 'pending' }]
+      const games = [1, 2].map((id) => ({
+        ...game,
+        workId: id,
+        title: 'Prey',
+        firstReleaseYear: id === 1 ? 2017 : null,
+        entries: [
+          { ...game.entries[0], ownershipId: id, releaseId: id, workId: id, title: 'Prey', store: 'steam' },
+        ],
+      }))
+      let visible = true
+      const original = window.winnow.request
+      window.winnow.request = vi.fn(async (input) => {
+        if (input.route === 'identity.get') return { ok: true, status: 200, data: review }
+        if (input.route === 'library.get')
+          return { ok: true, status: 200, data: { games: visible ? games : [], lists: [] } }
+        if (input.route === 'library.workspace') return { ok: true, status: 200, data: review.workspace }
+        if (input.route === 'game.details')
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              workId: input.params?.workId,
+              events: [],
+              sessions: {},
+              ratings: [],
+              journalEntries: [],
+              achievements: [],
+            },
+          }
+        return original(input)
+      }) as WinnowBridge['request']
+      const client = mount()
+      try {
+        await screen.findByRole('navigation', { name: 'Main navigation' })
+        await changeSurface(mode === 'fullscreen')
+        if (mode === 'desktop') fireEvent.click(screen.getByRole('button', { name: 'Merges' }))
+        else {
+          fireEvent.click(
+            within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('button', {
+              name: 'Library',
+            }),
+          )
+          fireEvent.click(libraryRole('button', { name: 'Manage library' }))
+          fireEvent.click(await screen.findByRole('button', { name: 'Identity review' }))
+        }
+        async function openSecond() {
+          const proposal = await screen.findByRole('article', { name: 'Prey proposal' })
+          if (mode === 'desktop')
+            fireEvent.click(within(proposal).getAllByRole('button', { name: /^Details for Prey/ })[1]!)
+          else {
+            fireEvent.click(within(proposal).getByRole('button', { name: /^Prey · 2 entries/ }))
+            fireEvent.click(await screen.findByRole('button', { name: /Prey.*Included$/ }))
+            fireEvent.click(screen.getByRole('button', { name: 'Open game' }))
+          }
+        }
+        await openSecond()
+        await screen.findByRole('heading', { name: 'Prey', level: 1 })
+        expect(
+          vi
+            .mocked(window.winnow.request)
+            .mock.calls.some(([input]) => input.route === 'game.details' && input.params?.workId === 2),
+        ).toBe(true)
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: mode === 'desktop' ? 'Close game details' : 'B · Back to Library',
+          }),
+        )
+        await waitFor(() => expect(document.querySelector('.avalon-details')).toBeNull())
+        await screen.findByRole('article', { name: 'Prey proposal' })
+        if (mode === 'desktop')
+          expect(
+            document
+              .querySelector<HTMLInputElement>('[data-merge-row$=":1"]')
+              ?.closest('.merge-row')
+              ?.querySelector<HTMLInputElement>('input[type="radio"]')?.checked,
+          ).toBe(true)
+        // The original absent-tile fixture has an empty visible library. Retain the review row
+        // to exercise that refusal through the real shell callback after a snapshot changes.
+        visible = false
+        await act(async () => {
+          await client.invalidateQueries({ queryKey: ['api', 'library.get'] })
+        })
+        const detailReads = vi
+          .mocked(window.winnow.request)
+          .mock.calls.filter(([input]) => input.route === 'game.details').length
+        await openSecond()
+        await screen.findByText('This game is not available in the current library view.')
+        expect(document.querySelector('.avalon-details')).toBeNull()
+        expect(screen.getByRole('article', { name: 'Prey proposal' })).toBeTruthy()
+        expect(
+          vi.mocked(window.winnow.request).mock.calls.filter(([input]) => input.route === 'game.details'),
+        ).toHaveLength(detailReads)
+        expect(review.history).toEqual([])
+      } finally {
+        cleanup()
+        client.clear()
+        for (const key of ['tools', 'query', 'bucket', 'store', 'list', 'rules'])
+          clearViewState(`avalon:library:${mode}:${key}`)
+        clearViewState(`${mode}:library-tools:tab`)
+      }
+    },
+  )
 
   it.each([false, true])(
     'initial fullscreen waits for saved motion preference %s before tracing',

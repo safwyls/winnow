@@ -5,8 +5,9 @@ import { request } from '../api/client'
 import type { MergeReview, MergeUndo } from './parity-merge-model'
 import { mergeReviewKey, refreshIdentityReview } from './parity-merge-query'
 import { useViewState } from '../viewState'
+import type { Mode } from '../api/types'
 
-export function MergeRefresh({ disabled, onBusy }: { disabled: boolean; onBusy(value: boolean): void }) {
+export function useMergeRefresh({ disabled, onBusy }: { disabled: boolean; onBusy(value: boolean): void }) {
   const client = useQueryClient()
   const current = useRef<AbortController | null>(null)
   const mounted = useRef(true)
@@ -62,8 +63,18 @@ export function MergeRefresh({ disabled, onBusy }: { disabled: boolean; onBusy(v
       }
     }
   }
+  return { busy, status, disabled, refresh, cancel: () => current.current?.abort() }
+}
+
+export function MergeRefreshControl({
+  state: { busy, status, disabled, refresh, cancel },
+  mode = 'desktop',
+}: {
+  state: ReturnType<typeof useMergeRefresh>
+  mode?: Mode
+}) {
   return (
-    <div className="merge-refresh">
+    <div className={`merge-refresh merge-refresh-${mode}`}>
       <button
         aria-label="Refresh suggestions"
         title="Refresh suggestions"
@@ -71,14 +82,26 @@ export function MergeRefresh({ disabled, onBusy }: { disabled: boolean; onBusy(v
         onClick={() => void refresh()}
       >
         <RefreshCw aria-hidden="true" size={18} />
-        <span>Refresh suggestions</span>
+        {mode === 'fullscreen' && <span>Refresh suggestions</span>}
       </button>
-      {busy && <button onClick={() => current.current?.abort()}>Cancel refresh</button>}
+      {busy && <button onClick={cancel}>Cancel refresh</button>}
       {status && (
-        <p role="status" aria-live="polite">
+        <p className="merge-refresh-status" role="status" aria-live="polite">
           {status}
         </p>
       )}
     </div>
   )
+}
+
+export function MergeRefresh({
+  mode,
+  ...options
+}: {
+  disabled: boolean
+  onBusy(value: boolean): void
+  mode?: Mode
+}) {
+  const state = useMergeRefresh(options)
+  return <MergeRefreshControl state={state} mode={mode} />
 }

@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ComponentProps } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { ChevronRight, ExternalLink, ListMinus, Play, Save, X } from 'lucide-react'
 import { mergeAnswer, mergeMemberLabels, mergeTitle, type MergeCard } from './parity-merge-model'
 import { mergeIdle, mergePlaytime } from './parity-merge-facts'
 import { storeLabel } from '../api/client'
@@ -8,6 +9,54 @@ import { Notice } from './shared'
 import { restoreFocusWhenReady } from './restore-focus'
 import acceptGlyph from './assets/xbox_button_a_outline.svg?raw'
 import backGlyph from './assets/xbox_button_b_outline.svg?raw'
+
+function MergeActionButton({
+  children,
+  iconLabel,
+  ...props
+}: ComponentProps<'button'> & { iconLabel?: string }) {
+  const label = (iconLabel ?? (typeof children === 'string' ? children : '')).toLowerCase()
+  const Icon =
+    label === 'cancel' || label === 'close'
+      ? X
+      : label === 'open game'
+        ? Play
+        : label.includes('remove') || label.includes('separate')
+          ? ListMinus
+          : label.includes('save')
+            ? Save
+            : label.includes('open') || label.includes('store')
+              ? ExternalLink
+              : ChevronRight
+  return (
+    <button {...props}>
+      <Icon className="merge-action-icon" aria-hidden="true" />
+      <span className="merge-action-label">{children}</span>
+    </button>
+  )
+}
+
+function MergeSheetHints({ header = false, back = 'Back' }: { header?: boolean; back?: string }) {
+  return (
+    <div className="merge-sheet-hints merge-header-hints">
+      {[
+        [acceptGlyph, 'A', header ? 'Choose' : 'Select'],
+        [backGlyph, 'B', back],
+      ].map(([art, key, label]) => (
+        <span key={key}>
+          <span
+            aria-hidden="true"
+            data-merge-sheet-glyph={key}
+            data-merge-header-glyph={header ? key : undefined}
+            dangerouslySetInnerHTML={{ __html: art.replace('<svg ', '<svg viewBox="8 8 48 48" ') }}
+          />
+          <span className="sr-only">{key} </span>
+          {label}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 function move(event: KeyboardEvent<HTMLDivElement>) {
   if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
@@ -111,7 +160,7 @@ export function MergeMemberSheet({
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault()
-            if (origin.current?.isConnected) origin.current.focus()
+            restoreFocusWhenReady(origin.current)
           }}
         >
           <Dialog.Title>
@@ -136,7 +185,7 @@ export function MergeMemberSheet({
             {header && card.header ? (
               <>
                 {card.header.options.map((option) => (
-                  <button
+                  <MergeActionButton
                     key={option.value}
                     disabled={disabled}
                     aria-pressed={card.header!.store === option.value}
@@ -151,10 +200,10 @@ export function MergeMemberSheet({
                     }}
                   >
                     {option.label}
-                  </button>
+                  </MergeActionButton>
                 ))}
                 {onRecheck && (
-                  <button
+                  <MergeActionButton
                     ref={recovery}
                     disabled={headerBusy}
                     onClick={async () => {
@@ -165,30 +214,30 @@ export function MergeMemberSheet({
                     }}
                   >
                     Check saved review
-                  </button>
+                  </MergeActionButton>
                 )}
                 <Notice
                   error={headerProblem}
                   message={headerBusy ? 'Saving your header choice…' : undefined}
                 />
-                <button onClick={back}>Back to proposal</button>
+                <MergeActionButton onClick={back}>Back to proposal</MergeActionButton>
               </>
             ) : confirm ? (
               <>
-                <button disabled={!answerable} onClick={() => finish(onLink)}>
+                <MergeActionButton disabled={!answerable} onClick={() => finish(onLink)}>
                   Continue
-                </button>
-                <button onClick={() => setConfirm(false)}>Cancel</button>
+                </MergeActionButton>
+                <MergeActionButton onClick={() => setConfirm(false)}>Cancel</MergeActionButton>
               </>
             ) : row ? (
               <>
                 {onOpenGame && (
-                  <button disabled={disabled} onClick={() => finish(() => onOpenGame(row.workId))}>
+                  <MergeActionButton disabled={disabled} onClick={() => finish(() => onOpenGame(row.workId))}>
                     Open game
-                  </button>
+                  </MergeActionButton>
                 )}
                 {!card.actId && card.kind === 'same_game' && row.workId !== card.parent && (
-                  <button
+                  <MergeActionButton
                     disabled={disabled}
                     onClick={() => {
                       onPromote(row.workId)
@@ -196,10 +245,10 @@ export function MergeMemberSheet({
                     }}
                   >
                     Make header
-                  </button>
+                  </MergeActionButton>
                 )}
                 {!card.actId && row.workId !== card.parent && (
-                  <button
+                  <MergeActionButton
                     disabled={disabled}
                     onClick={() => {
                       onInclude(row.workId, !card.included.includes(row.workId))
@@ -207,20 +256,25 @@ export function MergeMemberSheet({
                     }}
                   >
                     {card.included.includes(row.workId) ? 'Leave out' : 'Include'}
-                  </button>
+                  </MergeActionButton>
                 )}
-                <button onClick={() => setMember(null)}>Back to proposal</button>
+                <MergeActionButton onClick={() => setMember(null)}>Back to proposal</MergeActionButton>
               </>
             ) : (
               <>
                 {card.header && (
-                  <button ref={headerOrigin} disabled={disabled} onClick={() => setHeader(true)}>
+                  <MergeActionButton
+                    iconLabel="Header store"
+                    ref={headerOrigin}
+                    disabled={disabled}
+                    onClick={() => setHeader(true)}
+                  >
                     Header store ·{' '}
                     {card.header.options.find((option) => option.value === card.header!.store)?.label}
-                  </button>
+                  </MergeActionButton>
                 )}
                 {card.rows.map((entry, index) => (
-                  <button
+                  <MergeActionButton
                     className="merge-sheet-member"
                     data-merge-member={entry.workId}
                     aria-label={`${labels[index]} · ${entry.workId === card.parent ? 'Header' : card.included.includes(entry.workId) ? 'Included' : 'Left out'}`}
@@ -243,23 +297,23 @@ export function MergeMemberSheet({
                         </span>
                       ))}
                     </span>
-                  </button>
+                  </MergeActionButton>
                 ))}
                 {card.actId ? (
-                  <button
+                  <MergeActionButton
                     disabled={disabled}
                     aria-label={mergeActionNames(card).separate}
                     title={mergeActionCopy.separateTip}
                     onClick={() => finish(onSeparate)}
                   >
                     {mergeActionCopy.separate}
-                  </button>
+                  </MergeActionButton>
                 ) : (
                   <>
-                    <button data-controller-context disabled={!answerable} onClick={onSelect}>
+                    <MergeActionButton data-controller-context disabled={!answerable} onClick={onSelect}>
                       {card.selected ? 'Remove from selection' : 'Select for grouping'}
-                    </button>
-                    <button
+                    </MergeActionButton>
+                    <MergeActionButton
                       data-controller-play
                       disabled={!answerable}
                       aria-label={mergeActionNames(card).same}
@@ -267,42 +321,25 @@ export function MergeMemberSheet({
                       onClick={() => setConfirm(true)}
                     >
                       {mergeActionCopy.same}
-                    </button>
-                    <button
+                    </MergeActionButton>
+                    <MergeActionButton
                       disabled={disabled}
                       aria-label={mergeActionNames(card).different}
                       title={mergeActionCopy.differentTip}
                       onClick={() => finish(onDismiss)}
                     >
                       {mergeActionCopy.different}
-                    </button>
-                    <button disabled={disabled} onClick={() => finish(onReview)}>
+                    </MergeActionButton>
+                    <MergeActionButton disabled={disabled} onClick={() => finish(onReview)}>
                       {card.kind === 'same_game' ? 'Same game…' : 'Review relationship…'}
-                    </button>
+                    </MergeActionButton>
                   </>
                 )}
-                <button onClick={onClose}>Back to proposals</button>
+                <MergeActionButton onClick={onClose}>Back to proposals</MergeActionButton>
               </>
             )}
           </div>
-          {header && (
-            <div className="merge-header-hints">
-              {[
-                [acceptGlyph, 'A', 'Choose'],
-                [backGlyph, 'B', 'Back'],
-              ].map(([art, key, label]) => (
-                <span key={key}>
-                  <span
-                    aria-hidden="true"
-                    data-merge-header-glyph={key}
-                    dangerouslySetInnerHTML={{ __html: art.replace('<svg ', '<svg viewBox="8 8 48 48" ') }}
-                  />
-                  <span className="sr-only">{key} </span>
-                  {label}
-                </span>
-              ))}
-            </div>
-          )}
+          <MergeSheetHints header={header} back={confirm ? 'Cancel' : 'Back'} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -333,7 +370,7 @@ export function MergeBatchConfirmation({
           onKeyDown={move}
           onCloseAutoFocus={(event) => {
             event.preventDefault()
-            if (origin.current?.isConnected) origin.current.focus()
+            restoreFocusWhenReady(origin.current)
           }}
         >
           <Dialog.Title>
@@ -341,16 +378,17 @@ export function MergeBatchConfirmation({
           </Dialog.Title>
           <Dialog.Description>Use the chosen header for each group. Nothing is deleted.</Dialog.Description>
           <div className="merge-sheet-actions">
-            <button
+            <MergeActionButton
               onClick={() => {
                 onClose()
                 onConfirm()
               }}
             >
               Continue
-            </button>
-            <button onClick={onClose}>Cancel</button>
+            </MergeActionButton>
+            <MergeActionButton onClick={onClose}>Cancel</MergeActionButton>
           </div>
+          <MergeSheetHints back="Cancel" />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -387,14 +425,14 @@ export function MergeOptionsSheet({
           onKeyDown={move}
           onCloseAutoFocus={(event) => {
             event.preventDefault()
-            if (origin.current?.isConnected) origin.current.focus()
+            restoreFocusWhenReady(origin.current)
           }}
         >
           <Dialog.Title>{title}</Dialog.Title>
           <Dialog.Description>Choose an option for possible matches.</Dialog.Description>
           <div className="merge-sheet-actions">
             {options.map((option) => (
-              <button
+              <MergeActionButton
                 key={option.value}
                 disabled={disabled}
                 aria-pressed={value === option.value}
@@ -404,10 +442,11 @@ export function MergeOptionsSheet({
                 }}
               >
                 {option.label}
-              </button>
+              </MergeActionButton>
             ))}
-            <button onClick={onClose}>Cancel</button>
+            <MergeActionButton onClick={onClose}>Cancel</MergeActionButton>
           </div>
+          <MergeSheetHints />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
