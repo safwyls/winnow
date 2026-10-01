@@ -45,14 +45,22 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [recommendation preview checkpoint](checkpoint-seventy-five.md) records all 3,859
+The [cover ownership and presentation checkpoint](checkpoint-seventy-six.md) records
+all 3,904 component/live API cases, forty unchanged source cases, 26 new native cases, eighteen existing native artwork
+regressions, 21 HTTP cases and 194 cover-library cases passing. Screenshot leases,
+conversion limits, failure cleanup and live Fit/Fill now preserve both surfaces'
+ownership and presentation. All twenty assigned methods are resolved: sixteen ported,
+three retained in the backend and one Avalonia-specific conversion. There are 189 pending
+and 29 partial methods remaining. This begins the authorized batch through TASK-381.30.
+
+The preceding [recommendation preview checkpoint](checkpoint-seventy-five.md) records all 3,859
 component/live API cases, fifteen new native cases, thirteen existing native preview
 regressions and nine HTTP cases passing. Thirteen source cases pass with visual
 capture enabled after correcting a dormant count assertion to match its unchanged
 two-by-five fixture. Pixel checks preserve the continuous artwork pointer, and both
-surfaces retain their own layout and navigation. All ten assigned methods are ported;
-208 pending and 30 partial methods remain. This ends the authorized batch through
-TASK-381.20 and stops for review.
+surfaces retain their own layout and navigation. All ten assigned methods were ported
+at that checkpoint, leaving 208 pending and 30 partial methods. It completed the
+preceding batch through TASK-381.20.
 
 The preceding [recommendation state checkpoint](checkpoint-seventy-four.md) records all 3,851
 component/live API cases, 38 distinct new native cases, two existing native consumers,
@@ -93,7 +101,7 @@ accessibility. The
 [IGDB matching checkpoint](checkpoint-sixty-eight.md) records candidate presentation,
 matching, artwork precedence and live mapping changes; the
 [merge review checkpoint](checkpoint-sixty-seven.md) records refresh recovery and review
-layout. The user authorized continuing this batch through TASK-381.20.
+layout.
 
 The [tile actions and installed store links checkpoint](checkpoint-sixty-three.md) records
 all 3,490 component/live API cases, 49 distinct native cases and three unchanged plugin

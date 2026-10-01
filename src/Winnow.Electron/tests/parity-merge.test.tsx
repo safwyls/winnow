@@ -735,8 +735,18 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       const titles = slots.map((card) => card.getAttribute('aria-label')!.replace(' proposal', ''))
       for (let index = 0; index < 20; index++) {
         const title = titles[index]!
-        await answer(title, 'Same game')
-        expect(await screen.findByRole('article', { name: `${title} saved group` })).toBe(slots[index])
+        const slot = slots[index]!
+        if (mode === 'desktop') {
+          const same = within(slot).getByRole('button', { name: /^Same game: / }) as HTMLButtonElement
+          await waitFor(() => expect(same.disabled).toBe(false), { container: slot })
+          fireEvent.click(same)
+        } else await answer(title, 'Same game')
+        // Re-querying all sixty articles on each pending publication serializes the whole
+        // accessible tree for every failed lookup. Keep checking the original live slot.
+        await waitFor(() => expect(slot.getAttribute('aria-label')).toBe(`${title} saved group`), {
+          container: slot,
+        })
+        expect(slot.isConnected).toBe(true)
         expect(request.mock.calls.filter(([input]) => input.route === 'identity.get')).toHaveLength(index + 2)
       }
       expect(screen.getAllByRole('article')).toEqual(slots)

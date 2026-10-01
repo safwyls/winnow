@@ -18,7 +18,7 @@ namespace Winnow.Electron.Fixtures;
 
 internal sealed record PreviewSeed(string Kind, bool Publish = true);
 internal sealed record PreviewArm(string Operation, long? WorkId = null, string? Slot = null,
-    string? Provider = null, string? Id = null, bool IgnoreCancellation = true);
+    string? Provider = null, string? Id = null, bool IgnoreCancellation = true, int? Width = null);
 internal sealed record PreviewRelease(string? GateId = null);
 internal sealed record PreviewChange(string Kind, bool Publish = true);
 
@@ -202,15 +202,18 @@ internal sealed class PreviewResponseControls
         else return null;
         var provider = context.Request.Query["provider"].FirstOrDefault();
         var id = context.Request.Query["id"].FirstOrDefault();
+        int? requestedWidth = int.TryParse(context.Request.Query["width"], out var width) ? width : null;
         Plan? plan;
         lock (_sync)
         {
             plan = _plans.FirstOrDefault(p => p.Input.Operation == operation && (p.Input.WorkId is null || p.Input.WorkId == workId)
                 && (p.Input.Slot is null || string.Equals(p.Input.Slot, slot, StringComparison.OrdinalIgnoreCase))
-                && (p.Input.Provider is null || p.Input.Provider == provider) && (p.Input.Id is null || p.Input.Id == id));
+                && (p.Input.Provider is null || p.Input.Provider == provider) && (p.Input.Id is null || p.Input.Id == id)
+                && (p.Input.Width is null || p.Input.Width == requestedWidth));
             if (plan is not null) { _plans.Remove(plan); _held[plan.Id] = plan; }
         }
         var call = new Call(Interlocked.Increment(ref _id), operation, workId, slot, provider, id, path, plan?.Id, context.RequestAborted);
+        call.Width = requestedWidth;
         _calls.Enqueue(call);
         return call;
     }
@@ -245,6 +248,7 @@ internal sealed class PreviewResponseControls
         public int ResponseBytes { get; set; }
         public string? ResponseSha256 { get; set; }
         public string? Json { get; set; }
+        public int? Width { get; set; }
     }
 }
 

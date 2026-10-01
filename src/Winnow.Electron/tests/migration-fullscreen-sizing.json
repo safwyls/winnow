@@ -52,10 +52,10 @@
       },
       {
         "file": "tests/electron/fullscreen-artwork.spec.ts",
-        "case": "real fullscreen cover composes edge padding with dormancy and desktop retains its original surface"
+        "case": "real fullscreen and desktop covers compose sampled edge padding with dormancy and Fit Fill"
       }
     ],
-    "reason": "Native 2x 2 red/blue art in 20x 60 verifies separate sampled top/bottom colors, transparent image center, Fill clearing, Fit restoration and source release. Real AvalonCover separately verifies fullscreen dormancy composition and absence of padding from desktop."
+    "reason": "Native 2x 2 red/blue art in 20x 60 verifies separate sampled top/bottom colors, transparent image center, Fill clearing, Fit restoration and source release. Real AvalonCover separately verifies sampled edge padding, dormancy composition and Fit/Fill on both surfaces."
   },
   "FullscreenCoverPaddingTests.Tall_artwork_fills_side_gaps_without_painting_over_the_image": {
     "status": "ported",

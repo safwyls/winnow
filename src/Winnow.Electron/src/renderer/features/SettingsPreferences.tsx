@@ -47,6 +47,7 @@ export function usePresentationPreferences() {
   }, [command.isPending])
   const values = Object.fromEntries((query.data ?? []).map((row) => [row.preference, row.value]))
   const set = (preference: string, value: string) => {
+    if (preference === 'CoverArtMode' && value !== 'fit' && value !== 'fill') return Promise.resolve(false)
     const active = document.activeElement
     changedControl.current = active instanceof HTMLElement && active !== document.body ? active : null
     setError(null)
@@ -358,7 +359,7 @@ export function LibraryPresentationPreferences() {
       <label className="field">
         Cover artwork
         <select
-          value={preferences.values.CoverArtMode ?? 'fit'}
+          value={preferences.values.CoverArtMode === 'fill' ? 'fill' : 'fit'}
           disabled={!preferences.loaded || preferences.pending}
           onChange={(event) => preferences.set('CoverArtMode', event.target.value)}
         >

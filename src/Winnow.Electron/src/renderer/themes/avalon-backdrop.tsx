@@ -15,6 +15,17 @@ import './avalon-backdrop.css'
 
 const emptyFrame: BackdropFrame = { current: null, outgoing: null, progress: 1, loading: true }
 
+function BackdropImage({ source }: { source: string }) {
+  const image = useRef<HTMLImageElement>(null)
+  useLayoutEffect(() => {
+    const node = image.current!
+    // Restore on effect reattachment as well as clearing before the controller releases pixels.
+    node.setAttribute('src', source)
+    return () => node.removeAttribute('src')
+  }, [source])
+  return <img ref={image} src={source} alt="" />
+}
+
 export function AvalonBackdrop({
   workId,
   coverWorkId,
@@ -145,7 +156,7 @@ export function AvalonBackdrop({
           data-fitted={geometry.fitted || undefined}
           style={{ width: geometry.width, height: geometry.height, left: geometry.left }}
         >
-          <img src={value.pixels.source} alt="" />
+          <BackdropImage source={value.pixels.source} />
           <div className="avalon-backdrop-veil" />
         </div>
       </div>

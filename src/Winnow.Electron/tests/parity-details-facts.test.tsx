@@ -321,7 +321,14 @@ describe.each(['desktop', 'fullscreen'])('%s details fact rendering', (mode) => 
     fireEvent.click(buttons[1])
     await screen.findByRole('dialog', { name: 'Screenshot 2 of 3' })
     expect(buttons[1].getAttribute('aria-pressed')).toBe('true')
-    await waitFor(() => expect(artwork).toHaveBeenCalledWith('igdb-shot', 'ab12cd', 1280))
+    await waitFor(() =>
+      expect(artwork).toHaveBeenCalledWith(
+        'igdb-shot',
+        'ab12cd',
+        1280,
+        expect.stringMatching(/^[a-f0-9]{32}$/),
+      ),
+    )
   })
 })
 

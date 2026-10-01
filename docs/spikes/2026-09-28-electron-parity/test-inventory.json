@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 208,
-    "partial": 30,
-    "ported": 1515,
-    "retained-backend": 650,
-    "framework-specific": 32
+    "pending": 189,
+    "partial": 29,
+    "ported": 1531,
+    "retained-backend": 653,
+    "framework-specific": 33
   },
   "tests": [
     {
@@ -1479,32 +1479,114 @@
     {
       "id": "CoverArtPreferenceTests.Loads_mode_without_writing_back",
       "source": "tests/Winnow.Tests/CoverArtPreferenceTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-preference-contracts.test.tsx",
+          "case": "loads source mode %s without writing it back"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/CoverBehaviorParityTests.cs",
+          "case": "Reading_each_source_cover_mode_preserves_raw_storage_without_writing_a_default"
+        }
+      ],
+      "reason": "All three actual settings entry points preserve the four original stored values: null, invalid and fit present Fit, while fill presents Fill. They perform no write during loading. Authenticated HTTP reads from two independent clients retain the exact raw value with no SQLite audit writes. Desktop and fullscreen share the same preference."
     },
     {
       "id": "CoverArtPreferenceTests.Selector_persists_and_reloads_both_modes",
       "source": "tests/Winnow.Tests/CoverArtPreferenceTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-preference-contracts.test.tsx",
+          "case": "persists Fill, reloads it independently, ignores a missing choice and persists Fit"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/CoverBehaviorParityTests.cs",
+          "case": "Fill_then_fit_persists_and_is_visible_to_a_new_frontend_without_read_side_writes"
+        },
+        {
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "shared Fit and Fill update live and new portraits preserve bounds and backgrounds and persist"
+        }
+      ],
+      "reason": "Each actual settings entry point persists Fill, reloads it through a fresh query client, ignores the source invalid selection, then persists and reloads Fit. React observable state replaces the original PropertyChanged notification. HTTP independently verifies durable values and exact fill/fit writes; native both surfaces verifies live and newly mounted portraits without changing backgrounds or bounds."
     },
     {
       "id": "CoverLeaseLifetimeTests.Closing_the_detail_modal_releases_its_cover",
       "source": "tests/Winnow.Tests/CoverLeaseLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-lifetimes.test.tsx",
+          "case": "closing Details releases its never-answering Steam620 cover consumer"
+        },
+        {
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "closing Details cancels its pending"
+        },
+        {
+          "case": "clears both detached image sources before releasing current and outgoing pixels, cinematic %s",
+          "file": "tests/avalon-backdrop-renderer.test.tsx"
+        }
+      ],
+      "reason": "The original never-answering Fixture/Steam620 cover has one live consumer while Details is mounted and none after close, with request cancellation and the DOM image removed. Components verify the exact key in both surfaces. Native separately exercises the desktop portrait and the fullscreen cinematic backdrop, preserving the latter's existing presentation; closing releases only the Details-owned consumer and late bytes cannot restore it. Both current and outgoing cinematic DOM sources clear before their decoded pixels are released, including effect reattachment."
     },
     {
       "id": "CoverLeaseLifetimeTests.Closing_the_modal_releases_every_screenshot_thumbnail",
       "source": "tests/Winnow.Tests/CoverLeaseLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-lifetimes.test.tsx",
+          "case": "closing the screenshot strip releases all three never-answering aa11 bb22 cc33 thumbnails"
+        },
+        {
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "closing Details releases every mounted screenshot consumer and ignores held late thumbnails"
+        }
+      ],
+      "reason": "The exact IGDB aa11/bb22/cc33 set observed 2026-09-07 creates three thumbnail consumers with no cover in the isolated strip. Both component surfaces release all three on unmount, cancel their requests and clear images. Native uses each surface's real Details layout and releases all mounted screenshot consumers; independent background or library owners are not incorrectly counted as modal leases."
     },
     {
       "id": "CoverLeaseLifetimeTests.The_lightbox_holds_one_shot_at_a_time_and_none_when_closed",
       "source": "tests/Winnow.Tests/CoverLeaseLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-lifetimes.test.tsx",
+          "case": "the real lightbox owns only aa11 then bb22 at1280 and releases its last slot on close"
+        },
+        {
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "lightbox keeps one active shot while navigating and clears its image on close"
+        }
+      ],
+      "reason": "At the source 1280 px width, the two original aa11/bb22 shots keep exactly one lightbox-owned live slot across Next and none on close. The real composed strip retains its two independent thumbnail slots until it unmounts; tests assert this ownership difference explicitly. Both surfaces cancel the replaced pending shot, clear the closed image and restore the invoker."
     },
     {
       "id": "CoverLeaseLifetimeTests.A_merge_row_leases_both_layers_and_releases_them",
       "source": "tests/Winnow.Tests/CoverLeaseLifetimeTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-lifetimes.test.tsx",
+          "case": "desktop Fixture merge row releases its one pending Steam620 image used for both vivid and dormant states"
+        },
+        {
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "merge rows draw the shared dormant pixels and release every image when leaving review"
+        },
+        {
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "fullscreen merge members acquire artwork only through Details and release its backdrop on close"
+        },
+        {
+          "case": "clears both detached image sources before releasing current and outgoing pixels, cinematic %s",
+          "file": "tests/avalon-backdrop-renderer.test.tsx"
+        }
+      ],
+      "reason": "The exact single Fixture/Steam620 side leases one pending image and releases it on detach. Electron uses one vivid decoded image with the shared CSS dormancy transform instead of two Avalonia bitmap references. Components and native desktop verify the actual merge portrait consumer and its release. Fullscreen review intentionally renders no merge portraits, so its member sheet creates no hidden image lease; the additional member-to-Details route verifies disposal of the cinematic consumer it actually opens. The second candidate member is an explicit real-composition supplement."
     },
     {
       "id": "CoverPresenterTests.Enabling_dimming_during_the_initial_decode_requests_the_floor_too",
@@ -1669,17 +1751,54 @@
     {
       "id": "CoverSelectionPolicyTests.User_art_survives_pin_and_provider_availability",
       "source": "tests/Winnow.Tests/CoverSelectionPolicyTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Tests/CoverSelectionPolicyTests.cs",
+          "case": "User_art_survives_pin_and_provider_availability"
+        }
+      ],
+      "implementation": [
+        "src/Winnow.Presentation/CoverSelection.cs",
+        "src/Winnow.Covers/UserArt.cs",
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs"
+      ],
+      "reason": "The four original pin/availability combinations pass unchanged and all select User(mine). The unchanged shared CoverSelection checks a typed UserArtRef before pin or provider availability; the production backend ArtworkBrowserService.GetCurrentAsync calls this same policy for portrait state. No frontend-specific behavior is present in this method."
     },
     {
       "id": "CoverSelectionPolicyTests.Pin_uses_the_same_work_image_and_falls_back_when_its_source_is_unavailable",
       "source": "tests/Winnow.Tests/CoverSelectionPolicyTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Tests/CoverSelectionPolicyTests.cs",
+          "case": "Pin_uses_the_same_work_image_and_falls_back_when_its_source_is_unavailable"
+        }
+      ],
+      "implementation": [
+        "src/Winnow.Presentation/CoverSelection.cs",
+        "src/Winnow.Covers/IgdbImageUrl.cs",
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs"
+      ],
+      "reason": "All three original rows pass unchanged: the same work's co42 image wins only with an IGDB pin and available IGDB source; absent pin or unavailable IGDB falls back to Steam42. Every row also verifies a null work image falls back to Steam 42. The production HTTP artwork-state service invokes the unchanged shared policy with the actual work image, Steam identity, current availability and stored pin."
     },
     {
       "id": "CoverSelectionPolicyTests.Work_previews_use_typed_plugin_refs_only_while_the_provider_is_available",
       "source": "tests/Winnow.Tests/CoverSelectionPolicyTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Tests/CoverSelectionPolicyTests.cs",
+          "case": "Work_previews_use_typed_plugin_refs_only_while_the_provider_is_available"
+        }
+      ],
+      "implementation": [
+        "src/Winnow.Presentation/CoverSelection.cs",
+        "src/Winnow.Covers/PluginArtRef.cs",
+        "src/Winnow.Covers/IgdbImageUrl.cs",
+        "src/Winnow.Application/Services/ArtworkBrowserService.cs"
+      ],
+      "reason": "The original method passes unchanged: the typed fixture plugin reference resolves only when its provider is available; an unavailable typed reference and a raw HTTPS image URL are rejected, while the default IGDB co42 URL resolves. The production artwork-state service uses this unchanged shared policy and parser, so the assertion is retained in the backend rather than reimplemented in TypeScript."
     },
     {
       "id": "CredentialMetadataRefreshTests.ChangesWaitForStartupAndCoalesceIntoOnePass",
@@ -24183,27 +24302,98 @@
     {
       "id": "CoverCancellationFailureTests.A_throwing_source_callback_does_not_replace_the_last_waiters_cancellation",
       "source": "tests/Winnow.Ui.Tests/CoverCancellationFailureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-decode-contracts.test.tsx",
+          "case": "a rejected cancellation IPC cannot replace %s retirement or skip decoded cleanup"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/CoverBehaviorParityTests.cs",
+          "case": "A_throwing_source_callback_keeps_HTTP_cancellation_and_releases_the_fetch_for_a_retry"
+        },
+        {
+          "file": "tests/parity-cover-decode-contracts.test.tsx",
+          "case": "shutdown finishes within the source three-second bound when source cancellation settles the read but its acknowledgement rejects"
+        }
+      ],
+      "reason": "Source 43's deliberately throwing cancellation callback does not replace cancellation: the actual HTTP caller sees cancellation, the source completes, and a later retry succeeds. At the renderer boundary a rejected cancellation IPC cannot restore the canceled consumer or publish late bytes. Tests verify zero pending/live slots, no stale query data, cleanup and repeated shutdown. React canceled leases resolve null rather than exposing an Avalonia Task cancellation to a view model."
     },
     {
       "id": "CoverCancellationFailureTests.A_throwing_source_cancellation_callback_cannot_skip_shutdown_cleanup",
       "source": "tests/Winnow.Ui.Tests/CoverCancellationFailureTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-cover-decode-contracts.test.tsx",
+          "case": "a rejected cancellation IPC cannot replace %s retirement or skip decoded cleanup"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/CoverBehaviorParityTests.cs",
+          "case": "A_throwing_source_callback_keeps_HTTP_cancellation_and_releases_the_fetch_for_a_retry"
+        },
+        {
+          "file": "tests/parity-cover-decode-contracts.test.tsx",
+          "case": "shutdown finishes within the source three-second bound when source cancellation settles the read but its acknowledgement rejects"
+        }
+      ],
+      "reason": "The exact ready image 42/pending image 43 population shuts down within the original three-second bound when cancellation settles the pending read but the cancellation acknowledgement rejects:43 returns null, pending/decoded/live counts reach zero,42 is revoked once, and repeated close is safe. A separate cancellation-ignoring late-byte case proves delayed image 43 bytes cannot publish or cache. Real HTTP independently invokes a deliberately throwing .NET source cancellation callback and proves cancellation plus successful retry. Electron URL ownership replaces Avalonia bitmap disposal counters."
     },
     {
       "id": "CoverConversionBoundaryTests.A_disk_hit_does_not_wait_for_an_unrelated_network_fetch",
       "source": "tests/Winnow.Ui.Tests/CoverConversionBoundaryTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Covers.Tests/PngConversionBoundaryTests.cs",
+          "case": "One_decode_permit_keeps_source_43_disk_hit_independent_of_source_42_network"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/CoverBehaviorParityTests.cs",
+          "case": "Four_held_network_fetches_do_not_block_a_cached_43_HTTP_image"
+        },
+        {
+          "file": "tests/parity-cover-decode-contracts.test.tsx",
+          "case": "six blocked image fetches do not stop the seventh already-available backend image from decoding"
+        }
+      ],
+      "reason": "The source-exact one-permit SlateBlue 160 x 240 fixture holds source 42 while disk 43 finishes within one second, then releases42. The actual HTTP endpoint also serves cached 43 while all four unrelated network fetches remain held. The renderer separately proves six pending network reads cannot occupy its six browser conversion slots. Backend PNG encoding and browser decoding each have a bounded permit; normal fetching occurs outside it, with the documented bounded encoded-queue overflow reread exception."
     },
     {
       "id": "CoverConversionBoundaryTests.A_failed_floor_conversion_releases_the_already_converted_vivid_layer",
       "source": "tests/Winnow.Ui.Tests/CoverConversionBoundaryTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Covers.Tests/PngConversionBoundaryTests.cs",
+          "case": "Encoder_failure_releases_its_transient_bitmap_and_permit_before_retry"
+        },
+        {
+          "file": "tests/parity-cover-decode-contracts.test.tsx",
+          "case": "one conversion permit remains held through the source 300ms boundary and failure releases its URL before the next conversion"
+        }
+      ],
+      "reason": "The precise source operation is converting a second Avalonia floor bitmap after the vivid bitmap has already converted. Electron has one decoded image and applies the shared numeric dormancy floor with CSS, so there is no second bitmap conversion or partially converted vivid/floor pair to port. The unchanged original test still passes. The applicable failure-cleanup behavior is independently verified: actual PNG encoder failure disposes its decoded bitmap and returns its permit before retry, and browser conversion failure revokes its URL and retires the queued job."
     },
     {
       "id": "CoverConversionBoundaryTests.The_decode_limit_includes_transient_bitmap_conversion",
       "source": "tests/Winnow.Ui.Tests/CoverConversionBoundaryTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Covers.Tests/PngConversionBoundaryTests.cs",
+          "case": "One_decode_permit_includes_actual_PNG_encoding_and_disposes_both_transient_bitmaps"
+        },
+        {
+          "file": "tests/parity-cover-decode-contracts.test.tsx",
+          "case": "one conversion permit remains held through the source 300ms boundary and failure releases its URL before the next conversion"
+        },
+        {
+          "file": "tests/parity-cover-decode-contracts.test.tsx",
+          "case": "the real six-permit browser limit includes transient conversion before a seventh image allocates its URL"
+        }
+      ],
+      "reason": "The exact one-permit test blocks actual PNG encoding and excludes the second conversion for the original 300 ms boundary, then verifies both PNGs and disposal of both transient bitmaps. The renderer's one-permit fixture preserves the same exclusion interval; its production six-permit test proves a seventh image cannot allocate a URL before conversion finishes. These cover the complete Electron conversion boundary without pretending it creates Avalonia bitmaps."
     },
     {
       "id": "CoverLifetimeTests.Direct_cache_callers_share_one_task_factory_under_contention",
@@ -24336,12 +24526,26 @@
     {
       "id": "CoverPresentationTests.Inherited_fit_changes_existing_and_new_portrait_images_but_leaves_backgrounds_alone",
       "source": "tests/Winnow.Ui.Tests/CoverPresentationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "shared Fit and Fill update live and new portraits preserve bounds and backgrounds and persist"
+        }
+      ],
+      "reason": "Both real surfaces change live portraits and newly mounted portraits between Fit and Fill while retaining their bounds and leaving the unmarked cinematic background behavior unchanged. The production shared preference replaces inherited Avalonia attached properties. A supplemental banded 400 x 300 image proves actual containment versus cropping; the source's image-free fixture has no prescribed pixel content. Native also verifies sampled edge-color padding in Fit and its removal in Fill; this is supplemental rendering evidence for the shared portrait presentation. The supplemental banded image is compared with its decoded source pixels; color-conversion rounding is kept separate from crop and padding assertions."
     },
     {
       "id": "CoverPresentationTests.Desktop_cover_views_apply_fit_without_changing_their_bounds",
       "source": "tests/Winnow.Ui.Tests/CoverPresentationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "shared Fit and Fill update live and new portraits preserve bounds and backgrounds and persist"
+        }
+      ],
+      "reason": "Native desktop verifies the original three consumers: library tile, feed card and merge row retain their measured bounds while the shared preference changes containment to cropping, including new mounts. Fullscreen separately verifies its real Library and Feed portraits and unchanged cinematic background; its merge member sheet has no portrait whose fit could change. Electron represents the source vivid/floor image pair as one image plus a CSS transform, preserving the fit and geometry invariant without a fabricated second DOM image. Actual AvalonDesktopCover in avalon-desktop-cover.tsx and the desktop MergeQueue portrait opt into Artwork edge padding; the native checks sample the Fit padding canvas and verify it clears in Fill, alongside unchanged image bounds."
     },
     {
       "id": "CoverPresentationTests.Desktop_display_selector_updates_shared_preference_and_root_presentation",
@@ -24362,7 +24566,18 @@
     {
       "id": "CoverSelectionTests.Production_library_and_merge_composition_select_the_same_art_on_both_surfaces",
       "source": "tests/Winnow.Ui.Tests/CoverSelectionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/CoverBehaviorParityTests.cs",
+          "case": "Actual_library_and_merge_workspace_share_the_source_selected_key_and_actual_image_path"
+        },
+        {
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "selection is identical in the production library and merge composition"
+        }
+      ],
+      "reason": "All ten original surface/provider combinations use the exact Game/Game edition Epic pair and 0.95 candidate. The source asserts selected-key equality on library and merge models, then renders only the library tile. Actual SQLite library/review reads and production artwork-state selection preserve that provenance for typed plugin, unavailable null, user fixtureuser, IGDB co42 and Steam42. Native verifies real library image requests on both surfaces and additionally desktop merge pixels. Fullscreen review has no portrait consumer: its visible member sheet and real identity workspace preserve the same selected work/key without inventing an unseen image. API CoverKey comparisons project provider/id because serialized cacheStem is supplementary."
     },
     {
       "id": "DawnControlContrastTests.Desktop_action_templates_keep_labels_and_focus_visible_in_every_interactive_state",
@@ -24621,12 +24836,26 @@
     {
       "id": "DesktopTileFocusTests.Focus_restores_vivid_art_and_pointer_exit_preserves_only_keyboard_focus",
       "source": "tests/Winnow.Ui.Tests/DesktopTileFocusTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "focus restores vivid pixels and pointer exit preserves only keyboard focus"
+        }
+      ],
+      "reason": "The four source combinations cover library/feed with Tab or directional focus, the never-played Fixture, reduced motion and the source 800 x 650 host. Real production card components receive supplied SlateBlue pixels, matching the original isolated art fixture. The exact focus targets are the library Details child and feed Card. Rendered pixels start at the shared backend dormant endpoint, become vivid for keyboard focus and survive pointer exit, return to the floor after Elsewhere receives focus, and stop being vivid after pointer-only focus exits. Native input and compositor pixels establish the behavior; no actual artwork transport is claimed by this isolated probe."
     },
     {
       "id": "DesktopTileFocusTests.Library_selection_updates_rendered_art_without_moving_keyboard_focus",
       "source": "tests/Winnow.Ui.Tests/DesktopTileFocusTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "desktop source library selection changes rendered dormancy without moving keyboard focus"
+        }
+      ],
+      "reason": "Selecting the original never-played Fixture restores vivid rendered art without moving the existing keyboard focus. Deselecting returns to its dormant endpoint. Native asserts actual screenshot pixels and active element identity."
     },
     {
       "id": "DetailsRefreshParityTests.Saving_metadata_refreshes_visible_facts_and_year_rules_without_replacing_other_drafts",
@@ -24675,18 +24904,18 @@
     {
       "id": "DormancyTokenTests.Xaml_resources_procedural_art_and_disk_renderer_share_the_transform_endpoint",
       "source": "tests/Winnow.Ui.Tests/DormancyTokenTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/avalon-data.test.ts",
-          "case": "matches the original dormancy knot at %s months"
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "fullscreen selection and controller focus restore vivid art with the shared dormant pixel endpoint"
         },
         {
-          "file": "tests/avalon-data.test.ts",
-          "case": "handles unknown, invalid and future play dates without making artwork unreadable"
+          "file": "tests/electron/cover-contracts.spec.ts",
+          "case": "merge rows draw the shared dormant pixels and release every image when leaving review"
         }
       ],
-      "reason": "Electron tests cover all original dormancy knots and endpoints. Cross-backend procedural/disk renderer linkage remains under the retained .NET test."
+      "reason": "The unchanged original verifies XAML resources, procedural DormancyStyle and disk CoverImaging share brightness, saturation and hue endpoints. Native compares the actual resting Electron filter with the shared backend values 0.68, 0.22 and -6 degrees, then compares its CSS-rendered SlateBlue pixel with CoverImaging.ApplyFloor within two channel values for renderer rounding. Desktop merge and fullscreen focus/selection retain that endpoint. Electron transforms its one vivid image instead of allocating a separate floor bitmap."
     },
     {
       "id": "EditionIdentityPresentationTests.Acquired_native_evidence_updates_library_queue_and_details_and_can_be_separated",
@@ -26074,10 +26303,10 @@
         },
         {
           "file": "tests/electron/fullscreen-artwork.spec.ts",
-          "case": "real fullscreen cover composes edge padding with dormancy and desktop retains its original surface"
+          "case": "real fullscreen and desktop covers compose sampled edge padding with dormancy and Fit Fill"
         }
       ],
-      "reason": "Native 2x 2 red/blue art in 20x 60 verifies separate sampled top/bottom colors, transparent image center, Fill clearing, Fit restoration and source release. Real AvalonCover separately verifies fullscreen dormancy composition and absence of padding from desktop."
+      "reason": "Native 2x 2 red/blue art in 20x 60 verifies separate sampled top/bottom colors, transparent image center, Fill clearing, Fit restoration and source release. Real AvalonCover separately verifies sampled edge padding, dormancy composition and Fit/Fill on both surfaces."
     },
     {
       "id": "FullscreenCoverPaddingTests.Tall_artwork_fills_side_gaps_without_painting_over_the_image",

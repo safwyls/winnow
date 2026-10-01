@@ -273,20 +273,6 @@
     ],
     "reason": "The native 900-game fixture advances sixty rows at 1920x1080 from column two. Y opens one options panel with My lists and Filter & sort first; the retained grid is inert and cannot steal focus. Repeated Y does not stack panels. Options, lists and filters each return directly with B to the same viewport node, bounds, row, selected game and column; Start and B preserve that state through Quick menu. Separate component cases cover management close on both surfaces."
   },
-  "DormancyTokenTests.Xaml_resources_procedural_art_and_disk_renderer_share_the_transform_endpoint": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/avalon-data.test.ts",
-        "case": "matches the original dormancy knot at %s months"
-      },
-      {
-        "file": "tests/avalon-data.test.ts",
-        "case": "handles unknown, invalid and future play dates without making artwork unreadable"
-      }
-    ],
-    "reason": "Electron tests cover all original dormancy knots and endpoints. Cross-backend procedural/disk renderer linkage remains under the retained .NET test."
-  },
   "SegmentedSelectorContainmentTests.Segment_states_preserve_the_rounded_group_boundary": {
     "status": "pending",
     "reason": "Pixel containment of idle/hover/pressed/checked/focus states across palettes needs Electron screenshots; CSS overflow alone is insufficient."

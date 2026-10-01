@@ -1374,7 +1374,9 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s details parity', (mode) => {
     expect(screen.getByText('Screenshot 1 of 2')).toBeTruthy()
     fireEvent.keyDown(dialog, { key: 'ArrowRight' })
     expect(screen.getByText('Screenshot 2 of 2')).toBeTruthy()
-    await waitFor(() => expect(artwork).toHaveBeenCalledWith('igdb-shot', 'shot_two', 1280))
+    await waitFor(() =>
+      expect(artwork).toHaveBeenCalledWith('igdb-shot', 'shot_two', 1280, expect.any(String)),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Close screenshots' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })

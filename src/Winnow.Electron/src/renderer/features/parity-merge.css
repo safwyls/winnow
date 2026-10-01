@@ -188,6 +188,9 @@
     position: absolute;
     inset: 0;
   }
+  .merge-cover .artwork img {
+    object-fit: var(--cover-art-fit, contain);
+  }
   .merge-cover:has(.art-ready) .merge-cover-fallback {
     display: none;
   }

@@ -1,10 +1,11 @@
 ---
 id: TASK-381.21
 title: 'Electron: finish cover selection, lifetime and conversion behavior'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:47'
+updated_date: '2026-10-01 16:20'
 labels:
   - electron
   - parity
@@ -66,18 +67,42 @@ tests/Winnow.Ui.Tests/DesktopTileFocusTests.cs
 tests/Winnow.Ui.Tests/DormancyTokenTests.cs
 - DormancyTokenTests.Xaml_resources_procedural_art_and_disk_renderer_share_the_transform_endpoint [partial at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Keep one implementation task active, verify and commit each milestone, then continue to the next task. Pause for review after TASK-381.30.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original selection, lease, cancellation/failure and conversion contracts preserve ownership, best available pixels and cleanup; framework-specific disposals require explicit per-method rationale.
-- [ ] #2 Desktop and fullscreen cover/focus/dormancy presentation retains source colors and geometry across size changes, recycling and preference updates.
-- [ ] #3 All 20 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original selection, lease, cancellation/failure and conversion contracts preserve ownership, best available pixels and cleanup; framework-specific disposals require explicit per-method rationale.
+- [x] #2 Desktop and fullscreen cover/focus/dormancy presentation retains source colors and geometry across size changes, recycling and preference updates.
+- [x] #3 All 20 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit all twenty frozen cover preference, selection, lifetime, cancellation, conversion and presentation contracts and their complete fixtures. 2. Identify retained backend policies and framework-specific boundaries, then fix demonstrated Electron gaps while preserving both presentation paths. 3. Execute original and equivalent component/API/native tests with pixel, resource-lifetime and preference evidence; review visual output. 4. Record checkpoint76 and exact per-method mapping, commit the verified milestone, then continue to TASK-381.22.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started the authorized TASK-381.21–381.30 batch after checkpoint75 (fd9c3e7d; completion 22b2aa20). Baseline: 3,859 Electron cases across 190 files; 1,515 ported, 650 retained-backend, 32 framework-specific, 208 pending and 30 partial methods. Unrelated scc-report.html and local Claude settings remain untouched.
+
+All twenty frozen methods expand to forty unchanged passing source cases (17 main, 23 UI); nine files match the frozen revision. Fixed screenshot/lightbox ownership and cancellation, separate bounded fetch/decode work, PNG conversion permit ownership, shared Fit/Fill normalization and desktop edge padding, detached backdrop source cleanup, and warm-image retention after a failed overflow reread. Fullscreen review remains the specified text/member flow; its actual Details backdrop is verified separately from desktop merge portraits.
+
+Verification: complete Electron component/live API suite 3,904/3,904 across 194 files; 26 new native cases and 18 directly affected native regressions; 40 original cases; 194 cover-library cases; 21 HTTP cases. Build, changed-file formatting and diff checks pass. Independent review findings were corrected and rechecked. Native captures use test-only sRGB after diagnosing the monitor ICC profile; strict pixel tolerances remain. Controller input is simulated; physical devices remain a later validation task.
+
+Checkpoint76 records source scope, actual desktop/fullscreen behavior, run provenance and limitations. All twenty mappings resolved: 16 ported, 3 retained-backend, 1 framework-specific. Inventory remains 2,435 methods: 1,531 ported, 653 retained-backend, 33 framework-specific, 189 pending and 29 partial. The complete migration gate remains incomplete. Continue with TASK-381.22 after this milestone commit.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed cover selection, ownership, cancellation, conversion and Fit/Fill parity on both surfaces. All 20 assigned contracts resolved. Verified 3,904 Electron tests, 44 native cases, 40 unchanged originals, 194 cover-library cases and 21 HTTP cases. See checkpoint-seventy-six.md for exact evidence and simulated-device limitations.
+<!-- SECTION:FINAL_SUMMARY:END -->

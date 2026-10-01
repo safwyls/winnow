@@ -129,7 +129,7 @@ test('fullscreen padding fills tall artwork side gaps without painting the image
   expect(pixel(value, 30, 10)[3]).toBe(0)
 })
 
-test('real fullscreen cover composes edge padding with dormancy and desktop retains its original surface', async ({}, info) => {
+test('real fullscreen and desktop covers compose sampled edge padding with dormancy and Fit Fill', async ({}, info) => {
   await configure({ view: 'cover', width: 120, height: 180 })
   const art = page.locator('.avalon-cover > .artwork'),
     image = art.locator('img')
@@ -149,8 +149,18 @@ test('real fullscreen cover composes edge padding with dormancy and desktop reta
   await page.screenshot({ path: info.outputPath('fullscreen-cover-edge-padding.png') })
   await configure({ mode: 'desktop' })
   await expect(image).toHaveClass('art-ready')
-  await expect(art.locator('.cover-padding')).toHaveCount(0)
-  await page.screenshot({ path: info.outputPath('desktop-cover-original-padding.png') })
+  await expect(art.locator('.cover-padding')).toBeVisible()
+  await expect.poll(async () => pixel(await canvasPixels(), 20, 0)).toEqual([240, 0, 0, 255])
+  await expect(art).not.toHaveCSS('filter', 'none')
+  await expect(art.locator('.cover-padding')).toHaveCSS('filter', 'none')
+  const desktopSource = await image.getAttribute('src')
+  await fit(false)
+  await expect(image).toHaveCSS('object-fit', 'cover')
+  await expect.poll(async () => (await canvasPixels()).pixels.every((value) => value === 0)).toBe(true)
+  await fit(true)
+  await expect.poll(async () => pixel(await canvasPixels(), 20, 0)).toEqual([240, 0, 0, 255])
+  await expect(image).toHaveAttribute('src', desktopSource!)
+  await page.screenshot({ path: info.outputPath('desktop-cover-edge-padding.png') })
 })
 
 async function size(width: number) {

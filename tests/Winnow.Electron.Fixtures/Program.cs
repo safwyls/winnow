@@ -24,6 +24,7 @@ var journalActivity = Path.GetFileName(directory).StartsWith("winnow-electron-jo
 var gameplayStats = Path.GetFileName(directory).StartsWith("winnow-electron-gameplay-stats-", StringComparison.Ordinal);
 var recommendationState = Path.GetFileName(directory).StartsWith("winnow-electron-recommendation-state-", StringComparison.Ordinal);
 var recommendationPreview = Path.GetFileName(directory).StartsWith("winnow-electron-recommendation-preview-", StringComparison.Ordinal);
+var coverBehavior = Path.GetFileName(directory).StartsWith("winnow-electron-cover-behavior-", StringComparison.Ordinal);
 var marker = Path.Combine(directory, ".visibility-fixture");
 if (visibility)
 {
@@ -32,12 +33,20 @@ if (visibility)
     Directory.CreateDirectory(directory);
     await File.WriteAllTextAsync(marker, "Winnow Electron visibility test fixture");
 }
-else if (!(pluginActions || editions || merges || matching || metadataEditing || detailsReading || activityRemaining || journalActivity || gameplayStats || recommendationState || recommendationPreview || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
+else if (!(pluginActions || editions || merges || matching || metadataEditing || detailsReading || activityRemaining || journalActivity || gameplayStats || recommendationState || recommendationPreview || coverBehavior || Path.GetFileName(directory).StartsWith("winnow-electron-ownership-", StringComparison.Ordinal))
     || File.Exists(Path.Combine(directory, "winnow.db")))
     throw new ArgumentException("Composition fixtures require a new test-owned directory.");
 
 await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"], services =>
 {
+    if (coverBehavior)
+    {
+        CoverBehaviorFixture.Register(services);
+        services.AddSingleton<PluginActionShellGuard>();
+        services.AddSingleton<IUriDispatcher>(provider => provider.GetRequiredService<PluginActionShellGuard>());
+        services.AddSingleton<IHttpMessageHandlerBuilderFilter, MatchingOfflineHttp>();
+        return;
+    }
     if (recommendationPreview)
     {
         RecommendationPreviewFixture.Register(services);
@@ -167,7 +176,9 @@ if (pluginActions)
 
 // BackendApplication's normal loopback, authority and bearer-token middleware covers these routes.
 // Only this separately built test executable exposes fixture control; the production backend does not.
-if (recommendationPreview)
+if (coverBehavior)
+    CoverBehaviorFixture.Map(app);
+else if (recommendationPreview)
     RecommendationPreviewFixture.Map(app);
 else if (recommendationState)
     RecommendationStateFixture.Map(app);

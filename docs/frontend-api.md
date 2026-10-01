@@ -87,8 +87,11 @@ an ultrawide surface should fit the whole hero. The backend applies saved artwor
 grouped identities and artwork-source preferences through the shared presentation policy;
 frontends should try that order rather than rank images themselves. This query reads local
 metadata and does not download images. `GET artwork/image` accepts decode widths from 64
-through 3840 pixels. Clients should cancel obsolete image requests and release decoded
-resources when a view closes.
+through 3840 pixels. Four backend permits bound decoding and PNG encoding together;
+network waits use the cover pipeline's separate fetch bound, so stalled downloads do
+not prevent disk hits from loading. Conversion releases its intermediate images before
+returning the encoded bytes, including on failure. Clients should cancel obsolete image
+requests and release decoded resources when a view closes.
 
 `GET games/{workId}/igdb/state` includes `available`, which reports whether the backend
 has an assignment service. An explicit `false` hides the manual matching control. This

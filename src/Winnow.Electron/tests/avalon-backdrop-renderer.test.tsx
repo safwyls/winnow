@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { StrictMode } from 'react'
 import { AvalonBackdrop } from '../src/renderer/themes/avalon-backdrop'
 import { loadBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
 import type { ApiRequest, BackendEvent, WinnowBridge } from '../src/shared/bridge'
@@ -143,6 +144,40 @@ it('preserves current art during metadata and image loads and releases both on d
   await act(async () => finish(late))
   expect(late.dispose).toHaveBeenCalledOnce()
   expect(released).toHaveBeenCalledOnce()
+})
+it.each([false, true])(
+  'clears both detached image sources before releasing current and outgoing pixels, cinematic %s',
+  async (cinematic) => {
+    const view = render(<AvalonBackdrop workId={1} cinematic={cinematic} />)
+    await waitFor(() => expect(view.container.querySelector('img')?.getAttribute('src')).toBe('blob:1'))
+    view.rerender(<AvalonBackdrop workId={2} cinematic={cinematic} />)
+    await waitFor(() => expect(view.container.querySelectorAll('img')).toHaveLength(2))
+    const images = [...view.container.querySelectorAll('img')]
+    expect(images.map((image) => image.getAttribute('src'))).toEqual(['blob:1', 'blob:2'])
+    const pixels = await Promise.all(vi.mocked(loadBackdropImage).mock.results.map((result) => result.value))
+    for (const value of pixels) {
+      vi.mocked(value!.dispose).mockImplementation(() => {
+        expect(images.every((image) => image.getAttribute('src') === null)).toBe(true)
+      })
+    }
+    view.unmount()
+    expect(images.every((image) => !image.isConnected && image.getAttribute('src') === null)).toBe(true)
+    for (const value of pixels) expect(value!.dispose).toHaveBeenCalledOnce()
+    expect(frames.size).toBe(0)
+    expect(released).toHaveBeenCalledOnce()
+  },
+)
+it('effect reattachment retains the current backdrop source before clearing it on final detach', async () => {
+  const view = render(
+    <StrictMode>
+      <AvalonBackdrop workId={1} cinematic />
+    </StrictMode>,
+  )
+  await waitFor(() => expect(view.container.querySelector('img')?.getAttribute('src')).toBe('blob:1'))
+  const image = view.container.querySelector('img')!
+  expect(image.isConnected).toBe(true)
+  view.unmount()
+  expect(image.getAttribute('src')).toBeNull()
 })
 it.each([false, true])(
   'uses source crop in desktop and respects the saved motion preference in fullscreen %s',

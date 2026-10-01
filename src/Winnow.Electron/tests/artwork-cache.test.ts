@@ -134,6 +134,23 @@ it('a replacement lease waits for canceled work to retire before starting anothe
   expect(recovered.dispose).toHaveBeenCalledTimes(1)
 })
 
+it('a replacement lease exposes the shared failure after canceled work retires', async () => {
+  const cache = new ArtworkCache()
+  const retiring = deferred<OwnedArtwork | null>()
+  const first = cache.acquire('same', () => retiring.promise)
+  first.release()
+  const replacement = cache.acquire('same', async () => {
+    throw new Error('Transport failed')
+  })
+  expect(replacement.failed).toBe(false)
+  retiring.resolve(null)
+  expect(await replacement.ready).toBeNull()
+  expect(replacement.failed).toBe(true)
+  expect(first.failed).toBe(false)
+  replacement.release()
+  await cache.close()
+})
+
 it.each(['null', 'rejection'])('a %s result permits retry at the same width and key', async (failure) => {
   const cache = new ArtworkCache()
   const recovered = pixels()

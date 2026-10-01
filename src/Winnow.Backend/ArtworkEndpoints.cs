@@ -1,4 +1,3 @@
-using SkiaSharp;
 using Winnow.Covers;
 using Winnow.App.Services;
 using Winnow.Core.Domain;
@@ -50,16 +49,8 @@ public static class ArtworkEndpoints
             if (!sources.Any(source => source.CanHandle(key))) return Results.NotFound();
             var requestedWidth = width ?? 1920;
             if (requestedWidth is < 64 or > 3840) return Results.BadRequest();
-            await Images.WaitAsync(ct);
-            try
-            {
-                using var bitmaps = await pipeline.GetAsync(key, requestedWidth, CoverLayers.Vivid, ct);
-                if (bitmaps is null) return Results.NotFound();
-                using var image = SKImage.FromBitmap(bitmaps.Vivid);
-                using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
-                return Results.Bytes(encoded.ToArray(), "image/png");
-            }
-            finally { Images.Release(); }
+            var bytes = await pipeline.GetPngAsync(key, requestedWidth, Images, ct);
+            return bytes is null ? Results.NotFound() : Results.Bytes(bytes, "image/png");
         });
     }
 }

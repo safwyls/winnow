@@ -1,17 +1,20 @@
 import { QueryObserver, type QueryClient } from '@tanstack/react-query'
 import { ArtworkCache, type OwnedArtwork } from './artwork-cache'
+import { ArtworkDecoder } from './artwork-decode'
+export { decodeArtworkImage } from './artwork-decode'
 
 export const artworkFreshness = 120_000
 export const artworkLifetime = 300_000
 export type ArtworkKey = readonly ['artwork-image', string, string, number, string]
 type Bytes = { source: string }
 const owners = new WeakMap<QueryClient, ArtworkCache<OwnedArtwork>>()
+const decoders = new WeakMap<QueryClient, ArtworkDecoder>()
 const subscriptions = new WeakMap<QueryClient, () => void>()
 
 export function artworkImages(client: QueryClient) {
   let cache = owners.get(client)
   if (cache) return cache
-  cache = new ArtworkCache<OwnedArtwork>()
+  cache = new ArtworkCache<OwnedArtwork>({ concurrent: 128 })
   owners.set(client, cache)
   const owned = cache
   const unsubscribe = client.getQueryCache().subscribe((event) => {
@@ -26,6 +29,8 @@ export function artworkImages(client: QueryClient) {
       unsubscribe()
       if (owners.get(client) === owned) owners.delete(client)
       subscriptions.delete(client)
+      decoders.get(client)?.close()
+      decoders.delete(client)
       void owned.close()
     }
   })
@@ -37,6 +42,8 @@ export async function closeArtworkImages(client: QueryClient) {
   const cache = owners.get(client)
   subscriptions.get(client)?.()
   subscriptions.delete(client)
+  decoders.get(client)?.close()
+  decoders.delete(client)
   await cache?.close()
 }
 
@@ -51,59 +58,37 @@ export async function loadArtworkImage(client: QueryClient, key: ArtworkKey, sig
   const unsubscribe = observer.subscribe(() => {})
   try {
     const query = observer.getCurrentQuery()
-    let source = query.state.data?.source
-    if (!source || query.state.isInvalidated || Date.now() - query.state.dataUpdatedAt >= artworkFreshness) {
+    const fetchSource = async () => {
       const requestId = crypto.randomUUID().replaceAll('-', '')
       const cancel = () => {
         void window.winnow.cancelRequest?.(requestId).catch(() => undefined)
       }
       signal.addEventListener('abort', cancel, { once: true })
       try {
-        source = (await window.winnow.artwork(key[1], key[2], key[3], requestId)) ?? undefined
+        const source = (await window.winnow.artwork(key[1], key[2], key[3], requestId)) ?? undefined
         signal.throwIfAborted()
-        if (!source) return null
-        client.setQueryData<Bytes>(key, { source })
+        return source
       } finally {
         signal.removeEventListener('abort', cancel)
       }
     }
-    const pixels = await decodeArtworkImage(source, signal)
+    let source = query.state.data?.source
+    if (!source || query.state.isInvalidated || Date.now() - query.state.dataUpdatedAt >= artworkFreshness)
+      source = await fetchSource()
+    if (!source) return null
+    let decoder = decoders.get(client)
+    if (!decoder) {
+      decoder = new ArtworkDecoder()
+      decoders.set(client, decoder)
+    }
+    const decoding = decoder.decode(source, signal, fetchSource, (current) =>
+      client.setQueryData<Bytes>(key, { source: current }),
+    )
+    source = undefined
+    const pixels = await decoding
     if (!pixels && !signal.aborted) client.removeQueries({ queryKey: key, exact: true })
     return pixels
   } finally {
     unsubscribe()
-  }
-}
-
-export async function decodeArtworkImage(source: string, signal: AbortSignal): Promise<OwnedArtwork | null> {
-  signal.throwIfAborted()
-  if (!source.startsWith('data:image/png;base64,')) return null
-  const bytes = Uint8Array.from(atob(source.slice('data:image/png;base64,'.length)), (character) =>
-    character.charCodeAt(0),
-  )
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }))
-  const image = new Image()
-  let released = false
-  const dispose = () => {
-    if (released) return
-    released = true
-    image.src = ''
-    URL.revokeObjectURL(url)
-  }
-  signal.addEventListener('abort', dispose, { once: true })
-  try {
-    image.src = url
-    await image.decode()
-    signal.throwIfAborted()
-    if (!image.naturalWidth || !image.naturalHeight) {
-      dispose()
-      return null
-    }
-    return { source: url, width: image.naturalWidth, height: image.naturalHeight, dispose }
-  } catch {
-    dispose()
-    return null
-  } finally {
-    signal.removeEventListener('abort', dispose)
   }
 }

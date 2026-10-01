@@ -194,8 +194,9 @@ use responsive typography. Safe margins stay proportional to the physical window
 of interface scale; text size remains a separate preference. Old interface-scale settings
 restart at the new baseline once, while subsequent adjustments persist separately.
 
-Fullscreen fitted covers extend each artwork edge's sampled color into its adjacent gap.
-Fill mode clears the padding; dimming applies to the image and padding together. Shelf
+Fitted library and feed covers on both surfaces, and desktop merge portraits, extend each
+artwork edge's sampled color into its adjacent gap. Fill mode clears the padding;
+dimming applies to the image and padding together. Fullscreen shelf
 arrows and dots fit within the cover row and preserve controller focus when clicked.
 Activity's journal artwork and Settings' contours fill the canvas behind their safe margins.
 Activity notes open on a bounded reading page with a fixed Back action and directional
@@ -335,13 +336,21 @@ fullscreen and unsupported environments stay solid. Covers remain opaque. See
 
 Artwork selection still refreshes with library events. Unchanged images reuse encoded bytes
 for up to two minutes, with explicit artwork changes and reconnects forcing revalidation.
-Visible images share decoded pixels through leases. The renderer admits at most 128 image
-loads, runs six at once and keeps a 32 MiB decoded scrollback cache; visible covers remain
-valid after eviction. The last departing consumer cancels its pending request. Detached
-images clear their sources, and unused encoded entries expire after five minutes.
+Cover and screenshot images share decoded pixels through leases, including thumbnails and
+the lightbox. Their cache admits at most 128 image loads and runs six browser decodes at
+once. Initial network waits do not hold those decode permits. Encoded strings waiting for a decode
+have a separate 32 MiB budget; excess requests retain only their identity and reread the
+backend's cached bytes under a permit before decoding. If those disk bytes have meanwhile
+been removed, that bounded retry can wait for a download while holding its permit.
+Completed encoded entries retain their existing
+five-minute expiry. A 32 MiB decoded scrollback cache keeps recent pixels; visible images
+remain valid after eviction. The last departing consumer cancels its pending request.
+Detached images clear their sources.
 Requests use the original display-width buckets, measured at the actual pixel density,
 over the existing backend PNG/base64 transport. Avalon's saved Fit/Fill preference changes
-the crop without changing cover bounds or fetching the image again.
+the crop without changing cover bounds or fetching the image again, including desktop merge-review
+portraits. Heroes and screenshots retain their own presentation. Missing or invalid saved
+modes display as Fit without writing back; only a valid Fit or Fill selection is saved.
 
 ## Run from source
 

@@ -7,6 +7,7 @@ export interface OwnedArtwork {
 export interface ArtworkLease<T> {
   readonly ready: Promise<T | null>
   readonly current: T | null
+  readonly failed: boolean
   release(): void
 }
 type Loader<T> = (signal: AbortSignal) => Promise<T | null>
@@ -19,6 +20,7 @@ interface Slot<T> {
   complete(value: T | null): void
   value: T | null
   finished: boolean
+  failed: boolean
   cached: boolean
   loadedAt: number
 }
@@ -98,6 +100,7 @@ export class ArtworkCache<T extends OwnedArtwork> {
         abort: new AbortController(),
         value: null,
         finished: false,
+        failed: false,
         cached: false,
         loadedAt: 0,
       }
@@ -116,6 +119,9 @@ export class ArtworkCache<T extends OwnedArtwork> {
       ready: owned.ready.then((value) => (released ? null : value)),
       get current() {
         return released ? null : owned.value
+      },
+      get failed() {
+        return owned.failed
       },
       release: () => {
         if (released) return
@@ -161,7 +167,7 @@ export class ArtworkCache<T extends OwnedArtwork> {
   }
 
   private empty(): ArtworkLease<T> {
-    return { ready: Promise.resolve(null), current: null, release() {} }
+    return { ready: Promise.resolve(null), current: null, failed: false, release() {} }
   }
 
   private afterRetirement(retiring: Slot<T>, key: string, load: Loader<T>): ArtworkLease<T> {
@@ -175,6 +181,9 @@ export class ArtworkCache<T extends OwnedArtwork> {
       }),
       get current() {
         return replacement?.current ?? null
+      },
+      get failed() {
+        return replacement?.failed ?? false
       },
       release() {
         released = true
@@ -199,7 +208,7 @@ export class ArtworkCache<T extends OwnedArtwork> {
     try {
       value = await slot.load(slot.abort.signal)
     } catch {
-      /* Failed loads remain retryable. */
+      slot.failed = !slot.abort.signal.aborted
     }
     if (value && (this.closed || slot.abort.signal.aborted)) {
       value.dispose()

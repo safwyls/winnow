@@ -42,6 +42,13 @@ const reviewedBackendFiles = new Set([
   'src/Winnow.Ingest.Steam/AccountPages/SteamAccountPageReader.cs',
   'src/Winnow.Enrich.Steam/SteamStoreClient.cs',
   'src/Winnow.Enrich.Steam/Model/SteamStoreJson.cs',
+  'src/Winnow.Presentation/CoverSelection.cs',
+  'src/Winnow.Covers/UserArt.cs',
+  'src/Winnow.Covers/PluginArtRef.cs',
+  'src/Winnow.Covers/IgdbImageUrl.cs',
+])
+const reviewedBackendTests = new Set([
+  resolve(root, 'tests/Winnow.Covers.Tests/PngConversionBoundaryTests.cs'),
 ])
 // Freeze the original contract list: deleting an old source test must never make
 // the migration gate pass without an equivalent test or an explicit classification.
@@ -60,10 +67,14 @@ for (const { id, source } of baseline.tests) {
       const electronTest = !relative(resolve(root, 'src/Winnow.Electron/tests'), path).startsWith('..')
       // Shared coordinators and preferences live behind the backend API. Their
       // replacement tests exercise the HTTP boundary or its application service.
+      // Explicitly reviewed lower-level replacements also cover shared conversion
+      // behavior used by Electron; original Avalonia tests do not qualify here.
       const backendTest =
-        ['Winnow.Backend.Tests', 'Winnow.Application.Tests'].some(
+        (['Winnow.Backend.Tests', 'Winnow.Application.Tests'].some(
           (project) => !relative(resolve(root, 'tests', project), path).startsWith('..'),
-        ) && path.endsWith('.cs')
+        ) ||
+          reviewedBackendTests.has(path)) &&
+        path.endsWith('.cs')
       if ((electronTest || backendTest) && test.case && (await readFile(path, 'utf8')).includes(test.case))
         continue
       throw new Error(`Missing test evidence ${test.file}: ${test.case} for ${id}`)

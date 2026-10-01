@@ -7,6 +7,7 @@ import { useApiQuery, useCommand, useWorkspace } from '../api/hooks'
 import type { GameDetails, LibraryGame, Metadata } from '../api/types'
 import { useViewState } from '../viewState'
 import { Artwork } from '../components/Artwork'
+import { ArtworkAsset } from '../components/ArtworkAsset'
 import { Empty, Notice } from './shared'
 import './parity-details.css'
 import { acquisitionFacts, playtimeRecordLine, updateHeadline, updatePageUrl } from './details-facts'
@@ -242,31 +243,7 @@ export function Screenshots({ details, previewCount }: { details?: GameDetails; 
 }
 
 function ScreenshotImage({ asset, width }: { asset: { provider: string; id: string }; width: number }) {
-  const query = useQuery({
-    queryKey: ['artwork', 'screenshot', asset.provider, asset.id, width],
-    staleTime: 120_000,
-    retry: false,
-    queryFn: async () => {
-      let id = asset.id
-      if (asset.provider.startsWith('plugin-')) {
-        const url = new URL(id)
-        if (url.protocol !== 'https:' || url.username || url.password || url.hash || url.port) return null
-        id = Array.from(
-          new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(url.href))),
-        )
-          .map((byte) => byte.toString(16).padStart(2, '0'))
-          .join('')
-      }
-      return window.winnow.artwork(asset.provider, id, width)
-    },
-  })
-  return query.data ? (
-    <img src={query.data} alt="Game screenshot" />
-  ) : (
-    <span className="art-placeholder">
-      {query.isPending ? 'Loading screenshot…' : 'Screenshot unavailable'}
-    </span>
-  )
+  return <ArtworkAsset asset={asset} width={width} alt="Game screenshot" />
 }
 
 export function UpdateSignals({ details, game }: { details?: GameDetails; game?: LibraryGame }) {

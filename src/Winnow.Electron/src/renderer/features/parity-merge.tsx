@@ -788,7 +788,7 @@ export function MergeQueue({
                                     }
                                   >
                                     <span className="merge-cover-fallback">{row.title}</span>
-                                    <Artwork workId={row.workId} />
+                                    <Artwork workId={row.workId} className="artwork-edge-padding" />
                                   </span>
                                 )
                               })()}
