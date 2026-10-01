@@ -1,11 +1,11 @@
 ---
 id: TASK-381.6
 title: 'Electron: finish library loading and live refresh behavior'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:45'
-updated_date: '2026-10-01 01:21'
+updated_date: '2026-10-01 01:22'
 labels:
   - electron
   - parity
@@ -74,7 +74,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -93,6 +93,8 @@ Review boundary: work on this task only after the user prompts continuation from
 Verified all eighteen assigned source methods against their frozen fixtures. Added cancellable 128-record library preparation with atomic publication; API grouping/conflict and dependency-boundary coverage; exact independent-selection/publication-count assertions; native independent-client, restart, journal/Spending, lazy-pane, ordered-refresh and real scheduled-ownership fixtures. Sixteen methods are ported. Two exact retired Avalonia mechanisms receive per-method framework rationale; their corresponding user behavior remains tested on both surfaces.
 
 Build and typecheck pass. All 3,414 component/live API cases across 170 files pass in 87.25s at four workers; all 19 distinct native cases pass with no final skips/retries. An existing large merge test timed out during the first full run overlapping native work; both variants passed alone and the complete lower-concurrency run passed without assertion/timeout changes. Screenshots, fixture corrections and limitations are recorded in docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-one.md. Inventory: 1329 ported, 625 retained-backend, 32 framework-specific, 368 pending, 81 partial; 449 unresolved. Complete migration gate still fails as expected.
+
+Review milestone d0f1b84a records the implementation, tests, migration inventory and checkpoint evidence. The keyboard controller-glyph correction is milestone 172482f4. Task complete; paused at this boundary for user review. Do not begin TASK-381.7 until the user explicitly prompts continuation.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
