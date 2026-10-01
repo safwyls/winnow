@@ -1,7 +1,7 @@
 ---
 id: TASK-381.12
 title: 'Electron: finish merge review and suggestion refresh'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
@@ -74,7 +74,7 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -87,6 +87,8 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 
 <!-- SECTION:NOTES:BEGIN -->
 Completed all eighteen source contracts. Refresh keeps one request owner across initial-load recovery; desktop preserves picker/count and trailing-action geometry; fullscreen uses original sheet typography, complete A/B hints and exact D-pad routes. Owned Details keeps member/header identity and return focus; unavailable entries report refusal. All 3,611 component/live API cases (180 files, 90.12 seconds), 33 distinct native cases, 18 original .NET cases and two new backend composition cases pass. Production build/typecheck, formatting and migration audit pass. Inventory: 1,412 ported, 644 retained backend, 32 framework-specific, 287 pending and 60 partial; 347 remain unresolved. Native checks use simulated controllers and throwaway libraries. Physical devices, the full .NET suite and installers are outside this checkpoint. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-seven.md.
+
+Milestone committed as 61746e74. Continuing to TASK-381.13 under the authorized batch.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
