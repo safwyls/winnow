@@ -1,7 +1,7 @@
 ---
 id: TASK-381.29
 title: 'Electron: finish Epic sign-in and plugin library integration'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:48'
@@ -68,7 +68,7 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the authorized batch through TASK-381.30, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -83,6 +83,8 @@ Batch boundary: the user authorized TASK-381.21 through TASK-381.30 in order. Ke
 Read-only preparation .tmp/task38129-prep.md identifies grouped secondary-provider provenance and PlayStation naming gaps. Do not replace shared plugin services or classify all Epic sign-in assertions as framework-specific. Root owns official mapping and integration; backend, renderer and native work have separate owned files.
 
 Verified 18 unchanged source cases, 20 backend cases (18 HTTP and 2 direct registered legacy-policy cases), 272 focused renderer cases, 121 Epic component/main/preload cases and 11 distinct native journeys. All native passes use frozen index-CNBUuq-a.js; harness-only locator and completion fixes are recorded in checkpoint84. Reviewed desktop/fullscreen screenshots including masked keyboard glyphs. Mapping dispositions: 5 ported, 8 retained-backend, 1 narrowly framework-specific; inventory 1611/704/36/66/18. No physical-device or live-provider claim.
+
+Milestone commit 55768005. Continue immediately to TASK-381.30, the final task of the authorized ten-task batch.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
