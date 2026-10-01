@@ -281,3 +281,26 @@ it('stops observing, frame work, and midnight work when the last card leaves', a
   await vi.advanceTimersByTimeAsync(86400001)
   expect(write).not.toHaveBeenCalled()
 })
+
+it('moving the original unshown card into a visible host restarts exposure without rebuilding its observer', async () => {
+  vi.setSystemTime(new Date('2026-09-06T12:00:00Z'))
+  const { card, write } = setup()
+  const hiddenHost = document.createElement('section')
+  hiddenHost.hidden = true
+  document.body.append(hiddenHost)
+  const original = card(1, 'shelf-0')
+  hiddenHost.append(original.element)
+  const observer = Intersections.all[0]
+  observer.expose(original.element)
+  await frame()
+  expect(write).not.toHaveBeenCalled()
+  const shownHost = document.createElement('section')
+  document.body.append(shownHost)
+  shownHost.append(original.element)
+  // The browser reports the new intersection after the retained element is laid out in its new host.
+  observer.expose(original.element)
+  await frame()
+  expect(Intersections.all).toHaveLength(1)
+  expect(shownHost.firstElementChild).toBe(original.element)
+  expect(write.mock.calls).toEqual([[1, 'shelf-0']])
+})

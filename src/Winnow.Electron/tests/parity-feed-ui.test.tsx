@@ -226,10 +226,10 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
     })
     await tick(10)
     await click("What you've told the feed")
-    const historyPanel = screen.getByRole('dialog', { name: "What you've told the feed" })
+    const historyPanel = screen.getByRole('region', { name: "What you've told the feed" })
     expect(within(historyPanel).getByText('Nothing yet. Your feed responses will appear here.')).toBeTruthy()
     await click('Back to the feed')
-    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByRole('region')).toBeNull()
     expect(screen.getByRole('button', { name: "What you've told the feed" })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^View Game/ })).toBeNull()
   })
@@ -239,7 +239,7 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
     const { request } = mount(mode)
     await tick(10)
     await click(/What you've told the feed/)
-    const panel = within(screen.getByRole('dialog', { name: "What you've told the feed" }))
+    const panel = within(screen.getByRole('region', { name: "What you've told the feed" }))
     expect(panel.getAllByRole('listitem')).toHaveLength(1)
     expect(panel.getByText('NOT INTERESTED')).toBeTruthy()
     await click('Undo')
@@ -284,7 +284,7 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
       fireEvent.click(screen.getByRole('button', { name: /What you've told the feed/ }))
       await vi.advanceTimersByTimeAsync(10)
     })
-    const dialog = within(screen.getByRole('dialog'))
+    const dialog = within(screen.getByRole('region'))
     expect(dialog.getAllByRole('listitem')).toHaveLength(2)
     expect(dialog.getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
     expect(dialog.getByText(/Undone on/)).toBeDefined()
@@ -401,7 +401,7 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
       fireEvent.click(screen.getByRole('button', { name: /What you've told the feed/ }))
       await vi.advanceTimersByTimeAsync(1)
     })
-    expect(within(screen.getByRole('dialog')).getByText('Game 1')).toBeDefined()
+    expect(within(screen.getByRole('region')).getByText('Game 1')).toBeDefined()
   })
   it('states a snooze date, keeps the original card and restores controls through Undo', async () => {
     const { request } = mount(mode)
@@ -477,7 +477,7 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
       await vi.advanceTimersByTimeAsync(1)
     })
     await tick(6000)
-    const dialog = screen.getByRole('dialog')
+    const dialog = screen.getByRole('region')
     expect(within(dialog).getByText('Game 1')).toBeDefined()
     await act(async () => {
       fireEvent.click(within(dialog).getByRole('button', { name: 'Undo' }))
@@ -510,7 +510,7 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
     mount(mode)
     await tick(10)
     await act(async () => fireEvent.click(screen.getByRole('button', { name: /What you've told the feed/ })))
-    const dialog = screen.getByRole('dialog')
+    const dialog = screen.getByRole('region')
     expect(within(dialog).getAllByRole('listitem')).toHaveLength(3)
     expect(within(dialog).getByText('A game that is no longer in your library')).toBeDefined()
     expect(within(dialog).getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
@@ -585,3 +585,277 @@ it.each([
   if (!reason) expect(runs).toEqual([])
   if (reason.startsWith('A ')) expect(runs).toEqual([{ text: reason, data: false }])
 })
+
+describe.each(['desktop', 'fullscreen'] as const)('frozen recommendation contracts on %s', (mode) => {
+  const reason = 'You put 2.8 hours into this in 2021 and it has had an update since.'
+  function single(context: ThemeContext, feedback = true) {
+    context.games = [{ ...game(1), title: 'Deep Rock Galactic1' }]
+    context.feed = {
+      candidateCount: 997,
+      confidence: 1,
+      failed: false,
+      shelves: [
+        {
+          id: 'patched_while_away',
+          title: 'Patched while you were away',
+          blurb: 'Pitch.',
+          supportsFeedback: feedback,
+          items: [{ ownershipId: 1, releaseId: 1, title: 'Deep Rock Galactic1', reason }],
+          reserve: [],
+        },
+      ],
+    }
+  }
+  it('with no feedback store the exact original card retains its ordinary actions without verdict controls', async () => {
+    mount(mode, (context) => single(context, false))
+    await tick(10)
+    const cover = screen.getByRole('button', { name: 'View Deep Rock Galactic1' })
+    expect(cover.getAttribute('aria-description')).toContain(reason)
+    act(revealDesktopActions)
+    expect(screen.queryByRole('button', { name: 'Not now' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Not interested' })).toBeNull()
+    expect(screen.getByRole('button', { name: /Add.*list/i })).toBeDefined()
+    if (mode === 'fullscreen') {
+      act(() => cover.focus())
+      await click('More')
+      const sheet = within(screen.getByRole('dialog', { name: 'More game actions' }))
+      expect(sheet.getByRole('button', { name: 'Open game' })).toBeDefined()
+      expect(sheet.queryByRole('button', { name: 'Not interested' })).toBeNull()
+    }
+  })
+  it('history takes the original997-candidate body and returns the same card and trigger focus', async () => {
+    mount(mode, single)
+    await tick(10)
+    const card = screen.getByRole('button', { name: 'View Deep Rock Galactic1' })
+    const trigger = screen.getByRole('button', { name: "What you've told the feed" })
+    act(() => trigger.focus())
+    await click("What you've told the feed")
+    const body = screen.getByRole('region', { name: "What you've told the feed" })
+    expect(screen.queryByRole('button', { name: 'View Deep Rock Galactic1' })).toBeNull()
+    expect(card.isConnected).toBe(true)
+    expect(card.closest('[hidden]')).not.toBeNull()
+    expect(document.querySelector('.avalon-feed-body[hidden]')).not.toBeNull()
+    expect(within(body).getByRole('button', { name: 'Back to the feed' })).toBe(document.activeElement)
+    await click('Back to the feed')
+    expect(screen.queryByRole('region', { name: "What you've told the feed" })).toBeNull()
+    expect(screen.getByRole('button', { name: 'View Deep Rock Galactic1' })).toBe(card)
+    expect(document.activeElement).toBe(trigger)
+    if (mode === 'desktop') expect(screen.getByText('997')).toBeDefined()
+  })
+  it('optional arrival retains the exact First game card, focused control and primary reason', async () => {
+    const { context, update } = mount(mode, (context) => {
+      context.games = [
+        { ...game(1), title: 'First game' },
+        { ...game(2), title: 'Second game' },
+      ]
+      context.feed = {
+        candidateCount: 2,
+        confidence: 0,
+        failed: false,
+        shelves: [
+          {
+            id: 'builtin',
+            title: 'Built in',
+            blurb: '',
+            supportsFeedback: true,
+            items: [{ ownershipId: 1, releaseId: 1, title: 'First game', reason: 'Baseline reason' }],
+            reserve: [],
+          },
+        ],
+      }
+    })
+    await tick(10)
+    const cover = screen.getByRole('button', { name: 'View First game' })
+    act(() => cover.focus())
+    context.feed = {
+      ...context.feed!,
+      shelves: [
+        ...context.feed!.shelves,
+        {
+          id: 'plugin:extra',
+          title: 'Optional',
+          blurb: '',
+          supportsFeedback: true,
+          items: [{ ownershipId: 2, releaseId: 2, title: 'Second game', reason: 'Optional reason' }],
+          reserve: [],
+        },
+      ],
+    }
+    act(update)
+    await tick(10)
+    expect(screen.getByRole('button', { name: 'View First game' })).toBe(cover)
+    expect(document.activeElement).toBe(cover)
+    expect(cover.getAttribute('aria-description')).toContain('Baseline reason')
+  })
+  it('recent and recommended copies of the same First game have separate verdict and impression provenance', async () => {
+    const { request } = mount(mode, (context) => {
+      context.games = [
+        { ...game(1), title: 'First game' },
+        { ...game(2), title: 'Second game' },
+      ]
+      const item = { ownershipId: 1, releaseId: 1, title: 'First game', reason: 'Last played today.' }
+      context.feed = {
+        candidateCount: 1,
+        confidence: 2,
+        failed: false,
+        shelves: [
+          {
+            id: 'recently_played',
+            title: 'Recently played',
+            blurb: 'Your latest games',
+            supportsFeedback: false,
+            items: [item],
+            reserve: [],
+          },
+          {
+            id: 'recommended',
+            title: 'Recommended',
+            blurb: '',
+            supportsFeedback: true,
+            items: [item],
+            reserve: [],
+          },
+        ],
+      }
+    })
+    await tick(10)
+    if (mode === 'desktop') {
+      const [recent, recommended] = [...document.querySelectorAll('.avalon-shelf')]
+      act(revealDesktopActions)
+      expect(within(recent as HTMLElement).queryByRole('button', { name: 'Not interested' })).toBeNull()
+      expect(recent.querySelector('[data-impression]')).toBeNull()
+      expect(recommended.querySelector('[data-impression="1"]')).not.toBeNull()
+      expect(within(recommended as HTMLElement).getByRole('button', { name: 'Not interested' })).toBeDefined()
+    } else {
+      const cover = screen.getByRole('button', { name: 'View First game' })
+      act(() => cover.focus())
+      await click('More')
+      let dialog = screen.getByRole('dialog', { name: 'More game actions' })
+      expect(within(dialog).getByRole('button', { name: 'Open game' })).toBeDefined()
+      expect(within(dialog).queryByRole('button', { name: 'Not now' })).toBeNull()
+      expect(document.querySelector('[data-row-active="true"] [data-impression]')).toBeNull()
+      fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+      await tick(250)
+      expect(document.activeElement).toBe(cover)
+      fireEvent.keyDown(cover, { key: 'ArrowDown' })
+      await tick(250)
+      await click('More')
+      dialog = screen.getByRole('dialog', { name: 'More game actions' })
+      expect(within(dialog).getByRole('button', { name: 'Not interested' })).toBeDefined()
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Not interested' }))
+      await tick(10)
+      expect(
+        request.mock.calls.filter(([input]) => input.route === 'feedFeedback').map(([input]) => input.body),
+      ).toEqual([{ releaseId: 1, kind: 0 }])
+    }
+  })
+  it.each([0, 1])(
+    'a thrown feed service with %i known tiles shows a retry sentence without synthesizing recent-play shelves',
+    async (count) => {
+      mount(mode, (context) => {
+        context.games = count ? [{ ...game(1), lastPlayedAt: '2021-06-01T00:00:00Z' }] : []
+        context.feed = undefined
+        context.feedFailed = true
+      })
+      await tick(10)
+      expect(
+        screen.getByText('Recommendations could not be loaded. Your library is still available.'),
+      ).toBeDefined()
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined()
+      expect(screen.queryByRole('button', { name: 'View Game 1' })).toBeNull()
+    },
+  )
+})
+
+it.each(['desktop', 'fullscreen'] as const)(
+  '%s preserves all five frozen engine shelves, pitches and verbatim reasons',
+  async (mode) => {
+    const rows = [
+      [
+        'patched_while_away',
+        'Patched while you were away',
+        'Major updates landed after you stopped playing.',
+        'You put 2.8 hours into this in 2021 and it has had an update since, most recently "PATCH NOTES - S06.05.02". This matches your taste in Survival games.',
+      ],
+      [
+        'worth_another_look',
+        'Worth another look',
+        'You committed real hours past the refund line, then drifted off mid-story.',
+        'You put 2.5 hours in — past the refund line — then let it go — that was 2022.',
+      ],
+      [
+        'ready_to_play',
+        'Installed and waiting',
+        'Already on your disk with nothing sunk.',
+        "Never opened since it joined your library. It's installed and ready to launch.",
+      ],
+      [
+        'barely_touched',
+        'Barely gave it a chance',
+        'Under 2 hours in — you opened the door and never walked through.',
+        'You tried it for 104 minutes and never went back — that was 2017.',
+      ],
+      [
+        'on_your_taste',
+        'Never opened, right up your alley',
+        'Sitting sealed in your library, and it matches where your hours actually go.',
+        'Never opened since it joined your library. This matches your taste in Sandbox games.',
+      ],
+    ]
+    mount(mode, (context) => {
+      context.games = rows.map((_, index) => ({
+        ...game(index + 1),
+        title: `Deep Rock Galactic ${index + 1}`,
+        playtimeMinutes: 168,
+        bucket: 'stale_but_patched',
+        lastPlayedAt: '2021-06-01T00:00:00Z',
+        lastMajorUpdateAt: '2025-06-01T00:00:00Z',
+      }))
+      context.feed = {
+        candidateCount: 997,
+        confidence: 1,
+        failed: false,
+        shelves: rows.map(([id, title, blurb, reason], index) => ({
+          id,
+          title,
+          blurb,
+          items: [
+            {
+              ownershipId: index + 1,
+              releaseId: index + 1,
+              title: `Deep Rock Galactic ${index + 1}`,
+              reason,
+            },
+          ],
+          reserve: [],
+          supportsFeedback: true,
+        })),
+      }
+    })
+    await tick(10)
+    expect(screen.queryByRole('alert')).toBeNull()
+    if (mode === 'desktop') {
+      const shelves = [...document.querySelectorAll('.avalon-shelf')]
+      expect(shelves.map((element) => element.querySelector('h2')?.textContent)).toEqual(
+        rows.map((row) => row[1]),
+      )
+      expect(shelves.map((element) => element.querySelector('header p')?.textContent)).toEqual(
+        rows.map((row) => row[2]),
+      )
+      expect(
+        shelves.map((element) => element.querySelector('.avalon-feed-card-caption > span')?.textContent),
+      ).toEqual(rows.map((row) => row[3]))
+    } else {
+      for (let index = 0; index < rows.length; index++) {
+        expect(document.querySelector('.avalon-home-hero > .avalon-label')?.textContent).toBe(rows[index][1])
+        expect(document.querySelector('.avalon-home-hero > p')?.textContent).toBe(rows[index][3])
+        const cover = screen.getByRole('button', {
+          name: `View Deep Rock Galactic ${index + 1}, patched since you played`,
+        })
+        expect(cover.getAttribute('aria-description')).toBe(rows[index][3])
+        fireEvent.keyDown(cover, { key: 'ArrowDown' })
+        await tick(250)
+      }
+    }
+  },
+)

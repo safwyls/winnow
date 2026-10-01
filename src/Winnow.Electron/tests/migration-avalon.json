@@ -505,20 +505,6 @@
       }
     ]
   },
-  "RecommendationCompositionTests.Production_feed_renders_cold_games_and_keeps_action_impression_verdict_provenance": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/avalon-theme.test.tsx",
-        "case": "shows real recommendations with reasons and retains the complete title"
-      },
-      {
-        "file": "tests/avalon-data.test.ts",
-        "case": "puts recent play first without feedback or feed impressions"
-      }
-    ],
-    "reason": "Theme preserves release/shelf impression provenance and separate unscored history. Original database recommendation, launch and verdict assertions remain broader."
-  },
   "FloatingLayoutTests.The_caption_is_the_ground": {
     "reason": "Nine palettes assert opaque caption equals shell, translucent caption paints nothing against three backdrops, and no retired ChromeGround exists; endpoint matrix also verifies shell < wall < chrome.",
     "status": "ported",

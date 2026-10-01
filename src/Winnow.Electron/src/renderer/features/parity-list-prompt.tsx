@@ -127,6 +127,7 @@ function ListPrompt({
     target: null as number | null,
   })
   const [error, setError] = useState<unknown>(null)
+  const [editingName, setEditingName] = useState(false)
   const active = useRef(true),
     sending = useRef(false),
     input = useRef<HTMLInputElement>(null)
@@ -239,6 +240,8 @@ function ListPrompt({
               value={draft.name}
               maxLength={200}
               disabled={draft.busy || draft.uncertain}
+              onFocus={() => setEditingName(true)}
+              onBlur={() => setEditingName(false)}
               onChange={(event) => update({ name: event.target.value })}
             />
           </label>
@@ -277,6 +280,13 @@ function ListPrompt({
               </>
             )}
           </div>
+        )}
+        {mode === 'fullscreen' && !draft.busy && (
+          <p className="list-prompt-controller-hints" aria-label="Controller actions">
+            <span>A · Select</span>
+            {editingName && !draft.uncertain && <span>Y · Keyboard</span>}
+            <span>B · Back</span>
+          </p>
         )}
       </Dialog.Content>
     </Dialog.Portal>

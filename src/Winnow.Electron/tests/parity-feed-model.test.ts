@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { AvalonShelf } from '../src/renderer/themes/avalon-data'
+import { avalonShelves } from '../src/renderer/themes/avalon-data'
 import { FeedDeck, receiptDuration } from '../src/renderer/themes/avalon-feed-model'
 
 function row(id: number, reason = `Reason ${id}`) {
@@ -297,3 +298,99 @@ describe('feed receipts and reserve replacement', () => {
     expect(deck.shelves[0].reserve.map((item) => item.releaseId)).toContain(8)
   })
 })
+
+describe('source feed reserve and optional generation fixtures', () => {
+  function sourceShelf(first = 1, held = 101) {
+    const card = (id: number, title: string) => ({
+      ...row(id, `Never opened since it joined your library. (${title})`),
+      game: { ...row(id).game, title },
+    })
+    return {
+      ...shelf([], [], 'ready_to_play'),
+      title: 'Installed and waiting',
+      blurb: 'Already on your disk, nothing sunk.',
+      rows: Array.from({ length: 5 }, (_, i) => card(first + i, `Shown ${first + i}`)),
+      reserve: [card(held, `Held ${held}`)],
+    }
+  }
+  it('the source five-card receipt replaces exactly its slot with Held101 then tops up without rebuilding survivors', async () => {
+    const source = sourceShelf()
+    const { deck, refill } = setup([source])
+    const original = [...deck.shelves[0].rows]
+    refill.mockResolvedValue([sourceShelf(200, 300)])
+    await deck.respond(original[0], 0)
+    deck.tick(3000)
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(deck.shelves[0].rows).toHaveLength(5)
+    expect(deck.shelves[0].rows[0].game.title).toBe('Held 101')
+    expect(deck.shelves[0].rows[0].receipt).toBeUndefined()
+    original.slice(1).forEach((card, index) => expect(deck.shelves[0].rows[index + 1]).toBe(card))
+    expect(refill).toHaveBeenCalledTimes(1)
+    expect(deck.canReplace(deck.shelves[0])).toBe(true)
+    await deck.respond(original[1], 0)
+    deck.tick(3000)
+    expect(deck.shelves[0].rows[1].game.title).toBe('Shown 200')
+    expect(deck.shelves[0].rows[0].game.title).toBe('Held 101')
+    expect(deck.shelves[0].rows.slice(2)).toEqual(original.slice(2))
+  })
+  it.each(['reload', 'verdict', 'dispose'] as const)(
+    'the source held optional shelf cannot publish after %s',
+    async (change) => {
+      const baseline = { ...shelf([1], [], 'builtin'), title: 'Built in', rows: [row(1, 'Baseline')] }
+      const optional = { ...shelf([2], [], 'plugin:extra'), title: 'Extra', rows: [row(2, 'Optional')] }
+      const { deck, refill, card } = setup([baseline])
+      const gate = deferred<AvalonShelf[]>()
+      refill.mockReturnValue(gate.promise)
+      const reading = deck.backfill()
+      if (change === 'reload') {
+        deck.retireBackfill()
+        deck.receive([baseline], 'library')
+      } else if (change === 'verdict') await deck.respond(card, 0)
+      else deck.dispose()
+      gate.resolve([optional])
+      await reading
+      expect(deck.shelves.some((s) => s.id === 'plugin:extra')).toBe(false)
+      if (change !== 'dispose') expect(deck.shelves[0].rows[0]).toBe(card)
+    },
+  )
+})
+
+it.each([false, true])(
+  'source desktop excess item6 precedes reserve7 and8 for supplemental=%s',
+  async (supplemental) => {
+    const games = Array.from({ length: 8 }, (_, index) => ({
+      ...row(index + 1).game,
+      title: `Deep Rock Galactic ${index + 1}`,
+    }))
+    const items = games.map((game) => ({
+      ownershipId: game.workId,
+      releaseId: game.workId,
+      title: game.title,
+      reason: `Reason ${game.workId}`,
+    }))
+    const feed = {
+      candidateCount: 997,
+      confidence: 1,
+      failed: false,
+      shelves: [
+        {
+          id: supplemental ? 'plugin:extra' : 'patched',
+          title: supplemental ? 'Extra' : 'Patched',
+          blurb: '',
+          supportsFeedback: true,
+          items: items.slice(0, 6),
+          reserve: items.slice(6),
+        },
+      ],
+    }
+    const projected = avalonShelves(games, feed, false)
+    expect(projected[0].rows.map((card) => card.releaseId)).toEqual([1, 2, 3, 4, 5])
+    expect(projected[0].reserve?.map((card) => card.releaseId)).toEqual([6, 7, 8])
+    const { deck, card } = setup(projected)
+    await deck.respond(card, 0)
+    deck.tick(6000)
+    expect(deck.shelves[0].rows.map((card) => card.releaseId)).toEqual([6, 2, 3, 4, 5])
+    expect(deck.shelves[0].reserve.map((card) => card.releaseId)).toEqual([7, 8])
+  },
+)

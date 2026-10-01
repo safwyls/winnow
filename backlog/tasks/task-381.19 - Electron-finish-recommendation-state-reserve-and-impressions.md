@@ -1,10 +1,11 @@
 ---
 id: TASK-381.19
 title: 'Electron: finish recommendation state, reserve and impressions'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:47'
+updated_date: '2026-10-01 12:49'
 labels:
   - electron
   - parity
@@ -58,18 +59,38 @@ tests/Winnow.Ui.Tests/SupplementalFeedTests.cs
 - SupplementalFeedTests.Recently_played_hides_verdict_actions_and_does_not_record_impressions [pending at split]
 - SupplementalFeedTests.Arriving_optional_shelves_preserve_the_focused_game_and_existing_card [pending at split]
 
-Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Keep one implementation task active, verify and commit each milestone, then continue to the next task. Pause for review after TASK-381.20.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original feed generation/reserve, supplemental selection and composition rules remain intact without duplicating backend scoring.
-- [ ] #2 Impressions and feedback persist at the same lifecycle boundaries, retain undo/error behavior and do not double-write during desktop/fullscreen navigation or refresh.
-- [ ] #3 All 18 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original feed generation/reserve, supplemental selection and composition rules remain intact without duplicating backend scoring.
+- [x] #2 Impressions and feedback persist at the same lifecycle boundaries, retain undo/error behavior and do not double-write during desktop/fullscreen navigation or refresh.
+- [x] #3 All 18 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit the eighteen frozen recommendation contracts and full source fixtures, including reserve order, generations, impressions, action provenance, cover disposal and focus. 2. Correct demonstrated frontend/backend-boundary gaps without duplicating recommendation scoring; preserve desktop and fullscreen behavior. 3. Run original and equivalent component/API/native cases with exact lifecycle and viewport evidence, then record checkpoint74 and per-method mappings. 4. Commit the verified milestone and continue to TASK-381.20.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Started after gameplay milestone 804c1c66 and completion 49a05be9. Ninth task in the authorized ten-task batch. Previous complete Electron gate: 3,822 cases across 188 files. The initial audit reproduced an extra primary read during a three-event invalidation burst, found modal history instead of the source body toggle, and confirmed that a FeedService without a feedback store still advertised usable verdict controls. Bounded renderer, backend-fixture and native work is underway; production scoring remains shared in the backend.
+
+Final verification: 3,851 complete Electron component/live API cases across 189 files; 116 focused renderer cases; 25 existing list transaction cases; 27 unchanged originals, 13 HTTP cases and 63 feedback/service/reserve regressions. Native evidence covers 38 distinct new cases plus two existing consumers, all passing; final changed cases used index-PxSwDjer.js. Source-exact invalidation assertions preserve the native warm-shell boundary; final-owner disposal closes the actual renderer. Captures reviewed for desktop/fullscreen history, picker and virtual keyboard. Simulated controllers do not establish physical-device coverage. Checkpoint74 records implementation, fixture adaptations and measured limits.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed all eighteen recommendation-state contracts. Refreshes coalesce behind held scoring reads; stale optional results cannot publish; body history restores cards and focus; feedback capability and visible impression boundaries match the source. Restored fullscreen Y More, history hints and list-picker Y Keyboard. Verified 3,851 component/live API cases, 40 distinct native cases, 27 original cases, 13 HTTP cases and 63 affected regressions. Migration report: 1,505 ported, 650 retained-backend, 32 framework-specific, 217 pending and 31 partial. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-seventy-four.md. Continuing to the final authorized task, TASK-381.20.
+<!-- SECTION:FINAL_SUMMARY:END -->

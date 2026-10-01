@@ -3,6 +3,7 @@ import type { BackendEvent } from '../shared/bridge'
 import { request } from './api/client'
 import type { JournalResponse } from './api/types'
 import { patchJournalCaches } from './features/activity-model'
+import { invalidateFeed } from './api/feed-refresh'
 
 export async function refreshJournalSnapshot(client: QueryClient, sessionId: number): Promise<void> {
   const reads = client.getQueryCache().findAll({
@@ -25,17 +26,19 @@ export async function refreshSnapshots(
   client: QueryClient,
   options: { artwork?: boolean } = {},
 ): Promise<void> {
+  // Scoring settles independently: repeated events share one replay behind its current pass.
+  invalidateFeed(client)
   // Optional feed providers must never hold up a primary library/feed refresh.
   // The completed primary pass gives its supplement a new query generation.
   await client.cancelQueries({
     type: 'active',
     fetchStatus: 'fetching',
-    predicate: (query) => query.queryKey[1] !== 'feed.supplement',
+    predicate: (query) => !['feed.get', 'feed.supplement'].includes(String(query.queryKey[1])),
   })
   await client.invalidateQueries(
     {
       predicate: (query) =>
-        query.queryKey[1] !== 'feed.supplement' &&
+        !['feed.get', 'feed.supplement'].includes(String(query.queryKey[1])) &&
         (query.queryKey[0] !== 'artwork-image' || Boolean(options.artwork)),
     },
     { cancelRefetch: false },

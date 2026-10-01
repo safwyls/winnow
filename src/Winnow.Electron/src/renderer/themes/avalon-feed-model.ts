@@ -17,6 +17,7 @@ type WriteFeedback = (
 export class FeedDeck {
   shelves: FeedDeckShelf[] = []
   private generation = 0
+  private feedbackRevision = 0
   private engaged = false
   private sourceKey = ''
   private libraryKey = ''
@@ -41,6 +42,9 @@ export class FeedDeck {
   snapshot = () => this.version
   activate() {
     this.disposed = false
+  }
+  retireBackfill() {
+    this.feedbackRevision++
   }
   private notify() {
     this.version++
@@ -136,6 +140,7 @@ export class FeedDeck {
       const result = await this.write(row.releaseId, kind, undo)
       if (!this.live(row, generation)) return
       if (!undo && !result.saved) throw Error('Your choice could not be saved. Try again.')
+      this.feedbackRevision++
       row.receipt = undo ? undefined : { kind, expiresAt: result.expiresAt, elapsed: 0 }
       this.changed()
     } catch (error) {
@@ -149,6 +154,7 @@ export class FeedDeck {
     }
   }
   restore(releaseId: number, kind: number) {
+    this.feedbackRevision++
     for (const shelf of this.shelves)
       for (const row of shelf.rows)
         if (row.releaseId === releaseId && row.receipt?.kind === kind) {
@@ -193,10 +199,15 @@ export class FeedDeck {
     try {
       do {
         this.refillPending = false
-        const generation = this.generation
+        const generation = this.generation,
+          feedbackRevision = this.feedbackRevision
         try {
           const source = await this.refill()
-          if (!this.disposed && generation === this.generation) {
+          if (
+            !this.disposed &&
+            generation === this.generation &&
+            feedbackRevision === this.feedbackRevision
+          ) {
             this.merge(source)
             this.notify()
           }

@@ -344,7 +344,7 @@ public sealed class FeedService : IFeedService
         return await _engine!.GetShelvesAsync(request, ct).ConfigureAwait(false);
     }
 
-    private static FeedShelf Translate(RecommendationShelf shelf)
+    private FeedShelf Translate(RecommendationShelf shelf)
         => new(
             shelf.Id,
             shelf.Title,
@@ -352,7 +352,7 @@ public sealed class FeedService : IFeedService
             shelf.Items.Take(VisiblePerShelf).Select(Translate).ToList())
         {
             Reserve = shelf.Items.Skip(VisiblePerShelf).Select(Translate).ToList(),
-            SupportsFeedback = shelf.SupportsFeedback,
+            SupportsFeedback = shelf.SupportsFeedback && _feedback is not null,
         };
 
     private static FeedItem Translate(Recommendation item)

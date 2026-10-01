@@ -24,6 +24,17 @@ in place. Hover previews stay inside the window and close when their tile is reb
 Escape keeps them closed until the pointer leaves the card. Fullscreen retains its
 separate hero actions.
 
+Desktop keeps five cards per recommendation shelf and promotes replacements in place.
+Fullscreen exposes the complete scored shelf through horizontal navigation. Only cards
+that enter the visible, focused window record impressions; Recently played records none.
+Verdict controls appear only when the backend can save feedback.
+**What you've told the feed** replaces the feed body and returns to the same cards.
+Fullscreen **Y · More** opens the selected game's actions; Recently played omits verdicts.
+The fullscreen list picker shows **Y · Keyboard** while its name field has focus and
+returns focus to the originating card action when closed.
+Primary refreshes coalesce behind an unfinished scoring pass, while optional shelves
+cannot publish after their generation or feedback state changes.
+
 Cover images remain visible while a larger size loads. Shrinking a realized tile keeps its
 best decoded image, and recycling one tile leaves other surfaces showing that game intact.
 Dormancy changes reuse the same pixels on desktop, fullscreen and desktop merge thumbnails.

@@ -45,12 +45,19 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
-The [gameplay statistics checkpoint](checkpoint-seventy-three.md) records all 3,822
+The [recommendation state checkpoint](checkpoint-seventy-four.md) records all 3,851
+component/live API cases, 38 distinct new native cases, two existing native consumers,
+27 unchanged original cases, thirteen HTTP cases and 63 feedback regressions passing.
+Both surfaces preserve reserve, impression, feedback and cancellation boundaries;
+history owns the feed body, and fullscreen action and keyboard hints remain visible.
+All eighteen assigned methods are ported; 217 pending and 31 partial methods remain.
+
+The preceding [gameplay statistics checkpoint](checkpoint-seventy-three.md) records all 3,822
 component/live API cases, 28 distinct native cases, 23 unchanged original cases, eleven HTTP cases and 63
 transaction/repository regressions passing. Both surfaces preserve source date,
 scope, cancellation and layout behavior; gameplay uses a coherent deferred read
 snapshot so obsolete reads cannot block library writes. All eleven assigned
-methods are ported; 231 pending and 35 partial methods remain.
+methods were ported at that checkpoint.
 
 The preceding [activity recovery and journal checkpoint](checkpoint-seventy-two.md) records
 all 3,789 component/live API cases, 53 distinct native cases, 30 original cases and

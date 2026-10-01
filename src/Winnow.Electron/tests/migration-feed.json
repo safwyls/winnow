@@ -79,16 +79,6 @@
     ],
     "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
   },
-  "FeedFeedbackTests.The_history_takes_the_body_and_gives_it_back": {
-    "status": "partial",
-    "tests": [
-      {
-        "case": "retains receipts through a feed refresh and pauses while history is open",
-        "file": "tests/parity-feed-ui.test.tsx"
-      }
-    ],
-    "reason": "Electron uses an accessible modal with background content hidden from accessibility and paused receipts; the original alternate-body visibility and focus assertions need a complete equivalent."
-  },
   "FeedReserveTests.A_receipt_goes_on_the_clock_when_the_shelf_is_holding_a_replacement": {
     "status": "ported",
     "tests": [
@@ -219,16 +209,6 @@
     ],
     "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
   },
-  "FeedReserveTests.The_receipt_running_out_puts_the_next_card_in_that_cards_place": {
-    "status": "partial",
-    "tests": [
-      {
-        "case": "holds a focused undo and the hovered cover before replacing only that card",
-        "file": "tests/parity-feed-ui.test.tsx"
-      }
-    ],
-    "reason": "Slot identity and untouched neighboring DOM are asserted on both surfaces. Source additionally asserts surfacing notifications and collection-event shape; visible-only impression integration is still being ported."
-  },
   "FeedViewModelTests.Missing_tiles_are_skipped_before_filling_visible_slots": {
     "status": "ported",
     "tests": [
@@ -258,16 +238,6 @@
       }
     ],
     "reason": "Equivalent receipt, identity, state, or asynchronous lifecycle assertions execute against the Electron implementation; component cases run on both desktop and fullscreen."
-  },
-  "FeedViewModelTests.A_supplement_cannot_publish_after_its_generation_or_feedback_changes": {
-    "status": "partial",
-    "tests": [
-      {
-        "case": "does not append the optional result of a primary pass superseded by a reload",
-        "file": "tests/parity-feed-query.test.tsx"
-      }
-    ],
-    "reason": "Primary-generation reload and optional provider failure/malformed payloads are verified; full feedback/disposal matrix and invalidation replay require additional source-equivalent assertions."
   },
   "FeedViewModelTests.The_screen_opens_working_rather_than_empty": {
     "status": "ported",

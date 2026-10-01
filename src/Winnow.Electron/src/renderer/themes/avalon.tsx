@@ -48,7 +48,7 @@ import { avalonFilter, coverGrid, coverWallExtent, dormancy, matchesBucket } fro
 import { AVALON_PALETTES, avalonPaletteStyle } from './avalon-palettes'
 import { avalonFacts, matchesAvalonRules, type AvalonFactMap, type AvalonWorkspace } from './avalon-filters'
 import { AvalonFilterPanel } from './avalon-filter-panel'
-import { AvalonAction } from './avalon-actions'
+import { AvalonAction, AvalonActions } from './avalon-actions'
 import { AvalonBrowseSpine } from './avalon-browse-spine'
 import { AvalonCollectionLists } from './avalon-collection-lists'
 import { AvalonRailFooter } from './avalon-rail-footer'
@@ -70,7 +70,14 @@ import { useAvalonPreview } from './avalon-preview'
 import { AvalonCoverWorkspace, AvalonDesktopCover, type AvalonCoverProps } from './avalon-desktop-cover'
 import './avalon.css'
 import { useAvalonAppearance } from './avalon-appearance'
-import { FeedFeedback, FeedHistory, FeedLaunch, FeedReason, useAvalonFeed } from './avalon-feed'
+import {
+  FeedFeedback,
+  FeedHistory,
+  FeedHistoryButton,
+  FeedLaunch,
+  FeedReason,
+  useAvalonFeed,
+} from './avalon-feed'
 import { AvalonFeedCard } from './avalon-feed-card'
 import type { FeedDeckShelf, FeedRow } from './avalon-feed-model'
 import {
@@ -449,7 +456,7 @@ export function AvalonShell(context: ThemeContext) {
       <footer className="avalon-footer">
         <span>
           {fullscreen
-            ? `Arrows to browse · Enter to view${shellPage === 'library' ? ' · Y · Library options' : ''} · Esc to go back`
+            ? `Arrows to browse · Enter to view${shellPage === 'library' ? ' · Y · Library options' : shellPage === 'discover' ? ' · Y · More' : ''} · Esc to go back`
             : 'Your library. Rediscovered.'}
         </span>
         <span>
@@ -595,6 +602,8 @@ export function AvalonDiscover(context: ThemeContext) {
     {},
   )
   const [capacity, setCapacity] = useState(10)
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const actionOrigin = useRef<HTMLElement | null>(null)
   const shelfIndex = Math.max(
     0,
     shelves.findIndex((shelf) => shelf.id === shelfId),
@@ -694,196 +703,248 @@ export function AvalonDiscover(context: ThemeContext) {
     revealShelfCover(cover)
   }
   useLayoutEffect(focusCover, [fullscreen, picked?.game.workId, shelf?.id, capacity])
-  if (context.loading || (context.feedLoading && !context.feed))
+  function renderBody() {
+    if (context.loading || (context.feedLoading && !context.feed))
+      return (
+        <div className="avalon-empty" role="status">
+          <span className="dragon-mark" style={{ maskImage: `url(${dragon})` }} />
+          <p>{context.loading ? 'Preparing your library…' : 'Building the feed…'}</p>
+        </div>
+      )
+    if (!context.games.length && !feedFailed)
+      return (
+        <div className="avalon-empty">
+          <h1>Your library starts here.</h1>
+          <p>Connect a store or add a game to see what is waiting for you.</p>
+          <button onClick={() => context.setPage('settings')}>Open settings</button>
+          <FeedHistoryButton />
+        </div>
+      )
+    if (!picked)
+      return (
+        <div className="avalon-empty">
+          <h1>For you</h1>
+          <p>
+            {feedFailed
+              ? 'Recommendations could not be loaded. Your library is still available.'
+              : context.feed?.candidateCount
+                ? 'Nothing to suggest right now. Your library is still here to explore.'
+                : 'Recommendations appear here as Winnow learns about your library.'}
+          </p>
+          <button onClick={() => context.setPage('library')}>Browse library</button>
+          {feedFailed && <button onClick={refresh}>Try again</button>}
+          <FeedHistoryButton />
+        </div>
+      )
+    function card(current: FeedDeckShelf, entry: FeedRow, index: number) {
+      const cover = !fullscreen ? (
+        <AvalonFeedCard
+          context={context}
+          deck={deck}
+          shelf={current}
+          row={entry}
+          onKeyDown={(event) => key(event, index, current)}
+        />
+      ) : (
+        <AvalonCover
+          context={context}
+          game={entry.game}
+          reason={entry.reason}
+          selected={fullscreen && current.id === shelf?.id && index === rowIndex}
+          onFocus={() => {
+            if (fullscreen) {
+              setColumn(index)
+              setPositions((saved) =>
+                saved[current.id] === index ? saved : { ...saved, [current.id]: index },
+              )
+            }
+          }}
+          onKeyDown={(event) => key(event, index, current)}
+        />
+      )
+      return entry.releaseId === undefined || !current.feedback ? (
+        <div className="avalon-home-card" key={entry.game.workId}>
+          <div {...handlers(entry, 'cover')}>{cover}</div>
+        </div>
+      ) : (
+        <Impression key={entry.game.workId} releaseId={entry.releaseId} shelfId={current.id}>
+          <div {...handlers(entry, 'cover')}>{cover}</div>
+        </Impression>
+      )
+    }
+    if (!fullscreen)
+      return (
+        <div className="avalon-discover" ref={rowRef}>
+          <header className="avalon-page-heading">
+            <h1>For you</h1>
+            <p>Something worth coming back to.</p>
+          </header>
+          <div className="avalon-feed-summary">
+            {!!context.feed?.candidateCount && (
+              <span>
+                <span className="avalon-feed-date">{context.feed.candidateCount.toLocaleString()}</span> games
+                scored
+              </span>
+            )}
+            {context.feed && !!context.feed.candidateCount && !feedFailed && context.feed.confidence < 2 && (
+              <span>
+                {context.feed.confidence === 0
+                  ? 'Based on playtime and patch history. Improves as you play.'
+                  : 'Recorded sessions help refine your picks.'}
+              </span>
+            )}
+            <FeedHistoryButton />
+          </div>
+          {feedFailed && (
+            <p className="error-banner" role="alert">
+              Some recommendations could not be loaded.
+              <button onClick={refresh}>Try again</button>
+            </p>
+          )}
+          {shelves.map((current) => (
+            <section className="avalon-shelf" key={current.id}>
+              <header>
+                <div className="avalon-shelf-label" title={current.blurb}>
+                  <h2>{current.title}</h2>
+                  <span className="avalon-shelf-count" aria-label={`${current.rows.length} games`}>
+                    {current.rows.length.toLocaleString()}
+                  </span>
+                </div>
+                <p>{current.blurb}</p>
+              </header>
+              <AvalonDesktopShelf id={current.id}>
+                {current.rows.map((entry, index) => (
+                  <div key={entry.game.workId} {...handlers(entry, 'card')}>
+                    {card(current, entry, index)}
+                  </div>
+                ))}
+              </AvalonDesktopShelf>
+            </section>
+          ))}
+        </div>
+      )
     return (
-      <div className="avalon-empty" role="status">
-        <span className="dragon-mark" style={{ maskImage: `url(${dragon})` }} />
-        <p>{context.loading ? 'Preparing your library…' : 'Building the feed…'}</p>
-      </div>
-    )
-  if (!context.games.length)
-    return (
-      <div className="avalon-empty">
-        <h1>Your library starts here.</h1>
-        <p>Connect a store or add a game to see what is waiting for you.</p>
-        <button onClick={() => context.setPage('settings')}>Open settings</button>
-        <FeedHistory games={context.games} deck={deck} />
-      </div>
-    )
-  if (!picked)
-    return (
-      <div className="avalon-empty">
-        <h1>For you</h1>
-        <p>
-          {feedFailed
-            ? 'Recommendations could not be loaded. Your library is still available.'
-            : context.feed?.candidateCount
-              ? 'Nothing to suggest right now. Your library is still here to explore.'
-              : 'Recommendations appear here as Winnow learns about your library.'}
-        </p>
-        <button onClick={() => context.setPage('library')}>Browse library</button>
-        {feedFailed && <button onClick={refresh}>Try again</button>}
-        <FeedHistory games={context.games} deck={deck} />
-      </div>
-    )
-  function card(current: FeedDeckShelf, entry: FeedRow, index: number) {
-    const cover = !fullscreen ? (
-      <AvalonFeedCard
-        context={context}
-        deck={deck}
-        shelf={current}
-        row={entry}
-        onKeyDown={(event) => key(event, index, current)}
-      />
-    ) : (
-      <AvalonCover
-        context={context}
-        game={entry.game}
-        reason={entry.reason}
-        selected={fullscreen && current.id === shelf?.id && index === rowIndex}
-        onFocus={() => {
-          if (fullscreen) {
-            setColumn(index)
-            setPositions((saved) => (saved[current.id] === index ? saved : { ...saved, [current.id]: index }))
-          }
+      <div
+        className="avalon-home"
+        ref={homeRef}
+        onWheel={(event) => {
+          if (Math.abs(event.deltaY) > 8) changeShelf(shelfIndex + Math.sign(event.deltaY))
         }}
-        onKeyDown={(event) => key(event, index, current)}
-      />
-    )
-    return entry.releaseId === undefined || !current.feedback ? (
-      <div className="avalon-home-card" key={entry.game.workId}>
-        <div {...handlers(entry, 'cover')}>{cover}</div>
+      >
+        <div className="avalon-home-backdrop" aria-hidden="true">
+          <AvalonBackdrop
+            workId={picked.game.workId}
+            coverWorkId={picked.game.headerWorkId}
+            reducedMotion={context.profile.appearance.reducedMotion}
+          />
+        </div>
+        <div className="avalon-home-hero" {...handlers(picked, 'hero')}>
+          <div className="avalon-feed-summary">
+            <FeedHistoryButton />
+            {feedFailed && (
+              <span role="alert">
+                Recommendations could not be refreshed. <button onClick={refresh}>Try again</button>
+              </span>
+            )}
+          </div>
+          <span className="avalon-label">{shelf.title}</span>
+          <h1 title={picked.game.title}>{picked.game.title}</h1>
+          <p title={picked.reason}>
+            <FeedReason reason={picked.reason} />
+          </p>
+          <div className="avalon-hero-actions">
+            <button onClick={() => context.openGame(picked.game.workId)}>View game</button>
+            <FeedLaunch key={picked.game.workId} context={context} row={picked} />
+            <FeedFeedback deck={deck} shelf={shelf} row={picked} />
+            <AddToListButton games={[picked.game]} mode={context.mode} origin="feed" />
+            <button
+              data-controller-context
+              aria-expanded={actionsOpen}
+              onClick={() => {
+                actionOrigin.current =
+                  document.activeElement instanceof HTMLElement ? document.activeElement : null
+                setActionsOpen(true)
+              }}
+            >
+              More
+            </button>
+          </div>
+        </div>
+        <AvalonActions
+          open={actionsOpen}
+          title="More game actions"
+          close={() => setActionsOpen(false)}
+          restoreFocus={() =>
+            actionOrigin.current?.isConnected && actionOrigin.current.focus({ preventScroll: true })
+          }
+        >
+          <AvalonAction label="Open game" onChoose={() => context.openGame(picked.game.workId)} />
+          {shelf.feedback &&
+            picked.releaseId !== undefined &&
+            (picked.receipt ? (
+              <AvalonAction
+                label="Undo"
+                disabled={picked.pending}
+                onChoose={() => void deck.respond(picked, picked.receipt!.kind, true)}
+              />
+            ) : (
+              <>
+                <AvalonAction
+                  label="Not now"
+                  disabled={picked.pending}
+                  onChoose={() => void deck.respond(picked, 1)}
+                />
+                <AvalonAction
+                  label="Not interested"
+                  disabled={picked.pending}
+                  onChoose={() => void deck.respond(picked, 0)}
+                />
+              </>
+            ))}
+        </AvalonActions>
+        <section className="avalon-home-shelf">
+          <h2>{shelf.title}</h2>
+          <AvalonRowViewport
+            rows={shelves}
+            first={shelfIndex}
+            reducedMotion={context.profile.appearance.reducedMotion || systemReducedMotion}
+            viewportRef={rowRef}
+            onReady={focusCover}
+          >
+            {(current) => {
+              const offset = homePageStart(
+                current.id === shelf.id ? rowIndex : (positions[current.id] ?? 0),
+                capacity,
+                current.rows.length,
+              )
+              return (
+                <AvalonHomeRow
+                  id={current.id}
+                  page={Math.floor(offset / capacity)}
+                  onFocusChange={(value) => {
+                    rowHadFocus.current = value
+                  }}
+                >
+                  {current.rows
+                    .slice(offset, offset + capacity)
+                    .map((entry, index) => card(current, entry, offset + index))}
+                </AvalonHomeRow>
+              )
+            }}
+          </AvalonRowViewport>
+          <AvalonShelfIndicator
+            titles={shelves.map((entry) => entry.title)}
+            selected={shelfIndex}
+            onSelect={changeShelf}
+          />
+        </section>
       </div>
-    ) : (
-      <Impression key={entry.game.workId} releaseId={entry.releaseId} shelfId={current.id}>
-        <div {...handlers(entry, 'cover')}>{cover}</div>
-      </Impression>
     )
   }
-  if (!fullscreen)
-    return (
-      <div className="avalon-discover" ref={rowRef}>
-        <header className="avalon-page-heading">
-          <h1>For you</h1>
-          <p>Something worth coming back to.</p>
-        </header>
-        <div className="avalon-feed-summary">
-          {!!context.feed?.candidateCount && (
-            <span>
-              <span className="avalon-feed-date">{context.feed.candidateCount.toLocaleString()}</span> games
-              scored
-            </span>
-          )}
-          {context.feed && !!context.feed.candidateCount && !feedFailed && context.feed.confidence < 2 && (
-            <span>
-              {context.feed.confidence === 0
-                ? 'Based on playtime and patch history. Improves as you play.'
-                : 'Recorded sessions help refine your picks.'}
-            </span>
-          )}
-          <FeedHistory games={context.games} deck={deck} />
-        </div>
-        {feedFailed && (
-          <p className="error-banner" role="alert">
-            Some recommendations could not be loaded.
-            <button onClick={refresh}>Try again</button>
-          </p>
-        )}
-        {shelves.map((current) => (
-          <section className="avalon-shelf" key={current.id}>
-            <header>
-              <div className="avalon-shelf-label" title={current.blurb}>
-                <h2>{current.title}</h2>
-                <span className="avalon-shelf-count" aria-label={`${current.rows.length} games`}>
-                  {current.rows.length.toLocaleString()}
-                </span>
-              </div>
-              <p>{current.blurb}</p>
-            </header>
-            <AvalonDesktopShelf id={current.id}>
-              {current.rows.map((entry, index) => (
-                <div key={entry.game.workId} {...handlers(entry, 'card')}>
-                  {card(current, entry, index)}
-                </div>
-              ))}
-            </AvalonDesktopShelf>
-          </section>
-        ))}
-      </div>
-    )
   return (
-    <div
-      className="avalon-home"
-      ref={homeRef}
-      onWheel={(event) => {
-        if (Math.abs(event.deltaY) > 8) changeShelf(shelfIndex + Math.sign(event.deltaY))
-      }}
-    >
-      <div className="avalon-home-backdrop" aria-hidden="true">
-        <AvalonBackdrop
-          workId={picked.game.workId}
-          coverWorkId={picked.game.headerWorkId}
-          reducedMotion={context.profile.appearance.reducedMotion}
-        />
-      </div>
-      <div className="avalon-home-hero" {...handlers(picked, 'hero')}>
-        <div className="avalon-feed-summary">
-          <FeedHistory games={context.games} deck={deck} />
-          {feedFailed && (
-            <span role="alert">
-              Recommendations could not be refreshed. <button onClick={refresh}>Try again</button>
-            </span>
-          )}
-        </div>
-        <span className="avalon-label">{shelf.title}</span>
-        <h1 title={picked.game.title}>{picked.game.title}</h1>
-        <p title={picked.reason}>
-          <FeedReason reason={picked.reason} />
-        </p>
-        <div className="avalon-hero-actions">
-          <button onClick={() => context.openGame(picked.game.workId)}>View game</button>
-          <FeedLaunch key={picked.game.workId} context={context} row={picked} />
-          <FeedFeedback deck={deck} shelf={shelf} row={picked} />
-          <AddToListButton games={[picked.game]} mode={context.mode} origin="feed" />
-        </div>
-      </div>
-      <section className="avalon-home-shelf">
-        <h2>{shelf.title}</h2>
-        <AvalonRowViewport
-          rows={shelves}
-          first={shelfIndex}
-          reducedMotion={context.profile.appearance.reducedMotion || systemReducedMotion}
-          viewportRef={rowRef}
-          onReady={focusCover}
-        >
-          {(current) => {
-            const offset = homePageStart(
-              current.id === shelf.id ? rowIndex : (positions[current.id] ?? 0),
-              capacity,
-              current.rows.length,
-            )
-            return (
-              <AvalonHomeRow
-                id={current.id}
-                page={Math.floor(offset / capacity)}
-                onFocusChange={(value) => {
-                  rowHadFocus.current = value
-                }}
-              >
-                {current.rows
-                  .slice(offset, offset + capacity)
-                  .map((entry, index) => card(current, entry, offset + index))}
-              </AvalonHomeRow>
-            )
-          }}
-        </AvalonRowViewport>
-        <AvalonShelfIndicator
-          titles={shelves.map((entry) => entry.title)}
-          selected={shelfIndex}
-          onSelect={changeShelf}
-        />
-      </section>
-    </div>
+    <FeedHistory games={context.games} deck={deck}>
+      {renderBody()}
+    </FeedHistory>
   )
 }
 

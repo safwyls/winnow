@@ -5,7 +5,8 @@ import {
   useInfiniteQuery,
   type QueryClient,
 } from '@tanstack/react-query'
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react'
+import { feedRefresh } from './feed-refresh'
 import { z } from 'zod'
 import { request } from './client'
 import { prepareLibrary } from './prepare-library'
@@ -87,6 +88,8 @@ export function useLibrary(enabled = true) {
   })
 }
 export function useFeed(enabled = true) {
+  const coordinator = feedRefresh(useQueryClient())
+  const generation = useSyncExternalStore(coordinator.subscribe, coordinator.snapshot)
   const primary = useQuery({
     queryKey: ['api', 'feed.get'],
     queryFn: async ({ signal }) =>
@@ -98,14 +101,15 @@ export function useFeed(enabled = true) {
   // An optional shelf belongs to the completed primary pass that requested it.
   // A slow previous pass must not append stale cards after feedback or a reload.
   const supplement = useQuery({
-    queryKey: ['api', 'feed.supplement', primary.dataUpdatedAt],
+    queryKey: ['api', 'feed.supplement', primary.dataUpdatedAt, generation],
     queryFn: async ({ signal }) =>
       feedSupplementSchema.parse(await request('feed.supplement', undefined, undefined, signal)),
-    enabled: !!primary.data && !primary.isFetching && !primary.data.failed,
+    enabled: enabled && !!primary.data && !primary.isFetching && !coordinator.pending && !primary.data.failed,
     retry: false,
     staleTime: 60_000,
   })
-  const additional = !primary.isFetching ? (supplement.data?.shelves ?? []) : []
+  const fetching = primary.isFetching || coordinator.pending
+  const additional = !fetching ? (supplement.data?.shelves ?? []) : []
   const settled = useRef<FeedSnapshot | undefined>(undefined)
   const combined = primary.data
     ? {
@@ -115,15 +119,17 @@ export function useFeed(enabled = true) {
           ...additional.filter((shelf) => !primary.data.shelves.some((existing) => existing.id === shelf.id)),
         ],
         candidateCount:
-          primary.data.candidateCount + (!primary.isFetching ? (supplement.data?.candidateCount ?? 0) : 0),
+          primary.data.candidateCount + (!fetching ? (supplement.data?.candidateCount ?? 0) : 0),
       }
     : undefined
   useLayoutEffect(() => {
-    if (!primary.isFetching && combined) settled.current = combined
-  }, [primary.isFetching, combined])
+    if (!fetching && combined) settled.current = combined
+  }, [fetching, combined])
   return {
     ...primary,
-    data: primary.isFetching && settled.current ? settled.current : combined,
+    isPending: primary.isPending || (coordinator.pending && !settled.current),
+    isFetching: fetching,
+    data: fetching ? settled.current : combined,
   }
 }
 export function useWorkspace(enabled = true) {

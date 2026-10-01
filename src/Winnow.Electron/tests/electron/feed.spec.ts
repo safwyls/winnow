@@ -98,7 +98,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     expect(active.expiresAt).toBeTruthy()
     await expect(scope.locator('time').first()).toHaveAttribute('dateTime', active.expiresAt!)
     await page.getByRole('button', { name: /What you've told the feed/ }).click()
-    const dialog = page.getByRole('dialog', { name: "What you've told the feed", exact: true })
+    const dialog = page.getByRole('region', { name: "What you've told the feed", exact: true })
     await expect(dialog.getByRole('button', { name: 'Undo', exact: true })).toBeVisible()
     const geometry = await dialog.boundingBox(),
       viewport = page.viewportSize()
@@ -123,7 +123,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     await page.getByRole('button', { name: /What you've told the feed/ }).click()
     await expect(
       page
-        .getByRole('dialog')
+        .getByRole('region', { name: "What you've told the feed", exact: true })
         .getByText(/Undone on/)
         .first(),
     ).toBeVisible()

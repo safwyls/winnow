@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 231,
-    "partial": 35,
-    "ported": 1487,
+    "pending": 217,
+    "partial": 31,
+    "ported": 1505,
     "retained-backend": 650,
     "framework-specific": 32
   },
@@ -5563,7 +5563,22 @@
     {
       "id": "FeedFeedbackTests.With_no_store_behind_it_the_controls_are_not_offered_at_all",
       "source": "tests/Winnow.Tests/FeedFeedbackTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "with no feedback store the exact original card retains its ordinary actions without verdict controls"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "An_absent_feedback_store_removes_capability_without_removing_the_game_or_its_other_actions"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source no feedback store removes verdict controls while keeping real cards and actions"
+        }
+      ],
+      "reason": "The original Deep Rock Galactic 1 card, update reason, Pitch. shelf and ordinary actions remain on both surfaces while verdict controls disappear. Actual FeedService now reports SupportsFeedback=false when its optional feedback repository is absent; HTTP verifies no verdict or impression rows can be created in that configuration. The original command-availability contract is preserved through the existing payload capability."
     },
     {
       "id": "FeedFeedbackTests.The_history_shows_everything_and_names_it_from_the_library",
@@ -5604,14 +5619,22 @@
     {
       "id": "FeedFeedbackTests.The_history_takes_the_body_and_gives_it_back",
       "source": "tests/Winnow.Tests/FeedFeedbackTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "case": "retains receipts through a feed refresh and pauses while history is open",
-          "file": "tests/parity-feed-ui.test.tsx"
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "history takes the original997-candidate body and returns the same card and trigger focus"
+        },
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "opens response history from an empty feed and returns to the same empty surface"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source history takes the entire feed body and restores its card and undo state"
         }
       ],
-      "reason": "Electron uses an accessible modal with background content hidden from accessibility and paused receipts; the original alternate-body visibility and focus assertions need a complete equivalent."
+      "reason": "The exact one-card, 997-candidate source feed gives its body to response history and hides shelves, empty-message and candidate copy. Returning restores the same card and trigger focus; a real snooze undone in history also clears its receipt without replacing the card. Both surfaces use the body rather than a modal, with native layout and source fullscreen typography checks."
     },
     {
       "id": "FeedFeedbackTests.The_header_states_the_count_only_once_there_is_one",
@@ -5832,14 +5855,30 @@
     {
       "id": "FeedReserveTests.The_receipt_running_out_puts_the_next_card_in_that_cards_place",
       "source": "tests/Winnow.Tests/FeedReserveTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "case": "holds a focused undo and the hovered cover before replacing only that card",
-          "file": "tests/parity-feed-ui.test.tsx"
+          "file": "tests/parity-feed-model.test.ts",
+          "case": "the source five-card receipt replaces exactly its slot with Held101 then tops up without rebuilding survivors"
+        },
+        {
+          "file": "tests/parity-feed-artwork-disposal.test.tsx",
+          "case": "receipt replacement releases the outgoing %s artwork consumer without rebuilding surviving cards"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "Source_reserve_backfill_keeps_the_exact_next_population_separate_from_display_and_feedback"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source reserve fixture preserves survivors and keeps full-surface promotion semantics"
+        },
+        {
+          "file": "tests/parity-feed-impressions.test.ts",
+          "case": "records only live intersecting cards, including partially clipped cards, and shares one observer"
         }
       ],
-      "reason": "Slot identity and untouched neighboring DOM are asserted on both surfaces. Source additionally asserts surfacing notifications and collection-event shape; visible-only impression integration is still being ported."
+      "reason": "The source Shown 1–5 and Held 101 reasons are preserved. Receipt expiry replaces only index 0, keeps length five and all four surviving identities, and removes the receipt from the replacement. Native real viewport observation and the observer cases establish that loading or promotion alone does not record an impression. React row identity replaces Avalonia CollectionChanged Replace-event shape. Fullscreen separately retains its established presentation of all six scored items and undo without a hidden reserve countdown."
     },
     {
       "id": "FeedReserveTests.The_verdict_survives_the_card_that_carried_it",
@@ -5920,7 +5959,14 @@
     {
       "id": "FeedReserveTests.The_card_that_leaves_gives_up_its_cover_lease",
       "source": "tests/Winnow.Tests/FeedReserveTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-artwork-disposal.test.tsx",
+          "case": "receipt replacement releases the outgoing %s artwork consumer without rebuilding surviving cards"
+        }
+      ],
+      "reason": "The original 160-pixel outgoing cover resource is tested through real FeedDeck, AvalonFeedCard, Artwork and renderer cache consumers. Decoded coverage retains an evicted image while visible, then revokes its URL and clears the detached image source on replacement. Pending coverage cancels IPC and rejects late pixels/cache publication. All four surviving card DOM objects remain identical. Electron acquires all five displayed covers, so aggregate live slots stay five through replacement and reach zero on unmount; the specific outgoing resource is released rather than reproducing Avalonia's single acquired slot count."
     },
     {
       "id": "FeedReserveTests.The_card_that_leaves_stops_reaching_the_screen",
@@ -5937,7 +5983,22 @@
     {
       "id": "FeedReserveTests.A_swap_tops_the_sections_queue_back_up_without_touching_the_screen",
       "source": "tests/Winnow.Tests/FeedReserveTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-model.test.ts",
+          "case": "the source five-card receipt replaces exactly its slot with Held101 then tops up without rebuilding survivors"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "Source_reserve_backfill_keeps_the_exact_next_population_separate_from_display_and_feedback"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source reserve fixture preserves survivors and keeps full-surface promotion semantics"
+        }
+      ],
+      "reason": "The exact five-card source shelf promotes Held 101, then backfills from Shown 200–204 and Held 300 without replacing surviving row/control objects or changing the five-card length. Dismissing the original index-1 survivor then replaces that slot. Real FeedService emits six primary items and the desktop cap creates the source five-plus-one reserve. Future lookup rows are preseeded so the atomic Electron library cache can resolve the source's silently added tiles; candidate count remains 997 and lookup rows generate no impressions. Fullscreen is verified separately with its complete scored row."
     },
     {
       "id": "FeedReserveTests.A_backfill_never_offers_a_game_that_is_on_screen_or_already_queued",
@@ -5990,7 +6051,18 @@
     {
       "id": "FeedReserveTests.An_invalidation_arriving_during_a_pass_is_replayed_rather_than_dropped",
       "source": "tests/Winnow.Tests/FeedReserveTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-query.test.tsx",
+          "case": "replays %d invalidations during the original pending pass once with the final library state"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source held initial read replays"
+        }
+      ],
+      "reason": "The source two-card, no-reserve read is held through one real library invalidation. Component coordinator coverage and both native surfaces verify one replay after release, exactly two built-in calls and the two current Shown cards. Gates are explicitly keyed to the built-in operation, capture its source snapshot before awaiting, and remain releasable before the call appears in the ledger. The native shell has already completed its empty startup read before seeding, so it verifies the held scenario read, replay count and final cards without treating the retained empty body as a new initial-loading state. First-query loading is verified by component coverage."
     },
     {
       "id": "FeedViewModelTests.Missing_tiles_are_skipped_before_filling_visible_slots",
@@ -6007,7 +6079,26 @@
     {
       "id": "FeedViewModelTests.Desktop_excess_items_lead_the_reserve_without_being_counted_seen",
       "source": "tests/Winnow.Tests/FeedViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-model.test.ts",
+          "case": "source desktop excess item6 precedes reserve7 and8 for supplemental=%s"
+        },
+        {
+          "file": "tests/parity-feed-impressions.test.ts",
+          "case": "records only live intersecting cards, including partially clipped cards, and shares one observer"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "Source_eight_item_order_survives_primary_or_optional_transport_without_recording_impressions"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "excess item6 leads reserve7 and8 without an unseen impression"
+        }
+      ],
+      "reason": "Both source built-in patched and optional plugin:extra populations preserve items 1–6 plus reserve 7–8. Desktop exposes 1–5 with reserve 6,7,8; receipt expiry puts 6 in the outgoing slot while retaining five rows. Initial visible observations contain only 1–5, and native keeps the promoted card outside the viewport until actual entry records 6. Optional transport uses an authenticated test-host source-task seam, not a claim of PluginFeedService execution."
     },
     {
       "id": "FeedViewModelTests.Recently_played_keeps_order_and_capacity_without_feedback",
@@ -6048,14 +6139,34 @@
     {
       "id": "FeedViewModelTests.A_supplement_cannot_publish_after_its_generation_or_feedback_changes",
       "source": "tests/Winnow.Tests/FeedViewModelTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "case": "does not append the optional result of a primary pass superseded by a reload",
-          "file": "tests/parity-feed-query.test.tsx"
+          "file": "tests/parity-feed-model.test.ts",
+          "case": "the source held optional shelf cannot publish after %s"
+        },
+        {
+          "file": "tests/parity-feed-query.test.tsx",
+          "case": "does not append the optional result of a primary pass superseded by a reload"
+        },
+        {
+          "file": "tests/parity-feed-query.test.tsx",
+          "case": "cancels an unfinished %s on disposal and ignores its late result"
+        },
+        {
+          "file": "tests/parity-feed-query.test.tsx",
+          "case": "the final reader cancels its real request and queued replay, and a new reader starts a clean pass"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "Replacing_the_optional_generation_does_not_mutate_the_already_captured_held_source_task"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source pending optional shelf cannot publish after"
         }
       ],
-      "reason": "Primary-generation reload and optional provider failure/malformed payloads are verified; full feedback/disposal matrix and invalidation replay require additional source-equivalent assertions."
+      "reason": "All reload, verdict and disposal branches retain Built in/Deep Rock Galactic 1/Baseline and the held Extra/Deep Rock Galactic 2/Optional source task. Feedback and generation revisions reject stale completion; final query-owner detach aborts requests and excludes late cache publication, while disposed decks reject their own backfills. Native reload/verdict checks use real HTTP and SQLite feedback; disposal destroys the original BrowserWindow and observes cancellation before releasing the old server task. Ordinary Library navigation retains the global feed owner, as the original app does, and is not classified as disposal."
     },
     {
       "id": "FeedViewModelTests.Fullscreen_can_present_the_scored_reserve_while_desktop_keeps_it_hidden",
@@ -6116,7 +6227,22 @@
     {
       "id": "FeedViewModelTests.The_five_shelves_arrive_in_the_engines_order_with_their_own_pitches",
       "source": "tests/Winnow.Tests/FeedViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "%s preserves all five frozen engine shelves, pitches and verbatim reasons"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "Five_source_shelves_keep_all_titles_pitches_reasons_and_engine_candidate_count_over_HTTP"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source five shelves keep engine order and their own exact pitches"
+        }
+      ],
+      "reason": "All five frozen shelf IDs, titles, pitches, reasons, order and 997/Settling facts survive actual FeedService/HTTP and both presentations. Desktop displays the ordered sections; fullscreen traverses each shelf and retains its exact hero reason. This fixture injects controlled engine output at the original fake-service boundary; cold production scoring is covered separately."
     },
     {
       "id": "FeedViewModelTests.Every_card_carries_the_engines_sentence_verbatim",
@@ -6209,7 +6335,26 @@
     {
       "id": "FeedViewModelTests.A_service_that_throws_is_a_sentence_and_not_a_crash",
       "source": "tests/Winnow.Tests/FeedViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "a thrown feed service with %i known tiles shows a retry sentence without synthesizing recent-play shelves"
+        },
+        {
+          "file": "tests/parity-feed-query.test.tsx",
+          "case": "replays an invalidation after the original scoring pass fails and exposes a failed replay as a retryable query error"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "A_throwing_source_engine_returns_the_production_unavailable_contract_with_the_source_empty_library"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source service failure is a recoverable sentence without feed cards"
+        }
+      ],
+      "reason": "The exact empty-library source reader throws. Actual FeedService returns its unavailable contract; both surfaces present a recoverable sentence and enabled retry with no synthesized shelves or setup message taking precedence. The controlled failure cannot corrupt library reads or manufacture impressions."
     },
     {
       "id": "FeedViewModelTests.A_quiet_feed_and_an_unloaded_library_are_different_sentences",
@@ -6250,7 +6395,26 @@
     {
       "id": "FeedViewModelTests.Rapid_library_invalidations_during_a_load_replay_once_with_the_final_state",
       "source": "tests/Winnow.Tests/FeedViewModelTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-query.test.tsx",
+          "case": "replays %d invalidations during the original pending pass once with the final library state"
+        },
+        {
+          "file": "tests/parity-feed-query.test.tsx",
+          "case": "shares one pending scoring pass and replay across readers when the original reader leaves"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "Held_primary_captures_its_generation_while_three_library_changes_leave_the_final_snapshot_available"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source held initial read replays"
+        }
+      ],
+      "reason": "The full five-shelf initial source snapshot is held while three real library invalidations arrive. They coalesce to one replay, giving exactly two built-in calls and only ready_to_play/Deep Rock Galactic 99 with The final library state. Component cases also preserve an active shared reader and cancel queued replay when the final owner detaches; the HTTP test records old canceled completion without accepting it as current data. The native shell has already completed its empty startup read before seeding, so it verifies the held scenario read, replay count and final cards without treating the retained empty body as a new initial-loading state. First-query loading is verified by component coverage."
     },
     {
       "id": "FeedViewModelTests.The_tier_calibrates_the_copy_and_goes_quiet_once_it_is_earned",
@@ -24705,7 +24869,18 @@
     {
       "id": "FeedImpressionTests.Add_to_list_from_a_scrolled_card_focuses_the_picker_and_escape_returns_to_the_card",
       "source": "tests/Winnow.Ui.Tests/FeedImpressionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "All_thirteen_viewport_candidates_and_recent_history_semantics_cross_the_actual_API"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source scrolled-card list picker fits the window and Escape returns to its action"
+        }
+      ],
+      "reason": "The complete 13-title source fixture runs through the real library, feed and list UI. At desktop 1024×480, the scrolled card's action buttons fit their bounds without overlap; Space opens a focused New list name textbox inside the viewport and Escape restores the exact invoking button. Fullscreen 1280×1080 separately checks the picker, controller keyboard opening/closing and return focus. Test activation does not save a list or substitute renderer response data."
     },
     {
       "id": "FeedImpressionTests.Only_cards_intersecting_the_live_viewport_are_recorded_and_scroll_records_new_cards",
@@ -24758,7 +24933,26 @@
     {
       "id": "FeedImpressionTests.Offscreen_reserve_promotion_waits_for_viewport_entry",
       "source": "tests/Winnow.Ui.Tests/FeedImpressionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-impressions.test.ts",
+          "case": "records only live intersecting cards, including partially clipped cards, and shares one observer"
+        },
+        {
+          "file": "tests/parity-feed-impressions.test.ts",
+          "case": "ignores callbacks queued by a removed card or disconnected observation generation"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "All_thirteen_viewport_candidates_and_recent_history_semantics_cross_the_actual_API"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source offscreen reserve waits for the real vertical and horizontal viewport"
+        }
+      ],
+      "reason": "The original two six-item shelves and reserve 13 retain their exact reasons at desktop 800×480. Dismissing the last visible card (11 after the five-card cap) skips duplicate-reason reserve 12 and promotes 13. Neither 12 nor 13 is observed on promotion or vertical entry; horizontal viewport entry records 13 once. Fullscreen 1280×1080 separately verifies entering its complete second shelf does not expose overflow 13 until actual horizontal traversal. HTTP reads and reserve lookup never create impressions."
     },
     {
       "id": "FeedImpressionTests.A_modal_covering_the_feed_suppresses_impressions_until_it_closes",
@@ -24775,7 +24969,22 @@
     {
       "id": "FeedImpressionTests.Moving_from_an_unshown_window_does_not_leave_observation_stalled",
       "source": "tests/Winnow.Ui.Tests/FeedImpressionTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-impressions.test.ts",
+          "case": "moving the original unshown card into a visible host restarts exposure without rebuilding its observer"
+        },
+        {
+          "file": "tests/parity-feed-impressions.test.ts",
+          "case": "suppresses %s windows and records still-visible cards on return"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source unshown window starts observation when the actual window is shown"
+        }
+      ],
+      "reason": "The source observer resumes after an unshown host becomes visible. A component moves the original card DOM into a shown host without rebuilding its observer; native launches the actual BrowserWindow using the production background option, verifies zero hidden-window surfacings, then shows it and records live viewport entry. Electron keeps its renderer in one BrowserWindow rather than reproducing Avalonia logical-parent objects."
     },
     {
       "id": "GamePreviewBubbleTests.Artwork_continues_through_pointer_without_border_seam_or_rectangular_spill",
@@ -29413,18 +29622,18 @@
     {
       "id": "RecommendationCompositionTests.Production_feed_renders_cold_games_and_keeps_action_impression_verdict_provenance",
       "source": "tests/Winnow.Ui.Tests/RecommendationCompositionTests.cs",
-      "status": "partial",
+      "status": "ported",
       "tests": [
         {
-          "file": "tests/avalon-theme.test.tsx",
-          "case": "shows real recommendations with reasons and retains the complete title"
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "Actual_cold_engine_preserves_canonical_title_and_selected_release_through_impression_verdict_and_undo"
         },
         {
-          "file": "tests/avalon-data.test.ts",
-          "case": "puts recent play first without feedback or feed impressions"
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source cold composition keeps canonical title and"
         }
       ],
-      "reason": "Theme preserves release/shelf impression provenance and separate unscored history. Original database recommendation, launch and verdict assertions remain broader."
+      "reason": "All four source desktop/fullscreen and installed-sibling combinations use the actual RecommendationEngine and exact SQLite work/release/ownership rows. The canonical Kept title remains release 1 while recommendation, playable-entry, impression and verdict provenance choose Steam release 1 or installed Epic release 2. Reasons are nonempty and make no purchase claim. Real impression, durable verdict and undo rows preserve that release. The original fixture has no launcher identifiers, so native checks identity and zero OS dispatch rather than inventing launchable metadata."
     },
     {
       "id": "SavedLicensePagesTests.Both_presentations_import_two_saved_pages_and_repeat_without_duplicate_facts",
@@ -29739,17 +29948,62 @@
     {
       "id": "SupplementalFeedTests.Primary_reason_reaches_desktop_and_fullscreen_without_additional_copy",
       "source": "tests/Winnow.Ui.Tests/SupplementalFeedTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source primary reason remains the exact one-sentence explanation"
+        }
+      ],
+      "reason": "The exact source First game and Second game lookup population and one-sentence An update arrived after your last session. recommendation pass through the real feed API. Native desktop and fullscreen at 1920×1080 retain the complete primary reason as accessible and visible text without extra recommendation copy."
     },
     {
       "id": "SupplementalFeedTests.Recently_played_hides_verdict_actions_and_does_not_record_impressions",
       "source": "tests/Winnow.Ui.Tests/SupplementalFeedTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "recent and recommended copies of the same First game have separate verdict and impression provenance"
+        },
+        {
+          "file": "tests/parity-feed-model.test.ts",
+          "case": "never writes a verdict or starts replacement for an unscored recent shelf"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "All_thirteen_viewport_candidates_and_recent_history_semantics_cross_the_actual_API"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source recently played keeps Open game but has no verdict or impression"
+        }
+      ],
+      "reason": "The same First game/Last played today. appears in unscored Recently played and scored Recommended. Both surfaces retain Open game but remove verdict controls from the recent card and expanded action sheet, while the recommended copy offers and saves verdicts. Actual FeedService ignores recently_played surfacings; native and component provenance checks prevent the scored copy's capability or observation from leaking to the history copy."
     },
     {
       "id": "SupplementalFeedTests.Arriving_optional_shelves_preserve_the_focused_game_and_existing_card",
       "source": "tests/Winnow.Ui.Tests/SupplementalFeedTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "optional arrival retains the exact First game card, focused control and primary reason"
+        },
+        {
+          "file": "tests/parity-feed-model.test.ts",
+          "case": "appends optional shelves without replacing the existing shelf or card objects"
+        },
+        {
+          "file": "../../tests/Winnow.Backend.Tests/RecommendationStateParityTests.cs",
+          "case": "Authenticated_optional_source_task_preserves_exact_payload_and_observes_cancellation_without_blocking_primary"
+        },
+        {
+          "file": "tests/electron/recommendation-state.spec.ts",
+          "case": "source optional shelf arrival preserves card identity focus and one impression"
+        }
+      ],
+      "reason": "The exact First game/Baseline reason and held Second game/Optional reason source task append the optional shelf without replacing the original card or focused control. Native both surfaces at 1920×1080 retain its accessible name, DOM identity and focus, and real idempotent observation leaves exactly one surfacing for release 1. React DOM identity supplies the source card/button reference guarantee."
     },
     {
       "id": "ThemeTypographyControlsTests.Desktop_font_pickers_and_size_follow_the_selected_theme",

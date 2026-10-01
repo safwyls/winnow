@@ -3,6 +3,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, expect, it, vi } from 'vitest'
 import { feedSchema, useFeed } from '../src/renderer/api/hooks'
+import { invalidateFeed } from '../src/renderer/api/feed-refresh'
 import { RefreshQueue, refreshSnapshots } from '../src/renderer/refresh'
 
 const shelf = (id: string) => ({
@@ -32,10 +33,11 @@ function probe(handler: (route: string) => Promise<unknown>) {
     },
   })
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  function Probe() {
-    const feed = useFeed()
+  function Probe({ enabled = true }: { enabled?: boolean }) {
+    const feed = useFeed(enabled)
     return (
       <div>
+        {feed.isPending && <span role="status">Building the feed…</span>}
         {feed.data?.shelves.map((shelf) => (
           <span key={shelf.id}>{shelf.title}</span>
         ))}
@@ -44,10 +46,10 @@ function probe(handler: (route: string) => Promise<unknown>) {
   }
   const view = render(
     <QueryClientProvider client={client}>
-      <Probe />
+      <Probe key="owner" />
     </QueryClientProvider>,
   )
-  return { client, calls, cancel, ...view }
+  return { client, calls, cancel, Probe, ...view }
 }
 afterEach(() => cleanup())
 
@@ -197,5 +199,182 @@ it('keeps completed primary and optional cards on screen while a replacement pri
   })
   expect(await screen.findByText('Replacement')).toBeDefined()
   view.unmount()
+  view.client.clear()
+})
+
+it.each([1, 3])(
+  'replays %d invalidations during the original pending pass once with the final library state',
+  async (changes) => {
+    let finish!: () => void
+    const gate = new Promise<void>((resolve) => {
+      finish = resolve
+    })
+    let next = primary,
+      count = 0
+    const view = probe(async (route) => {
+      if (route === 'feed.supplement') return { shelves: [], candidateCount: 0 }
+      count++
+      const snapshot = next
+      await gate
+      return snapshot
+    })
+    await waitFor(() => expect(count).toBe(1))
+    next = {
+      ...primary,
+      shelves: [
+        {
+          ...shelf('ready_to_play'),
+          title: 'Installed and waiting',
+          items: [
+            {
+              ownershipId: 99,
+              releaseId: 99,
+              title: 'Deep Rock Galactic 99',
+              reason: 'The final library state.',
+            },
+          ],
+        },
+      ],
+    }
+    const queue = new RefreshQueue(() => refreshSnapshots(view.client))
+    await act(async () => {
+      for (let index = 0; index < changes; index++) queue.request()
+    })
+    await act(async () => {
+      finish()
+    })
+    await screen.findByText('Installed and waiting')
+    await waitFor(() => expect(view.client.isFetching({ queryKey: ['api', 'feed.get'] })).toBe(0))
+    expect(count).toBe(2)
+    expect(view.client.getQueryData(['api', 'feed.get'])).toMatchObject({
+      shelves: [{ items: [{ releaseId: 99 }] }],
+    })
+    queue.dispose()
+    view.unmount()
+    view.client.clear()
+  },
+)
+
+it('replays an invalidation after the original scoring pass fails and exposes a failed replay as a retryable query error', async () => {
+  let reject!: (error: Error) => void
+  let count = 0
+  const view = probe(async (route) => {
+    if (route === 'feed.supplement') return { shelves: [], candidateCount: 0 }
+    count++
+    if (count === 1)
+      return new Promise((_resolve, fail) => {
+        reject = fail
+      })
+    throw Error('Scoring offline')
+  })
+  await waitFor(() => expect(count).toBe(1))
+  act(() => invalidateFeed(view.client))
+  await act(async () => reject(Error('First pass failed')))
+  await waitFor(() => expect(view.client.getQueryState(['api', 'feed.get'])?.status).toBe('error'))
+  expect(count).toBe(2)
+  expect(screen.queryByText('Primary')).toBeNull()
+  expect(view.client.getQueryState(['api', 'feed.get'])?.error?.message).toBe('Scoring offline')
+  view.unmount()
+  view.client.clear()
+})
+
+it('a disabled feed with cached primary data does not start an optional provider', async () => {
+  let finish!: (value: unknown) => void
+  const view = probe(
+    async () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  await waitFor(() => expect(finish).toBeDefined())
+  view.rerender(
+    <QueryClientProvider client={view.client}>
+      <view.Probe key="owner" enabled={false} />
+    </QueryClientProvider>,
+  )
+  await act(async () => finish(primary))
+  await act(async () => {
+    await Promise.resolve()
+  })
+  expect(view.calls.map((call) => call.route)).toEqual(['feed.get'])
+  expect(view.client.getQueryData(['api', 'feed.get'])).toEqual(primary)
+  view.unmount()
+  view.client.clear()
+})
+
+it('shares one pending scoring pass and replay across readers when the original reader leaves', async () => {
+  const finish: ((value: unknown) => void)[] = []
+  const view = probe(async (route) =>
+    route === 'feed.get'
+      ? new Promise((resolve) => finish.push(resolve))
+      : { shelves: [], candidateCount: 0 },
+  )
+  await waitFor(() => expect(finish).toHaveLength(1))
+  const { Probe } = view
+  view.rerender(
+    <QueryClientProvider client={view.client}>
+      <Probe key="owner" />
+      <Probe key="survivor" />
+    </QueryClientProvider>,
+  )
+  act(() => {
+    invalidateFeed(view.client)
+    invalidateFeed(view.client)
+    invalidateFeed(view.client)
+  })
+  view.rerender(
+    <QueryClientProvider client={view.client}>
+      <Probe key="survivor" />
+    </QueryClientProvider>,
+  )
+  expect(view.cancel).not.toHaveBeenCalled()
+  await act(async () => finish[0](primary))
+  await waitFor(() => expect(finish).toHaveLength(2))
+  expect(screen.queryByText('Primary')).toBeNull()
+  expect(screen.getByRole('status').textContent).toBe('Building the feed…')
+  await act(async () => finish[1]({ ...primary, shelves: [shelf('Final shared pass')] }))
+  expect(await screen.findByText('Final shared pass')).toBeDefined()
+  expect(view.calls.filter((call) => call.route === 'feed.get')).toHaveLength(2)
+  view.unmount()
+  view.client.clear()
+})
+
+it('the final reader cancels its real request and queued replay, and a new reader starts a clean pass', async () => {
+  const finish: ((value: unknown) => void)[] = []
+  const view = probe(async (route) =>
+    route === 'feed.get'
+      ? new Promise((resolve) => finish.push(resolve))
+      : { shelves: [], candidateCount: 0 },
+  )
+  await waitFor(() => expect(finish).toHaveLength(1))
+  const { Probe } = view
+  view.rerender(
+    <QueryClientProvider client={view.client}>
+      <Probe key="owner" />
+      <Probe key="survivor" />
+    </QueryClientProvider>,
+  )
+  act(() => invalidateFeed(view.client))
+  view.rerender(
+    <QueryClientProvider client={view.client}>
+      <Probe key="survivor" />
+    </QueryClientProvider>,
+  )
+  expect(view.cancel).not.toHaveBeenCalled()
+  view.unmount()
+  await waitFor(() => expect(view.cancel).toHaveBeenCalledWith(view.calls[0].requestId))
+  await act(async () => finish[0](primary))
+  expect(finish).toHaveLength(1)
+  expect(view.client.getQueryData(['api', 'feed.get'])).toBeUndefined()
+  const next = render(
+    <QueryClientProvider client={view.client}>
+      <Probe />
+    </QueryClientProvider>,
+  )
+  await waitFor(() => expect(finish).toHaveLength(2))
+  await act(async () => finish[1]({ ...primary, shelves: [shelf('New lifetime')] }))
+  expect(await screen.findByText('New lifetime')).toBeDefined()
+  expect(view.calls.filter((call) => call.route === 'feed.get')).toHaveLength(2)
+  next.unmount()
   view.client.clear()
 })

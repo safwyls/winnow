@@ -1,9 +1,19 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import {
+  createContext,
+  useContext,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import * as Dialog from '@radix-ui/react-dialog'
 import type { ThemeContext } from '../../shared/theme'
 import type { FeedSnapshot, FeedVerdict, LibraryGame } from '../api/types'
 import { request } from '../api/client'
+import { feedRefresh, invalidateFeed } from '../api/feed-refresh'
 import { feedSchema, feedSupplementSchema, useWorkspace } from '../api/hooks'
 import { primaryAction } from '../../shared/game-actions'
 import { avalonShelves } from './avalon-data'
@@ -15,6 +25,9 @@ export function useAvalonFeed(context: ThemeContext) {
     current = useRef(context)
   current.current = context
   const held = useRef(new Map<FeedRow, Set<string>>())
+  const optionalReads = useRef(new Set<AbortController>())
+  const coordinator = feedRefresh(client)
+  useSyncExternalStore(coordinator.subscribe, coordinator.snapshot)
   const [deck] = useState(
     () =>
       new FeedDeck(
@@ -27,40 +40,54 @@ export function useAvalonFeed(context: ThemeContext) {
           return typeof result === 'boolean' ? { saved: result } : result
         },
         async () => {
-          const [primary, optional] = await Promise.allSettled([
-            client.fetchQuery({
-              queryKey: ['api', 'feed.get'],
-              queryFn: async () => feedSchema.parse(await request('feed.get')) as FeedSnapshot,
-              staleTime: 0,
-            }),
-            client.fetchQuery({
-              queryKey: ['api', 'feed.supplement', 'backfill'],
-              queryFn: async () => feedSupplementSchema.parse(await request('feed.supplement')),
-              staleTime: 0,
-            }),
-          ])
-          if (primary.status !== 'fulfilled') throw Error('Recommendations could not be refreshed.')
-          const extra = optional.status === 'fulfilled' ? optional.value.shelves : []
-          const feed = {
-            ...primary.value,
-            shelves: [
-              ...primary.value.shelves,
-              ...extra.filter((shelf) => !primary.value.shelves.some((existing) => existing.id === shelf.id)),
-            ],
+          const optionalController = new AbortController()
+          optionalReads.current.add(optionalController)
+          try {
+            const [primary, optional] = await Promise.allSettled([
+              client.fetchQuery({
+                queryKey: ['api', 'feed.get'],
+                queryFn: async ({ signal }) =>
+                  feedSchema.parse(await request('feed.get', undefined, undefined, signal)) as FeedSnapshot,
+                staleTime: 0,
+              }),
+              request('feed.supplement', undefined, undefined, optionalController.signal).then((value) =>
+                feedSupplementSchema.parse(value),
+              ),
+            ])
+            if (primary.status !== 'fulfilled') throw Error('Recommendations could not be refreshed.')
+            const extra = optional.status === 'fulfilled' ? optional.value.shelves : []
+            const feed = {
+              ...primary.value,
+              shelves: [
+                ...primary.value.shelves,
+                ...extra.filter(
+                  (shelf) => !primary.value.shelves.some((existing) => existing.id === shelf.id),
+                ),
+              ],
+            }
+            return avalonShelves(current.current.games, feed, current.current.mode === 'fullscreen')
+          } finally {
+            optionalReads.current.delete(optionalController)
           }
-          return avalonShelves(current.current.games, feed, current.current.mode === 'fullscreen')
         },
         () => {
+          for (const controller of optionalReads.current) controller.abort()
           void client.invalidateQueries({ queryKey: ['api', 'feed.history'] })
-          void client.invalidateQueries({ queryKey: ['api', 'feed.get'] })
-          void client.invalidateQueries({ queryKey: ['api', 'feed.supplement'] })
+          invalidateFeed(client)
         },
       ),
   )
   useSyncExternalStore(deck.subscribe, deck.snapshot)
+  useLayoutEffect(() => {
+    deck.retireBackfill()
+    for (const controller of optionalReads.current) controller.abort()
+  }, [deck, coordinator.epoch])
   const source = useMemo(
-    () => avalonShelves(context.games, context.feed, context.mode === 'fullscreen'),
-    [context.games, context.feed, context.mode],
+    () =>
+      context.feedFailed && !context.feed
+        ? []
+        : avalonShelves(context.games, context.feed, context.mode === 'fullscreen'),
+    [context.games, context.feed, context.mode, context.feedFailed],
   )
   const libraryKey = JSON.stringify([
     context.mode,
@@ -68,7 +95,18 @@ export function useAvalonFeed(context: ThemeContext) {
   ])
   useLayoutEffect(() => {
     deck.activate()
-    return () => deck.dispose()
+    return () => {
+      deck.dispose()
+      for (const controller of optionalReads.current) controller.abort()
+      optionalReads.current.clear()
+      if (
+        !client
+          .getQueryCache()
+          .find({ queryKey: ['api', 'feed.get'], exact: true })
+          ?.getObserversCount()
+      )
+        void client.cancelQueries({ queryKey: ['api', 'feed.get'], exact: true })
+    }
   }, [deck])
   useLayoutEffect(() => {
     deck.receive(source, libraryKey, false, context.feedFailed || context.feed?.failed)
@@ -84,7 +122,12 @@ export function useAvalonFeed(context: ThemeContext) {
         const now = performance.now(),
           elapsed = now - last
         last = now
-        if (document.hidden || !document.hasFocus() || document.querySelector('[role="dialog"]')) return
+        if (
+          document.hidden ||
+          !document.hasFocus() ||
+          document.querySelector('[role="dialog"], [data-feed-history-body]')
+        )
+          return
         deck.tick(elapsed, (row) => !!held.current.get(row)?.size)
       }, interval)
     }
@@ -269,17 +312,45 @@ export function verdictStatus(row: FeedVerdict) {
     : { note: 'Off the feed since', date: row.createdAt }
 }
 
-export function FeedHistory({ games, deck }: { games: LibraryGame[]; deck: FeedDeck }) {
+const FeedHistoryContext = createContext<{ open(): void; count: number }>({ open() {}, count: 0 })
+export function FeedHistoryButton() {
+  const history = useContext(FeedHistoryContext)
+  return (
+    <button onClick={history.open}>
+      What you've told the feed
+      {history.count > 0 && <span className="avalon-feed-date"> {history.count.toLocaleString()}</span>}
+    </button>
+  )
+}
+
+export function FeedHistory({
+  games,
+  deck,
+  children,
+}: {
+  games: LibraryGame[]
+  deck: FeedDeck
+  children: ReactNode
+}) {
   const [open, setOpen] = useState(false),
     [pending, setPending] = useState(''),
     [error, setError] = useState('')
   const history = useQuery({
     queryKey: ['api', 'feed.history', undefined],
-    queryFn: () => request<FeedVerdict[]>('feedHistory'),
+    queryFn: ({ signal }) => request<FeedVerdict[]>('feedHistory', undefined, undefined, signal),
     retry: false,
     staleTime: 30000,
   })
   const client = useQueryClient()
+  const origin = useRef<HTMLElement | null>(null)
+  const back = useRef<HTMLButtonElement>(null)
+  useLayoutEffect(() => {
+    if (open) back.current?.focus({ preventScroll: true })
+    else if (origin.current?.isConnected) {
+      origin.current.focus({ preventScroll: true })
+      origin.current = null
+    }
+  }, [open])
   const titles = new Map(
     games.flatMap((game) => game.entries.map((entry) => [entry.releaseId, game.title] as const)),
   )
@@ -290,11 +361,8 @@ export function FeedHistory({ games, deck }: { games: LibraryGame[]; deck: FeedD
     try {
       await request('feedRevoke', undefined, { releaseId: row.releaseId, kind: row.kind })
       deck.restore(row.releaseId, row.kind)
-      await Promise.all([
-        client.invalidateQueries({ queryKey: ['api', 'feed.history'] }),
-        client.invalidateQueries({ queryKey: ['api', 'feed.get'] }),
-        client.invalidateQueries({ queryKey: ['api', 'feed.supplement'] }),
-      ])
+      invalidateFeed(client)
+      await client.invalidateQueries({ queryKey: ['api', 'feed.history'] })
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Couldn't undo that just now.")
     } finally {
@@ -302,20 +370,35 @@ export function FeedHistory({ games, deck }: { games: LibraryGame[]; deck: FeedD
     }
   }
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger>
-        What you've told the feed
-        {history.data?.length ? (
-          <span className="avalon-feed-date"> {history.data.length.toLocaleString()}</span>
-        ) : null}
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="dialog-content avalon-feed-history">
-          <Dialog.Title>What you've told the feed</Dialog.Title>
-          <Dialog.Description>
-            Your responses stay here, including choices you have taken back.
-          </Dialog.Description>
+    <FeedHistoryContext.Provider
+      value={{
+        count: history.data?.length ?? 0,
+        open: () => {
+          origin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+          setOpen(true)
+        },
+      }}
+    >
+      <div className="avalon-feed-body" hidden={open}>
+        {children}
+      </div>
+      {open && (
+        <section
+          className="avalon-feed-history"
+          data-controller-scope
+          role="region"
+          aria-label="What you've told the feed"
+          data-feed-history-body
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              event.stopPropagation()
+              setOpen(false)
+            }
+          }}
+        >
+          <h1>What you've told the feed</h1>
+          <p>Your responses stay here, including choices you have taken back.</p>
           {(error || history.error) && (
             <p role="alert">
               {error || 'Your feed responses could not be loaded.'}{' '}
@@ -362,9 +445,12 @@ export function FeedHistory({ games, deck }: { games: LibraryGame[]; deck: FeedD
           ) : (
             !history.error && <p>Nothing yet. Your feed responses will appear here.</p>
           )}
-          <Dialog.Close>Back to the feed</Dialog.Close>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+          <button ref={back} onClick={() => setOpen(false)}>
+            Back to the feed
+          </button>
+          <p className="avalon-feed-history-hints">A · Select · B · Back to the feed</p>
+        </section>
+      )}
+    </FeedHistoryContext.Provider>
   )
 }
