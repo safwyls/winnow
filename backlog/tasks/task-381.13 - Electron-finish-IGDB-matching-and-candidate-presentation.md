@@ -1,11 +1,11 @@
 ---
 id: TASK-381.13
 title: 'Electron: finish IGDB matching and candidate presentation'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:46'
-updated_date: '2026-10-01 08:26'
+updated_date: '2026-10-01 08:27'
 labels:
   - electron
   - parity
@@ -70,7 +70,7 @@ Batch boundary: the user authorized TASK-381.11 through TASK-381.20 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
+- [x] #1 Record a reviewable milestone commit and verification summary. Continue within the user-authorized batch through TASK-381.20, then stop for review.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -89,6 +89,8 @@ Audit found missing Settings candidate covers, wrapping platform lines and incor
 All 42 original source cases and 10 new HTTP cases pass. Native matching matrix passes 30/30; final structural-refusal copy rerun passes 2/2 with the exact source sentence and conflict recovery retained. Desktop/fullscreen candidate screenshots reviewed. Full component/live API gate currently 3663 passed, 2 failed: shared Details restores an active journal editor after navigation but saves back to Overview. Correcting that lifecycle distinction before finalizing.
 
 Final gate passes 3667/3667 component/live API cases across181 files (94.06s), with no skips; build/typecheck, formatting and migration audit pass. Draft regression fixed with original assertions retained and History-origin coverage added. Checkpoint68 records source42, HTTP10, native30 plus final refusal2 reruns and inspected desktop/fullscreen screenshots. Inventory:15 ported and3 retained backend for this task;1427 ported647 retained32 framework-specific,269 pending60 partial overall.
+
+Milestone committed as 43649dc3. All acceptance criteria and verification are complete; proceeding to TASK-381.14, fourth of the ten authorized tasks.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
