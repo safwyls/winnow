@@ -59,9 +59,11 @@ Pop-Location
 ```
 
 This starts the frontend and its backend against a throwaway sample library. Omit
-`-SeedSample` to scan local games into that directory. `-Preview` builds and runs the compiled
+`-SeedSample` and `-NoSync` to scan local games into that directory. `-Preview` builds and runs the compiled
 frontend instead of the development server. Unpackaged development launches require an
 explicit data directory; normal installed launches use your existing library.
+The wrapper prepares the pinned Electron runtime if it is missing after `npm ci`.
+Use `pwsh` to open PowerShell 7; Windows PowerShell 5.1 is refused before building.
 
 The primary frontend uses Electron/TypeScript. Its default **Avalon** composition preserves
 the original Winnow palettes and fonts; **Afterglow**,

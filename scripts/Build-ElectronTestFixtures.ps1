@@ -1,8 +1,11 @@
+#Requires -Version 7.0
 [CmdletBinding()]
 param([string]$ArtifactsPath = '.tmp/electron-ci-fixtures')
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+& node (Join-Path $root 'src/Winnow.Electron/node_modules/electron/install.js')
+if ($LASTEXITCODE -ne 0) { throw 'Electron runtime installation failed. Run npm ci in src/Winnow.Electron and retry.' }
 $output = [IO.Path]::GetFullPath($(if ([IO.Path]::IsPathRooted($ArtifactsPath)) { $ArtifactsPath } else { Join-Path $root $ArtifactsPath }))
 foreach ($project in @('tests/Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj', 'src/Winnow.Update.Helper/Winnow.Update.Helper.csproj')) {
     & dotnet build (Join-Path $root $project) --configuration Debug --artifacts-path $output --nologo -warnaserror

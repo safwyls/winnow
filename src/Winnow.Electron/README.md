@@ -423,8 +423,10 @@ Pop-Location
 ./Run.ps1 -DataDirectory .tmp/winnow-electron-demo -SeedSample -NoSync
 ```
 
-Development requires an explicit data directory. The wrapper builds the backend and update
-helper and starts Vite with those companion paths. Electron attaches to a responsive backend
+Development requires an explicit data directory. The wrapper ensures the pinned Electron
+runtime is installed, builds the backend and update helper, and starts Vite with those
+companion paths. Run it in `pwsh` (PowerShell 7); Windows PowerShell 5.1 is refused before
+building. Electron attaches to a responsive backend
 in the chosen directory, or starts the built companion. Sample seeding works only with a
 Debug backend and an empty library. Sample games do not include artwork or recorded sessions;
 missing data has visible empty states.
@@ -438,6 +440,8 @@ To view the production bundle without packaging:
 For direct `npm run dev` or `npm run preview` commands in this directory, set
 `WINNOW_BACKEND_PATH` to an absolute backend executable or DLL to use another build and
 forward `-- --data-dir <path>`. Preview expects an existing `npm run build` output.
+After `npm ci`, run `node node_modules/electron/install.js` before invoking Vite directly.
+The Electron package and its native runtime are separate; Vite requires the installed runtime.
 Startup switches configure a newly started backend, not one already running. Closing the
 frontend leaves the backend running, as described in the [API guide](../../docs/frontend-api.md).
 
@@ -717,7 +721,8 @@ shared fullscreen and native-window preferences use the backend.
 Use PowerShell 7, .NET 10 and Node.js 24. After `npm ci` in this directory, the root
 `Build.ps1` builds the primary frontend and its companions. Before integration or rendered
 checks, run `./scripts/Build-ElectronTestFixtures.ps1` from the repository root in the same
-PowerShell session. It builds isolated Debug companions and exports their absolute paths.
+PowerShell session. It installs the pinned Electron runtime when missing, builds isolated
+Debug companions and exports their absolute paths.
 Then, from this directory:
 
 ```powershell

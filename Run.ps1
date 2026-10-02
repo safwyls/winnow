@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 [CmdletBinding()]
 param(
     [switch]$Preview,
@@ -9,6 +10,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+& node (Join-Path $PSScriptRoot 'src/Winnow.Electron/node_modules/electron/install.js')
+if ($LASTEXITCODE -ne 0) { throw 'Electron runtime installation failed. Run npm ci in src/Winnow.Electron and retry.' }
 $artifacts = [IO.Path]::GetFullPath($ArtifactsPath)
 & "$PSScriptRoot/Build.ps1" -Configuration Debug -ArtifactsPath $artifacts -CompanionsOnly:(-not $Preview)
 $suffix = if ($IsWindows) { '.exe' } else { '' }

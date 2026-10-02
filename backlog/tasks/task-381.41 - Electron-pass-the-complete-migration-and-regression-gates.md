@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 10:37'
+updated_date: '2026-10-02 16:39'
 labels:
   - electron
   - parity
@@ -87,6 +87,8 @@ Review boundary: work on this task only after the user prompts continuation from
 
 <!-- SECTION:PLAN:BEGIN -->
 1. Preserve all integrated CI36979618488 diagnostics and account every native failure. Device implementation is complete; pending exception review is required for final acceptance, not independent regression fixes. 2. Fix bounded production faults and deterministic fixtures while preserving assertions: canonical theme roots, startup scrubber/window readiness, exact Linux parent identity, process/clock/startup fixtures, native input/layout synchronization. 3. Verify focused changes through a serialized local native/.NET lane and review all migration mapping scope. 4. Run every component/live API/native/.NET/Linux and package gate on the final combined commit and resolve every failure without unexplained skips. 5. Record agreed device limits and parent acceptance, update the draft PR and commit milestones without merging or releasing.
+
+Repair user-reported local launcher failures: make the documented PowerShell7 requirement explicit before work begins, ensure the pinned Electron runtime is installed before invoking electron-vite, and verify version/isolated preview launch. Record this focused correction without claiming refreshed full remote CI.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -123,4 +125,6 @@ Final combined build/typecheck and complete component/live-API suite PASS:4451/4
 Local milestone aaef300d records combined frontend/native repairs. Initial full .NET run7174passed/5failed/2Linux-only skips led to solution Release fixture wiring and repository traversal corrections;101 enforcement cases and3 original process checks pass. Terminal contender lifetime now waits for authenticated ownership or natural exit without killing a possible successor;31 focused terminal cases pass. Next complete Release build0warnings/errors; full .NET7182passed/1failed/2Linux-only skips across13assemblies, including Core5002,Update111,UI899 all passing. Command exits normally. Remaining failure is concurrent2 cold-start terminal sign-in, exact underlying stderr being captured; no full-gate success claimed. Automatic approval review rejected git push to safwyls/winnow:codex/electron-frontend-design and draft PR30 update for missing explicit authorization to export source/status to GitHub. Prepared commits/PR body remain local; explicit async approval is pending, with no merge/tag/release requested.
 
 Final local combined gates PASS after diagnosing cold-start failure: direct backend pair5 captured exit2 access denied on shared .winnow-write-probe while sibling healthy. Each override now owns a GUID/CreateNew/DeleteOnClose probe; real ACL refusal, no fallback, and legacy migration remain. Original mapped refusal test uses real Windows ACL and restored Unix modes; two non-original shared-lock tests now assert preserved legacy-file bytes and concurrent alias cleanup. Review found no issues. Focused29 data-location and31 terminal cases pass. Final Release build0warnings/errors, all7183 executed .NET cases pass across13assemblies with2explicit Linux-only skips; Core5002,Backend344,Update111,UI899. Full frontend/live-API refresh against rebuilt corrected backend4451/4451,232files,0skips,201.15s. Source audit2435 complete and45migration hashes verified. Both commands exited0, final owned-backend scan0. Checkpoint96 and .tmp/task38141-complete-dotnet-evidence.json retain scope and reports. Still open: complete remote native/Windows/Linux/package CI pending authorized push, and remaining explicit device exception agreements. No release/merge/tag.
+
+User local launch follow-up: Windows PowerShell5.1 left IsWindows undefined, omitting the executable suffix; Run/Build/test-fixture entry points now explicitly require PowerShell7 before doing work. After npm ci, Electron44.4.5 package existed but native dist and path.txt were absent; installed pinned runtime and added idempotent installer preflight to Run.ps1 and Build-ElectronTestFixtures.ps1. Updated source-run docs and corrected scan flags to omit both SeedSample and NoSync. Verification: Electron --version44.4.5, existing entrypoint16/16 tests, real PowerShell5.1 early refusal with no data created, and actual Run.ps1 -Preview launches for desktop and --fullscreen with isolated sample roots. Both displayed a Winnow window with authenticated matching-epoch backend health and closed normally, shutdown202, wrapper exit0. Logs/evidence .tmp/task38141-launcher-*. This is focused launcher verification; complete remote CI remains pending explicit publication approval.
 <!-- SECTION:NOTES:END -->
