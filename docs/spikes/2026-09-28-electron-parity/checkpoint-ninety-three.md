@@ -50,8 +50,14 @@ cover external and internal data, failed startup with paired recovery, interrupt
 replacement and the actual copied previous-release helper. Successful portable cases
 run both presentation probes. The native/Proton session suite remains a separate check.
 
-Actual Ubuntu execution is pending. This checkpoint does not yet establish a passing
-Linux package gate.
+The [first Ubuntu run 36969598691](https://github.com/safwyls/winnow/actions/runs/36969598691)
+at `136342b9175253b3dadbcee2a60a72c47b91babe` passed all **87 focused lease tests**
+with no skips, the **691-file** primary publish, **16 package mutations**, **five Debian
+baseline contracts** and **all 20 Linux package contracts**. It stopped before native
+launch when the syntax-only AppArmor parser attempted to use its root-owned cache.
+The preflight now specifies both `--skip-kernel-load` and `--skip-cache`; administrative
+policy loading is unchanged. The first log is `.tmp/task38138-linux-first.log`.
+Actual launch, installation and recovery qualification remain pending.
 
 ## Optional macOS audit
 

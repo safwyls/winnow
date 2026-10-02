@@ -61,7 +61,7 @@ if $remove; then
     printf 'Removed exact-path sandbox permission: %s\n' "$executable"
 else
     # Validate before persisting. No setuid bit or system-wide userns setting is changed.
-    apparmor_parser --skip-kernel-load "$temporary"
+    apparmor_parser --skip-kernel-load --skip-cache "$temporary"
     install -o root -g root -m 0644 "$temporary" "$profile"
     apparmor_parser --replace "$profile"
     printf 'Sandbox permission ready for %s (%s). Launch without sudo.\n' "$executable" "$profile_name"

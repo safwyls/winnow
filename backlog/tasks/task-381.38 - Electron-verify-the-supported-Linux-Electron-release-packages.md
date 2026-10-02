@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 05:32'
+updated_date: '2026-10-02 05:41'
 labels:
   - electron
   - parity
@@ -72,4 +72,6 @@ Debian previous-release selector now checks official asset URL, positive size an
 Shared managed/read-only startup lease policy implemented; existing busy locks and no-lease journals fail closed. Windows focused Update.Tests87/87 passed,0skipped, including18new real-ACL/managed/journal/exclusion cases; logs .tmp/task38138-leases.log and .tmp/task38138-test-results/task38138-leases.trx. Known real copied-parent fixture remains excluded from this focused gate and assigned41. Packaged Linux probe syntax/format/full TypeScript checks pass; actual kernel/process/native/activation evidence pending UbuntuCI. Read-only integration review found no concrete issues in baseline/workflow/sharedportable wiring. Checkpoint93 records qualified scope and optionalmacOSaudit.
 
 Linux packaging source complete: exact-path sandbox setup/managed hooks, 0755 chrome-sandbox normalization, ELF/hash/declared dependency-closure verification, real old-schema linked work/release/ownership comparisons, Xvfb/Openbox wrapper and native probes. Offline package20cases:17passed onWindows with3 explicitlyLinux-only (case-sensitive names,Unixmodes,symlinks); shell/Python syntaxpass. Actual UbuntuCI will execute all20 and installation/native/recovery checks. No local software installed.
+
+First Ubuntu run36969598691 at136342b9 passed87/87 focused lease/recovery tests with0skips, primary publish691files,16package mutations,5Debian baseline contracts andall20Linux package contracts. It stopped at syntax-only AppArmor parsing because the parser tried its root-owned /var/cache/apparmor cache. No native Linux launch occurred. Fix is cache-free syntax validation; keep kernel/sandbox policy intact. Full log .tmp/task38138-linux-first.log. Companion Windows native11 passed aftersharedpolicychange; remainingWindowsinstallation stillrunning.
 <!-- SECTION:NOTES:END -->
