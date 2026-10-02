@@ -5,6 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
+updated_date: '2026-10-02 04:13'
 labels:
   - electron
   - parity
@@ -48,3 +49,9 @@ Review boundary: work on this task only after the user prompts continuation from
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+User explicitly accepted these controller hardware exceptions in the active six-task batch: physical button mapping, held-button suppression, reconnect and battery reporting remain unverified because no physical controller is connected; automated controller evidence remains separately identified. This does not approve the pending display/platform exception question. Available attached-display/native fullscreen checks still need execution.
+<!-- SECTION:NOTES:END -->

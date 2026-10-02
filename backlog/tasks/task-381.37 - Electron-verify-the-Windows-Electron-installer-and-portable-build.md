@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 03:38'
+updated_date: '2026-10-02 04:18'
 labels:
   - electron
   - parity
@@ -58,4 +58,6 @@ Build primary Electron Windows packages with existing Inno identity and ZIP layo
 
 <!-- SECTION:NOTES:BEGIN -->
 Primary Windows package built with no Avalonia UI assemblies: 695 payload files, self-contained backend/helper, provider, notices and exact ASAR/version/source identity. Local build identity20, startup/activation25, package mutation16, pure Windows packaging54 and native packaged11 checks pass with no native skips. Native desktop/fullscreen package uses its own backend and releases real update lease. Disposable GitHub install/upgrade/uninstall/recovery execution is the remaining gate; workflow prepared. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-ninety-two.md. No software installed locally and no release published.
+
+Second disposable CI36961972888 passed actual package integrity/native11 checks and the four installer rejection scenarios, but real upgrade relaunch was invisible. Bounded local reproduction confirmed WindowStyle Hidden leaves a responsive Electron window invisible with healthy backend for60s. Corrected shared Install-Update.ps1 frontend restart to Normal (background helpers remain Hidden), added responsive exact-PID/backend readiness and retained cleanup diagnostics. Normal native reproduction passes: ready2.71s, graceful exit2.86s, backend/locks/processes clean. Four focused smoke contracts pass. Third remote installer and independent portable recovery run follows; no claim of completed install gate yet.
 <!-- SECTION:NOTES:END -->

@@ -19,11 +19,11 @@ $helper = Join-Path (Resolve-Path -LiteralPath $PublishDirectory).Path "update-h
 $Archive = (Resolve-Path -LiteralPath $Archive).Path
 $PreviousArchive = (Resolve-Path -LiteralPath $PreviousArchive).Path
 $processes = [Collections.Generic.List[Diagnostics.Process]]::new()
-function Start-SmokeProcess([string]$File, [string[]]$Arguments) {
+function Start-SmokeProcess([string]$File, [string[]]$Arguments, [switch]$Frontend) {
     $start = [Diagnostics.ProcessStartInfo]::new($File)
     $start.UseShellExecute = $false
     $start.CreateNoWindow = $true
-    $start.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+    $start.WindowStyle = if ($Frontend) { [Diagnostics.ProcessWindowStyle]::Normal } else { [Diagnostics.ProcessWindowStyle]::Hidden }
     foreach ($argument in $Arguments) { $start.ArgumentList.Add($argument) }
     $process = [Diagnostics.Process]::Start($start)
     $processes.Add($process)
@@ -96,7 +96,7 @@ try {
             if ($LASTEXITCODE -ne 0) { throw 'Could not extract previous portable archive.' }
         }
         $data = if ($inside) { Join-Path $install 'user-data' } else { Join-Path $scenarioRoot 'user-data' }
-        $old = Start-SmokeProcess (Join-Path $install $executableName) @('--data-dir', $data, '--no-sync')
+        $old = Start-SmokeProcess (Join-Path $install $executableName) @('--data-dir', $data, '--no-sync') -Frontend
         $database = Join-Path $data 'winnow.db'
         for ($attempt = 0; $attempt -lt 120 -and -not (Test-Path -LiteralPath $database); $attempt++) {
             if ($old.HasExited) { throw 'Previous release failed before creating its disposable library.' }

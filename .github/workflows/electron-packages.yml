@@ -69,6 +69,7 @@ jobs:
         run: |
           ./packaging/Test-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish
           ./packaging/windows/Test-ElectronPackageContracts.ps1 -PublishDirectory artifacts/electron-publish
+          ./packaging/windows/Test-SmokeApplication.ps1
       - name: Verify packaged frontend and activation
         working-directory: src/Winnow.Electron
         env:
@@ -77,6 +78,7 @@ jobs:
       - name: Package installer and portable ZIP
         run: ./packaging/windows/New-WindowsPackage.ps1 -PublishDirectory artifacts/electron-publish -OutputDirectory artifacts/electron-packages -Version $env:RELEASE_VERSION
       - name: Select verified previous Windows releases
+        id: baseline
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -85,6 +87,7 @@ jobs:
       - name: Verify installed upgrade and uninstall
         run: ./packaging/windows/Test-WindowsInstaller.ps1 -InstallerPath "artifacts/electron-packages/Winnow-$env:RELEASE_VERSION-win-x64-setup.exe" -PreviousInstallerPath artifacts/electron-previous/Winnow-setup.exe
       - name: Verify archive upgrade and recovery
+        if: ${{ !cancelled() && steps.baseline.conclusion == 'success' }}
         run: ./packaging/Test-PortableUpgrade.ps1 -PreviousArchive artifacts/electron-previous/portable.zip -Archive "artifacts/electron-packages/Winnow-$env:RELEASE_VERSION-win-x64.zip" -PublishDirectory artifacts/electron-publish -Version $env:RELEASE_VERSION -Runtime win-x64
       - name: Retain package and recovery evidence
         if: always()

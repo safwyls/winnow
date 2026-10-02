@@ -66,7 +66,9 @@ try {
     $setup = Start-Process -FilePath $handoff.Installer -ArgumentList $setupArgs -WindowStyle Hidden -PassThru -Wait
     if ($setup.ExitCode -ne 0) { throw "Installer returned $($setup.ExitCode). Run the latest official installer manually in the existing install directory; restart Windows first if code 3010." }
     $restartArgs = @($handoff.Arguments | ForEach-Object { Quote-NativeArgument $_ })
-    $restarted = Start-Process -FilePath $handoff.Executable -ArgumentList $restartArgs -WorkingDirectory $handoff.InstallDirectory -WindowStyle Hidden -PassThru
+    # This is the foreground application, not a helper console. SW_HIDE is inherited
+    # by Chromium's first native window and can leave a healthy restarted app invisible.
+    $restarted = Start-Process -FilePath $handoff.Executable -ArgumentList $restartArgs -WorkingDirectory $handoff.InstallDirectory -WindowStyle Normal -PassThru
     [IO.File]::WriteAllText((Join-Path $workDirectory 'restarted.json'), ($restarted.Id | ConvertTo-Json))
     Start-Sleep -Seconds 3
     if ($restarted.HasExited) { throw "Winnow exited after restart with code $($restarted.ExitCode). Start it manually and inspect its startup log." }

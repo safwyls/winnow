@@ -5,7 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 03:51'
+updated_date: '2026-10-02 04:18'
 labels:
   - electron
   - parity
@@ -87,4 +87,10 @@ Review boundary: work on this task only after the user prompts continuation from
 
 <!-- SECTION:NOTES:BEGIN -->
 First clean CI frontend regression run 36961277764 at 20bceb58: 4420 passed,4 failed of4424 across231files. Preserve and resolve before final completion: themeFile canonical path equality rejects Windows runner TEMP aliases (shell.test.ts), theme-packages cleanup compares canonical child to uncanonical tmpdir and refuses two tests, parity-startup-boundaries mocked spawn hangs at5s under CI (investigate race; do not blindly raise timeout). Failure log .tmp/task38137-ci-frontend-failure.log. Clean native Windows packaged11 tests passed in38.9s independently. These findings remain open for the final regression task.
+
+Follow-up diagnosis of CI spawn-boundary timeout: scrubStartupDiagnostic unanchored email regex rescans every suffix of a long non-email word, quadratic on bounded32KB stderr. Local isolated3-call benchmark: current pattern1231ms versus equivalent negative-local-part-boundary pattern0.29ms. Test calls diagnostic3times. Fix privacy scrubber complexity with preserved account-redaction cases before considering timeout changes. Theme failures arise from canonical vs lexical Windows TEMP path equality; normalize trusted base and compare secure containment while retaining link refusal, and canonicalize fixture cleanup root.
+
+Second clean CI frontend run36961972740:4418passed/6failed of4424. Same four reproducible failures plus two parity-setup-settings tests finding Back to setup before accessibility/transition completion (full traces .tmp/task38137-ci-frontend-second-failure.log). Preserve assertions and diagnose asynchronous transition/focus timing; final CI should use explicit bounded worker count matching local evidence. This is not a completed full gate.
+
+Completed clean .NET CI36961972732 found11failures: Backend FrontendActivationParityTests.Loss_of_the_real_parent... timeout10s; BackendOwnershipTests.OwnerCanSecureModifyOnlyDataDirectoryWithoutTakeOwnershipPermission unauthorized ACL (Windows runner account); Update HelperProtocolTests.RealCopiedHelperAcknowledgesHandoffAndReleasesCommandPipesWhileItsParentLives timeout30s; UI FullscreenBrowse visiblefeed1280x720 expected4 actual2; all6 DerelictOverrideComposition cases have empty grouped library; core IdentityReadInventory lacks DetailsApplication.GetMetadataAsync reader classification. Detailed log .tmp/task38137-ci-dotnet-failure.log; retained GitHub TRX artifacts must be inspected. Counts by affected assembly: Core4999/5000, UI892/899, Backend323/325, Update69/70. Linux native/Proton CI job passed. Diagnose all before final full gate; do not weaken expectations or substitute migrated UI passes for failed originals.
 <!-- SECTION:NOTES:END -->
