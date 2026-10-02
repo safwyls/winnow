@@ -1,11 +1,11 @@
 ---
 id: TASK-381.38
 title: 'Electron: verify the supported Linux Electron release packages'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 06:37'
+updated_date: '2026-10-02 06:53'
 labels:
   - electron
   - parity
@@ -39,13 +39,13 @@ Review boundary: work on this task only after the user prompts continuation from
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 Supported Linux package/portable outputs contain the Electron UI and bundled backend/runtime with correct desktop integration and required native dependencies.
-- [ ] #2 Disposable Linux install/start/upgrade/uninstall and session-tracking checks pass, preserving data and package-manager update behavior; unsupported environments are explicitly distinguished.
+- [x] #2 Disposable Linux install/start/upgrade/uninstall and session-tracking checks pass, preserving data and package-manager update behavior; unsupported environments are explicitly distinguished.
 - [x] #3 Existing optional macOS packaging is audited for build claims; any support expansion beyond current Winnow release scope remains explicitly out of scope.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -86,4 +86,14 @@ Targeted corrections verified locally: optional LTTng classification has seven n
 Fourth Ubuntu run36972975741 at075c61c9 passes all28Linux package contracts and actual managed Debian install/upgrade/native desktop+fullscreen/data-preserving remove+purge. Native provider verifier reports only the two exact optional LTTng absences; all692managed files and declared dependency closure pass. Portable first apply reachesReady and exact witnessed frontend cleanup passes. Compared UTC values639265191429937710 versus639265191429933442 prove the cross-runtime timestamp mismatch (4268ticks) while kernel birth/executable match. Next smoke failure is authenticated backend shutdown Connection refused after frontend tree kill; investigating dead/zombie process handling without ignoring live failures. Log .tmp/task38138-linux-fourth.log; evidence .tmp/task38138-linux-fourth-evidence. Remaining portable scenarios and package-job sessions still pending.
 
 Linux smoke shutdown now checks exact kernel process birth/state; absent or Z/X terminated processes need no HTTP request. After refusal, only observed death within the existing30s shutdown bound succeeds; still-live same identity rethrows the original HTTP exception, reused PID and unreadable procfs fail.55focused backend-stop contracts and33portable identity contracts pass; actual self-proc check is wired to Ubuntu. Windows path unchanged. Logs .tmp/task38138-backend-stop.log and .tmp/task38138-portable-identity-recheck.log. Fourth companion Windows package job fully passed. Rerunning portable qualification.
+
+Ubuntu job110735235990 in run36974482371 fully passed at head980cdc3c / PR merge checkout7d849a2a: 87lease tests0skips,28package contracts,24parser cases,5baseline cases,2initial native probes; actual beta.3 Debian upgrade/both surfaces/library-preserving remove+purge; all5portable scenarios including199-file beta.3 helper with stage/apply0; both native Linux/Proton session tests pass0skips. Reviewed final managed desktop/fullscreen screenshots, includingLB/RB and keyboard hints; exact ownership/release/work rows preserved. Evidence .tmp/task38138-linux-fifth-evidence and log .tmp/task38138-linux-fifth.log. Companion Windows installer failure under investigation before milestone closure.
+
+Final companion Windows result: native11 and portable5 passed; installer stopped before installing because lock fixture combined refusal with3s wall-time. Original script passes locally. Revised fixture retains real locks/async cancellation and checks unchanged production body with controlled clock: exact200ms deadline after two100ms retries, cancellation after one. WindowsPowerShell5.1 run passes; real persistent refusal217ms. Only test changed; four earlier full Windows companion jobs passed. No new installer run needed for Linux completion; integrated39/41 gates rerun current fixture. Batch authorization supersedes per-task pause.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Qualified Ubuntu24.04 x64 Electron Debian/tar distribution in run36974482371: actual old-release install/upgrade/both presentations/removal preserves linked library rows; all5portable/recovery scenarios and native/Proton session tests pass. Package dependency, AppArmor sandbox, managed/read-only leasing and exact process cleanup have focused negative coverage. Optional macOS remains unverified/out of scope. Checkpoint93 retains evidence and the isolated Windows preflight test correction. No release published.
+<!-- SECTION:FINAL_SUMMARY:END -->

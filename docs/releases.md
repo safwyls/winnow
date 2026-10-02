@@ -16,7 +16,12 @@ the existing distribution and update contracts. Windows x64 has passed packaged 
 installation, previous-release upgrade, uninstall and portable recovery checks on a
 disposable runner, including the older release's embedded installer updater.
 A separate successful case uses the copied portable helper from that release.
-Supported Linux packaging has a separate validation gate.
+Ubuntu 24.04 x64 has also passed Debian install, actual previous-release upgrade,
+desktop/fullscreen startup, data-preserving removal, all five portable recovery cases
+and native/Proton session checks. The
+[Linux package checkpoint](spikes/2026-09-28-electron-parity/checkpoint-ninety-three.md)
+records the tested checkout and retained evidence. Xvfb qualification does not establish
+physical Linux compositor or controller behavior.
 
 The primary Electron Windows package can be built separately with
 `packaging/Publish-Electron.ps1`, using the same arguments as `Publish.ps1` below,

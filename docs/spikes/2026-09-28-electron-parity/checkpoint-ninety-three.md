@@ -5,6 +5,35 @@ The primary Electron distribution contains its renderer, independent backend and
 self-contained runtimes, update helper, bundled provider, product assets and notices.
 Default build and release entry points remain a separate task.
 
+The Ubuntu package job in [run 36974482371](https://github.com/safwyls/winnow/actions/runs/36974482371)
+passed at branch head `980cdc3c14167f913083fcf2266998a0ff1ea4bb`; GitHub tested its PR merge
+checkout `7d849a2a2274f84dc5c70562f5f932e6fd016b66`. Both Debian and tar outputs are
+`0.2.0-ci.11`. Managed install, actual beta.3 upgrade, desktop/fullscreen startup,
+library-preserving removal and purge passed. All five portable scenarios passed,
+including stage and apply with the digest-verified beta.3 helper. The two native Linux
+and synthetic Proton session tests passed with no skips. This qualifies the Ubuntu
+package task; the complete migration regression gate remains separate.
+
+Evidence is retained as `electron-linux-evidence` and `electron-packages-linux-x64`,
+with a local copy under `.tmp/task38138-linux-fifth-evidence` and the job log at
+`.tmp/task38138-linux-fifth.log`. The final run passed 87 lease tests, 28 Linux package
+contracts, 24 process-parser cases, five Debian baseline contracts and both initial
+native probes. The managed and three successful portable upgrades also passed both
+presentation probes. Reviewed managed screenshots show the preserved fixture library;
+fullscreen includes LB/RB menu hints and keyboard navigation hints. Exact work, release
+and ownership rows match before upgrade and after removal. The only missing native
+dependencies are the two explicitly optional LTTng providers described below.
+
+The same run's Windows native and five portable scenarios passed, but its installer
+preflight failed the lock fixture's combined refusal/three-second wall-time assertion
+before any installation. The original check passed locally. The revised fixture retains
+real sharing locks and asynchronous cancellation and verifies the unchanged production
+retry body with a controlled clock: refusal at 200 ms after two 100 ms retries, cancellation
+after one retry. The real persistent lock refused in 217 ms under Windows PowerShell 5.1.
+Evidence is `.tmp/task38138-windows-lock-final.log`. The updater's clock, timeout and
+implementation are unchanged. Four earlier companion Windows package jobs passed their
+complete installer paths; the revised preflight will run in the next integrated gate.
+
 ## Qualification scope
 
 The disposable Ubuntu job in `electron-packages.yml` builds and verifies the primary
