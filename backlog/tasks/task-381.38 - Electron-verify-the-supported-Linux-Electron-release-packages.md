@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 05:41'
+updated_date: '2026-10-02 05:56'
 labels:
   - electron
   - parity
@@ -74,4 +74,8 @@ Shared managed/read-only startup lease policy implemented; existing busy locks a
 Linux packaging source complete: exact-path sandbox setup/managed hooks, 0755 chrome-sandbox normalization, ELF/hash/declared dependency-closure verification, real old-schema linked work/release/ownership comparisons, Xvfb/Openbox wrapper and native probes. Offline package20cases:17passed onWindows with3 explicitlyLinux-only (case-sensitive names,Unixmodes,symlinks); shell/Python syntaxpass. Actual UbuntuCI will execute all20 and installation/native/recovery checks. No local software installed.
 
 First Ubuntu run36969598691 at136342b9 passed87/87 focused lease/recovery tests with0skips, primary publish691files,16package mutations,5Debian baseline contracts andall20Linux package contracts. It stopped at syntax-only AppArmor parsing because the parser tried its root-owned /var/cache/apparmor cache. No native Linux launch occurred. Fix is cache-free syntax validation; keep kernel/sandbox policy intact. Full log .tmp/task38138-linux-first.log. Companion Windows native11 passed aftersharedpolicychange; remainingWindowsinstallation stillrunning.
+
+Second Ubuntu run36970126301 atc49782af passes cache-freepreflight and launches desktop/fullscreen under exact AppArmor profile. Reports establish visible native1920x1080fullscreen, ownbackend/libraryread, rendererNoNewPrivs1/Seccomp2 andcleanclose. Probe failed parsing Chromium rewritten /proc commandline (one combinedstring, type null); correcting parser and forbiddenflag detection without looseningkernelassertions. Actual WM_CLASS is lowercase winnow forbothinstance/class, so Electron desktopmetadata willmatchit. Reports .tmp/task38138-linux-second-evidence; log .tmp/task38138-linux-second.log. Fullscreenreadiness willrewaitaftermodechange; screenshotobserved transientPreparingfullscreenbeforeparserfailure.
+
+Chromium title parser corrected with24 passing offline contracts; renderer/main forbidden switches and kernel sandbox assertions remain strict. Post-mode and pre-capture waits require startup presentation absent. Full TypeScript, syntax, formatting checks pass. Desktop entry now uses measured lowercase winnow; actual production writer regression preserves Avalonia uppercase. Package contracts18passWindows/3Linux-only (21total). Companion Windows job36970126301 now fully passed native11,installer5,portable5. Preparing corrected Ubuntu rerun.
 <!-- SECTION:NOTES:END -->

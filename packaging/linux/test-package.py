@@ -173,6 +173,25 @@ class PackageContracts(unittest.TestCase):
 
 
 class SandboxAndPreservationContracts(unittest.TestCase):
+    def test_desktop_entry_matches_measured_electron_class_and_preserves_legacy_integration(self):
+        source = Path(__file__).with_name('build.sh').read_text(encoding='utf-8')
+        start = source.index('write_desktop_entry() {')
+        writer = source[start:source.index('\n}\n', start) + 3]
+        bash = shutil.which('bash') or 'C:/Program Files/Git/bin/bash.exe'
+        for frontend, expected in [('electron', 'winnow'), ('avalonia', 'Winnow')]:
+            with self.subTest(frontend=frontend), tempfile.TemporaryDirectory() as directory:
+                result = subprocess.run([bash, '-s', '--', frontend],
+                                        input=('PATH=/usr/bin:/bin:$PATH\n' + writer + '\nfrontend=$1\nwrite_desktop_entry winnow.desktop\n').encode(),
+                                        cwd=directory, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr.decode())
+                entry = (Path(directory) / 'winnow.desktop').read_text(encoding='utf-8').splitlines()
+                self.assertIn('StartupWMClass=' + expected, entry)
+                self.assertIn('Name=Winnow', entry)
+                self.assertIn('Exec=winnow %u', entry)
+                self.assertIn('MimeType=x-scheme-handler/winnow;', entry)
+                self.assertIn('Icon=winnow', entry)
+                self.assertEqual(sum(line.startswith('StartupWMClass=') for line in entry), 1)
+
     def test_actual_setup_path_guard_accepts_literal_paths_and_rejects_policy_syntax(self):
         source = Path(__file__).with_name('setup-sandbox.sh').read_text(encoding='utf-8')
         guard = next(line for line in source.splitlines() if line.startswith('case $executable in '))

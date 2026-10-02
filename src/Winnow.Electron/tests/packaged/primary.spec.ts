@@ -41,6 +41,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       pageErrors: [],
       mode,
       libraryReadSucceeded: true,
+      presentationReadyBeforeCapture: true,
       activation: { secondaryExitCode: 0, sameBackend: true },
       nativeWindow: { visible: true, fullscreen: mode === 'fullscreen', nativeHandlePresent: true },
     })

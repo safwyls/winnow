@@ -5,6 +5,7 @@ import { access, mkdir, open, readFile, readdir, readlink, realpath, writeFile }
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { _electron as electron, expect } from '@playwright/test'
+import { inspectLinuxCommandLine } from './linux-command-line.mjs'
 
 const args = process.argv.slice(2),
   values = new Map()
@@ -70,12 +71,6 @@ const samePath = (actual, expected) =>
   process.platform === 'win32'
     ? resolve(actual).toLowerCase() === resolve(expected).toLowerCase()
     : resolve(actual) === resolve(expected)
-const disabledSandbox = (args) =>
-  args.filter((arg) =>
-    /^--(?:no-sandbox|disable-(?:sandbox|setuid-sandbox|seccomp-filter-sandbox|namespace-sandbox)|no-zygote-sandbox)(?:=|$)/.test(
-      arg,
-    ),
-  )
 async function exists(path) {
   try {
     await access(path)
@@ -91,7 +86,7 @@ async function linuxProcess(pid) {
   // comm may contain spaces or parentheses; fields after the last ')' begin at state (3).
   const fields = stat.slice(stat.lastIndexOf(')') + 2).split(' ')
   const status = await readFile(join(base, 'status'), 'utf8')
-  const args = (await readFile(join(base, 'cmdline'), 'utf8')).split('\0').filter(Boolean)
+  const commandLine = inspectLinuxCommandLine(await readFile(join(base, 'cmdline'), 'utf8'))
   let executable = null
   try {
     executable = await readlink(join(base, 'exe'))
@@ -105,9 +100,10 @@ async function linuxProcess(pid) {
     startTicks: fields[19],
     state: fields[0],
     executable,
-    command: args[0] ?? null,
-    type: args.find((arg) => arg.startsWith('--type='))?.slice(7) ?? null,
-    disabledSandboxArguments: disabledSandbox(args),
+    command: commandLine.command,
+    commandLineRepresentation: commandLine.representation,
+    type: commandLine.type,
+    disabledSandboxArguments: commandLine.disabledSandboxArguments,
     noNewPrivileges: Number(status.match(/^NoNewPrivs:\s+(\d+)/m)?.[1]),
     seccomp: Number(status.match(/^Seccomp:\s+(\d+)/m)?.[1]),
   }
@@ -321,6 +317,7 @@ try {
   await expect(page.locator('.startup-presentation')).toHaveCount(0, { timeout: 30000 })
   await page.evaluate((fullscreen) => window.winnow.setFullscreen(fullscreen), mode === 'fullscreen')
   await expect(page.locator(`.avalon-shell.${mode}`)).toBeVisible()
+  await expect(page.locator('.startup-presentation')).toHaveCount(0, { timeout: 30000 })
   await expect
     .poll(() => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isFullScreen()))
     .toBe(mode === 'fullscreen')
@@ -616,6 +613,8 @@ try {
   await expect
     .poll(() => application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isFullScreen()))
     .toBe(mode === 'fullscreen')
+  await expect(page.locator('.startup-presentation')).toHaveCount(0, { timeout: 30000 })
+  result.presentationReadyBeforeCapture = true
   await page.screenshot({ path: reportPath.replace(/\.json$/i, '') + '.png' })
   assert.deepEqual(result.pageErrors, [])
   result.passed = true

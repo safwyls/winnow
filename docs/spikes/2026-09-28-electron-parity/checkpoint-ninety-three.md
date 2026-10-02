@@ -57,7 +57,20 @@ baseline contracts** and **all 20 Linux package contracts**. It stopped before n
 launch when the syntax-only AppArmor parser attempted to use its root-owned cache.
 The preflight now specifies both `--skip-kernel-load` and `--skip-cache`; administrative
 policy loading is unchanged. The first log is `.tmp/task38138-linux-first.log`.
-Actual launch, installation and recovery qualification remain pending.
+The [second Ubuntu run 36970126301](https://github.com/safwyls/winnow/actions/runs/36970126301)
+at `c49782af73a6df7de5e67c019715327257f2f795` passed that preflight and launched both
+surfaces with the exact AppArmor profile. Reports captured the owned backend, library
+read, native fullscreen bounds, renderer `NoNewPrivs=1` and `Seccomp=2`, and clean
+shutdown. The probe failed because Chromium rewrote `/proc` command-line arguments
+into a single title. The corrected parser retains paths with spaces and checks bounded
+switches; 24 offline cases pass. Native kernel assertions remain unchanged. The desktop
+entry now uses the observed lowercase `winnow` window class, with a regression check
+for both frontend variants. There are now 21 Linux package contracts (18 pass on Windows,
+three require Linux). Screenshots wait for startup presentation to finish after changing
+mode. The companion Windows job passed native, installer and all five portable checks.
+Logs and reports are in `.tmp/task38138-linux-second.log` and
+`.tmp/task38138-linux-second-evidence`. Linux installation and recovery qualification
+remain pending the corrected run.
 
 ## Optional macOS audit
 

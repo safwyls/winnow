@@ -82,7 +82,10 @@ EOF
 
 write_desktop_entry() {
     local destination=$1
-    cat > "$destination" <<'EOF'
+    local wm_class=Winnow
+    # The packaged Electron X11 window reports lowercase class and instance names.
+    if [[ $frontend == electron ]]; then wm_class=winnow; fi
+    cat > "$destination" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Winnow
@@ -92,7 +95,7 @@ MimeType=x-scheme-handler/winnow;
 Icon=winnow
 Terminal=false
 Categories=Game;Utility;
-StartupWMClass=Winnow
+StartupWMClass=$wm_class
 EOF
 }
 
