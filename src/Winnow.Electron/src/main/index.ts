@@ -75,6 +75,7 @@ import {
   waitForStartupOperation,
 } from './startup-backend'
 import { openLinkBrowser } from './link-browser'
+import { setPopoutTypography } from './popout-typography'
 import { routeLink } from './link-routing'
 import { openInstallFolder, type InstallationWorkspace } from './install-folder'
 import { canNotifyJournal, deliverNotification } from './notifications'
@@ -87,7 +88,7 @@ import {
   discoverBackend,
   startBackend,
 } from './lifecycle'
-import { containedPath, contentSecurityPolicy, trustedRendererUrl, validateExternalUrl } from './security'
+import { assertTrustedRendererSender, containedPath, contentSecurityPolicy, trustedRendererUrl, validateExternalUrl } from './security'
 import {
   installThemeDirectory,
   listThemePackages,
@@ -463,13 +464,7 @@ async function initialize(): Promise<void> {
   })
   updater.subscribe((snapshot) => emit('winnow:update:changed', snapshot))
   function validateSender(event: IpcMainInvokeEvent): void {
-    if (
-      !window ||
-      event.sender !== window.webContents ||
-      event.senderFrame !== window.webContents.mainFrame ||
-      !trustedRendererUrl(event.senderFrame.url, developmentOrigin)
-    )
-      throw new Error('Untrusted renderer')
+    assertTrustedRendererSender(event, window?.webContents, developmentOrigin)
   }
   function handle(channel: string, handler: (...args: any[]) => unknown): void {
     ipcMain.handle(channel, (event, ...args) => {
@@ -602,6 +597,7 @@ async function initialize(): Promise<void> {
     }
   })
   handle('winnow:appearance:session', () => captureAppearance)
+  handle('winnow:typography:popouts', (value: unknown) => setPopoutTypography(window!.webContents, value))
   handle('winnow:preferences:save', (value: unknown) =>
     sessionAppearance ? sessionAppearance.saveProfile(value) : saveProfile(preferencesFile, value),
   )

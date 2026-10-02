@@ -170,6 +170,15 @@ restores its authored fonts and size, or the bundled defaults when none are auth
 Fullscreen reserves chrome and Home hero space for the supported 120% theme size, so live
 font changes leave cover geometry stable. The description still occupies two lines at the
 chosen text size; unused height remains between the hero and its bottom-anchored shelf.
+Fullscreen Theme Studio uses the TV hierarchy: 28px adjustment labels, 24px explanatory
+copy and 22px metadata at the reference size. Theme and fullscreen text preferences
+combine once; icons retain their dimensions. Settings Appearance keeps its separate
+directional controls.
+
+Winnow's browser toolbar and account keyboard also follow theme fonts and text size.
+Live changes retain the local draft and focus. Their reading area follows the measured
+toolbar height so larger or wrapped hints remain visible above the embedded page.
+The page itself keeps its own typography.
 
 **Authored palettes** reads schema-1 JSON files from the library's existing `themes` folder,
 including installs that still use the legacy data location. **Open themes folder** opens

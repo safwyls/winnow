@@ -7,6 +7,7 @@ import {
   readBrowserPad,
 } from './browser-controller'
 import { browserToolbar, browserToolbarAction } from './browser-toolbar'
+import { popoutTypography, popoutTypographyScript, subscribePopoutTypography } from './popout-typography'
 
 interface Reader {
   window: BrowserWindow
@@ -68,12 +69,13 @@ function createReader(parent: BrowserWindow): Reader {
     openRequest = 0,
     poll: ReturnType<typeof setTimeout> | undefined,
     currentAddress = '',
-    problem = ''
+    problem = '',
+    toolbarHeight = fullscreen ? 150 : 92
   const toolbarReady = browser
     .loadURL(toolbarUrl)
     .then(() =>
       controls.executeJavaScript(
-        `document.open();document.write(${JSON.stringify(browserToolbar(fullscreen))});document.close()`,
+        `document.open();document.write(${JSON.stringify(browserToolbar(fullscreen))});document.close();${popoutTypographyScript(popoutTypography(parent.webContents))}`,
       ),
     )
   browsing.webRequest.onBeforeRequest((details, callback) => {
@@ -87,9 +89,34 @@ function createReader(parent: BrowserWindow): Reader {
   })
   function layout() {
     const bounds = browser.getContentBounds(),
-      height = fullscreen ? 126 : 92
+      height = toolbarHeight
     page.setBounds({ x: 0, y: height, width: bounds.width, height: Math.max(0, bounds.height - height) })
   }
+  async function measureToolbar() {
+    if (disposed) return
+    const height: unknown = await controls.executeJavaScript(
+      'document.fonts.ready.then(()=>Math.ceil(document.body.getBoundingClientRect().height))',
+    )
+    if (!disposed && typeof height === 'number' && Number.isFinite(height)) {
+      toolbarHeight = Math.max(40, Math.min(browser.getContentBounds().height, height))
+      layout()
+    }
+  }
+  const unsubscribeTypography = subscribePopoutTypography(parent.webContents, () => {
+    void toolbarReady
+      .then(async () => {
+        if (
+          disposed ||
+          parent.webContents.isDestroyed() ||
+          controls.isDestroyed() ||
+          controls.getURL().split('#')[0] !== 'about:blank'
+        )
+          return
+        await controls.executeJavaScript(popoutTypographyScript(popoutTypography(parent.webContents)))
+        await measureToolbar()
+      })
+      .catch(() => {})
+  })
   async function updateToolbar() {
     await toolbarReady
     if (disposed) return
@@ -102,6 +129,7 @@ function createReader(parent: BrowserWindow): Reader {
     await controls.executeJavaScript(
       `(()=>{const s=${JSON.stringify(state)};document.getElementById('address').textContent=s.address;document.getElementById('address').title=s.address;document.getElementById('problem').textContent=s.problem;for(const name of ['back','forward']){const a=document.getElementById(name);a.setAttribute('aria-disabled',String(!s[name]));a.tabIndex=s[name]?0:-1;if(s[name])a.setAttribute('href','#'+name);else a.removeAttribute('href')}})()`,
     )
+    await measureToolbar()
   }
   function refreshToolbar() {
     void updateToolbar().catch(() => {})
@@ -208,10 +236,14 @@ function createReader(parent: BrowserWindow): Reader {
       { label: 'Edit', submenu: [{ role: 'copy' }, { role: 'selectAll' }] },
     ]),
   )
-  browser.on('resize', layout)
+  browser.on('resize', () => {
+    layout()
+    void toolbarReady.then(measureToolbar).catch(() => {})
+  })
   browser.on('blur', () => controller.reset())
   browser.on('closed', () => {
     disposed = true
+    unsubscribeTypography()
     if (poll) clearTimeout(poll)
     controller.reset()
     if (!content.isDestroyed()) content.close()

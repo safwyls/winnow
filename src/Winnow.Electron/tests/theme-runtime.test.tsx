@@ -35,6 +35,47 @@ afterEach(() => {
 })
 
 describe('theme runtime recovery and lifecycle', () => {
+  it('publishes resolved typography after hydration and only repeats it for semantic typography changes', async () => {
+    const publish = vi.fn(async () => {})
+    window.winnow.setPopoutTypography = publish
+    const { result } = renderHook(() => useThemeRuntime(builtins))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    await waitFor(() => expect(publish).toHaveBeenCalledOnce())
+    act(() =>
+      result.current.setProfile((current) => ({
+        ...current,
+        appearance: { ...current.appearance, radius: 9 },
+      })),
+    )
+    expect(publish).toHaveBeenCalledOnce()
+    for (const sizePercent of [120, 80, 100, 120]) {
+      act(() =>
+        result.current.setProfile((current) => ({
+          ...current,
+          appearance: {
+            ...current.appearance,
+            typography: {
+              winnow: {
+                headingFont: 'IBM Plex Mono',
+                interfaceFont: 'Bricolage Grotesque',
+                dataFont: 'Plus Jakarta Sans',
+                sizePercent,
+              },
+            },
+          },
+        })),
+      )
+      await waitFor(() =>
+        expect(publish).toHaveBeenLastCalledWith({
+          headingFont: 'IBM Plex Mono',
+          interfaceFont: 'Bricolage Grotesque',
+          dataFont: 'Plus Jakarta Sans',
+          sizePercent,
+        }),
+      )
+    }
+    expect(publish).toHaveBeenCalledTimes(5)
+  })
   it('keeps saving true across serialized profile writes and publishes only the latest failure state', async () => {
     const { result } = renderHook(() => useThemeRuntime(builtins))
     await waitFor(() => expect(result.current.loading).toBe(false))

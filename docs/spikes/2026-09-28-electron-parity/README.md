@@ -45,6 +45,14 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [typography and floating layout checkpoint](checkpoint-eighty-eight.md) records
+thirty unchanged source cases, 212 focused cases and sixteen distinct native cases
+passing. Fullscreen Studio, local browser controls, segmented focus and header
+reservation now retain their typography and geometry contracts. All thirteen
+assigned methods are ported: the inventory contains 1,659 ported, 705
+retained-backend and 40 framework-specific methods, with 31 pending and none
+partial. The authorized batch continues through TASK-381.35.
+
 The [theme colors and persistence checkpoint](checkpoint-eighty-seven.md) records
 31 unchanged source cases, 270 focused renderer cases and eleven distinct native
 journeys passing. Exact original palette comparisons corrected intermediate HSV

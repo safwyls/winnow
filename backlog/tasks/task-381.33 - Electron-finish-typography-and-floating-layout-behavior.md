@@ -1,11 +1,11 @@
 ---
 id: TASK-381.33
 title: 'Electron: finish typography and floating layout behavior'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
-updated_date: '2026-10-01 23:25'
+updated_date: '2026-10-02 00:16'
 labels:
   - electron
   - parity
@@ -55,10 +55,10 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Original runtime font/typography control matrices update actual rendered text and preserve source metrics, measure and keyboard/controller targets.
-- [ ] #2 Floating layout and segmented selectors remain contained at the original window/scaling boundaries on both applicable presentation paths.
-- [ ] #3 All 13 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Original runtime font/typography control matrices update actual rendered text and preserve source metrics, measure and keyboard/controller targets.
+- [x] #2 Floating layout and segmented selectors remain contained at the original window/scaling boundaries on both applicable presentation paths.
+- [x] #3 All 13 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -66,8 +66,26 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 - [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.34 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Compare all thirteen frozen typography and floating-layout contracts with existing coverage and execute their unchanged source fixtures. 2. Correct demonstrated font, text-scale, containment and persistence gaps, including separate fullscreen Theme Studio and Settings Appearance paths. 3. Run focused renderer tests, then freeze the build for serialized native measurements of real controls, popouts and floating geometry at original boundaries. 4. Record exact source mappings and captures, review the result, update documentation and commit the milestone before continuing to TASK-381.34.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Visual observation from TASK-381.32 to assess in this typography task: the actual fullscreen Theme Studio capture at1920x1080 retains compact desktop-sized labels and authored/typography buttons while the fullscreen shell headings/footer use their own scale. Capture: .tmp/task38132-native-final2-results/appearance-contracts-fulls-c2643-stored-scroll-across-reload/fullscreen-dawn-default-collapsed-notes.png. Verify both Theme Studio and the separate Settings/Appearance path against the fullscreen typography rules and original runtime/control contracts; do not infer coverage for one from the other.
+
+TASK-381.32 completed at 1d85c480. Starting task three of the five-task batch. Root owns official mappings, documentation, Backlog and commits. Source and native test lanes remain serialized; broad component/live API gate is reserved for TASK-381.35.
+
+All 30 unchanged source cases across the thirteen methods pass; twenty original captures and frozen-source provenance are recorded in .tmp/task38133-source-evidence.json. Demonstrated gaps include desktop-sized fullscreen Theme Studio labels, theme-sized keyboard hint icons, and fixed-font trusted browser popouts. The implementation adds bounded theme typography updates only to local toolbar/composer documents, preserving drafts and focus; provider pages remain isolated. Native verification will follow renderer freeze.
+
+Renderer/main changes are frozen for native verification. All 212 focused cases across sixteen files pass; typecheck passes after native fixture props were corrected. Review found a fixed toolbar inset could cover enlarged hints; account and reference browser views now follow font-ready measured local toolbar height and remeasure on size, status and font changes. Native scope is sixteen cases, including separate original 28px and current Home 24px fullscreen roles, real consent and trusted popouts.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed typography and floating layout parity. Fullscreen Studio uses TV sizing; fonts and size changes preserve actual controls, role fallback and geometry. Trusted browser typography updates retain drafts and focus. Native checks corrected segmented focus cascade, header growth that changed cover capacity, and narrow toolbar clipping. Verification: 30 unchanged source cases, 212 focused cases across sixteen files, 16 distinct native cases, one final Home screenshot replay, TypeScript and build pass. All thirteen methods ported; audit validates 1659 ported, 705 retained-backend, 40 framework-specific, 31 pending and zero partial. Complete gate still fails for remaining tasks. See checkpoint-eighty-eight.md and .tmp/task38133-native-evidence.json. Physical devices and live provider sign-in remain outside this verification. Continue to TASK-381.34 after commit.
+<!-- SECTION:FINAL_SUMMARY:END -->

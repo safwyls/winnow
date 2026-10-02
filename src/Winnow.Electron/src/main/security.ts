@@ -1,4 +1,19 @@
 import { isAbsolute, relative, resolve, sep } from 'node:path'
+import type { IpcMainInvokeEvent, WebContents } from 'electron'
+
+export function assertTrustedRendererSender(
+  event: Pick<IpcMainInvokeEvent, 'sender' | 'senderFrame'>,
+  owner: WebContents | undefined,
+  developmentOrigin?: string,
+): void {
+  if (
+    !owner ||
+    event.sender !== owner ||
+    event.senderFrame !== owner.mainFrame ||
+    !trustedRendererUrl(event.senderFrame.url, developmentOrigin)
+  )
+    throw new Error('Untrusted renderer')
+}
 
 export function containedPath(root: string, relativePath: string): string {
   if (!relativePath || relativePath.includes('\\') || relativePath.includes('\0') || isAbsolute(relativePath))

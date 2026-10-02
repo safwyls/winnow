@@ -885,10 +885,28 @@
   }
   .segmented {
     display: flex;
-    gap: 3px;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 4px;
   }
   .segmented button {
     padding: 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    transform: none;
+  }
+  .segmented button:hover {
+    background: color-mix(in srgb, var(--raised) 50%, transparent);
+  }
+  .segmented button:active:not(:disabled) {
+    background: var(--raised);
+    transform: none;
+  }
+  .segmented button:focus-visible,
+  :root[data-controller='true'] .segmented button:focus {
+    outline-offset: -4px;
   }
   .segmented [aria-pressed='true'] {
     background: var(--raised);

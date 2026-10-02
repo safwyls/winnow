@@ -273,10 +273,6 @@
     ],
     "reason": "The native 900-game fixture advances sixty rows at 1920x1080 from column two. Y opens one options panel with My lists and Filter & sort first; the retained grid is inert and cannot steal focus. Repeated Y does not stack panels. Options, lists and filters each return directly with B to the same viewport node, bounds, row, selected game and column; Start and B preserve that state through Quick menu. Separate component cases cover management close on both surfaces."
   },
-  "SegmentedSelectorContainmentTests.Segment_states_preserve_the_rounded_group_boundary": {
-    "status": "pending",
-    "reason": "Pixel containment of idle/hover/pressed/checked/focus states across palettes needs Electron screenshots; CSS overflow alone is insufficient."
-  },
   "SegmentedSelectorContainmentTests.Production_segment_groups_use_an_inner_clip": {
     "status": "framework-specific",
     "reason": "This method only asserts Avalonia logical-tree Border counts and Border parent/child types in XAML templates. DOM/CSS replaces that hierarchy; the separately inventoried pixel-boundary behavior test remains pending."
@@ -379,30 +375,6 @@
     ],
     "reason": "Reset removes the explicit override and restores the current authored family and90-percent size, including after a live file edit."
   },
-  "ThemeTypographyRuntimeTests.Missing_font_falls_back_by_role_and_installed_fonts_are_available": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/avalon-typography.test.tsx",
-        "case": "falls back by role and resolves bundled family names case-insensitively"
-      },
-      {
-        "file": "tests/avalon-typography.test.tsx",
-        "case": "loads installed fonts only on request and keeps an editable family fallback"
-      }
-    ],
-    "reason": "CSS role fallback and explicit native font-catalogue request are covered. Actual absent-font rendering and the native OS catalogue need platform verification."
-  },
-  "ThemeTypographyControlsTests.Desktop_font_pickers_and_size_follow_the_selected_theme": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/avalon-typography.test.tsx",
-        "case": "keeps independent role fonts and size through palette switches, restart and reset"
-      }
-    ],
-    "reason": "Per-palette role controls and size restore are covered; original externally changed case-normalized picker selection is not yet asserted through the live control."
-  },
   "ThemeTypographyControlsTests.Fullscreen_font_actions_and_theme_size_update_shared_appearance_and_keep_controller_focus": {
     "status": "ported",
     "tests": [
@@ -413,16 +385,6 @@
     ],
     "reason": "Real fullscreen Settings at 720p and 1080p verifies controller five-point changes, 120% clamping without changing page scale, selecting a bundled heading font through the picker, persisted shared typography, return focus and reset to authored defaults. Controls remain reachable with combined 120% theme and 140% page text."
   },
-  "ThemeTypographyControlsTests.Desktop_maximum_size_keeps_typography_controls_reachable_and_reset_restores_authored_values": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/electron/typography.spec.ts",
-        "case": "role fonts and text size scale text without enlarging icons or covers"
-      }
-    ],
-    "reason": "Real Electron at 1280x720 scrolls and focuses every typography control at 120 percent; reset restores bundled defaults. Original custom authored 105-percent default and keyboard activation remain broader."
-  },
   "ThemeTypographyRuntimeTests.Fullscreen_shell_keeps_typography_settings_reachable_at_maximum_theme_size": {
     "status": "ported",
     "tests": [
@@ -432,34 +394,6 @@
       }
     ],
     "reason": "Real fullscreen Electron at 1280x720 verifies all five font/size/reset controls fit within the window and retain keyboard focus at the original maximum 120-percent text size. This is a smaller viewport than the original 1920x1080 assertion."
-  },
-  "ThemeTypographyRuntimeTests.Desktop_text_and_reading_line_height_follow_live_resources_without_scaling_geometry": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/electron/typography.spec.ts",
-        "case": "role fonts and text size scale text without enlarging icons or covers"
-      },
-      {
-        "file": "tests/avalon-typography.test.tsx",
-        "case": "reapplies role fonts and text scale from stable baselines independently of interface geometry"
-      }
-    ],
-    "reason": "Real Electron measures font size at 100/120/80/100 with stable icons and covers and changed role font. Original paragraph line height, compact labels and button width across every scale need additional rendered assertions."
-  },
-  "ThemeTypographyRuntimeTests.Fullscreen_combines_theme_and_page_scale_without_accumulation_or_scaling_icons": {
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/electron/typography.spec.ts",
-        "case": "role fonts and text size scale text without enlarging icons or covers"
-      },
-      {
-        "file": "tests/electron/typography.spec.ts",
-        "case": "fullscreen combines page and theme text scales without scaling the chrome or icons twice"
-      }
-    ],
-    "reason": "Native Electron verifies 1.4 page scale combined with 1.2 typography scale, repeat transitions without accumulation and stable cover/icon geometry. Original clock has no separate Electron counterpart; heading/chrome role exclusions follow the original scale boundary."
   },
   "DawnThemeContrastTests.Light_controls_have_readable_labels_and_visible_boundaries": {
     "reason": "Both Dawn palettes assert every original text/accent role against all five neutrals, line boundaries at 3:1, and filled Volt/Danger ink through normal/hover/press states. These state tokens are used by live Avalon CSS.",
@@ -484,16 +418,6 @@
   "FloatingLayoutTests.The_caption_is_the_ground": {
     "reason": "Nine palettes assert opaque caption equals shell, translucent caption paints nothing against three backdrops, and no retired ChromeGround exists; endpoint matrix also verifies shell < wall < chrome.",
     "status": "ported",
-    "tests": [
-      {
-        "file": "tests/avalon-translucency.test.ts",
-        "case": "%s moves only shell and caption with layout and keeps the AA marker valid in either layout"
-      }
-    ]
-  },
-  "FloatingLayoutTests.The_layout_moves_only_the_ground_and_the_caption": {
-    "reason": "Every modeled Electron surface token is unchanged across layout except caption/shell at all 101 slider positions and both reach states. Original exhaustive dictionary contains additional unmodeled token roles.",
-    "status": "partial",
     "tests": [
       {
         "file": "tests/avalon-translucency.test.ts",
@@ -528,16 +452,6 @@
       {
         "file": "tests/avalon-translucency.test.ts",
         "case": "%s moves only shell and caption with layout and keeps the AA marker valid in either layout"
-      }
-    ]
-  },
-  "FloatingLayoutTests.A_stored_layout_comes_back": {
-    "reason": "Saved flush layout and no startup writes are exercised through backend preference API; original case specifically restores floating and still needs that explicit fixture.",
-    "status": "partial",
-    "tests": [
-      {
-        "file": "tests/avalon-appearance.test.tsx",
-        "case": "imports saved reach/layout/material without writing and restores solid surfaces in fullscreen"
       }
     ]
   },

@@ -134,6 +134,7 @@ export interface WinnowBridge {
   ): Promise<{ file: string | null; diagnostics: import('./avalonThemeDocument').AvalonThemeDiagnostic[] }>
   onAvalonThemesChanged?(callback: () => void): () => void
   listFonts?(): Promise<string[]>
+  setPopoutTypography?(value: import('./typography').ThemeTypography): Promise<void>
   windowAppearance?(
     value: import('./windowAppearance').WindowAppearanceRequest,
   ): Promise<import('./windowAppearance').WindowAppearanceResult>

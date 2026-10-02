@@ -328,6 +328,18 @@ export function useThemeRuntime(
     applyThemeProfile(profile)
   }, [profile, avalonCatalogue])
 
+  const popoutTypography = resolvedTypography(profile)
+  useEffect(() => {
+    if (!hydrated) return
+    void window.winnow.setPopoutTypography?.(popoutTypography).catch(() => {})
+  }, [
+    hydrated,
+    popoutTypography.headingFont,
+    popoutTypography.interfaceFont,
+    popoutTypography.dataFont,
+    popoutTypography.sizePercent,
+  ])
+
   const catalogueRead = useRef(0)
   const reloadAvalonThemes = useCallback(async () => {
     if (!window.winnow.listAvalonThemes) return

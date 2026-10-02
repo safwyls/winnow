@@ -46,6 +46,7 @@ const bridge: WinnowBridge = {
   exportAvalonTheme: (text) => ipcRenderer.invoke('winnow:avalon-themes:export', text),
   onAvalonThemesChanged: (callback) => subscribe('winnow:avalon-themes:changed', callback),
   listFonts: () => ipcRenderer.invoke('winnow:fonts'),
+  setPopoutTypography: (value) => ipcRenderer.invoke('winnow:typography:popouts', value),
   windowAppearance: (value) => ipcRenderer.invoke('winnow:window:appearance', value),
   onWindowAppearanceInvalidated: (callback) => subscribe('winnow:window:appearance:invalidated', callback),
   installTheme: () => ipcRenderer.invoke('winnow:themes:install'),

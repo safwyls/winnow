@@ -116,6 +116,14 @@ it.each([false, true])(
   },
 )
 
+it('restores the original saved floating layout without writing it again', async () => {
+  values = { Layout: 'floating' }
+  const hook = renderHook(() => useAvalonAppearance(profile(), false), { wrapper })
+  await waitFor(() => expect(hook.result.current.appearance.layout).toBe('floating'))
+  await waitFor(() => expect(window.winnow.windowAppearance).toHaveBeenCalled())
+  expect(writes).toEqual([])
+})
+
 it('imports saved reach/layout/material without writing and restores solid surfaces in fullscreen', async () => {
   values = { Transparency: '70', Backdrop: 'mica', TranslucentWall: 'false', Layout: 'flush' }
   const hook = renderHook(({ fullscreen }) => useAvalonAppearance(profile(), fullscreen), {

@@ -591,20 +591,30 @@
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 4px;
-    padding: 1px;
+    padding: 0;
   }
   .avalon-segmented button {
     border: 0;
-    border-radius: 3px;
+    border-radius: 0;
     padding: 7px;
     background: transparent;
+    transform: none;
+  }
+  .avalon-segmented button:hover {
+    background: color-mix(in srgb, var(--raised) 50%, transparent);
+  }
+  .avalon-segmented button:active:not(:disabled) {
+    background: var(--raised);
+    transform: none;
   }
   .avalon-segmented button[aria-pressed='true'] {
     background: var(--raised);
     color: var(--accent-foreground, var(--accent));
   }
-  .avalon-segmented :focus-visible {
-    outline-offset: -2px;
+  .avalon-segmented :focus-visible,
+  .avalon-shell .segmented button:focus-visible,
+  :root[data-controller='true'] .avalon-shell .segmented button:focus {
+    outline-offset: -4px;
   }
   .avalon-results-count {
     font-family: var(--font-mono);
@@ -789,7 +799,11 @@
     padding: 0;
     background: transparent;
     gap: 20px;
-    min-height: calc(clamp(17px, 1.46vw, 28px) * 1.4 * 1.2 + 22px);
+    /* Reserve both the navigation and the status/utility stack at the largest theme size. */
+    min-height: max(
+      calc(clamp(17px, 1.46vw, 28px) * 1.4 * 1.2 + 22px),
+      calc(clamp(14px, 1.25vw, 24px) * 1.2 * 1.2 + 4px + 48px)
+    );
   }
   .avalon-shell.fullscreen .avalon-brand {
     grid-column: 1;

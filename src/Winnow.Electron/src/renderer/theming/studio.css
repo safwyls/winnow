@@ -98,6 +98,7 @@
 }
 .studio-panel > p {
   font-size: calc(12px * var(--theme-text-scale, 1));
+  line-height: 1.5;
 }
 .studio-panel > p:not(.reading-prose) {
   max-width: 60ch;
@@ -541,39 +542,80 @@
   color: var(--muted);
 }
 .fullscreen .theme-studio {
-  max-width: 1600px;
+  --studio-text-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+  max-width: 1800px;
+  font: calc(clamp(16px, 1.25vw, 24px) * var(--studio-text-scale))/1.5 var(--font-body);
 }
-.fullscreen .theme-studio :is(button, select) {
-  min-height: 44px;
+.fullscreen .theme-studio .studio-heading h1 {
+  font-size: calc(clamp(42.67px, 3.333333vw, 64px) * var(--theme-text-scale, 1));
+  line-height: 1.1;
+}
+.fullscreen .theme-studio :is(.studio-panel h2, .studio-fieldset legend) {
+  font: 400 calc(clamp(12px, 0.9375vw, 18px) * var(--studio-text-scale))/1.4 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.fullscreen .theme-studio .studio-kicker {
+  font: 400 calc(clamp(12px, 0.9375vw, 18px) * var(--studio-text-scale))/1.4 var(--font-body) !important;
+}
+.fullscreen .theme-studio :is(button, select, input:not([type='checkbox']):not([type='range'])) {
+  min-height: 64px;
+  min-width: 0;
+  font-size: calc(clamp(18.67px, 1.458333vw, 28px) * var(--studio-text-scale));
+}
+.fullscreen
+  .theme-studio
+  :is(.studio-field, .studio-toggle, .studio-section-order label, .studio-custom-colors summary) {
+  font-size: calc(clamp(18.67px, 1.458333vw, 28px) * var(--studio-text-scale));
 }
 .fullscreen
   .theme-studio
   :is(
-    .studio-field,
-    .studio-toggle,
     .studio-panel > p,
-    .studio-fieldset legend,
-    .studio-section-order label,
-    .studio-notice
-  ) {
-  font-size: calc(16px * var(--theme-text-scale, 1));
-}
-.fullscreen
-  .theme-studio
-  :is(
+    .studio-notice,
+    .studio-warning,
     .studio-install small,
     .studio-field small,
     .studio-toggle small,
     .studio-help,
     .studio-theme-option small
   ) {
-  font-size: calc(13px * var(--theme-text-scale, 1));
+  font-size: calc(clamp(16px, 1.25vw, 24px) * var(--studio-text-scale));
+  line-height: 1.5;
 }
-.fullscreen .theme-studio button {
-  font-size: calc(14px * var(--theme-text-scale, 1));
+.fullscreen .theme-studio .studio-value {
+  position: static;
+  align-self: flex-end;
+  font-size: calc(clamp(14.67px, 1.145833vw, 22px) * var(--studio-text-scale));
+}
+.fullscreen .theme-studio .studio-field > input {
+  width: 100%;
+}
+.fullscreen .theme-studio .studio-field-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+}
+.fullscreen .theme-studio .studio-theme-options {
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+}
+.fullscreen .theme-studio .studio-preview {
+  position: static;
+}
+.fullscreen
+  .theme-studio
+  :is(.studio-preview-top, .studio-preview-foot, .studio-sample-card span:not(.studio-sample-art)) {
+  font-size: calc(clamp(14.67px, 1.145833vw, 22px) * var(--studio-text-scale));
+}
+.fullscreen .theme-studio .studio-sample-card strong {
+  font-size: calc(clamp(21.33px, 1.666667vw, 32px) * var(--studio-text-scale));
+}
+.fullscreen .theme-studio .studio-sample-caption {
+  font-size: calc(clamp(14.67px, 1.145833vw, 22px) * var(--studio-text-scale)) !important;
+}
+.fullscreen .theme-studio .studio-specimen > p {
+  font-size: calc(clamp(16px, 1.25vw, 24px) * var(--studio-text-scale));
 }
 .fullscreen .theme-studio .studio-section-order button {
-  min-width: 44px;
+  min-width: 64px;
 }
 .fullscreen .theme-studio :is(input[type='checkbox'], input[type='range']) {
   min-height: 22px;

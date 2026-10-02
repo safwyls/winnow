@@ -114,12 +114,17 @@ vi.mock('electron', async () => {
   }
 })
 import { openLinkBrowser } from '../src/main/link-browser'
+import { setPopoutTypography } from '../src/main/popout-typography'
+import { DEFAULT_TYPOGRAPHY } from '../src/shared/typography'
 function parent(fullscreen = false) {
   return {
     id: 123,
     isFullScreen: () => fullscreen,
     isDestroyed: () => false,
-    webContents: { executeJavaScriptInIsolatedWorld: native.sample },
+    webContents: Object.assign(new EventEmitter(), {
+      executeJavaScriptInIsolatedWorld: native.sample,
+      isDestroyed: () => false,
+    }),
   } as unknown as BrowserWindow
 }
 const prevented = () => ({ preventDefault: vi.fn() })
@@ -143,6 +148,40 @@ afterEach(() => {
 })
 
 describe('isolated reusable native reading browser', () => {
+  it('updates only the retained local toolbar, measures its font and resize height, and unsubscribes on close', async () => {
+    const application = parent(true)
+    await openLinkBrowser(application, 'https://example.test/article')
+    const window = native.windows[0],
+      controls = window.webContents,
+      provider = native.views[0]
+    let height = 170
+    controls.executeJavaScript.mockImplementation(async (script: string) =>
+      script.includes('document.fonts.ready') ? height : undefined,
+    )
+    controls.executeJavaScript.mockClear()
+    provider.webContents.executeJavaScript.mockClear()
+    setPopoutTypography(application.webContents, { ...DEFAULT_TYPOGRAPHY, sizePercent: 120 })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(
+      controls.executeJavaScript.mock.calls.some(([script]: [string]) =>
+        script.includes('style.setProperty'),
+      ),
+    ).toBe(true)
+    expect(
+      controls.executeJavaScript.mock.calls.some(([script]: [string]) => script.includes('document.write')),
+    ).toBe(false)
+    expect(provider.webContents.executeJavaScript).not.toHaveBeenCalled()
+    expect(provider.setBounds).toHaveBeenLastCalledWith({ x: 0, y: 170, width: 1100, height: 680 })
+    height = 220
+    window.emit('resize')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(provider.setBounds).toHaveBeenLastCalledWith({ x: 0, y: 220, width: 1100, height: 630 })
+    window.close()
+    controls.executeJavaScript.mockClear()
+    setPopoutTypography(application.webContents, { ...DEFAULT_TYPOGRAPHY, sizePercent: 80 })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(controls.executeJavaScript).not.toHaveBeenCalled()
+  })
   it('reuses one window for HTTP and HTTPS with a separate trusted toolbar and no page bridge', async () => {
     const owner = parent()
     await openLinkBrowser(owner, 'http://example.com/article')

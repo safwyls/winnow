@@ -76,8 +76,8 @@
     white-space: nowrap;
   }
   .keyboard-hint-icon {
-    width: calc(clamp(20px, 1.666667vw, 32px) * var(--theme-text-scale, 1));
-    height: calc(clamp(20px, 1.666667vw, 32px) * var(--theme-text-scale, 1));
+    width: clamp(20px, 1.666667vw, 32px);
+    height: clamp(20px, 1.666667vw, 32px);
     color: var(--text);
     flex: 0 0 auto;
   }

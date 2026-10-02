@@ -16,6 +16,11 @@
   scrollbar-gutter: stable;
   padding: 4px 8px 24px;
 }
+.setup-dialog.fullscreen-platform-dialog.consent-dialog {
+  --platform-scale: var(--theme-text-scale, 1);
+  font-size: calc(28px * var(--platform-scale));
+  line-height: 1.5;
+}
 .fullscreen-platform-page h1,
 .fullscreen-platform-dialog h2 {
   margin: 0 0 24px;

@@ -1,6 +1,7 @@
 import { BrowserWindow, WebContentsView, type Session } from 'electron'
 import { AccountInputGate } from './account-input'
 import { accountComposerKeys, accountInputDocument } from './account-composer'
+import { popoutTypography, popoutTypographyScript, subscribePopoutTypography } from './popout-typography'
 import {
   BrowserController,
   browserControllerKey,
@@ -14,7 +15,12 @@ export type AccountBrowser = Pick<
 > & { setInputEnabled?(enabled: boolean): void }
 
 /** Provider pages and the local masked composer never share a document or application preload. */
-export function createAccountBrowser(parent: BrowserWindow, profile: Session, title: string, capture?: { preload: string }): AccountBrowser {
+export function createAccountBrowser(
+  parent: BrowserWindow,
+  profile: Session,
+  title: string,
+  capture?: { preload: string },
+): AccountBrowser {
   const fullscreen = parent.isFullScreen?.() === true
   const preferences = {
     session: profile,
@@ -67,13 +73,14 @@ export function createAccountBrowser(parent: BrowserWindow, profile: Session, ti
     selected = 0,
     generation = 0,
     busy = false,
-    poll: ReturnType<typeof setTimeout> | undefined
+    poll: ReturnType<typeof setTimeout> | undefined,
+    toolbarHeight = 100
   let actions = Promise.resolve()
   const toolbarReady = window
     .loadURL('about:blank')
     .then(() =>
       controls.executeJavaScript(
-        `document.open();document.write(${JSON.stringify(accountInputDocument())});document.close()`,
+        `document.open();document.write(${JSON.stringify(accountInputDocument())});document.close();${popoutTypographyScript(popoutTypography(parent.webContents))}`,
       ),
     )
   const gate = new AccountInputGate(contents, async () => {
@@ -81,12 +88,44 @@ export function createAccountBrowser(parent: BrowserWindow, profile: Session, ti
   })
   function layout() {
     const bounds = window.getContentBounds()
-    provider.setBounds({ x: 0, y: 80, width: bounds.width, height: Math.max(0, bounds.height - 80) })
+    provider.setBounds({
+      x: 0,
+      y: toolbarHeight,
+      width: bounds.width,
+      height: Math.max(0, bounds.height - toolbarHeight),
+    })
   }
+  async function measureToolbar() {
+    if (disposed || composing) return
+    const height: unknown = await controls.executeJavaScript(
+      'document.fonts.ready.then(()=>Math.ceil(document.body.getBoundingClientRect().height))',
+    )
+    if (!disposed && !composing && typeof height === 'number' && Number.isFinite(height)) {
+      toolbarHeight = Math.max(40, Math.min(window.getContentBounds().height, height))
+      layout()
+    }
+  }
+  const unsubscribeTypography = subscribePopoutTypography(parent.webContents, () => {
+    void toolbarReady
+      .then(async () => {
+        if (
+          disposed ||
+          parent.webContents.isDestroyed() ||
+          controls.isDestroyed() ||
+          controls.getURL().split('#')[0] !== 'about:blank'
+        )
+          return
+        await controls.executeJavaScript(popoutTypographyScript(popoutTypography(parent.webContents)))
+        await measureToolbar()
+      })
+      .catch(() => {})
+  })
+  void toolbarReady.then(measureToolbar).catch(() => {})
   function status(message: string) {
     if (!disposed)
       void controls
         .executeJavaScript(`document.getElementById('problem').textContent=${JSON.stringify(message)}`)
+        .then(measureToolbar)
         .catch(() => {})
   }
   function discard(message = '') {
@@ -100,7 +139,7 @@ export function createAccountBrowser(parent: BrowserWindow, profile: Session, ti
     provider.setVisible(true)
     void controls
       .executeJavaScript(
-        `document.open();document.write(${JSON.stringify(accountInputDocument())});document.close()`,
+        `document.open();document.write(${JSON.stringify(accountInputDocument())});document.close();${popoutTypographyScript(popoutTypography(parent.webContents))}`,
       )
       .then(() => {
         if (!disposed) {
@@ -120,7 +159,7 @@ export function createAccountBrowser(parent: BrowserWindow, profile: Session, ti
     filter.reset()
     provider.setVisible(false)
     await controls.executeJavaScript(
-      `document.open();document.write(${JSON.stringify(accountInputDocument(true))});document.close();(()=>{const input=document.getElementById('draft');input.dataset.start='0';input.dataset.end='0';const save=()=>{input.dataset.start=String(input.selectionStart??input.value.length);input.dataset.end=String(input.selectionEnd??input.value.length)};input.addEventListener('input',save);input.addEventListener('select',()=>{if(document.activeElement===input)save()});input.focus()})()`,
+      `document.open();document.write(${JSON.stringify(accountInputDocument(true))});document.close();${popoutTypographyScript(popoutTypography(parent.webContents))};(()=>{const input=document.getElementById('draft');input.dataset.start='0';input.dataset.end='0';const save=()=>{input.dataset.start=String(input.selectionStart??input.value.length);input.dataset.end=String(input.selectionEnd??input.value.length)};input.addEventListener('input',save);input.addEventListener('select',()=>{if(document.activeElement===input)save()});input.focus()})()`,
     )
     if (composing && !disposed) controls.focus()
   }
@@ -252,10 +291,14 @@ export function createAccountBrowser(parent: BrowserWindow, profile: Session, ti
       if (composing) discard('The page changed. Choose a field before entering text.')
     }
   })
-  window.on('resize', layout)
+  window.on('resize', () => {
+    layout()
+    void toolbarReady.then(measureToolbar).catch(() => {})
+  })
   window.on('blur', () => filter.reset())
   window.once('closed', () => {
     disposed = true
+    unsubscribeTypography()
     enabled = false
     gate.setEnabled(false)
     generation++

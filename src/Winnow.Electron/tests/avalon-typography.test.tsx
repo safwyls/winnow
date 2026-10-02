@@ -2,7 +2,12 @@
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { DEFAULT_TYPOGRAPHY, fontFamilyStack, parseTypography } from '../src/shared/typography'
+import {
+  DEFAULT_TYPOGRAPHY,
+  fontFamilyStack,
+  parseTypography,
+  setAuthoredTypography,
+} from '../src/shared/typography'
 import {
   DEFAULT_PROFILE,
   parseThemeProfile,
@@ -21,6 +26,7 @@ import type { WinnowBridge } from '../src/shared/bridge'
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  setAuthoredTypography([])
 })
 const custom = { headingFont: 'Georgia', interfaceFont: 'Segoe UI', dataFont: 'Consolas', sizePercent: 115 }
 
@@ -115,8 +121,8 @@ describe('Original typography contract', () => {
 })
 
 describe.each(['desktop', 'fullscreen'])('Avalon typography controls in %s', (mode) => {
-  function Harness() {
-    const [profile, setProfile] = useState<ThemeProfile>(structuredClone(DEFAULT_PROFILE))
+  function Harness({ initial = structuredClone(DEFAULT_PROFILE) }: { initial?: ThemeProfile }) {
+    const [profile, setProfile] = useState<ThemeProfile>(initial)
     return (
       <div data-mode={mode}>
         <AvalonTypographyControls
@@ -192,5 +198,31 @@ describe.each(['desktop', 'fullscreen'])('Avalon typography controls in %s', (mo
     })
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('single font'))
     expect(JSON.parse(screen.getByTestId('effective').textContent!).headingFont).toBe('Georgia')
+  })
+  it('shows the canonical bundled choice without rewriting a lowercase saved family', () => {
+    const profile = structuredClone(DEFAULT_PROFILE)
+    profile.appearance.typography = {
+      winnow: { ...DEFAULT_TYPOGRAPHY, headingFont: 'IBM Plex Mono', sizePercent: 115 },
+    }
+    const onChange = vi.fn()
+    const view = render(<AvalonTypographyControls profile={profile} onChange={onChange} />)
+    const updated = structuredClone(profile)
+    updated.appearance.typography!.winnow.headingFont = 'ibm plex mono'
+    view.rerender(<AvalonTypographyControls profile={updated} onChange={onChange} />)
+    expect((screen.getByRole('combobox', { name: 'Heading font' }) as HTMLInputElement).value).toBe(
+      'IBM Plex Mono',
+    )
+    expect(resolvedTypography(updated).headingFont).toBe('ibm plex mono')
+    expect(onChange).not.toHaveBeenCalled()
+  })
+  it('resets maximum-size edits to the authored IBM heading and 105 percent', () => {
+    const authored = { ...DEFAULT_TYPOGRAPHY, headingFont: 'IBM Plex Mono', sizePercent: 105 }
+    setAuthoredTypography([{ id: 'winnow', typography: authored }])
+    render(<Harness />)
+    fireEvent.change(screen.getByRole('slider', { name: 'Theme text size' }), { target: { value: '120' } })
+    expect(JSON.parse(screen.getByTestId('effective').textContent!).sizePercent).toBe(120)
+    fireEvent.click(screen.getByRole('button', { name: 'Reset theme typography' }))
+    expect(JSON.parse(screen.getByTestId('effective').textContent!)).toEqual(authored)
+    expect((screen.getByRole('slider', { name: 'Theme text size' }) as HTMLInputElement).value).toBe('105')
   })
 })
