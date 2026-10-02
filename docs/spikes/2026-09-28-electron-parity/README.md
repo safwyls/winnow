@@ -45,6 +45,17 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [repository and isolated preview checkpoint](checkpoint-ninety.md) records
+all 4,286 Electron/component/live-API cases across 226 files passing, without
+skips, including twelve live API cases. Four native journeys cover both shells
+and all fifteen original preview targets in each mode. Build and typecheck pass.
+All twelve assigned methods have executed replacements; two original whole-tree
+hygiene scans remain blocked by an ignored temporary directory's permissions,
+with passing authored-file replacements and that boundary recorded explicitly.
+The inventory contains 1,682 ported, 706 retained-backend and 41 framework-specific
+methods, with six pending and none partial. TASK-381.31–381.35 resolves 61 source
+contracts; complete migration, packaging and release verification remain later work.
+
 The [accessibility and reduced-motion checkpoint](checkpoint-eighty-nine.md)
 records eighteen unchanged source cases, 379 distinct focused cases and seven
 distinct native checks passing. Live names, numeric roles, unread badge geometry,

@@ -27,23 +27,19 @@ export function ReceptionLine({
       role="group"
       aria-label={compact ? figures.map((figure) => figure.automationName).join('; ') : 'Reception'}
     >
-      {figures.map((figure, index) => (
-        <span
-          key={figure.source}
-          title={figure.tooltip}
-          role="group"
-          aria-label={compact ? undefined : figure.automationName}
-        >
-          {index > 0 && <span aria-hidden="true"> · </span>}
-          {compact ? (
-            `${figure.compactSource}: ${figure.compactValue}`
-          ) : (
-            <>
-              {figure.source} <strong>{figure.value}</strong> / {figure.count}
-            </>
-          )}
-        </span>
-      ))}
+      {figures.map((figure, index) =>
+        compact ? (
+          <span key={figure.source} title={figure.tooltip}>
+            {index > 0 && <span aria-hidden="true"> · </span>}
+            {figure.compactSource}: {figure.compactValue}
+          </span>
+        ) : (
+          <span key={figure.source} title={figure.tooltip} role="group" aria-label={figure.automationName}>
+            {index > 0 && <span aria-hidden="true"> · </span>}
+            {figure.source} <strong>{figure.value}</strong> / {figure.count}
+          </span>
+        ),
+      )}
     </div>
   )
 }

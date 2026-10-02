@@ -173,4 +173,5 @@ const bridge = {
   openExternal: async () => ({ opened: true }),
 }
 window.winnow = bridge as WinnowBridge
-void import('../../src/renderer/src/main')
+if (parameters.get('fixture') === 'design') void import('./design-main')
+else void import('../../src/renderer/src/main')

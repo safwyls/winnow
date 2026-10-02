@@ -41,7 +41,7 @@ export function collectionNames() {
     const names = [
       'All games',
       ...[...document.querySelectorAll('[data-avalon-list]')].map((button) =>
-        button.textContent?.replace(/ · \d+ games/, '').replace(' · Live list', ' · Live'),
+        button.textContent?.replace(/ · \d+ games?/, '').replace(' · Live list', ' · Live'),
       ),
     ]
     returnToLibrary()

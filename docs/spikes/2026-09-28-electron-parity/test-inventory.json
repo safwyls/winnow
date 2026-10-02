@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 18,
+    "pending": 6,
     "partial": 0,
-    "ported": 1670,
+    "ported": 1682,
     "retained-backend": 706,
     "framework-specific": 41
   },
@@ -3708,32 +3708,74 @@
     {
       "id": "RepositoryHygieneTests.Exactly_one_tokens_axaml_exists_and_it_is_the_one_that_compiles",
       "source": "tests/Winnow.Tests/Enforcement/RepositoryHygieneTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/repository-hygiene.test.ts",
+          "case": "keeps exactly the single compiling original token source"
+        }
+      ],
+      "reason": "The Electron gate scans tracked and nonignored new authored repository files and requires exactly src/Winnow.App/Themes/tokens.axaml, plus its actual App resource reference. The original frontend remains supported during migration. Generated build output, dependencies and disposable captures are outside this authored-source inventory; they cannot supply token authority. Palette runtime parity is separately covered by the exact original token golden matrix. The unchanged original recursive scan could not reach assertions because an old ignored temporary fixture denies traversal; that source-run failure is preserved in checkpoint ninety. This replacement executed successfully on the explicitly defined authored-file boundary."
     },
     {
       "id": "RepositoryHygieneTests.The_deliberate_uses_of_hoard_are_still_there",
       "source": "tests/Winnow.Tests/Enforcement/RepositoryHygieneTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/repository-hygiene.test.ts",
+          "case": "preserves all four deliberate common-noun fragments"
+        }
+      ],
+      "reason": "Preserves all four exact original fragments after whitespace normalization: three in design-system.md and the ActionBarView source copy. No replacement of the common noun or blanket product-name cleanup is allowed."
     },
     {
       "id": "RepositoryHygieneTests.Hoard_appears_nowhere_else_except_the_compatibility_shims",
       "source": "tests/Winnow.Tests/Enforcement/RepositoryHygieneTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/repository-hygiene.test.ts",
+          "case": "rejects the old product name outside the original noun and compatibility exceptions"
+        }
+      ],
+      "reason": "Carries the original authored C#/AXAML/Markdown scan, explicit file/document exclusions and 80-character compatibility window into the Electron gate, extending production scan to TS/TSX/CSS/HTML. TypeScript single-quoted exact legacy IDs are the only added syntax exception. Tests reject a stray product name; compatibility behavior remains separately exercised by retained data-location/journal checks and Electron legacy theme catalogue tests. Generated output and installed dependencies are not authored source. The unchanged original recursive scan could not reach assertions because an old ignored temporary fixture denies traversal; that source-run failure is preserved in checkpoint ninety. This replacement executed successfully on the explicitly defined authored-file boundary."
     },
     {
       "id": "RepositoryHygieneTests.Directory_build_props_still_sets",
       "source": "tests/Winnow.Tests/Enforcement/RepositoryHygieneTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/repository-hygiene.test.ts",
+          "case": "retains shared .NET build property %s=%s"
+        }
+      ],
+      "reason": "All three original theory rows remain exact: Nullable=enable, ImplicitUsings=enable and TreatWarningsAsErrors=true. An additional executed Electron safeguard requires TypeScript strict mode and tsc --noEmit in the production build; it does not replace the retained shared-backend compiler settings."
     },
     {
       "id": "RepositoryHygieneTests.A_hook_refuses_direct_writes_to_backlog_markdown",
       "source": "tests/Winnow.Tests/Enforcement/RepositoryHygieneTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/repository-hygiene.test.ts",
+          "case": "retains the original Claude guard and executes the configured Codex guard without writing files"
+        }
+      ],
+      "reason": "Preserves original Claude hook configuration assertions for PreToolUse, the Backlog path, deny decision and CLI explanation. Additionally locates the configured Codex hook and executes it with all four patch operation forms across task/draft/document/decision/milestone paths, asserting denial; ordinary README edits remain allowed. Inputs are JSON on stdin and no target file is written. This does not claim hook coverage for all shell writes or execution of the Claude jq command."
     },
     {
       "id": "RepositoryHygieneTests.No_fixture_carries_an_unsanitised_steam_account_id",
       "source": "tests/Winnow.Tests/Enforcement/RepositoryHygieneTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/repository-hygiene.test.ts",
+          "case": "allows only the three declared fake Steam IDs in original and Electron fixtures"
+        }
+      ],
+      "reason": "Preserves exact SteamID64 digit-boundary regex and all three originally documented allowed fake values over every authored tests/fixtures file; adds Electron tests/fixtures. Negative controls reject an undeclared synthetic ID and preserve adjacent-digit boundaries. Reads text without printing fixture contents."
     },
     {
       "id": "ScreenshotLightboxStructureTests.The_overlay_is_not_a_popup",
@@ -26388,32 +26430,118 @@
     {
       "id": "DesignTimePreviewTests.Preview_library_loads_a_tile_for_every_fabricated_game",
       "source": "tests/Winnow.Ui.Tests/DesignTimePreviewTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/preview-design.test.tsx",
+          "case": "keeps the complete original preview records and relative history at the API boundary"
+        },
+        {
+          "file": "tests/preview-design.test.tsx",
+          "case": "loads the shell feed, materializes eight Library games and opens populated Stardew Details"
+        },
+        {
+          "file": "tests/electron/preview-design.spec.ts",
+          "case": "isolated preview shell loads exact fabricated feed and eight grouped games then opens populated Stardew details without native side effects"
+        }
+      ],
+      "reason": "Executed for desktop and fullscreen: the real App loads eight Library games from all nine original ownership/release records; the grouped Witcher retains Steam and GOG, Stardew is stale_but_patched and wears the unread badge, and Hollow Knight is bounced. The raw GOG Witcher ownership remains bounced while the group is retired. JSDOM realizes virtual rows through a geometry-only virtualizer adapter; native checks additionally use the real Chromium virtualizer. Both native shells load the shared isolated source fixture with nine ownership rows folded to eight real production Library tiles. The exact Witcher Steam/GOG membership, Stardew Patched bucket and unread badge, and Hollow Knight Bounced bucket are asserted. This is fabricated preview composition, not a backend or provider claim."
     },
     {
       "id": "DesignTimePreviewTests.Preview_library_opens_a_populated_details_modal",
       "source": "tests/Winnow.Ui.Tests/DesignTimePreviewTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/preview-design.test.tsx",
+          "case": "keeps the complete original preview records and relative history at the API boundary"
+        },
+        {
+          "file": "tests/preview-design.test.tsx",
+          "case": "loads the shell feed, materializes eight Library games and opens populated Stardew Details"
+        },
+        {
+          "file": "tests/electron/preview-design.spec.ts",
+          "case": "isolated preview shell loads exact fabricated feed and eight grouped games then opens populated Stardew details without native side effects"
+        }
+      ],
+      "reason": "Both real App journeys select the rendered Stardew Library control, open production Avalon Details through App navigation, assert the populated title and update event, and find the GOG patch-note disclosure/reader action. Preview responses preserve the source patch prose, update IDs and relative playtime history. No backend or production data host is loaded. Both native journeys open Stardew from the actual production Library and inspect its title, update content and exact cached GOG notes. Desktop uses the production modal; fullscreen uses its Details page and reading layer. The shared fixture implements the bridge in memory, with no production preload or backend."
     },
     {
       "id": "DesignTimePreviewTests.Preview_feed_draws_cards_from_the_loaded_library",
       "source": "tests/Winnow.Ui.Tests/DesignTimePreviewTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/preview-design.test.tsx",
+          "case": "keeps the complete original preview records and relative history at the API boundary"
+        },
+        {
+          "file": "tests/preview-design.test.tsx",
+          "case": "attaches the actual %s surface with production descendants and bound content"
+        },
+        {
+          "file": "tests/preview-design.test.tsx",
+          "case": "loads the shell feed, materializes eight Library games and opens populated Stardew Details"
+        },
+        {
+          "file": "tests/electron/preview-design.spec.ts",
+          "case": "isolated preview shell loads exact fabricated feed and eight grouped games then opens populated Stardew details without native side effects"
+        }
+      ],
+      "reason": "The shared source fixture preserves both original loaded shelves and all four ownership/release-resolved cards; every card resolves against the fabricated library. Actual desktop Electron displays both shelves; fullscreen visits each shelf and asserts the exact two active card IDs/names independently from aria-hidden carousel staging. Standalone fullscreen Feed also requires both source cards nearly fully intersecting the viewport, usable painted dimensions, original portrait ratio and midpoint hit testing. Component attachment and fixture tests supplement this actual rendered content evidence. Native verification preserves both exact source shelves with two cards each and resolves every ownership against the loaded Library. Desktop renders both shelves. Fullscreen visits both and checks exact work identities in the active retained row; the adjacent aria-hidden staged row is excluded deliberately. Separate standalone fullscreen geometry checks catch clipped preview cards."
     },
     {
       "id": "DesignTimePreviewTests.Preview_surface_attaches_and_renders",
       "source": "tests/Winnow.Ui.Tests/DesignTimePreviewTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/preview-design.test.tsx",
+          "case": "attaches the actual %s surface with production descendants and bound content"
+        },
+        {
+          "file": "tests/electron/preview-design.spec.ts",
+          "case": "all fifteen isolated source preview surfaces attach with production content and standalone Stardew details at original geometry"
+        }
+      ],
+      "reason": "Executed all fifteen original surface names in both desktop and fullscreen, mounting production components through real QueryClient/theme hooks with explicit in-memory responses. Assert actual production descendants and bound text, exempting only the art-only RowCover counterpart. Explicit adapters: RowCover uses shared Artwork in the production merge-cover wrapper; ActionBar mounts AvalonLibrary containing its actual toolbar; StatsView and GameplayStatsView share the current GameplayDashboard owner (not fifteen distinct component types). Fullscreen uses production filter/platform/library-settings paths. JSDOM is not geometry proof; native 1280x820 attachment coverage also passes. Both native matrices attach all fifteen mapped production surfaces at the original 1280x820. They require real descendants and rendered text except the source art-only RowCover exemption. Actual desktop Details portal and fixed FilterPanel roots supply painted bounds. The fullscreen Feed host additionally requires two usable intersecting 2:3 cards with successful midpoint hit tests after the fixture-only definite-height correction."
     },
     {
       "id": "DesignTimePreviewTests.Shell_preview_opens_and_populates_the_wall",
       "source": "tests/Winnow.Ui.Tests/DesignTimePreviewTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/preview-design.test.tsx",
+          "case": "loads the shell feed, materializes eight Library games and opens populated Stardew Details"
+        },
+        {
+          "file": "tests/electron/preview-design.spec.ts",
+          "case": "isolated preview shell loads exact fabricated feed and eight grouped games then opens populated Stardew details without native side effects"
+        }
+      ],
+      "reason": "Both modes mount actual App, let startup and primary read hooks complete against the isolated bridge, begin on the feed, activate the actual Library navigation control and assert eight rendered game hosts. The shell/provider/runtime graph is production; only host IO is fabricated. Native checks cover actual Chromium startup/materialization without the JSDOM virtualizer adapter. Both native journeys mount the real production App, complete its ordinary load path, switch Feed to Library and require eight materialized game controls. The isolated Electron host imports neither production main nor preload, reports no backend child or external requests, and creates no backend discovery directory or library database. Browser profile files remain within disposable data directories."
     },
     {
       "id": "DesignTimePreviewTests.Details_preview_renders_the_fabricated_game",
       "source": "tests/Winnow.Ui.Tests/DesignTimePreviewTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/preview-design.test.tsx",
+          "case": "attaches the actual %s surface with production descendants and bound content"
+        },
+        {
+          "file": "tests/preview-design.test.tsx",
+          "case": "loads the shell feed, materializes eight Library games and opens populated Stardew Details"
+        },
+        {
+          "file": "tests/electron/preview-design.spec.ts",
+          "case": "all fifteen isolated source preview surfaces attach with production content and standalone Stardew details at original geometry"
+        }
+      ],
+      "reason": "Both standalone GameDetailsView attachments mount production Avalon Details and assert Stardew Valley within the actual Details subtree, including desktop portal content; both real App journeys also open the same fabricated game. Native tests capture actual frames of the populated standalone Details view at the original host geometry. Standalone Details uses the same fabricated Stardew record, actual production composition and original 1280x820 host. Both modes require the real Stardew heading, capture screenshots and inspect updates/GOG notes. This replaces the Avalonia preview attachment boundary with an isolated browser composition; it does not claim IDE-specific preview tooling."
     },
     {
       "id": "DesktopFeedShelfTests.Default_window_with_floating_sidebar_fits_five_covers_without_side_scrolling",

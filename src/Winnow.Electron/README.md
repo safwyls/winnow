@@ -468,6 +468,26 @@ folder. It records the exception type, named call frames, available native error
 build and run metadata. Arbitrary exception messages and file paths are omitted.
 An unavailable logger or native alert does not replace the original exit status.
 
+## Isolated design previews
+
+Run the browser preview from this directory:
+
+```powershell
+npx vite --config tests/preview/vite.config.ts
+```
+
+Open `http://127.0.0.1:8773/?fixture=design` for the production shell with the
+original fabricated library. Add `&mode=fullscreen` for its fullscreen path, or
+`&surface=GameDetailsView` for a standalone populated Details view. The fifteen
+surface names are listed in `tests/preview/design-preview.tsx`.
+
+The shared fixture contains nine ownerships folded into eight games, populated
+updates and GOG patch notes. Its bridge serves in-memory responses and local
+presentation preferences; native actions and unsupported writes are refused.
+It starts no backend and uses no real library. Component and native preview tests
+use these same fixtures and production components. Native tests also block
+external network requests and isolate the Chromium profile.
+
 ## What is available
 
 Avalon's desktop caption shows **FETCHING DETAILS** and the remaining title count
@@ -505,7 +525,7 @@ from fullscreen or closing a dialog shows the current count without changing foc
   declared settings, contained package assets and recovery to the bundled appearance.
 
 Isolated Windows Jump List tasks carry their library directory in every activation. Existing
-profile-based taskbar identities are preserved, and the legacy default `Hoard` directory
+profile-based taskbar identities are preserved, and the legacy default `%LOCALAPPDATA%\Hoard` directory
 shares the canonical default identity. Recent games appear immediately with a fallback or
 previously cached icon, then receive cover artwork as it becomes available. Icons contain
 six square PNG frames from 16px through 128px, cropped from the cover's center. Their content
