@@ -68,7 +68,7 @@ jobs:
       - name: Verify package integrity contracts
         run: |
           ./packaging/Test-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish
-          ./packaging/windows/Test-ElectronPackageContracts.ps1
+          ./packaging/windows/Test-ElectronPackageContracts.ps1 -PublishDirectory artifacts/electron-publish
       - name: Verify packaged frontend and activation
         working-directory: src/Winnow.Electron
         env:

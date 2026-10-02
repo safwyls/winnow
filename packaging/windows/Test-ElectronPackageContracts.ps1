@@ -1,13 +1,21 @@
 [CmdletBinding()]
-param()
+param([string]$PublishDirectory)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Test-ElectronPackageLayout.ps1')
 
+$checks = 0
+if ($PublishDirectory) {
+    $published = (Resolve-Path -LiteralPath $PublishDirectory).Path
+    Assert-WinnowWindowsDirectory $published
+    Assert-WinnowPackagedHashes $published
+    $checks += 2
+    Write-Host "Verified actual Windows package layout and hashes: $published"
+}
+
 # Pure package-byte fixtures. No installer, registry, frontend or backend is launched.
 $root = Join-Path ([IO.Path]::GetTempPath()) ('Winnow-package-contract-' + [guid]::NewGuid().ToString('N'))
 $null = New-Item -ItemType Directory -Path $root
-$checks = 0
 function Assert-Rejected([scriptblock]$Action, [string]$Expected) {
     try { & $Action } catch {
         if ($_.Exception.Message -notlike "*$Expected*") { throw }

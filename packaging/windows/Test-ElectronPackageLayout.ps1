@@ -10,7 +10,9 @@ function Get-WinnowWindowsRequiredFiles([bool]$Electron) {
         $files += @('resources/app.asar', 'resources/icon.ico', 'resources/THIRD-PARTY-NOTICES.md', 'resources/DOTNET-NOTICES.md', 'PACKAGE-SHA256SUMS',
             'LICENSE.electron.txt', 'LICENSES.chromium.html', 'chrome_100_percent.pak', 'chrome_200_percent.pak',
             'resources.pak', 'icudtl.dat', 'v8_context_snapshot.bin', 'locales/en-US.pak',
-            'ffmpeg.dll', 'libEGL.dll', 'libGLESv2.dll', 'backend/Winnow.Backend.deps.json',
+            'ffmpeg.dll', 'd3dcompiler_47.dll', 'dxcompiler.dll', 'dxil.dll',
+            'vk_swiftshader.dll', 'vk_swiftshader_icd.json', 'vulkan-1.dll', 'snapshot_blob.bin',
+            'backend/Winnow.Backend.deps.json',
             'update-helper/Winnow.Update.Helper.exe', 'update-helper/Winnow.Update.Helper.dll',
             'update-helper/Winnow.Update.Helper.runtimeconfig.json', 'update-helper/Winnow.Update.Helper.deps.json',
             'plugins/steamgriddb/plugin.json', 'plugins/steamgriddb/Winnow.Plugin.SteamGridDb.dll')
