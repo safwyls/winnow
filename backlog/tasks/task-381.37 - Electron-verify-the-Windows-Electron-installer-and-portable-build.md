@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 04:42'
+updated_date: '2026-10-02 05:01'
 labels:
   - electron
   - parity
@@ -52,6 +52,8 @@ Review boundary: work on this task only after the user prompts continuation from
 
 <!-- SECTION:PLAN:BEGIN -->
 Build primary Electron Windows packages with existing Inno identity and ZIP layout, bundled independent backend/helper/providers/notices and version provenance. Preserve legacy upgrade/data behavior and protocol/shortcut/single-instance paths. Validate locally without installation, then execute actual install/upgrade/uninstall/recovery smoke on disposable GitHub runners, retaining artifacts and diagnostics. Do not publish a release; continue sequentially under the six-task batch authorization.
+
+Qualify one successful portable upgrade using the exact copied helper from the selected published baseline, alongside the existing four current-helper recovery scenarios; retain baseline helper hashes and version.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -68,4 +70,10 @@ Reviewable milestone210477dd records the passed Windows gate. Earlier implementa
 Post-gate review found material legacy-updater compatibility gap: CI uses repaired current checkout Install-Update.ps1 against old installed files, but published beta.3 embeds old Hidden restart script. Reopened37 to make new Electron startup visible under legacy SW_HIDE and execute actual baseline embedded helper. Strengthen installed seeded database comparison and portable recovery sentinel checks. Prior run remains valid current-helper evidence only; completion revoked until genuine prior-helper path passes.
 
 Legacy compatibility corrected: Windows first ShowWindow is suppressed by SW_HIDE, bounded second explicit show succeeds; background launch stays hidden.21tray tests+typecheck+buildpass. Actual production devbundle legacy-hidden launch visible/healthy2238ms and gracefulexit2307ms,no forcedcleanup. Actual baseline embedded helper now extracted without assembly execution; digest/version evidence and installed seeded library comparison added. Five offline extraction/library/sentinel contract groupspass. NewCI will verify exact released helper upgrade.
+
+Run36965801651 at7b60ee68 has passed the actual beta.3 embedded-helper installer upgrade/uninstall step, including visible restart, both presentation probes and seeded linked identity/ownership preservation. Final portable recovery step is still running. Native background startup2/2 also passed after bounded show retry. Exact beta.3 schema42migrations plus current3migrations retain fixture facts with integrity ok.
+
+Bounded review confirms beta.3 PortableUpdateInstaller copies and runs its own old bundled helper. Current smoke runs new publish helper. Journal/readiness protocol is unchanged and old portable restart already Normal; no concrete defect found, but adding one actual prior-helper successful upgrade before completion.
+
+Fifth portable case implemented with exact full beta helper bundle copied outside replacement tree; every copied file verified and no current-helper fallback allowed. Stage/apply executable path, PID, exit codes and host/DLL hashes retained. Seven offline evidence groups pass (both runtime copy shapes, forbidden destinations/missing bundle, actual invocation binding); all four existing recovery cases preserved. Installer embedded baseline gate36965801651 and native11 are green; added portable prior-helper execution requires next disposable run.
 <!-- SECTION:NOTES:END -->

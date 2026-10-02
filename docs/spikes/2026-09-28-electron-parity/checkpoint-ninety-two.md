@@ -96,8 +96,22 @@ visible with its own backend in 2.24 seconds and closed normally in 2.31 seconds
 no forced cleanup or held locks remained. This was the development bundle with
 the frozen package's backend; reports are in
 `.tmp/task38137-legacy-production-112fad0c6eac4568a5463d4ecd52a4c9`.
-All 21 tray tests and typecheck pass. The actual embedded-baseline-helper CI gate
-is pending, so the Windows task remains open.
+All 21 tray tests and typecheck pass. Both native background-launch tests also
+pass (12.1 seconds), including early restoration during the held initial read;
+intentional background startup remains hidden. Reports are in
+`.tmp/task38137-legacy-background-results` and `.tmp/task38137-legacy-background.log`.
+The [embedded-baseline-helper run 36965801651](https://github.com/safwyls/winnow/actions/runs/36965801651)
+passed at `7b60ee68f7ef80e08ceb70257c040412432d25ed`: all 11 native package checks,
+five installer scenarios and four strengthened portable recovery scenarios passed.
+The installed upgrade used beta.3's `Winnow.UpdateHelper.ps1` resource with SHA-256
+`5ac7ded8ebb545072bb74bfb5b6f9f6f4c0af1490a1527e73fca7f66c90c2659`.
+Its restarted window was visible and responsive, with a healthy installed backend.
+The local retained evidence is `.tmp/task38137-ci-baseline-helper-passed`.
+
+The portable scenarios still use the current helper against the old installation.
+One additional successful upgrade using beta.3's copied portable helper is being
+qualified separately; its journal and readiness protocol match the new frontend.
+The task remains open until that actual prior-helper execution passes.
 
 The local tests did not install software or change installer registration.
 Packages are unsigned. Linux, default delivery entry points, device validation

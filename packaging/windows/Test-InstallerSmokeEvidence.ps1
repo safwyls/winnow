@@ -107,6 +107,68 @@ with sqlite3.connect(sys.argv[1]) as c:
     }, $true))
     if ($calls.Count -ne 3) { throw 'Successful replacement and both recovery branches must each check preserved files.' }
     Write-Host 'Every preserved file is checked and both recovery branches invoke the same byte-preservation assertion.'
+
+    $copyFunction = $portableAst.Find({ param($node)
+        $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Copy-PreviousPortableHelper'
+    }, $true)
+    Invoke-Expression $copyFunction.Extent.Text
+    foreach ($runtime in @('win-x64', 'linux-x64')) {
+        $installation = Join-Path $root $runtime
+        $bundle = Join-Path $installation 'update-helper'
+        $null = New-Item -ItemType Directory -Path (Join-Path $bundle 'nested-runtime') -Force
+        @{ version = '0.2.0-beta.3'; runtime = $runtime } | ConvertTo-Json |
+            Set-Content -LiteralPath (Join-Path $installation 'release-info.json') -Encoding utf8
+        $hostName = if ($runtime -eq 'win-x64') { 'Winnow.Update.Helper.exe' } else { 'Winnow.Update.Helper' }
+        [IO.File]::WriteAllText((Join-Path $bundle $hostName), 'previous host fixture')
+        [IO.File]::WriteAllText((Join-Path $bundle 'Winnow.Update.Helper.dll'), 'previous assembly fixture')
+        [IO.File]::WriteAllText((Join-Path $bundle 'nested-runtime/companion'), 'previous runtime fixture')
+        $copy = Copy-PreviousPortableHelper $installation (Join-Path $root "$runtime-helper-copy") $runtime
+        if ($copy.version -cne '0.2.0-beta.3' -or $copy.copiedFiles -ne 3 -or ($copy.roles -join ',') -cne 'stage,apply' -or
+            $copy.hostSha256 -cne (Get-FileHash -LiteralPath (Join-Path $bundle $hostName)).Hash.ToLowerInvariant() -or
+            $copy.assemblySha256 -cne (Get-FileHash -LiteralPath (Join-Path $bundle 'Winnow.Update.Helper.dll')).Hash.ToLowerInvariant() -or
+            [IO.File]::ReadAllText((Join-Path $copy.copiedDirectory 'nested-runtime/companion')) -cne 'previous runtime fixture') {
+            throw 'The prior helper copy lost exact version, bytes or intended stage/apply roles.'
+        }
+        Assert-Refused { Copy-PreviousPortableHelper $installation (Join-Path $installation 'unsafe-copy') $runtime }
+        Assert-Refused { Copy-PreviousPortableHelper $installation $copy.copiedDirectory $runtime }
+        # The created fixture DLL is the only deletion here; a missing previous helper
+        # must fail instead of selecting the available current publish directory.
+        Remove-Item -LiteralPath (Join-Path $bundle 'Winnow.Update.Helper.dll')
+        Assert-Refused { Copy-PreviousPortableHelper $installation (Join-Path $root "$runtime-missing-copy") $runtime }
+    }
+    Write-Host 'Both platform helper copies preserve the complete old bundle and refuse overlap, reuse or fallback.'
+
+    $invokeFunction = $portableAst.Find({ param($node)
+        $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Invoke-Helper'
+    }, $true)
+    Invoke-Expression $invokeFunction.Extent.Text
+    $helper = $copy.executable
+    $scenario = 'previous-helper'
+    $helperCalls = [Collections.Generic.List[object]]::new()
+    $helperCallsPath = Join-Path $root 'helper-calls.json'
+    $script:invokedHelpers = @()
+    function Start-SmokeProcess([string]$File, [string[]]$Arguments) {
+        $script:invokedHelpers += [pscustomobject]@{ file = $File; command = $Arguments[0] }
+        $fake = [pscustomobject]@{ Id = 17; ExitCode = 0; StartInfo = [pscustomobject]@{ FileName = $File } }
+        $fake | Add-Member ScriptMethod WaitForExit { param($milliseconds) return $true }
+        return $fake
+    }
+    Invoke-Helper @('stage')
+    Invoke-Helper @('apply')
+    $recorded = @(Get-Content -LiteralPath $helperCallsPath -Raw | ConvertFrom-Json)
+    if ($recorded.Count -ne 2 -or ($script:invokedHelpers.command -join ',') -cne 'stage,apply' -or
+        @($script:invokedHelpers | Where-Object { $_.file -cne $helper }).Count -ne 0 -or
+        @($recorded | Where-Object { $_.implementation -cne 'previous-release' -or $_.executable -cne $helper -or
+            -not $_.exited -or $_.exitCode -ne 0 -or $_.hostSha256 -cne $copy.hostSha256 }).Count -ne 0) {
+        throw 'Prior-helper stage/apply must execute the selected copy and retain matching process/hash evidence.'
+    }
+    $scenarioLoop = $portableAst.Find({ param($node)
+        $node -is [Management.Automation.Language.ForEachStatementAst] -and $node.Variable.VariablePath.UserPath -eq 'scenario'
+    }, $true)
+    if (($scenarioLoop.Condition.SafeGetValue() -join ',') -cne 'external-data,internal-data,failed-startup,interrupted-replacement,previous-helper') {
+        throw 'The four current-helper scenarios must remain ahead of the additional previous-helper scenario.'
+    }
+    Write-Host 'Actual helper invocation binding records the chosen copy for stage/apply; all four existing scenarios remain.'
 } finally {
     $resolved = [IO.Path]::GetFullPath($root)
     $prefix = Join-Path ([IO.Path]::GetTempPath()) 'Winnow-installer-evidence-'

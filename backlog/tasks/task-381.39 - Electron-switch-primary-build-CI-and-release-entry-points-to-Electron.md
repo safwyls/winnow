@@ -5,6 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
+updated_date: '2026-10-02 04:45'
 labels:
   - electron
   - parity
@@ -79,3 +80,9 @@ Review boundary: work on this task only after the user prompts continuation from
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Read-only CI prerequisite audit: native suite currently1007tests/110files. Canonical existing variables are WINNOW_BACKEND_PATH, WINNOW_ACTIVATION_HELPER_PATH, WINNOW_ELECTRON_FIXTURE_PATH and WINNOW_UPDATE_HELPER_PATH, all absolute apphost paths. Fifteen older specs still hardcode task-specific fixture DLL paths; twelve rebuild in beforeAll, three assume outputs already exist. Migrate to shared prebuilt helper, build unified Fixtures plus Update.Helper once per clean runner, retain probe bundling/assertions. Native shards must use separate VMs/checkouts, one worker and file-preserving scheduling, distinct evidence artifacts and complete accounting. Existing workflow only builds normal backend and cannot establish complete native gate. No implementation started in39.
+<!-- SECTION:NOTES:END -->

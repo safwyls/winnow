@@ -5,7 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 04:36'
+updated_date: '2026-10-02 04:47'
 labels:
   - electron
   - parity
@@ -60,4 +60,6 @@ Preserve Ubuntu24.04 x64 Debian and tar.gz release names, launcher, protocol and
 Preparation during Windows packaging identified a Linux startup risk to verify: BackendInstallationLease currently creates its adjacent lock for every release manifest, including /opt/winnow package-managed installs. Debian non-root launch cannot assume parent /opt is writable. Assess managed and read-only backend lease behavior before Linux smoke; do not bypass Chromium sandbox to make startup pass.
 
 Implementation paused at safe boundary because37review found legacy embedded updater still uses hidden restart. Preserve prepared Linux baseline scripts/probe edits; no Linux completion claims.
+
+Read-only optional macOS audit: secondary package.json has DMG target and backend publisher recognizes osx-x64/osx-arm64, but primary publisher/verifier and release matrix exclude macOS. No macOS CI, signing/notarization or device/package evidence. Secret persistence remains Windows DPAPI with no Keychain; in-memory sign-in paths do not establish device support. macOS updater remains release-page-only and package config has no URL association declaration. Document optional DMG as unverified/outside supported release matrix; no support expansion.
 <!-- SECTION:NOTES:END -->

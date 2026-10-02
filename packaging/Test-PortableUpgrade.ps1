@@ -15,7 +15,8 @@ $root = Join-Path ([IO.Path]::GetTempPath()) ('Winnow-portable-smoke-' + [guid]:
 $null = New-Item -ItemType Directory -Path $root
 $helperName = if ($Runtime -eq 'win-x64') { 'Winnow.Update.Helper.exe' } else { 'Winnow.Update.Helper' }
 $executableName = if ($Runtime -eq 'win-x64') { 'Winnow.exe' } else { 'Winnow' }
-$helper = Join-Path (Resolve-Path -LiteralPath $PublishDirectory).Path "update-helper/$helperName"
+$currentHelper = Join-Path (Resolve-Path -LiteralPath $PublishDirectory).Path "update-helper/$helperName"
+$helper = $currentHelper
 $Archive = (Resolve-Path -LiteralPath $Archive).Path
 $PreviousArchive = (Resolve-Path -LiteralPath $PreviousArchive).Path
 $processes = [Collections.Generic.List[Diagnostics.Process]]::new()
@@ -37,10 +38,21 @@ function Invoke-Helper([string[]]$Arguments, [bool]$ExpectFailure = $false) {
     # Wait for the helper itself, allowing archive IO and its two-minute readiness check.
     $helperTimeout = [TimeSpan]::FromMinutes(5)
     $process = Start-SmokeProcess $helper $Arguments
+    $call = [ordered]@{
+        command = $Arguments[0]; executable = $process.StartInfo.FileName; processId = $process.Id
+        implementation = if ($scenario -eq 'previous-helper') { 'previous-release' } else { 'current-release' }
+        hostSha256 = (Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash.ToLowerInvariant()
+        expectedFailure = $ExpectFailure; exited = $false; exitCode = $null
+    }
+    $helperCalls.Add($call)
+    ConvertTo-Json -InputObject @($helperCalls.ToArray()) -Depth 5 | Set-Content -LiteralPath $helperCallsPath -Encoding utf8
     if (-not $process.WaitForExit([int]$helperTimeout.TotalMilliseconds)) {
         throw "Portable helper '$($Arguments[0])' did not exit within $($helperTimeout.TotalMinutes) minutes (PID $($process.Id))."
     }
     $code = $process.ExitCode
+    $call.exited = $true
+    $call.exitCode = $code
+    ConvertTo-Json -InputObject @($helperCalls.ToArray()) -Depth 5 | Set-Content -LiteralPath $helperCallsPath -Encoding utf8
     if (($code -eq 0) -eq $ExpectFailure) {
         $detail = ''
         $journalIndex = [Array]::IndexOf($Arguments, '--journal')
@@ -59,6 +71,45 @@ function Invoke-Helper([string[]]$Arguments, [bool]$ExpectFailure = $false) {
             }
         }
         throw "Unexpected helper exit ${code}: $($Arguments[0]) ($scenario).$detail"
+    }
+}
+function Copy-PreviousPortableHelper([string]$Installation, [string]$Destination, [string]$Runtime) {
+    $installationPath = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($Installation))
+    $destinationPath = [IO.Path]::GetFullPath($Destination)
+    $comparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
+    if ($destinationPath.Equals($installationPath, $comparison) -or
+        $destinationPath.StartsWith($installationPath + [IO.Path]::DirectorySeparatorChar, $comparison) -or
+        (Test-Path -LiteralPath $destinationPath)) {
+        throw 'The previous helper copy must be new and outside the installation being replaced.'
+    }
+    $manifest = Get-Content -LiteralPath (Join-Path $installationPath 'release-info.json') -Raw | ConvertFrom-Json
+    if ($manifest.runtime -cne $Runtime) { throw 'Previous helper runtime differs from the selected portable release.' }
+    $hostName = if ($Runtime -eq 'win-x64') { 'Winnow.Update.Helper.exe' } elseif ($Runtime -eq 'linux-x64') { 'Winnow.Update.Helper' } else { throw 'Unsupported previous helper runtime.' }
+    $source = Join-Path $installationPath 'update-helper'
+    foreach ($required in @($hostName, 'Winnow.Update.Helper.dll')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $source $required) -PathType Leaf)) {
+            throw "The selected previous release has no bundled $required; current-helper fallback is forbidden."
+        }
+    }
+    $files = @(Get-ChildItem -LiteralPath $source -Recurse -File -Force)
+    if (@(Get-ChildItem -LiteralPath $source -Recurse -Force | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }).Count) {
+        throw 'Previous helper bundle contains a linked entry.'
+    }
+    Copy-Item -LiteralPath $source -Destination $destinationPath -Recurse
+    foreach ($file in $files) {
+        $relative = [IO.Path]::GetRelativePath($source, $file.FullName)
+        if ((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash -cne
+            (Get-FileHash -LiteralPath (Join-Path $destinationPath $relative) -Algorithm SHA256).Hash) {
+            throw "Copied previous helper differs at $relative."
+        }
+    }
+    [pscustomobject]@{
+        version = $manifest.version; runtime = $manifest.runtime
+        sourceDirectory = $source; copiedDirectory = $destinationPath; copiedFiles = $files.Count
+        executable = Join-Path $destinationPath $hostName
+        hostSha256 = (Get-FileHash -LiteralPath (Join-Path $destinationPath $hostName) -Algorithm SHA256).Hash.ToLowerInvariant()
+        assemblySha256 = (Get-FileHash -LiteralPath (Join-Path $destinationPath 'Winnow.Update.Helper.dll') -Algorithm SHA256).Hash.ToLowerInvariant()
+        roles = @('stage', 'apply'); frontendReadiness = 'replacement release frontend guard'
     }
 }
 function Read-LibraryEvidence([string]$Database) {
@@ -90,8 +141,13 @@ function Stop-ReplacedApplication([string]$Journal, [string]$Installation, [stri
     Stop-SmokeBackend $DataDirectory
 }
 try {
-    foreach ($scenario in @('external-data', 'internal-data', 'failed-startup', 'interrupted-replacement')) {
+    foreach ($scenario in @('external-data', 'internal-data', 'failed-startup', 'interrupted-replacement', 'previous-helper')) {
         Write-Host "Starting portable upgrade scenario: $scenario ($Runtime)."
+        $helper = $currentHelper
+        $helperCalls = [Collections.Generic.List[object]]::new()
+        $evidenceDirectory = Join-Path $PSScriptRoot '../artifacts/portable-smoke-logs'
+        $null = New-Item -ItemType Directory -Path $evidenceDirectory -Force
+        $helperCallsPath = Join-Path $evidenceDirectory "$scenario-helper-calls.json"
         $inside = $scenario -in @('internal-data', 'interrupted-replacement')
         $scenarioRoot = Join-Path $root $scenario
         $install = Join-Path $scenarioRoot 'portable'
@@ -114,6 +170,13 @@ try {
         if ($old.HasExited) { throw 'Previous release failed after database initialization.' }
         Stop-SmokeProcess $old
         Stop-SmokeBackend $data
+        if ($scenario -eq 'previous-helper') {
+            # The released app copies its own helper before replacing its installation.
+            # Keep this entire bundle outside that tree; never substitute the new helper.
+            $previousHelper = Copy-PreviousPortableHelper $install (Join-Path $scenarioRoot 'previous-helper') $Runtime
+            $previousHelper | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $evidenceDirectory 'previous-helper.json') -Encoding utf8
+            $helper = $previousHelper.executable
+        }
         & python -c 'import sqlite3,sys; c=sqlite3.connect(sys.argv[1]); c.execute("INSERT INTO works(id,name) VALUES (?,?)", (-159,"Portable upgrade fixture")); c.commit(); c.close()' $database
         if ($LASTEXITCODE -ne 0) { throw 'Could not seed the disposable previous-release library.' }
         $libraryBefore = Read-LibraryEvidence $database
