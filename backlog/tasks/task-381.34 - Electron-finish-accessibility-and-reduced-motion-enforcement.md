@@ -1,11 +1,11 @@
 ---
 id: TASK-381.34
 title: 'Electron: finish accessibility and reduced-motion enforcement'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
-updated_date: '2026-10-02 01:11'
+updated_date: '2026-10-02 01:12'
 labels:
   - electron
   - parity
@@ -63,7 +63,7 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.35 within the user-authorized TASK-381.31 through TASK-381.35 batch.
+- [x] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.35 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -84,6 +84,8 @@ Original verification: all 18 cases across the 13 assigned methods pass unchange
 Renderer verification is complete: 379 distinct tests across 17 files pass, TypeScript passes, and independent source-scope review found no remaining material blocker. Native first run passed footer/cover and completed motion behavior checks, but exposed AX text-node/class-membership harness assumptions and teardown timeouts; affected cases are being rerun with readiness checks and process diagnostics. Production remains frozen except the reviewed removal of an unnecessary timer role from the native wall-clock element. Evidence drafts: .tmp/task38134-ui-evidence.json and .tmp/task38134-ui-mapping.json.
 
 Final verification: 18 unchanged original cases, 379 distinct focused checks across 17 files, seven distinct native checks and TypeScript/build pass. Explicit CDP domain cleanup preserves the five-second shutdown bound with no owned survivors. Nominal 8 logical-unit badges are measured through actual Chromium border quantization. Actual generic AX nodes remain exposed, so the exact Avalonia negative peer mechanism is narrowly framework-specific. Inventory: 1670 ported, 706 retained-backend, 41 framework-specific, 18 pending, zero partial. Complete gate correctly remains incomplete. Details and qualified limits: checkpoint-eighty-nine.md.
+
+Reviewable implementation milestone: 61b2be3a. Native ledger and final screenshots reviewed; all owned processes closed. Proceeding to TASK-381.35 as the fifth and final authorized task.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
