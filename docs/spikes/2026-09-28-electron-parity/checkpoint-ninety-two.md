@@ -44,8 +44,8 @@ screenshots are in `.tmp/task38137-packaged-results`; stdout is
 
 `.github/workflows/electron-packages.yml` builds this package from a clean
 checkout, runs packaged activation, creates Inno and ZIP artifacts, then selects
-digest-verified previous published releases. Its existing five installer scenarios
-and four portable scenarios retain integrity, cancellation, shutdown timeout,
+digest-verified previous published releases. Its five installer scenarios
+and five portable scenarios retain integrity, cancellation, shutdown timeout,
 locked binaries, preserved user data, interrupted replacement and paired restore
 assertions. Successful upgrades also run the native desktop/fullscreen probe.
 The workflow retains package, baseline and recovery evidence without publishing.
@@ -108,10 +108,19 @@ The installed upgrade used beta.3's `Winnow.UpdateHelper.ps1` resource with SHA-
 Its restarted window was visible and responsive, with a healthy installed backend.
 The local retained evidence is `.tmp/task38137-ci-baseline-helper-passed`.
 
-The portable scenarios still use the current helper against the old installation.
-One additional successful upgrade using beta.3's copied portable helper is being
-qualified separately; its journal and readiness protocol match the new frontend.
-The task remains open until that actual prior-helper execution passes.
+The [final Windows run 36967166296](https://github.com/safwyls/winnow/actions/runs/36967166296)
+passed at `c847ebba5da4762ce51a98579f4613c6806ca640`: all 11 native checks,
+five installer scenarios and five portable scenarios passed. The fifth portable
+case copied beta.3's complete 199-file helper bundle outside the replacement tree
+and used it for checksum rejection, staging and application. Its host SHA-256 was
+`ecace3b5374864382dca2c541e70224b614243b0f664abdf5b7ce9cd800da8e4`;
+the helper assembly SHA-256 was
+`43a3a7ce85cbc65a9f800219ecb2f44c571b71de88d615eeebea5b12bd60f6a7`.
+The journal reached ready phase 5 with no failure; the replacement frontend's
+native probe passed and closed cleanly. Both installer and portable paths now
+exercise the actual released updater. Retained local evidence is
+`.tmp/task38137-ci-final-passed`; the workflow retains the same evidence and
+validated distributable artifact names listed above.
 
 The local tests did not install software or change installer registration.
 Packages are unsigned. Linux, default delivery entry points, device validation

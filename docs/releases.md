@@ -15,7 +15,7 @@ has a separate local build described in
 the existing distribution and update contracts. Windows x64 has passed packaged launch,
 installation, previous-release upgrade, uninstall and portable recovery checks on a
 disposable runner, including the older release's embedded installer updater.
-A separate case qualifies the copied portable helper from that release.
+A separate successful case uses the copied portable helper from that release.
 Supported Linux packaging has a separate validation gate.
 
 The primary Electron Windows package can be built separately with
