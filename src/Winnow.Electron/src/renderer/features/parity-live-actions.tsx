@@ -90,7 +90,7 @@ export function LiveListActions({
   }
   if (list?.isLive)
     return (
-      <div className="avalon-applied-filters" aria-label="Live list rules">
+      <div className="avalon-applied-filters" role="group" aria-label="Live list rules">
         <span className={compact ? 'sr-only' : undefined}>
           {dirty ? `Unsaved rules for ${list.name}` : `Rules for ${list.name}`}
         </span>

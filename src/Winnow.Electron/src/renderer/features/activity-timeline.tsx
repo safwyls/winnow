@@ -44,7 +44,7 @@ export function TimelinePlot({
   const maximum = Math.max(1, ...series.bars.map((bar) => bar.hours))
   const span = Math.max(1, series.end - series.start)
   return (
-    <div ref={element} className="activity-timeline-plot" aria-label={series.periodLabel}>
+    <div ref={element} className="activity-timeline-plot" role="group" aria-label={series.periodLabel}>
       {series.end > series.start && (
         <>
           <div className="activity-timeline-grid" aria-hidden="true" />
@@ -94,7 +94,7 @@ export function TimelinePlot({
             <span>{timelineDateLabel(series.start)}</span>
             <span>Today</span>
           </div>
-          <div className="activity-timeline-coverage" aria-label="Monthly record coverage">
+          <div className="activity-timeline-coverage" role="img" aria-label="Monthly record coverage">
             {series.coverage.map((range) => (
               <span
                 key={range.start}

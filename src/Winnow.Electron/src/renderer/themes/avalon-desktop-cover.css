@@ -34,10 +34,6 @@
   .avalon-desktop-cover[data-revealed] > .avalon-cover > .artwork {
     filter: none;
   }
-  .avalon-desktop-cover .avalon-unread {
-    top: 7px;
-    left: 7px;
-  }
   .avalon-desktop-cover .avalon-cover-fallback {
     transition: opacity 140ms;
   }

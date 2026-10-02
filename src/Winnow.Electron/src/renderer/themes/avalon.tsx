@@ -50,7 +50,7 @@ import { avalonFacts, matchesAvalonRules, type AvalonFactMap, type AvalonWorkspa
 import { AvalonFilterPanel } from './avalon-filter-panel'
 import { AvalonAction, AvalonActions } from './avalon-actions'
 import { AvalonBrowseSpine } from './avalon-browse-spine'
-import { AvalonCollectionLists } from './avalon-collection-lists'
+import { AvalonCollectionLists, collectionName } from './avalon-collection-lists'
 import { AvalonRailFooter } from './avalon-rail-footer'
 import { ownershipStores, ownershipDescription } from './avalon-store-marks'
 import {
@@ -89,6 +89,8 @@ import { revealShelfCover } from './avalon-row-motion'
 import { homePageStart, homeShelfPosition, initialGridPosition } from './avalon-navigation'
 import { AvalonFullscreenGrid, type AvalonGridHandle, type AvalonSavedGrid } from './avalon-fullscreen-grid'
 import { FullscreenStatus } from '../components/FullscreenStatus'
+import { FullscreenHints } from '../components/FullscreenHints'
+import { AnnouncedName } from '../components/AnnouncedName'
 import { RootBumper, SectionLabel, SectionNavigation } from '../components/SectionNavigation'
 import { AvalonShelfIndicator } from './avalon-shelf-indicator'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
@@ -456,18 +458,14 @@ export function AvalonShell(context: ThemeContext) {
         </AvalonCoverWorkspace.Provider>
       </main>
       <footer className="avalon-footer">
-        <span>
-          {fullscreen
-            ? `Arrows to browse · Enter to view${shellPage === 'library' ? ' · Y · Library options' : shellPage === 'discover' ? ' · Y · More' : ''} · Esc to go back`
-            : 'Your library. Rediscovered.'}
-        </span>
-        <span>
-          {fullscreen
-            ? shellPage === 'discover'
-              ? 'LT / RT  Shelf'
-              : 'F11 · Back to desktop'
-            : 'Ctrl+K · Search'}
-        </span>
+        {fullscreen ? (
+          <FullscreenHints page={shellPage} />
+        ) : (
+          <>
+            <span>Your library. Rediscovered.</span>
+            <span>Ctrl+K · Search</span>
+          </>
+        )}
       </footer>
     </div>
   )
@@ -802,7 +800,11 @@ export function AvalonDiscover(context: ThemeContext) {
               <header>
                 <div className="avalon-shelf-label" title={current.blurb}>
                   <h2>{current.title}</h2>
-                  <span className="avalon-shelf-count" aria-label={`${current.rows.length} games`}>
+                  <span
+                    className="avalon-shelf-count"
+                    role="status"
+                    aria-label={`${current.rows.length} games`}
+                  >
                     {current.rows.length.toLocaleString()}
                   </span>
                 </div>
@@ -1751,17 +1753,20 @@ export function AvalonLibrary(context: ThemeContext) {
                             : game.entries.some((entry) => list.releaseIds.includes(entry.releaseId)),
                         ).length
                         return (
-                          <button
-                            key={list.id}
-                            data-avalon-list={list.id}
-                            aria-pressed={listId === String(list.id)}
-                            onClick={() => {
-                              if (listId !== String(list.id)) listState.selectList(String(list.id))
-                              setPanel(null)
-                            }}
-                          >
-                            {list.name} · {count.toLocaleString()} games{list.isLive ? ' · Live list' : ''}
-                          </button>
+                          <AnnouncedName key={list.id} name={collectionName(list.name, count)}>
+                            <button
+                              data-avalon-list={list.id}
+                              aria-label={collectionName(list.name, count)}
+                              aria-pressed={listId === String(list.id)}
+                              onClick={() => {
+                                if (listId !== String(list.id)) listState.selectList(String(list.id))
+                                setPanel(null)
+                              }}
+                            >
+                              {list.name} · {count.toLocaleString()} {count === 1 ? 'game' : 'games'}
+                              {list.isLive ? ' · Live list' : ''}
+                            </button>
+                          </AnnouncedName>
                         )
                       })}
                       {!library.data?.lists.length && (

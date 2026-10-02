@@ -45,7 +45,7 @@ export function Platforms({
           >
             {platform.toUpperCase()}
             {attention[platform] && (
-              <span className="platform-attention" aria-label="Needs attention">
+              <span className="platform-attention" role="img" aria-label="Needs attention">
                 ●
               </span>
             )}

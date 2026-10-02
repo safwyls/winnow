@@ -300,6 +300,12 @@ describe('integrated frontend', () => {
     expect(root.classList.contains('reduced-motion')).toBe(true)
     expect(root.style.getPropertyValue('--bg')).toBe(ground)
     expect(root.dataset.dimDormant).toBe('false')
+    fireEvent.click(await screen.findByRole('button', { name: 'Theme Studio' }))
+    fireEvent.change(await screen.findByRole('slider', { name: 'Theme text size' }), {
+      target: { value: '120' },
+    })
+    await waitFor(() => expect(root.style.getPropertyValue('--theme-text-scale')).toBe('1.2'))
+    expect(root.classList.contains('reduced-motion')).toBe(true)
     await changeSurface(false)
     expect(root.style.getPropertyValue('--fullscreen-text-scale')).toBe('1')
     expect(root.classList.contains('reduced-motion')).toBe(false)

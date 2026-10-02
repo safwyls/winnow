@@ -96,7 +96,11 @@ export async function loadExternalTheme(
   return validateThemeDefinition(module.default, theme.id)
 }
 
-export function applyThemeProfile(profile: ThemeProfile, root: HTMLElement = document.documentElement): void {
+export function applyThemeProfile(
+  profile: ThemeProfile,
+  root: HTMLElement = document.documentElement,
+  { manageMotion = true }: { manageMotion?: boolean } = {},
+): void {
   const palette = resolvedThemeColors(profile)
   const typography = resolvedTypography(profile)
   const avalonStyle = profile.themeId === 'avalon' ? avalonPaletteStyle(avalonPaletteId(profile)) : undefined
@@ -180,7 +184,7 @@ export function applyThemeProfile(profile: ThemeProfile, root: HTMLElement = doc
   root.dataset.cardStyle = profile.layout.cardStyle
   root.dataset.detailArrangement = profile.layout.detailArrangement
   root.dataset.theme = profile.themeId
-  root.classList.toggle('reduced-motion', profile.appearance.reducedMotion)
+  if (manageMotion) root.classList.toggle('reduced-motion', profile.appearance.reducedMotion)
   root.style.colorScheme =
     avalonStyle?.colorScheme ??
     (contrastRatio('#000000', palette.background) >= contrastRatio('#ffffff', palette.background)
@@ -211,7 +215,7 @@ export interface ThemeRuntime {
 
 export function useThemeRuntime(
   registeredBuiltins: ThemeDefinition[],
-  options?: { loadTheme?: typeof loadExternalTheme },
+  options?: { loadTheme?: typeof loadExternalTheme; manageMotion?: boolean },
 ): ThemeRuntime {
   const [avalonCatalogue, setAvalonCatalogue] = useState<AvalonThemeCatalogue>({
     themes: [],
@@ -325,8 +329,9 @@ export function useThemeRuntime(
   }, [])
 
   useEffect(() => {
-    applyThemeProfile(profile)
-  }, [profile, avalonCatalogue])
+    // The application composes profile and fullscreen preferences; standalone hosts use the profile.
+    applyThemeProfile(profile, document.documentElement, { manageMotion: options?.manageMotion })
+  }, [profile, avalonCatalogue, options?.manageMotion])
 
   const popoutTypography = resolvedTypography(profile)
   useEffect(() => {

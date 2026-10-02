@@ -230,7 +230,7 @@
     height: 8px;
     flex-shrink: 0;
     border-radius: 50%;
-    background: var(--flare, #ef7546);
+    background: var(--avalon-flare, #ff4d93);
   }
   .merge-reason {
     min-height: 3em;

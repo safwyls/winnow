@@ -6,6 +6,10 @@ import { useViewState } from '../viewState'
 import { orderedLists } from '../features/parity-list-prompt'
 import { avalonFacts, matchesAvalonRules, type AvalonWorkspace } from './avalon-filters'
 import './avalon-collection-lists.css'
+import { AnnouncedName } from '../components/AnnouncedName'
+
+export const collectionName = (name: string, count: number) =>
+  `${name}, ${count} ${count === 1 ? 'game' : 'games'}`
 
 export function AvalonCollectionLists({
   lists,
@@ -54,17 +58,18 @@ export function AvalonCollectionLists({
                     : game.entries.some((entry) => members.has(entry.releaseId)),
                 ).length
                 return (
-                  <button
-                    key={list.id}
-                    className="avalon-list-row"
-                    data-avalon-list={list.id}
-                    aria-label={`${list.name}, ${count} ${count === 1 ? 'game' : 'games'}`}
-                    aria-pressed={selected === String(list.id)}
-                    onClick={() => select(String(list.id))}
-                  >
-                    <span>{list.name}</span>
-                    <small>{count.toLocaleString()}</small>
-                  </button>
+                  <AnnouncedName key={list.id} name={collectionName(list.name, count)}>
+                    <button
+                      className="avalon-list-row"
+                      data-avalon-list={list.id}
+                      aria-label={collectionName(list.name, count)}
+                      aria-pressed={selected === String(list.id)}
+                      onClick={() => select(String(list.id))}
+                    >
+                      <span>{list.name}</span>
+                      <small>{count.toLocaleString()}</small>
+                    </button>
+                  </AnnouncedName>
                 )
               })}
             </div>

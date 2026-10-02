@@ -25,11 +25,11 @@ import {
   AvalonShell,
 } from '../src/renderer/themes/avalon'
 import { clearViewState, useViewState } from '../src/renderer/viewState'
-import type { LibraryFilter, LibraryGame } from '../src/renderer/api/types'
+import type { GameList, LibraryFilter, LibraryGame } from '../src/renderer/api/types'
 
-const fixtures = vi.hoisted(() => ({ workspace: undefined as unknown }))
+const fixtures = vi.hoisted(() => ({ workspace: undefined as unknown, lists: [] as GameList[] }))
 vi.mock('../src/renderer/api/hooks', () => ({
-  useLibrary: () => ({ data: { lists: [] } }),
+  useLibrary: () => ({ data: { lists: fixtures.lists } }),
   useWorkspace: () => ({ data: fixtures.workspace }),
 }))
 vi.mock('../src/renderer/features/LibraryTools', () => ({
@@ -132,6 +132,26 @@ function mount(ctx: ThemeContext, Screen: ComponentType<ThemeContext>) {
 }
 
 it.each(['desktop', 'fullscreen'] as const)(
+  'names Deep Rock Galactic on the outer library and feed buttons in %s',
+  (mode) => {
+    vi.setSystemTime(new Date('2026-09-05T12:00:00Z'))
+    const ctx = context(mode)
+    const rock = game(1, { title: 'Deep Rock Galactic' })
+    const view = render(<AvalonCover context={ctx} game={rock} />)
+    let button = screen.getByRole('button', { name: 'View Deep Rock Galactic' })
+    expect(button.matches('[data-work-id="1"]')).toBe(true)
+    expect(button.querySelector('[aria-label]')).toBeNull()
+    expect(document.querySelector('.avalon-unread')).toBeNull()
+    view.rerender(<AvalonCover context={ctx} game={rock} reason="Never played" />)
+    button = screen.getByRole('button', { name: 'View Deep Rock Galactic' })
+    expect(button.getAttribute('aria-description')).toBe('Never played')
+    fireEvent.click(button)
+    expect(ctx.openGame).toHaveBeenCalledWith(1)
+    vi.useRealTimers()
+  },
+)
+
+it.each(['desktop', 'fullscreen'] as const)(
   'Patched navigation announces its twelve games and meaning in %s',
   (mode) => {
     const ctx = context(mode)
@@ -149,6 +169,7 @@ it.each(['desktop', 'fullscreen'] as const)(
 )
 beforeEach(() => {
   fixtures.workspace = undefined
+  fixtures.lists = []
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -181,6 +202,28 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+})
+
+it('retains and announces the fullscreen list picker host through Co-op two, Weekend two and Weekend one', () => {
+  const ctx = context('fullscreen')
+  ctx.page = 'library'
+  ctx.games = [game(1), game(2)]
+  fixtures.lists = [{ id: 1, name: 'Co-op', isLive: false, releaseIds: [1, 2], revision: 'r1' }]
+  const view = mount(ctx, AvalonLibrary)
+  fireEvent.click(screen.getByRole('button', { name: 'More' }))
+  fireEvent.click(screen.getByRole('button', { name: 'My lists' }))
+  const choice = screen.getByRole('button', { name: 'Co-op, 2 games' })
+  const status = choice.nextElementSibling!
+  expect(status.textContent).toBe('')
+  fixtures.lists = [{ ...fixtures.lists[0], name: 'Weekend', revision: 'r2' }]
+  view.update({ ...ctx })
+  expect(screen.getByRole('button', { name: 'Weekend, 2 games' })).toBe(choice)
+  expect(status.textContent).toBe('Weekend, 2 games')
+  fixtures.lists = [{ ...fixtures.lists[0], releaseIds: [1], revision: 'r3' }]
+  view.update({ ...ctx })
+  expect(screen.getByRole('button', { name: 'Weekend, 1 game' })).toBe(choice)
+  expect(status.textContent).toBe('Weekend, 1 game')
+  expect(status.getAttribute('aria-live')).toBe('polite')
 })
 
 describe.each(['desktop', 'fullscreen'] as const)('Avalon in %s', (mode) => {

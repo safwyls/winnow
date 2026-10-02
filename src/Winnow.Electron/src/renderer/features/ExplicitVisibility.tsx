@@ -4,7 +4,7 @@ import { useApiQuery } from '../api/hooks'
 export function ExplicitVisibility() {
   const counts = useApiQuery<{ explicitHidden: number }>('library.visibility')
   return (
-    <div className="muted" aria-label="Explicit content visibility" aria-live="polite">
+    <div className="muted" role="status" aria-label="Explicit content visibility" aria-live="polite">
       {counts.error ? (
         <p className="reading-prose">
           The explicit content count could not be loaded.{' '}

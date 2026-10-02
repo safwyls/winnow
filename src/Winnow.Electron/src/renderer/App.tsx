@@ -55,7 +55,7 @@ export function App() {
     feed = useFeed(readsStarted),
     workspace = useWorkspace(readsStarted),
     client = useQueryClient(),
-    runtime = useThemeRuntime(builtins)
+    runtime = useThemeRuntime(builtins, { manageMotion: false })
   const [connection, setConnection] = useState<ConnectionState>({
     connected: false,
     message: 'Connecting to your library…',

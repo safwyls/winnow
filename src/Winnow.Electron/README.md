@@ -567,6 +567,9 @@ Installing a developer theme retains its native trust confirmation.
 
 Fullscreen keeps LB/RB glyphs on either side of the centered main menu. Library, Activity
 and Settings keep LT/RT glyphs beside their local sections.
+The root footer uses the same bundled Xbox-style glyphs when a standard controller is
+connected, with named Browse, Select, Back and contextual actions. Disconnecting restores
+keyboard guidance. Controller families are not inferred from device names.
 Bold selection reserves its width, so changing sections keeps the strip stationary; selected
 sections use a neutral underline and focused actions use the accent. Repeated controller Menu
 presses retain one quick menu and return to the original control on Back or Resume. Cursor

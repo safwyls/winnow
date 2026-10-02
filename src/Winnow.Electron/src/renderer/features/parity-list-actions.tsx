@@ -80,7 +80,7 @@ export function ListOrderActions({
     }
   }
   return (
-    <div className="avalon-applied-filters" aria-label={`Edit ${list.name}`}>
+    <div className="avalon-applied-filters" role="group" aria-label={`Edit ${list.name}`}>
       <span>{list.name} · Handpicked</span>
       <button disabled={busy || blocked || index <= 0} onClick={() => void write('earlier')}>
         Move earlier

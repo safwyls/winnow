@@ -202,7 +202,7 @@ export function RiftLibrary(context: ThemeContext) {
             </button>
           </div>
           <div className="rift-library-filters" data-open={filtersOpen || undefined}>
-            <div className="rift-filter-lenses" aria-label="Library filters">
+            <div className="rift-filter-lenses" role="group" aria-label="Library filters">
               {[
                 { id: 'all', label: 'All games' },
                 { id: 'installed', label: 'Installed' },

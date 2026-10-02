@@ -1,11 +1,11 @@
 ---
 id: TASK-381.34
 title: 'Electron: finish accessibility and reduced-motion enforcement'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
-updated_date: '2026-10-01 22:59'
+updated_date: '2026-10-02 01:11'
 labels:
   - electron
   - parity
@@ -55,10 +55,10 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Each assigned source accessibility/visual rule has equivalent checks against meaningful Electron DOM/accessibility behavior or an exact framework-specific rationale.
-- [ ] #2 Desktop and fullscreen controls retain names, focus visibility, announced changes and reduced-motion behavior through authored themes and dynamic surfaces.
-- [ ] #3 All 13 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 Each assigned source accessibility/visual rule has equivalent checks against meaningful Electron DOM/accessibility behavior or an exact framework-specific rationale.
+- [x] #2 Desktop and fullscreen controls retain names, focus visibility, announced changes and reduced-motion behavior through authored themes and dynamic surfaces.
+- [x] #3 All 13 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -66,8 +66,28 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 - [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.35 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Inspect all thirteen frozen enforcement contracts and execute their unchanged source checks. 2. Compare meaningful Electron accessibility, dynamic naming, semantic color/badge rules and reduced-motion behavior; fix demonstrated gaps on desktop and fullscreen, including root controller/keyboard guidance. 3. Verify focused enforcement/component checks and serialized native accessibility-tree, focus, live-update and motion behavior with bundled/authored themes. 4. Record precise framework dispositions where source assertions are framework-bound, integrate exact evidence and screenshots, update documentation and commit before continuing to TASK-381.35.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Observation from TASK-381.31 native review to assess during accessibility work: Avalon fullscreen root footer always renders keyboard wording even while Controller connected and simulated Y/A operate correctly (avalon.tsx root footer). Existing LB/RB root hints remain visible. Verify the intended keyboard/controller guidance against the visual spec and existing input-hint components; do not describe the current footer as modality-sensitive before it is implemented and checked.
+
+TASK-381.33 completed at c7689072. Starting task four of five. Root owns official mapping, documentation, Backlog and commits. Unchanged source/.NET lane precedes a frozen native build; broad component/live API gate remains reserved for TASK-381.35.
+
+Original verification: all 18 cases across the 13 assigned methods pass unchanged, with scanned AXAML and facet inputs matching the frozen revision. Source/.NET lane is closed; ledger is .tmp/task38134-source-evidence.json. Renderer audit is correcting generic named hosts, dynamic count wording, unread token/badge alignment and root controller guidance. Root review also identified a possible conflict between profile and fullscreen reduced-motion class ownership, now under focused verification before the native freeze.
+
+Renderer verification is complete: 379 distinct tests across 17 files pass, TypeScript passes, and independent source-scope review found no remaining material blocker. Native first run passed footer/cover and completed motion behavior checks, but exposed AX text-node/class-membership harness assumptions and teardown timeouts; affected cases are being rerun with readiness checks and process diagnostics. Production remains frozen except the reviewed removal of an unnecessary timer role from the native wall-clock element. Evidence drafts: .tmp/task38134-ui-evidence.json and .tmp/task38134-ui-mapping.json.
+
+Final verification: 18 unchanged original cases, 379 distinct focused checks across 17 files, seven distinct native checks and TypeScript/build pass. Explicit CDP domain cleanup preserves the five-second shutdown bound with no owned survivors. Nominal 8 logical-unit badges are measured through actual Chromium border quantization. Actual generic AX nodes remain exposed, so the exact Avalonia negative peer mechanism is narrowly framework-specific. Inventory: 1670 ported, 706 retained-backend, 41 framework-specific, 18 pending, zero partial. Complete gate correctly remains incomplete. Details and qualified limits: checkpoint-eighty-nine.md.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Delivered live accessible names, whole-renderer enforcement, authored-theme reduced motion, data-role tabular typography and fullscreen keyboard/controller guidance. Verified desktop and fullscreen with 18 source, 379 focused and seven native checks. Eleven methods ported, one retained facet contract and one exact framework peer disposition. Build/typecheck pass; see checkpoint-eighty-nine.md.
+<!-- SECTION:FINAL_SUMMARY:END -->

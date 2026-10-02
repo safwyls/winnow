@@ -146,7 +146,11 @@ export function PluginAccount({ plugin, busy }: { plugin: PluginSnapshot; busy: 
           {challenge && (
             <div className="conflict-panel">
               <p>Enter this code on the provider's sign-in page:</p>
-              <strong className="device-code" aria-label={`Sign-in code: ${challenge.userCode}`}>
+              <strong
+                className="device-code"
+                role="status"
+                aria-label={`Sign-in code: ${challenge.userCode}`}
+              >
                 {challenge.userCode}
               </strong>
               <p className="plugin-verification-url">{challenge.verificationUrl}</p>

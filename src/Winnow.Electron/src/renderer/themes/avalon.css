@@ -418,8 +418,8 @@
   }
   .avalon-unread {
     position: absolute;
-    top: 8px;
-    left: 8px;
+    top: 7px;
+    left: 7px;
     width: 10px;
     height: 10px;
     background: var(--avalon-flare);

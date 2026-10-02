@@ -35,6 +35,33 @@ afterEach(() => {
 })
 
 describe('theme runtime recovery and lifecycle', () => {
+  it('does not overwrite application-owned motion when palette and typography are reapplied', async () => {
+    document.documentElement.classList.add('reduced-motion')
+    const { result } = renderHook(() => useThemeRuntime(builtins, { manageMotion: false }))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.profile.appearance.reducedMotion).toBe(false)
+    for (const palette of ['paper', 'bluehour'] as const) {
+      act(() =>
+        result.current.setProfile((current) => ({
+          ...current,
+          appearance: {
+            ...current.appearance,
+            palette,
+            typography: {
+              'avalon:winnow': {
+                headingFont: 'IBM Plex Mono',
+                interfaceFont: 'Plus Jakarta Sans',
+                dataFont: 'IBM Plex Mono',
+                sizePercent: 120,
+              },
+            },
+          },
+        })),
+      )
+      expect(document.documentElement.classList.contains('reduced-motion')).toBe(true)
+    }
+    document.documentElement.classList.remove('reduced-motion')
+  })
   it('publishes resolved typography after hydration and only repeats it for semantic typography changes', async () => {
     const publish = vi.fn(async () => {})
     window.winnow.setPopoutTypography = publish

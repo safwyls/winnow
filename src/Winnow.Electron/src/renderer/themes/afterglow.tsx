@@ -261,9 +261,9 @@ export function AfterglowDiscover(context: ThemeContext) {
           <motion.div
             className="hero-copy"
             key={`copy-${hero.workId}`}
-            initial={{ opacity: 0, y: 12 }}
+            initial={reducedMotion ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
+            transition={{ duration: reducedMotion ? 0 : 0.35 }}
           >
             <span className="eyebrow">{firstShelf?.title ?? 'From your collection'}</span>
             <h2>{hero.title}</h2>
@@ -308,7 +308,7 @@ export function AfterglowDiscover(context: ThemeContext) {
           <span className="hero-caption">One more world worth opening.</span>
         </div>
         {context.mode === 'fullscreen' ? (
-          <div className="focus-filmstrip" aria-label="Recommendations">
+          <div className="focus-filmstrip" role="group" aria-label="Recommendations">
             {firstItems.slice(0, 6).map((item, index) => (
               <button
                 key={item.releaseId}

@@ -31,7 +31,7 @@ export function ReceptionLine({
         <span
           key={figure.source}
           title={figure.tooltip}
-          role={compact ? undefined : 'group'}
+          role="group"
           aria-label={compact ? undefined : figure.automationName}
         >
           {index > 0 && <span aria-hidden="true"> · </span>}

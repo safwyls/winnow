@@ -45,6 +45,15 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [accessibility and reduced-motion checkpoint](checkpoint-eighty-nine.md)
+records eighteen unchanged source cases, 379 distinct focused cases and seven
+distinct native checks passing. Live names, numeric roles, unread badge geometry,
+authored-theme reduction and fullscreen root guidance are verified on both
+surfaces. The inventory contains 1,670 ported, 706 retained-backend and 41
+framework-specific methods, with eighteen pending and none partial. The exact
+Avalonia negative peer mechanism remains a documented framework disposition.
+TASK-381.35 is the final task in the authorized batch.
+
 The [typography and floating layout checkpoint](checkpoint-eighty-eight.md) records
 thirty unchanged source cases, 212 focused cases and sixteen distinct native cases
 passing. Fullscreen Studio, local browser controls, segmented focus and header

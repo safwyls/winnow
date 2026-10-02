@@ -546,7 +546,7 @@ export function AvalonDetailsLayout({
         cinematic={fullscreen}
         className="avalon-detail-backdrop"
       />
-      <header className="avalon-details-header" aria-label="Game identity">
+      <header className="avalon-details-header" role="group" aria-label="Game identity">
         {!fullscreen && (
           <Artwork workId={game?.headerWorkId ?? workId} eager className="avalon-detail-cover" />
         )}
@@ -584,7 +584,7 @@ export function AvalonDetailsLayout({
               {sourceSummary}
             </p>
           )}
-          <div className="avalon-details-actions" aria-label="Game actions">
+          <div className="avalon-details-actions" role="group" aria-label="Game actions">
             {primary && primaryAction(primary, workspace.data) && (
               <EntryActions
                 key={primary.ownershipId}
@@ -1024,6 +1024,7 @@ function MoreActions({
         open && (
           <div
             className="avalon-details-menu"
+            role="group"
             data-controller-scope
             ref={menu}
             aria-label="More game actions"

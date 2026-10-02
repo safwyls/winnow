@@ -198,11 +198,18 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
     await tick(10)
     const cover = screen.getByRole('button', { name: 'View Outer Wilds' })
     expect(cover.getAttribute('aria-description')).toBe('Bought 3 years ago, never opened.')
-    expect(screen.queryByRole('status')).toBeNull()
+    expect(
+      document.querySelector('.avalon-feedback [role="status"], .avalon-feed-card-receipt [role="status"]'),
+    ).toBeNull()
     await click('Not interested')
-    expect(screen.getByRole('status').textContent).toContain('Off the feed.')
+    expect(
+      document.querySelector('.avalon-feedback [role="status"], .avalon-feed-card-receipt [role="status"]')
+        ?.textContent,
+    ).toContain('Off the feed.')
     await click('Undo')
-    expect(screen.queryByRole('status')).toBeNull()
+    expect(
+      document.querySelector('.avalon-feedback [role="status"], .avalon-feed-card-receipt [role="status"]'),
+    ).toBeNull()
   })
   it('keeps desktop recommendation captions and membership tooltips separate from fullscreen hero actions', async () => {
     const { context } = mount(mode)
@@ -408,7 +415,10 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
     const cover = screen.getByRole('button', { name: 'View Game 1' })
     expect(cover.getAttribute('aria-description')).toBe('Reason for Game 1.')
     await click('Not now')
-    expect(screen.getByRole('status').textContent).toContain('Back on 29 Oct 2026')
+    expect(
+      document.querySelector('.avalon-feedback [role="status"], .avalon-feed-card-receipt [role="status"]')
+        ?.textContent,
+    ).toContain('Back on 29 Oct 2026')
     expect(screen.getByRole('button', { name: 'View Game 1' })).toBe(cover)
     await click('Undo')
     expect(screen.queryByRole('progressbar')).toBeNull()
@@ -453,7 +463,10 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
     failWrite = false
     await click('Not interested')
-    expect(screen.getByRole('status').textContent).toContain('Off the feed.')
+    expect(
+      document.querySelector('.avalon-feedback [role="status"], .avalon-feed-card-receipt [role="status"]')
+        ?.textContent,
+    ).toContain('Off the feed.')
     expect(
       request.mock.calls
         .filter(([value]) => value.route === 'feedFeedback')

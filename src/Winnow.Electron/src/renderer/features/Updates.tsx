@@ -226,7 +226,12 @@ function NativeUpdateCaption({ mode }: { mode: 'desktop' | 'fullscreen' }) {
     value = update.snapshot
   if (!value || !(value.canRestart || value.canDownload || value.canCancel)) return null
   return (
-    <div className={`update-caption mode-${mode}`} aria-label="Application update" title={value.status}>
+    <div
+      className={`update-caption mode-${mode}`}
+      role="group"
+      aria-label="Application update"
+      title={value.status}
+    >
       {value.canCancel ? (
         <div className="update-caption-progress">
           <span>Updating</span>

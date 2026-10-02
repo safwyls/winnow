@@ -67,6 +67,8 @@ export async function assertAccessibleControls(page: Page, scope: Locator) {
     }
     return result
   } finally {
+    await session.send('Accessibility.disable')
+    await session.send('DOM.disable')
     await session.detach()
   }
 }

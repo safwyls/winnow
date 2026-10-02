@@ -275,6 +275,7 @@ export function LibraryCutBar({
       </div>
       <span
         className="avalon-cut-count"
+        role="status"
         aria-label={`${games.length.toLocaleString()} → ${visible.toLocaleString()}`}
       >
         <span>{games.length.toLocaleString()}</span>

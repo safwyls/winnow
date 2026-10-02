@@ -6,6 +6,7 @@ import accept from '../features/assets/xbox_button_a_outline.svg?raw'
 import back from '../features/assets/xbox_button_b_outline.svg?raw'
 import applyGlyph from '../features/assets/xbox_button_y_outline.svg?raw'
 import './avalon-fullscreen-filters.css'
+import { AnnouncedName } from '../components/AnnouncedName'
 
 type Option = { value: string | number; label: string; count: number }
 export type FullscreenFilterGroup = {
@@ -303,28 +304,32 @@ export function AvalonFullscreenFilters({
         <div className="fullscreen-filter-choices">
           {group
             ? group.options.map((option, index) => (
-                <button
+                <AnnouncedName
                   key={option.value}
-                  data-filter-row={index}
-                  data-filter-column={0}
-                  aria-label={`${option.label}, ${option.count} matching ${option.count === 1 ? 'title' : 'titles'}`}
-                  aria-pressed={group.selected.includes(option.value)}
-                  disabled={!option.count && !group.selected.includes(option.value)}
-                  onClick={() =>
-                    update({
-                      ...draft,
-                      [group.key]: group.selected.includes(option.value)
-                        ? group.selected.filter((value) => value !== option.value)
-                        : [...group.selected, option.value],
-                    })
-                  }
+                  name={`${option.label}, ${option.count} matching ${option.count === 1 ? 'title' : 'titles'}`}
                 >
-                  <span aria-hidden className="fullscreen-filter-check">
-                    {group.selected.includes(option.value) ? '✓' : ''}
-                  </span>
-                  <span>{option.label}</span>
-                  <span className="fullscreen-filter-option-count">{option.count}</span>
-                </button>
+                  <button
+                    data-filter-row={index}
+                    data-filter-column={0}
+                    aria-label={`${option.label}, ${option.count} matching ${option.count === 1 ? 'title' : 'titles'}`}
+                    aria-pressed={group.selected.includes(option.value)}
+                    disabled={!option.count && !group.selected.includes(option.value)}
+                    onClick={() =>
+                      update({
+                        ...draft,
+                        [group.key]: group.selected.includes(option.value)
+                          ? group.selected.filter((value) => value !== option.value)
+                          : [...group.selected, option.value],
+                      })
+                    }
+                  >
+                    <span aria-hidden className="fullscreen-filter-check">
+                      {group.selected.includes(option.value) ? '✓' : ''}
+                    </span>
+                    <span>{option.label}</span>
+                    <span className="fullscreen-filter-option-count">{option.count}</span>
+                  </button>
+                </AnnouncedName>
               ))
             : selections.map((option, index) => (
                 <button

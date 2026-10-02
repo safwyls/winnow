@@ -1,4 +1,5 @@
 @import './components/reading-prose.css';
+@import './components/data-typography.css';
 @layer base, components, themes;
 @layer base {
   :root {

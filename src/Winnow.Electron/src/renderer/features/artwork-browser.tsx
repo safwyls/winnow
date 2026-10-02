@@ -362,6 +362,7 @@ export function ArtworkBrowser({
         <div
           ref={slotRow}
           className="artwork-browser-slots"
+          role="group"
           aria-label="Artwork slots"
           data-controller-page
           onKeyDown={(event) => {

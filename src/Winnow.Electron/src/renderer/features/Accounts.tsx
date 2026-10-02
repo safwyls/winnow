@@ -464,7 +464,7 @@ function SpendingDetails({ value, mode }: { value: AccountStats; mode: Mode }) {
               <button>Back</button>
             </Dialog.Close>
           </header>
-          <div className="account-reading-body" tabIndex={0} aria-label="Spending breakdown">
+          <div className="account-reading-body" role="region" tabIndex={0} aria-label="Spending breakdown">
             <SpendDetails value={value} />
           </div>
         </Dialog.Content>

@@ -3,6 +3,7 @@ import type { LibraryFilter, LibraryGame } from '../api/types'
 import { matchesBucket } from './avalon-data'
 import { libraryBucketLabel } from './avalon-library-chrome'
 import { AvalonFullscreenFilters } from './avalon-fullscreen-filters'
+import { AnnouncedName } from '../components/AnnouncedName'
 import {
   AVALON_FACET_GROUPS,
   avalonRuleOptions,
@@ -270,24 +271,29 @@ export function AvalonFilterPanel({
               </summary>
               <div className="avalon-filter-options">
                 {options.map((option) => (
-                  <label key={option.value}>
-                    <input
-                      type="checkbox"
-                      aria-label={`${option.label}, ${option.count} matching ${option.count === 1 ? 'title' : 'titles'}`}
-                      disabled={option.count === 0 && !selected.includes(option.value)}
-                      checked={selected.includes(option.value)}
-                      onChange={(event) =>
-                        update({
-                          ...draft,
-                          [key]: event.target.checked
-                            ? [...selected, option.value]
-                            : selected.filter((value) => value !== option.value),
-                        })
-                      }
-                    />
-                    <span>{option.label}</span>
-                    <small>{option.count}</small>
-                  </label>
+                  <AnnouncedName
+                    key={option.value}
+                    name={`${option.label}, ${option.count} matching ${option.count === 1 ? 'title' : 'titles'}`}
+                  >
+                    <label>
+                      <input
+                        type="checkbox"
+                        aria-label={`${option.label}, ${option.count} matching ${option.count === 1 ? 'title' : 'titles'}`}
+                        disabled={option.count === 0 && !selected.includes(option.value)}
+                        checked={selected.includes(option.value)}
+                        onChange={(event) =>
+                          update({
+                            ...draft,
+                            [key]: event.target.checked
+                              ? [...selected, option.value]
+                              : selected.filter((value) => value !== option.value),
+                          })
+                        }
+                      />
+                      <span>{option.label}</span>
+                      <small>{option.count}</small>
+                    </label>
+                  </AnnouncedName>
                 ))}
               </div>
             </details>

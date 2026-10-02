@@ -125,6 +125,16 @@ afterEach(() => {
 })
 
 describe.each(['desktop', 'fullscreen'] as const)('Afterglow cards in %s', (mode) => {
+  it('starts reduced-motion hero copy fully visible without a positional or opacity entrance', () => {
+    const ctx = context(mode)
+    ctx.profile.appearance.reducedMotion = true
+    mount(ctx, AfterglowDiscover)
+    const copy = document.querySelector<HTMLElement>('.hero-copy')!
+    expect(copy).not.toBeNull()
+    expect(copy.style.opacity).toBe('1')
+    expect(copy.style.transform).toBe('none')
+    expect(screen.queryByRole('button', { name: 'Pause rotation' })).toBeNull()
+  })
   it.each([
     ['Discover', AfterglowDiscover],
     ['Library', AfterglowLibrary],

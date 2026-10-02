@@ -485,7 +485,7 @@ export function MergeQueue({
           : 'nothing waiting'
       })()}
       {section !== 'all' && (
-        <span className="merge-count-cut" aria-label={mergeScreenCopy.filteredProposals}>
+        <span className="merge-count-cut" role="group" aria-label={mergeScreenCopy.filteredProposals}>
           {cards.filter((card) => !card.actId).length}
           {mergeScreenCopy.countArrow}
           {shown.filter((card) => !card.actId).length}
@@ -674,6 +674,7 @@ export function MergeQueue({
                           {card.rows.some((row) => row.unread && card.included.includes(row.workId)) && (
                             <span
                               className="merge-unread"
+                              role="img"
                               aria-label={mergeActionCopy.unreadTip}
                               title={mergeActionCopy.unreadTip}
                             />
@@ -823,6 +824,7 @@ export function MergeQueue({
                               {row.unread && (
                                 <span
                                   className="merge-unread"
+                                  role="img"
                                   aria-label={mergeActionCopy.unreadTip}
                                   title={mergeActionCopy.unreadTip}
                                 />

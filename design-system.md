@@ -1223,7 +1223,7 @@ sorting, measured text sizes, data provenance or supported device behavior.
   and does not render inside a popup at all. Every focusable control carries a visible ring;
   `Volt` everywhere except on a `Volt` fill, where it is `VoltInk`.
 - Full keyboard grid navigation: arrows, `/` to search, `Enter` to launch.
-- **An accessible name belongs on a control that has an automation peer of its own** — in
+- **In Avalonia, an accessible name belongs on a control that has an automation peer of its own** — in
   practice the `UserControl` root, the `Button`, the `TextBox`, the `CheckBox` — and never on a
   `Border`, a `Panel` or a `Grid`. Avalonia gives those a `NoneAutomationPeer` and Windows
   prunes it from the control view, the tree a screen reader walks; the element's children still
@@ -1231,10 +1231,10 @@ sorting, measured text sizes, data provenance or supported device behavior.
   name to, the element states `AutomationProperties.AccessibilityView="Control"`, which is
   consulted before the peer's own answer and puts it back in that tree with its name intact.
   Verified against Avalonia 11.3.20.
-- **A name on a `TextBlock` is discarded.** `TextBlockAutomationPeer` returns the `Text` and
+- **An Avalonia name on a `TextBlock` is discarded.** `TextBlockAutomationPeer` returns the `Text` and
   never reads `AutomationProperties.Name`, so a `TextBlock` says its `Text` and nothing else.
   Put the words in the `Text`.
-- **A value that changes while its surface is on screen travels on
+- **In Avalonia, a value that changes while its surface is on screen travels on
   `AutomationProperties.ItemStatus`, or on a bound `TextBlock`'s `Text`.** Changing a name at
   runtime raises no UIA event, so the new one is never announced; `ItemStatus` is the one
   attached property that raises one.
@@ -1253,7 +1253,17 @@ sorting, measured text sizes, data provenance or supported device behavior.
   root must be named as well as its content groups. `InteractiveControlNameTests` checks the
   authored controls; `docs/spikes/accessibility-navigation.ps1` exercises the Windows UIA
   provider on an isolated sample library.
+- **Electron names semantic DOM hosts.** Tiles and feed cards name their outer buttons;
+  a labelled container uses the appropriate group, status or image role. Decorative artwork
+  stays hidden from the accessibility tree. Interactive names include changing list names
+  and singular/plural counts. A displayed list or filter choice announces changes through
+  a polite, atomic status beside the control; its initial arrival stays silent.
+  Browser accessibility-tree checks verify exposed names and
+  states separately from source scans; neither proves a particular screen reader's speech.
 - **Reduced motion disables the hover saturation animation** — state snaps instead of fading.
+  Electron preserves the fullscreen motion preference through theme and typography changes.
+  Its JavaScript-driven fades also settle immediately; disabling CSS transitions alone is
+  insufficient for those surfaces.
 - **When the interface cannot state a proportion, it says what it is doing and what it is
   waiting for, in words, in a status field, and offers Cancel when there is one.** This is the
   Stores panel's pattern — a `Volt`-edged status field naming where to look, plus Cancel —

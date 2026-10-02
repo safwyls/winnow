@@ -97,7 +97,7 @@ export function FullscreenPlatforms({ onChildChange }: { onChildChange(child: bo
                 onClick={() => open(platform)}
               >
                 {attention && (
-                  <span className="platform-attention" aria-label="Needs attention">
+                  <span className="platform-attention" role="img" aria-label="Needs attention">
                     ●
                   </span>
                 )}

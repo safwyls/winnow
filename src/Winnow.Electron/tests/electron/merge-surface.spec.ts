@@ -202,8 +202,9 @@ test('queue transitions affect only row fill and reason ink and reduced motion r
   expect(transitions).toHaveLength(6)
   for (const transition of transitions) {
     expect(transition.className).toMatch(/^merge-(row|reason)/)
-    expect(transition.property).toBe(transition.className === 'merge-reason' ? 'color' : 'background-color')
-    expect(transition.duration).toBe(transition.className === 'merge-reason' ? '0.12s' : '0.14s')
+    const reason = transition.className.split(/\s+/).includes('merge-reason')
+    expect(transition.property).toBe(reason ? 'color' : 'background-color')
+    expect(transition.duration).toBe(reason ? '0.12s' : '0.14s')
   }
   await page.evaluate(() => (window as any).mergeSurfaceProbe.configure({ reduced: true }))
   const card = page.getByRole('article', { name: 'Bastion proposal', exact: true }),

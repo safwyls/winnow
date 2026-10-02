@@ -1,11 +1,11 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 31,
+    "pending": 18,
     "partial": 0,
-    "ported": 1659,
-    "retained-backend": 705,
-    "framework-specific": 40
+    "ported": 1670,
+    "retained-backend": 706,
+    "framework-specific": 41
   },
   "tests": [
     {
@@ -3208,17 +3208,58 @@
     {
       "id": "AutomationNameReachabilityTests.Every_accessible_name_sits_on_an_element_that_reaches_the_control_view",
       "source": "tests/Winnow.Tests/Enforcement/AutomationNameReachabilityTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "every authored intrinsic accessible name belongs to a name-capable semantic host"
+        },
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "rejects generic named hosts, empty controls and local motion instead of accepting their rendered children"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "exposes outer card peers and live exact list and filter names through real API changes"
+        }
+      ],
+      "reason": "Replaces the full AXAML/type scan with a whole-renderer TSX AST scan of explicit accessible names, native name-capable hosts and valid ARIA roles. Four reviewed named wrappers must forward names to actual semantic hosts; an unknown wrapper, generic/presentation host and invalid conditional role fail closed. Explicit implicit-time support preserves wall-clock semantics. Dynamic expressions and wrapper internals remain reviewed contracts rather than arbitrary JavaScript dataflow proof; Chromium tree verification is supplied separately by the native owner. Native Chromium CDP inspects exposed outer Library/feed button nodes, exact dynamic list/filter names, enabled state, and live properties on both surfaces. The complete JSX control-host inventory belongs to the companion enforcement test; this bounded native sample does not replace that inventory."
     },
     {
       "id": "AutomationNameReachabilityTests.The_tile_and_the_card_name_themselves_on_their_outermost_control",
       "source": "tests/Winnow.Tests/Enforcement/AutomationNameReachabilityTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "names Deep Rock Galactic on the outer library and feed buttons in %s"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "exposes outer card peers and live exact list and filter names through real API changes"
+        }
+      ],
+      "reason": "Both desktop and fullscreen render the source Deep Rock Galactic/NeverPlayed fixture at 2026-09-05T12:00:00Z through the shared cover used by Library and feed. The outer actionable button owns the name and work identity, the feed adds its reason description, inner artwork is unnamed, and activation opens the same work. Source UserControl/Button types become an HTML button in both paths; native owner additionally checks Chromium accessibility hosts. Actual production Library and feed .avalon-cover elements expose named button AX peers on desktop/fullscreen. Decorative title content is separately ignored; visible keyboard focus remains on the outer interactive host. Electron uses an HTML button for both presentations, adapting Avalonia UserControl/Button types without moving the name to a decorative wrapper."
     },
     {
       "id": "AutomationNameReachabilityTests.Avalonias_own_peers_hand_back_the_name_from_the_new_host_and_not_from_the_old",
       "source": "tests/Winnow.Tests/Enforcement/AutomationNameReachabilityTests.cs",
-      "status": "pending"
+      "status": "framework-specific",
+      "tests": [
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "names Deep Rock Galactic on the outer library and feed buttons in %s"
+        },
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "rejects generic named hosts, empty controls and local motion instead of accepting their rendered children"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "exposes outer card peers and live exact list and filter names through real API changes"
+        }
+      ],
+      "reason": "The literal Avalonia UserControl/Button/Border automation-peer and ControlView exclusion assertions have no exact Chromium equivalent: a named generic HTML container remains an exposed generic AX node, so its name is not discarded as the original Border peer requires. Native Chromium tests execute the positive semantic replacement on both production outer buttons and require aria-hidden production decoration to be ignored; static enforcement rejects authored generic named hosts. Those tests support the separately ported outer-host/name contracts but do not pretend to reproduce the original negative peer mechanism. No manual screen-reader speech verification is claimed."
     },
     {
       "id": "DetailsModalStructureTests.Tabs_keep_their_stable_order_and_own_their_content",
@@ -3407,12 +3448,50 @@
     {
       "id": "InteractiveControlNameTests.List_and_filter_names_follow_counts_and_list_renames",
       "source": "tests/Winnow.Tests/Enforcement/InteractiveControlNameTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/accessibility-composition.test.tsx",
+          "case": "keeps the displayed list host and announces Co-op two to Weekend two to Weekend one without an arrival announcement"
+        },
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "retains and announces the fullscreen list picker host through Co-op two, Weekend two and Weekend one"
+        },
+        {
+          "file": "tests/accessibility-composition.test.tsx",
+          "case": "updates and announces the same Steam choice from one matching title to two (fullscreen=%s)"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "exposes outer card peers and live exact list and filter names through real API changes"
+        }
+      ],
+      "reason": "Preserves the original Co-op 2 games -> Weekend 2 games -> Weekend 1 game and Steam 1 matching title -> Steam 2 matching titles sequences. Desktop list rail and fullscreen My lists retain the same control DOM node and update its accessible name; both filter surfaces do the same. Each displayed choice has a retained initially empty polite atomic status that announces subsequent name changes, distinguishing live output from AX name mutation. Native owner verifies the actual tree/live property separately. Real API list writes preserve exact Co-op, 2 games to Weekend, 2 games to Weekend, 1 game; active-list membership changes preserve Steam, 1 matching title to Steam, 2 matching titles. Both surfaces retain original control/status nodes, start announcement regions empty, then expose exact changed text with AX status, polite and atomic properties. Library result counts are inspected as concatenated actual AX text children. No operating-system speech reader is claimed."
     },
     {
       "id": "InteractiveControlNameTests.Interactive_controls_have_a_name_or_plain_text_content",
       "source": "tests/Winnow.Tests/Enforcement/InteractiveControlNameTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "every authored intrinsic interactive control has a name or associated label or text"
+        },
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "rejects generic named hosts, empty controls and local motion instead of accepting their rendered children"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "exposes outer card peers and live exact list and filter names through real API changes"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "fullscreen root guidance follows controller connection and keyboard return with main bumper hints retained"
+        }
+      ],
+      "reason": "Whole-renderer AST scan checks native controls, explicit interactive roles and every authored tabIndex, including -1 and conditional programmatic focus hosts. Authored name, associated nonempty label or eligible text is required; empty string/null/false/undefined expressions, empty wrapping labels and icon-only controls fail. Binding identifiers are accepted as authored dynamic content as in the original scan; this is not runtime resolution of every possible expression or arbitrary spread/alias. Actual filter controls and root guidance are checked using Chromium AX nodes, names and enabled state. Root guidance exposes actual local glyphs and available commands, keeps main LB/RB, and returns to keyboard wording on disconnect under the existing connection policy. Complete intrinsic/custom interactive coverage remains the companion source-aware enforcement inventory."
     },
     {
       "id": "OutboundLinkTests.The_five_allowed_schemes_survive",
@@ -3521,17 +3600,110 @@
     {
       "id": "ReducedMotionCoverageTests.Every_AXAML_motion_surface_is_in_the_reduced_motion_inventory",
       "source": "tests/Winnow.Tests/Enforcement/ReducedMotionCoverageTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "inventories every CSS motion owner and every JavaScript scheduling site"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "authored theme suppresses live OS and saved profile motion across cards and dialogs"
+        },
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "expansion marks yield to Play and reduced motion snaps all cover transitions"
+        },
+        {
+          "file": "tests/electron/merge-surface.spec.ts",
+          "case": "queue transitions affect only row fill and reason ink and reduced motion removes both"
+        }
+      ],
+      "reason": "Closed replacement inventory contains every current motion-declaring CSS file (14) and every module with direct RAF, timeout, interval, WAAPI animate or Motion JSX sites (38), with exact call counts so a new site in an existing owner also requires review. Each JS owner is classified as visual or nonvisual and visual owners point to behavior coverage. This scans direct known call forms, not arbitrary aliases or whole-program effects. It replaces the original four AXAML motion owners with current actual renderer ownership. The complete Electron CSS/JavaScript motion inventory is enforced separately. Native verification exercises real application cards, Details, authored profile/system/fullscreen preferences and Afterglow Motion hero, plus production cover/merge component hosts. Literal four-file AXAML inventory is not presented as an Electron file list."
     },
     {
       "id": "ReducedMotionCoverageTests.Every_motion_surface_has_a_style_that_removes_motion",
       "source": "tests/Winnow.Tests/Enforcement/ReducedMotionCoverageTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "suppresses all shared CSS motion for application and OS reduction including pseudo-elements"
+        },
+        {
+          "file": "tests/theme-runtime.test.tsx",
+          "case": "does not overwrite application-owned motion when palette and typography are reapplied"
+        },
+        {
+          "file": "tests/app.test.tsx",
+          "case": "shares persisted appearance and dormancy while keeping fullscreen motion and sizing independent on reentry"
+        },
+        {
+          "file": "tests/afterglow-cards.test.tsx",
+          "case": "starts reduced-motion hero copy fully visible without a positional or opacity entrance"
+        },
+        {
+          "file": "tests/avalon-row-motion.test.ts",
+          "case": "snaps on reduced motion and viewport resize, then allows motion again"
+        },
+        {
+          "file": "tests/deck-shuffle.test.ts",
+          "case": "settles immediately for reduced motion, including when toggled mid-shuffle"
+        },
+        {
+          "file": "tests/portal-effects.test.tsx",
+          "case": "shows reduced-motion details immediately without allocating a renderer"
+        },
+        {
+          "file": "tests/artwork-effects.test.tsx",
+          "case": "clears active work when system motion changes, then applies the new preference"
+        },
+        {
+          "file": "tests/hero-rotation.test.tsx",
+          "case": "respects reduced motion even after Resume, but permits manual selection"
+        },
+        {
+          "file": "tests/parity-feed-ui.test.tsx",
+          "case": "steps a reduced-motion receipt once a second and pauses it while the window is inactive"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "authored theme suppresses live OS and saved profile motion across cards and dialogs"
+        },
+        {
+          "file": "tests/electron/cover-tiles.spec.ts",
+          "case": "expansion marks yield to Play and reduced motion snaps all cover transitions"
+        },
+        {
+          "file": "tests/electron/merge-surface.spec.ts",
+          "case": "queue transitions affect only row fill and reason ink and reduced motion removes both"
+        }
+      ],
+      "reason": "Application and OS suppression rules cover all descendants and pseudo-elements with important animation/transition:none and auto scrolling; removing transition suppression fails the negative control. Separate executed owner tests cover JS motion that CSS cannot stop. App retains ownership of the effective profile/fullscreen setting through palette and font edits, and Afterglow no longer starts an opacity entrance under reduction. Current component/timing coverage is distinct from the native owner's rendered OS/profile measurements. Both actual app surfaces observe zero active CSS/WAAPI motion under system and saved profile reduction, and unchanged card identity on live OS change. Fullscreen saved reduction survives palette/font edits. Afterglow opacity, translation and positions are sampled over real RAF frames because CSS animation lists alone do not observe Motion style writes. Existing cover and merge probes preserve actual interaction/transition assertions."
     },
     {
       "id": "ReducedMotionCoverageTests.Transition_values_are_never_local_to_an_element",
       "source": "tests/Winnow.Tests/Enforcement/ReducedMotionCoverageTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "keeps transition and animation declarations in shared styles rather than JSX local values"
+        },
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "rejects generic named hosts, empty controls and local motion instead of accepting their rendered children"
+        },
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "inventories every CSS motion owner and every JavaScript scheduling site"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "authored theme suppresses live OS and saved profile motion across cards and dialogs"
+        }
+      ],
+      "reason": "Scans every authored JSX literal style object and rejects local animation/transition properties, with a mutation-negative local transition. Browser CSS important suppression provides the equivalent precedence boundary. Motion/WAAPI scheduling has a separate closed owner inventory and behavior tests rather than pretending the absence of AXAML syntax proves safety. Literal-style/direct-call scope is explicit; arbitrary style identifiers, spreads and aliased calls are not a whole-program analysis. Native computed suppression and real-frame sampling demonstrate that authored themes and dynamic inline runtime state do not defeat reduction in exercised surfaces. The exhaustive static prohibition/allowlist for local CSS transition and JavaScript animation ownership belongs to the companion enforcement suite; no bounded native sample substitutes for that scan."
     },
     {
       "id": "RepositoryHygieneTests.Exactly_one_tokens_axaml_exists_and_it_is_the_one_that_compiles",
@@ -3766,27 +3938,93 @@
     {
       "id": "VisualDisciplineTests.Flare_is_attached_to_the_unread_signal_and_to_nothing_else",
       "source": "tests/Winnow.Tests/Enforcement/VisualDisciplineTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "reserves Flare consumption for unread markers and the Patched bucket"
+        },
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "never adds unread state to an unplayed game"
+        },
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "Patched navigation announces its twelve games and meaning in %s"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "exposes outer card peers and live exact list and filter names through real API changes"
+        }
+      ],
+      "reason": "All actual CSS Flare consumers must belong to the closed unread/Patched marker selector set; the undefined legacy merge --flare orange fallback is rejected and replaced with the shared Avalon Flare token. Component tests preserve unread eligibility and the Patched announcement in both surfaces. This is a structural semantic-role guard like the original nearby-binding scan, not a proof of arbitrary dataflow. Native badges/color evidence is added by the native owner. Actual unread badges are paired with named patched/update game buttons and measured under the authored Dawn palette. The exhaustive Flare-use inventory and semantic authorization for every occurrence remain the companion enforcement test, rather than inferring global exclusivity from one screenshot."
     },
     {
       "id": "VisualDisciplineTests.Every_cover_badge_uses_the_same_top_left_corner",
       "source": "tests/Winnow.Tests/Enforcement/VisualDisciplineTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/avalon-theme.test.tsx",
+          "case": "never adds unread state to an unplayed game"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "exposes outer card peers and live exact list and filter names through real API changes"
+        }
+      ],
+      "reason": "One shared cover badge rule uses a 7px top/left inset inside a declared 1px border; the desktop override was removed. Native desktop and fullscreen tests inspect loaded CSSOM declarations and measure every visible unread badge against its cover outer bounds, preserving the nominal eight logical-unit corner. At fullscreen zoom 0.85 Chromium rounds the border: computed border 1.17647 logical units plus inset yields expected 6.95 physical pixels, and painted displacement 6.9375 agrees within one 1/64 layout quantum. This is a measured logical-to-physical adapter, not an assertion of eight physical pixels at every zoom or a separate exhaustive badge-selector scanner."
     },
     {
       "id": "VisualDisciplineTests.There_is_no_filter_group_for_games_with_updates",
       "source": "tests/Winnow.Tests/Enforcement/VisualDisciplineTests.cs",
-      "status": "pending"
+      "status": "retained-backend",
+      "tests": [
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "exposes outer card peers and live exact list and filter names through real API changes"
+        }
+      ],
+      "reason": "The exact original scanner over every Core/Data Facet .cs file remains applicable to the unchanged shared backend and passed in .tmp/task38134-source-results/task38134-source.trx (source owner ledger). It rejects both HasUpdates and has_updates across the same five files. No fake Electron-only duplicate replaces the retained domain contract; renderer Library keeps unread updates as the Patched bucket rather than an extra facet. Real desktop/fullscreen filter surfaces do not expose a duplicate games-with-updates facet. Patched remains the existing collection. Exact shared backend facet absence and complete source inventory are proved separately, not inferred solely from the rendered sample.",
+      "implementation": [
+        "src/Winnow.Core/Queries/Facets.cs",
+        "src/Winnow.Core/Repositories/IFacetRepository.cs",
+        "src/Winnow.Core/Repositories/IPluginFacetRepository.cs",
+        "src/Winnow.Data/Repositories/FacetRepository.cs",
+        "src/Winnow.Data/Repositories/PluginFacetRepository.cs"
+      ]
     },
     {
       "id": "VisualDisciplineTests.The_numeric_text_style_tracks_the_data_face_and_tabular_figures",
       "source": "tests/Winnow.Tests/Enforcement/VisualDisciplineTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "all data-face CSS roles inherit tabular figures from the closed explicit role group"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "exposes outer card peers and live exact list and filter names through real API changes"
+        }
+      ],
+      "reason": "Every CSS role consuming var(--font-mono) through font-family or shorthand belongs to a closed explicit tabular-nums group. Important precedence prevents later higher-layer font shorthands from clearing numeric features. Both native surfaces exercise a real Studio shorthand role changing from proportional Plus Jakarta Sans to IBM Plex Mono while retaining tabular figures; rendered numeric hosts expose actual custom bundled IBM glyphs and aligned digit widths. This preserves both original data/data-s scopes through current production roles."
     },
     {
       "id": "VisualDisciplineTests.The_mono_face_resolves_to_a_bundled_font",
       "source": "tests/Winnow.Tests/Enforcement/VisualDisciplineTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/renderer-enforcement.test.ts",
+          "case": "resolves all three original font roles to bundled TrueType resources"
+        },
+        {
+          "file": "tests/electron/accessibility-enforcement.spec.ts",
+          "case": "exposes outer card peers and live exact list and filter names through real API changes"
+        }
+      ],
+      "reason": "Preserves the full source scope despite its singular method name: Display, Body and Data aliases resolve to bundled Bricolage Grotesque, Plus Jakarta Sans and IBM Plex Mono assets. Each declared URL stays within the shipped asset directory and resolves to a TrueType resource. This is stronger resource evidence than the original URI-prefix assertion; actual glyph rendering remains separately measured native typography evidence. Chromium CSS.getPlatformFontsForNode verifies actual custom bundled IBM Plex Mono glyphs on real numeric controls. The original method also checks Display and Body URI declarations; all three bundled assets and runtime aliases remain explicitly covered by the companion enforcement test and prior typography native evidence. The native data-font sample alone is not claimed as all-three coverage."
     },
     {
       "id": "EnrichmentSyncServiceTests.A_configured_igdb_that_throws_falls_through_to_steam",

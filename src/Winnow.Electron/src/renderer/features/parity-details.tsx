@@ -131,6 +131,7 @@ export function Screenshots({ details, previewCount }: { details?: GameDetails; 
       <h2>Screenshots</h2>
       <div
         className={`screenshot-strip${previewCount ? ' screenshot-previews' : ''}`}
+        role="group"
         aria-label="Screenshots"
         ref={strip}
       >

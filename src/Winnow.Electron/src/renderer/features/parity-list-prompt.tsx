@@ -282,7 +282,7 @@ function ListPrompt({
           </div>
         )}
         {mode === 'fullscreen' && !draft.busy && (
-          <p className="list-prompt-controller-hints" aria-label="Controller actions">
+          <p className="list-prompt-controller-hints" role="group" aria-label="Controller actions">
             <span>A · Select</span>
             {editingName && !draft.uncertain && <span>Y · Keyboard</span>}
             <span>B · Back</span>
