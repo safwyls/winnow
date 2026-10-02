@@ -1,7 +1,7 @@
 ---
 id: TASK-381.36
 title: 'Electron: finish application update and recovery flows'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
@@ -52,7 +52,7 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -65,6 +65,8 @@ Audit the six remaining original updater contracts, close concrete Electron poli
 
 <!-- SECTION:NOTES:BEGIN -->
 Audit found functional delivery gaps beyond the six policy mappings: Electron had only NSIS/AppImage paths and no existing archive recovery integration. Preserve the original Inno AppId and Windows ZIP/Ubuntu deb/tar formats. Added primary distribution selection, official digest-verified release downloads, existing helper staging/handoff and parent-bound frontend lease/readiness. Secondary NSIS/AppImage now obey registered path and Ubuntu/package-manager guards. Source inventory reaches 1688 ported, 706 retained-backend, 41 framework-specific, 0 pending/partial; all six exact source contracts have executed replacement assertions. Packaging smoke remains TASK-381.37/.38, not implied by source mapping.
+
+Milestone commit 88627a7f. Final reviewed evidence: 233/233 Electron focused, 70/70 current .NET updater, 12/12 original source, 4/4 native; complete migration audit and build/typecheck pass. Continuing to TASK-381.37 under the latest six-task batch authorization.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
