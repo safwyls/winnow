@@ -305,15 +305,18 @@ public sealed partial class EpicSignInParityTests
                 new(ClientId, challenge.AttemptId, Code, kind, challenge.Request.ExpectedState));
         public async Task Restart()
         {
-            Api.Dispose();
-            await _app.StopAsync();
-            await _app.DisposeAsync();
+            await Stop();
             await Open();
         }
-        public async ValueTask DisposeAsync()
+        public async Task Stop()
         {
             Api?.Dispose();
             if (_app is not null) { await _app.StopAsync(); await _app.DisposeAsync(); }
+            _app = null!;
+        }
+        public async ValueTask DisposeAsync()
+        {
+            await Stop();
             if (Directory.Exists(_directory)) Directory.Delete(_directory, true);
         }
     }

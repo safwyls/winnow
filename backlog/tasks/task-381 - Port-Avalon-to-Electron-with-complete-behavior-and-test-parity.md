@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-10-02 08:54'
+updated_date: '2026-10-02 10:37'
 labels: []
 dependencies: []
 priority: high
@@ -16,10 +16,7 @@ ordinal: 417000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-The user requests an entire Electron rebuild of the Avalonia UI with all existing functionality, preserved aesthetics, and migrated passing tests. The existing Electron frontend intentionally has narrower feature coverage. Preserve the shared local backend and current themes while closing the UI gap.
-
-Review cadence (2026-09-30):
-The remaining migration is split into the ordered child tasks below. Complete one task at a time, with only one implementation task active. At each task end, record focused evidence and a milestone commit, report changes/tests/limitations and the next task, then stop. Wait for the user to review and explicitly prompt continuation before starting another task. This instruction replaces the earlier open-ended execution cadence. The task-breakdown checkpoint TASK-381.1 is reviewed before implementation resumes.
+Rebuild the Avalonia UI in Electron with all existing functionality, preserved aesthetics, and migrated passing tests. Preserve the independent local backend and the existing themes while delivering desktop and fullscreen behavior and complete source-contract coverage.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -229,4 +226,6 @@ Review checkpoint: TASK-381.3 completed in f9e22fc3. All 3358 component/live API
 Review checkpoint: TASK-381.4 completed in 359e79da, following root LB/RB correction d5746fd0. Restored baseline/display scaling, artwork padding, shelf targets, Activity reading hierarchy and original decorative backdrops. Build, all 3,369 component/API cases, 94 distinct affected native cases and two migrated application-service cases pass. All 19 assigned contracts are ported; inventory has 1,303 ported, 625 retained backend, 30 framework-specific, 391 pending and 86 partial (477 unresolved). Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-fifty-nine.md. No parent acceptance criterion is complete. Stopped for review; next is TASK-381.5, controller keyboard and accessible modal routes, only after the user prompts continuation.
 
 Review checkpoint: TASK-381.5 completed in c355f48b. Restored the five-row keyboard, fullscreen file chooser, journal keyboard actions and accessible controller/focus routes. Build/typecheck, all 3,388 component/live API cases and 65 distinct native cases pass. All ten assigned contracts are ported; inventory now has 1,313 ported, 625 retained backend, 30 framework-specific, 384 pending and 83 partial (467 unresolved). Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty.md. Physical devices remain unverified and fullscreen filter visual comparison is recorded in existing TASK-381.7. No parent acceptance criterion is complete. Stopped for review; TASK-381.6, library loading and live refresh, waits for explicit continuation.
+
+Final local verification is green:7183 .NET passes with2explicit Linux-only skips and4451 component/live-API passes with0skips. Source audit accounts for2435 methods with0pending/partial. Simultaneous-start write-probe race corrected and reviewed; evidence is checkpoint96. Four of the final six tasks are Done;381.40 remains open for the other named device exceptions and381.41 for complete final remote CI plus acceptance. Explicit GitHub push/draft-PR approval is pending after automatic approval review rejected those external actions. No completion, merge, tag or release claim.
 <!-- SECTION:NOTES:END -->

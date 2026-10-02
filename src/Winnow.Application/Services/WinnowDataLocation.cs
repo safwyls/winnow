@@ -65,9 +65,9 @@ public static class WinnowDataLocation
     /// <summary>An empty file written and immediately deleted to prove the
     /// directory is writable. <see cref="Directory.CreateDirectory"/> returns
     /// successfully for a directory that already exists but is read-only, so
-    /// this is the only check that catches that shape. A fixed name so the
-    /// check is testable; it exists for microseconds and is deleted on every
-    /// path through the check.</summary>
+    /// this is the only check that catches that shape. Each caller owns a
+    /// unique probe so concurrent starts cannot delete or lock one another's
+    /// usability check.</summary>
     private const string WriteProbeName = ".winnow-write-probe";
 
     /// <summary>
@@ -179,27 +179,11 @@ public static class WinnowDataLocation
                 cannotCreate);
         }
 
-        var probe = Path.Combine(root, WriteProbeName);
         try
         {
-            for (var attempt = 0; ; attempt++)
-            {
-                try
-                {
-                    File.WriteAllBytes(probe, []);
-                    File.Delete(probe);
-                    break;
-                }
-                catch (IOException busy) when (OperatingSystem.IsWindows()
-                    && busy.HResult == unchecked((int)0x80070020) && attempt < 8)
-                {
-                    // Concurrent frontends probe the same selected root before backend ownership
-                    // is established. Only Windows' transient sharing violation earns a short retry;
-                    // ACL failures, directory blockers and persistent locks still refuse this root.
-                    log?.LogDebug("Data directory write probe is busy; retrying.");
-                    Thread.Sleep(25);
-                }
-            }
+            // DeleteOnClose removes only this caller's probe when the handle closes.
+            using var probe = new FileStream(Path.Combine(root, WriteProbeName + "-" + Guid.NewGuid().ToString("N")),
+                FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
         }
         catch (Exception cannotWrite) when (cannotWrite
             is IOException or UnauthorizedAccessException or NotSupportedException)

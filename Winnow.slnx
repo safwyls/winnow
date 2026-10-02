@@ -41,6 +41,7 @@
     <Project Path="tests/Winnow.Application.Tests/Winnow.Application.Tests.csproj" />
     <Project Path="tests/Winnow.Backend.Tests/Winnow.Backend.Tests.csproj" />
     <Project Path="tests/Winnow.Covers.Tests/Winnow.Covers.Tests.csproj" />
+    <Project Path="tests/Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj" />
     <Project Path="tests/Winnow.Monitor.Linux.Tests/Winnow.Monitor.Linux.Tests.csproj" />
     <Project Path="tests/Winnow.Recommend.Tests/Winnow.Recommend.Tests.csproj" />
     <Project Path="tests/Winnow.Tests/Winnow.Tests.csproj" />

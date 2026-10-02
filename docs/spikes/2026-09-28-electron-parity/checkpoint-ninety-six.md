@@ -50,6 +50,11 @@ evidence, rather than being replaced by the focused runs below.
   the real copied-helper regression reproduced an exited command with open pipes, then
   passed after the launch correction. Existing parent deadlines and installation/data
   leases remain in force.
+- Concurrent startup checks use uniquely owned directory-write probes. A direct two-process
+  reproduction caught Windows denying access when one process deleted the shared probe
+  while another opened it. Each check now creates a new file and requests deletion on close;
+  it cannot delete or contend with another caller's probe. Real permission errors still
+  refuse the selected directory without falling back to the user's library.
 
 ## Fixture and evidence corrections
 
@@ -70,11 +75,13 @@ and Activity's requested local trigger glyphs replace its former absence-of-hint
 
 ## Focused verification
 
-- The final combined build and complete component/live-API rerun pass: 4,451 tests in
-  232 files, no failures or skips, 200.63 seconds with two workers. The JSON report is
-  `.tmp/task38141-final-unit-results.json`; build and test logs use the matching
-  `task38141-final-build.log` and `task38141-final-unit.log` names. This local result does
-  not substitute for the complete native, .NET, Linux and package CI matrix.
+- The final frontend build/typecheck and complete component/live-API rerun pass: 4,451
+  tests in 232 files, no failures or skips, 201.15 seconds with two workers. This run uses
+  the backend rebuilt after the concurrent-startup correction. Reports are
+  `.tmp/task38141-complete-unit-results.json` and `task38141-complete-unit.log`; frontend
+  build evidence is `task38141-final-build.log`, and the fresh backend build is
+  `task38141-complete-api-build.log`. Local results do not substitute for the complete
+  native, Linux and package CI matrix.
 - The first complete local component/live-API run finished in 209.69 seconds with 4,448
   passes and two failures across 232 files. The Activity failure was its obsolete
   absence-of-hints assertion; the corrected contract file passes all 37 cases. The
@@ -91,6 +98,38 @@ and Activity's requested local trigger glyphs replace its former absence-of-hint
 - Reference UI clock and visible-shelf exposure: eight passes. Identity-read inventory
   and README consistency: six passes. The real artwork-provider catalog and persistence
   regression passed against a freshly built backend.
+- The complete local Release build passed without warnings or errors, followed by all
+  19 fullscreen layout preflight cases. The first complete .NET run reported 7,174 passes,
+  five failures and two explicit Linux-only skips. All 899 retained UI tests passed.
+  Three process checks failed because the solution assigned the unlisted fixture Debug
+  while Release tests expected Release; two repository checks traversed protected temporary
+  backend data. The fixture is now included in solution configuration selection, and source
+  scans prune generated directories before descent without hiding inaccessible source files.
+  All 101 repository enforcement cases pass after that correction. The run also exposed a
+  terminal fixture contender surviving its in-process host; exact-process shutdown released
+  the completed command. Terminal readiness now waits for its candidate to become the
+  authenticated owner or exit naturally before returning an existing owner. It never kills
+  a candidate based on a previous ownership observation. The solution configuration correction
+  passes the three original process checks, and all 31 terminal sign-in cases pass in isolation.
+- The next complete Release build again passed with no warnings or errors. Its .NET run
+  completed and closed its command normally: 7,182 passes, one failure and two Linux-only
+  skips across 13 assemblies. All 5,002 core tests, 111 updater tests and 899 reference UI
+  tests passed. The remaining failure was simultaneous cold-start terminal sign-in with two
+  clients. The fifth direct two-backend reproduction captured the underlying exit-code-2
+  refusal: access to the shared `.winnow-write-probe` was denied while the other backend
+  became healthy. All five owned winners shut down normally; diagnostic evidence is retained
+  in `.tmp/task38141-cold-diagnostic.json`. The unique-probe correction passes all 29
+  directory/refusal/legacy checks and all 31 terminal checks, including the unchanged
+  simultaneous cold-start cases. Tests use a real denied-write ACL on Windows and restore
+  it afterward; the Unix permission branch requires an unprivileged user and was not run
+  on this host. The final owned-process scan is empty.
+  Reports are in `.tmp/task38141-full-dotnet-final-results` and the matching log.
+- The final combined Release build passes with zero warnings or errors. The complete
+  local .NET run passes all 7,183 executed cases across 13 assemblies, with two explicit
+  Linux-only skips on Windows. This includes all 344 backend, 5,002 core, 111 updater and
+  899 reference UI cases; both simultaneous-start cases pass and the command exits normally.
+  Reports are in `.tmp/task38141-complete-dotnet-results`, with counts and scope recorded
+  in `.tmp/task38141-complete-dotnet-evidence.json`. All 45 migration hashes also verify.
 - Root native batch: 86 of 87 passed in 10.4 minutes. Its sole 4K Install failure reproduced
   a test moving focus before the dialog's deferred opener restoration. The corrected
   helper verifies restoration first. The subsequent seven-case run passed, including

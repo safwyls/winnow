@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Winnow.Api.Client;
+using Winnow.Api.Contracts.Protocol;
 
 namespace Winnow.Backend;
 
@@ -11,7 +12,7 @@ internal static class ConsoleBackend
         var api = WinnowApiClient.Attach(directory);
         try
         {
-            if (await Ready(api, ct)) return api;
+            if (await ReadReadyAsync(directory, ct) is not null) return api;
             var executable = Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "Winnow.Backend.exe" : "Winnow.Backend");
             var start = new ProcessStartInfo(File.Exists(executable) ? executable : "dotnet")
             {
@@ -31,14 +32,37 @@ internal static class ConsoleBackend
             // credentials to the terminal; closing this client never stops the independent backend.
             var output = process.StandardOutput.BaseStream.CopyToAsync(Stream.Null);
             var failure = ReadFailureAsync(process);
-            _ = Task.WhenAll(output, failure).ContinueWith(_ => process.Dispose(), CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            deadline.CancelAfter(TimeSpan.FromSeconds(45));
-            await WaitForReadyAsync(token => Ready(api, token), failure, deadline.Token);
-            return api;
+            try
+            {
+                using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                deadline.CancelAfter(TimeSpan.FromSeconds(45));
+                await WaitForReadyAsync(directory, process, output, failure, deadline.Token);
+                return api;
+            }
+            finally
+            {
+                _ = Task.WhenAll(output, failure).ContinueWith(_ => process.Dispose(), CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
         }
         catch { api.Dispose(); throw; }
+    }
+
+    internal static async Task WaitForReadyAsync(string directory, Process candidate, Task output,
+        Task<string> failure, CancellationToken ct)
+    {
+        BackendDiscovery? winner = null;
+        await WaitForReadyAsync(async token =>
+        {
+            winner = await ReadReadyAsync(directory, token);
+            return winner is not null && (winner.ProcessId == candidate.Id || candidate.HasExited);
+        }, failure, ct);
+        if (winner!.ProcessId == candidate.Id) return;
+
+        // Do not return while our candidate can still acquire ownership after this winner
+        // shuts down. Never kill it: it may already be taking over between health probes.
+        await candidate.WaitForExitAsync(ct);
+        await Task.WhenAll(output, failure).WaitAsync(ct);
     }
 
     internal static async Task WaitForReadyAsync(Func<CancellationToken, Task<bool>> ready,
@@ -67,12 +91,19 @@ internal static class ConsoleBackend
         return tail.ToString();
     }
 
-    private static async Task<bool> Ready(WinnowApiClient api, CancellationToken ct)
+    private static async Task<BackendDiscovery?> ReadReadyAsync(string directory, CancellationToken ct)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(1));
-        try { return (await api.GetHealthAsync(timeout.Token)).ApiVersion == "1"; }
+        try
+        {
+            var connection = await BackendConnection.ReadAsync(directory, timeout.Token);
+            if (connection.ProcessId <= 0 || string.IsNullOrWhiteSpace(connection.Epoch)) return null;
+            using var api = new WinnowApiClient(connection);
+            var health = await api.GetHealthAsync(timeout.Token);
+            return health.ApiVersion == "1" && health.Epoch == connection.Epoch ? connection : null;
+        }
         catch (Exception exception) when (exception is HttpRequestException or IOException or JsonException or OperationCanceledException)
-        { ct.ThrowIfCancellationRequested(); return false; }
+        { ct.ThrowIfCancellationRequested(); return null; }
     }
 }

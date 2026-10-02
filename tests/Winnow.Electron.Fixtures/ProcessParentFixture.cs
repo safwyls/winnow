@@ -1,9 +1,10 @@
 using System.Diagnostics;
 using System.Text;
+using Winnow.Backend;
 
 namespace Winnow.Electron.Fixtures;
 
-// A real parent/pipe lifetime for process contracts, without a shell, HTTP host or database.
+// Real process/pipe lifetimes without a shell; only the backend mode opens an HTTP host.
 internal static class ProcessParentFixture
 {
     internal const string Argument = "--process-parent-fixture";
@@ -25,6 +26,20 @@ internal static class ProcessParentFixture
                 await Console.Out.WriteLineAsync(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 await Console.Out.FlushAsync();
                 await Console.In.ReadLineAsync();
+                return 0;
+            }
+            if (args[1] == "backend")
+            {
+                var directory = Path.GetFullPath(Value("--data-dir"));
+                foreach (string name in Environment.GetEnvironmentVariables().Keys)
+                    if (new[] { "IGDB", "TWITCH", "STEAM", "EPIC", "GOG" }.Any(prefix =>
+                        name.StartsWith(prefix + "_", StringComparison.OrdinalIgnoreCase)))
+                        Environment.SetEnvironmentVariable(name, null);
+                await Console.Out.WriteLineAsync(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                await Console.Out.FlushAsync();
+                if (await Console.In.ReadLineAsync() != "start") return 0;
+                await using var app = BackendApplication.Build(["--data-dir", directory, "--no-sync"]);
+                await app.RunAsync();
                 return 0;
             }
             var target = Path.GetFullPath(Value("--target"));

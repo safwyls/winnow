@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Winnow.Api.Client;
 using Xunit;
 
@@ -6,6 +7,164 @@ namespace Winnow.Backend.Tests;
 
 public sealed partial class EpicSignInParityTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Terminal_waits_for_its_delayed_candidate_without_killing_it_when_another_owner_is_healthy(bool cancel)
+    {
+        await using var host = await Host.Start();
+        var endpointPath = Path.Combine(host.DirectoryPath, "backend", "endpoint.json");
+        var original = await File.ReadAllBytesAsync(endpointPath);
+        var connection = await BackendConnection.ReadAsync(host.DirectoryPath);
+        using var candidate = Winnow.TestFixtures.ProcessParent.Start("idle");
+        Task<string>? output = null;
+        var error = candidate.StandardError.ReadToEndAsync();
+        using var timeout = new CancellationTokenSource();
+        Task? pending = null;
+        try
+        {
+            Assert.Equal(candidate.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                await candidate.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10)));
+            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            output = candidate.StandardOutput.ReadToEndAsync();
+            // A healthy response from a different discovery generation is not ownership proof.
+            await File.WriteAllTextAsync(endpointPath, JsonSerializer.Serialize(
+                connection with { Epoch = Guid.NewGuid().ToString("N") }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            pending = ConsoleBackend.WaitForReadyAsync(host.DirectoryPath, candidate, output, error, timeout.Token);
+            while (host.Routes.Count(route => route == "/api/v1/health") < 2)
+                await Task.Delay(10, timeout.Token);
+            Assert.False(pending.IsCompleted);
+            Assert.False(candidate.HasExited);
+
+            var polls = host.Routes.Count(route => route == "/api/v1/health");
+            await File.WriteAllBytesAsync(endpointPath, original);
+            while (host.Routes.Count(route => route == "/api/v1/health") < polls + 2)
+                await Task.Delay(10, timeout.Token);
+            Assert.False(pending.IsCompleted);
+            Assert.False(candidate.HasExited);
+            if (cancel)
+            {
+                timeout.Cancel();
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+                Assert.False(candidate.HasExited);
+            }
+            candidate.StandardInput.Close();
+            if (!cancel) await pending.WaitAsync(timeout.Token);
+            await candidate.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+            await Task.WhenAll(output, error).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.True(candidate.HasExited);
+            Assert.True(output.IsCompletedSuccessfully);
+            Assert.True(error.IsCompletedSuccessfully);
+            Assert.Equal("1", (await host.Api.GetHealthAsync()).ApiVersion);
+            Assert.Equal(Environment.ProcessId, (await BackendConnection.ReadAsync(host.DirectoryPath)).ProcessId);
+        }
+        finally
+        {
+            timeout.Cancel();
+            // Observe cancellation without replacing an earlier assertion or skipping cleanup.
+            if (pending is not null) { try { await pending; } catch { } }
+            if (!candidate.HasExited) candidate.Kill();
+            await candidate.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+            await Task.WhenAll(output ?? Task.CompletedTask, error).WaitAsync(TimeSpan.FromSeconds(5));
+            await File.WriteAllBytesAsync(endpointPath, original);
+        }
+    }
+
+    [Fact]
+    public async Task Terminal_requires_matching_health_epoch_after_its_real_ownership_loser_has_exited()
+    {
+        await using var host = await Host.Start();
+        var endpointPath = Path.Combine(host.DirectoryPath, "backend", "endpoint.json");
+        var original = await File.ReadAllBytesAsync(endpointPath);
+        var connection = await BackendConnection.ReadAsync(host.DirectoryPath);
+        using var candidate = Winnow.TestFixtures.ProcessParent.Start("backend", "--data-dir", host.DirectoryPath);
+        Task<string>? output = null;
+        var error = candidate.StandardError.ReadToEndAsync();
+        using var timeout = new CancellationTokenSource();
+        Task? pending = null;
+        try
+        {
+            Assert.Equal(candidate.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                await candidate.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10)));
+            output = candidate.StandardOutput.ReadToEndAsync();
+            await candidate.StandardInput.WriteLineAsync("start");
+            candidate.StandardInput.Close();
+            await candidate.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            await Task.WhenAll(output, error).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.NotEqual(0, candidate.ExitCode);
+            Assert.Contains("already owns this data directory", await error);
+
+            await File.WriteAllTextAsync(endpointPath, JsonSerializer.Serialize(
+                connection with { Epoch = Guid.NewGuid().ToString("N") }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            pending = ConsoleBackend.WaitForReadyAsync(host.DirectoryPath, candidate, output, error, timeout.Token);
+            while (host.Routes.Count(route => route == "/api/v1/health") < 2)
+                await Task.Delay(10, timeout.Token);
+            Assert.False(pending.IsCompleted);
+            await File.WriteAllBytesAsync(endpointPath, original);
+            await pending.WaitAsync(timeout.Token);
+            Assert.Equal("1", (await host.Api.GetHealthAsync()).ApiVersion);
+        }
+        finally
+        {
+            timeout.Cancel();
+            if (pending is not null) { try { await pending; } catch { } }
+            if (!candidate.HasExited) candidate.Kill(entireProcessTree: true);
+            await candidate.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+            await Task.WhenAll(output ?? Task.CompletedTask, error).WaitAsync(TimeSpan.FromSeconds(5));
+            await File.WriteAllBytesAsync(endpointPath, original);
+        }
+    }
+
+    [Fact]
+    public async Task Terminal_preserves_its_candidate_when_the_old_owner_exits_before_the_candidate_acquires_ownership()
+    {
+        await using var host = await Host.Start();
+        var original = await BackendConnection.ReadAsync(host.DirectoryPath);
+        using var candidate = Winnow.TestFixtures.ProcessParent.Start("backend", "--data-dir", host.DirectoryPath);
+        Task<string>? output = null;
+        var error = candidate.StandardError.ReadToEndAsync();
+        using var timeout = new CancellationTokenSource();
+        Task? pending = null;
+        try
+        {
+            Assert.Equal(candidate.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                await candidate.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10)));
+            output = candidate.StandardOutput.ReadToEndAsync();
+            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+            pending = ConsoleBackend.WaitForReadyAsync(host.DirectoryPath, candidate, output, error, timeout.Token);
+            while (host.Routes.Count(route => route == "/api/v1/health") < 2)
+                await Task.Delay(10, timeout.Token);
+            Assert.False(pending.IsCompleted);
+            Assert.False(candidate.HasExited);
+
+            await host.Stop();
+            await candidate.StandardInput.WriteLineAsync("start");
+            candidate.StandardInput.Close();
+            await pending.WaitAsync(timeout.Token);
+            Assert.False(candidate.HasExited);
+            Assert.False(output.IsCompleted);
+            Assert.False(error.IsCompleted);
+            var current = await BackendConnection.ReadAsync(host.DirectoryPath);
+            Assert.Equal(candidate.Id, current.ProcessId);
+            Assert.NotEqual(original.Epoch, current.Epoch);
+            using var api = WinnowApiClient.Attach(host.DirectoryPath);
+            Assert.Equal("1", (await api.GetHealthAsync()).ApiVersion);
+            await api.SendAsync<object?>(HttpMethod.Post, "lifecycle/shutdown", null);
+            await candidate.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            await Task.WhenAll(output, error).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(0, candidate.ExitCode);
+        }
+        finally
+        {
+            timeout.Cancel();
+            if (pending is not null) { try { await pending; } catch { } }
+            if (!candidate.HasExited) candidate.Kill(entireProcessTree: true);
+            await candidate.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+            await Task.WhenAll(output ?? Task.CompletedTask, error).WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
     [Fact]
     public async Task Terminal_waits_for_delayed_winner_after_the_ownership_loser_has_already_exited()
     {

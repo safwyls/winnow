@@ -7,6 +7,11 @@
     <MSBuild Projects="$(MSBuildThisFileDirectory)../Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj" Targets="GetTargetPath" BuildInParallel="false">
       <Output TaskParameter="TargetOutputs" ItemName="ProcessParentFixtureAssembly" />
     </MSBuild>
+    <!-- A solution must include the fixture so its configuration matches these tests. -->
+    <Error Condition="'@(ProcessParentFixtureAssembly->Count())' != '1'"
+           Text="Expected exactly one process parent fixture output." />
+    <Error Condition="'$(DesignTimeBuild)' != 'true' And !Exists('%(ProcessParentFixtureAssembly.FullPath)')"
+           Text="The process parent fixture was not built at %(ProcessParentFixtureAssembly.FullPath). Include Winnow.Electron.Fixtures in the solution configuration." />
     <ItemGroup>
       <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
         <_Parameter1>ProcessParentFixture</_Parameter1>
