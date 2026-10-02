@@ -67,8 +67,9 @@ installer launch clear pending installer files. A failed download cannot expose 
 The native transport checks each request and redirect against HTTPS GitHub API/release
 storage hosts; it refuses foreign hosts, credentials and non-default ports before opening
 a connection.
-Primary packaging and release-workflow migration are tracked separately from the updater
-implementation; an unpacked development build does not establish installer coverage.
+Primary packaging uses `packaging/Publish.ps1` and the existing Inno/ZIP/Debian/tar packagers.
+The secondary electron-builder formats are separate from the supported release matrix;
+an unpacked development build does not establish installer coverage.
 
 See the upstream [auto-update documentation](https://www.electron.build/v26/docs/features/auto-update/)
 for generated channel metadata and supported installers. The installed dependency source is
@@ -127,13 +128,20 @@ runs in these tests. Third-party notices include all updater production dependen
 restart contracts. The distribution tests cover primary release selection, real isolated
 byte streams, cancellation, changed files and handoff failure. Helper tests exercise native
 lease ownership, startup journal validation, readiness and recovery with temporary data.
-These are separate from actual installed-package and previous-version upgrade smoke checks.
+Primary Windows Inno/ZIP and Ubuntu 24.04 Debian/tar smoke checks run on disposable machines.
+They exercise the actual shipped executable and backend, previous released installers/archives,
+selected-library preservation and removal/recovery. Windows includes the earlier release's
+embedded updater and a separate upgrade through its copied portable helper. Ubuntu uses
+Xvfb/Openbox with restricted unprivileged user namespaces and exact-executable AppArmor
+profiles. A portable profile remains valid across replacement at the same path; moving the
+installation requires explicit setup for its new path. See [release verification](releases.md)
+and the [Ubuntu setup boundary](../packaging/linux/README.md).
 
 The NSIS and AppImage installation/update paths still require disposable-machine smoke
 tests, including failed replacement, update from a previous version, data-directory
 preservation, and recovery after process exit. No live Electron release feed has been
 published or verified by this work. AppImage replacement rollback and Windows failure after
-a successful installer spawn remain outside the tested recovery boundary. The existing
-Avalonia CI installer smoke does not establish Electron installer coverage. Keep its release
-pipeline until those separate checks pass; compiling the renderer or producing an unpacked
-directory does not meet that requirement.
+a successful secondary installer spawn remain outside that route's tested recovery boundary.
+The primary package checks do not establish these secondary routes, physical-device
+compatibility or a successful public release. Reference Avalonia tests remain useful for
+shared contracts but do not substitute for Electron package evidence.

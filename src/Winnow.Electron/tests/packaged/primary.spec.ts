@@ -12,7 +12,9 @@ for (const mode of ['desktop', 'fullscreen'] as const)
   test(`primary packaged ${mode} uses its own runtime, renderer, backend and update guard`, async ({}, info) => {
     const executable = resolve(
       process.env.WINNOW_PACKAGED_EXE ??
-        (process.platform === 'win32' ? 'release/win-unpacked/Winnow.exe' : 'release/linux-unpacked/Winnow'),
+        (process.platform === 'win32'
+          ? '../../artifacts/electron-publish/win-x64/Winnow.exe'
+          : '../../artifacts/electron-publish/linux-x64/Winnow'),
     )
     const temporary = resolve('../..', '.tmp')
     await mkdir(temporary, { recursive: true })

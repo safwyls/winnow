@@ -15,6 +15,9 @@ on:
       force_full:
         type: boolean
         default: false
+      version:
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -72,8 +75,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  verify:
-    name: Windows build, tests and migration integrity
+  dotnet:
+    name: .NET backend and reference UI regression
     runs-on: windows-latest
     timeout-minutes: 45
     defaults:
@@ -154,3 +157,35 @@ jobs:
           path: TestResults/**
           if-no-files-found: ignore
           retention-days: 7
+
+  electron:
+    uses: ./.github/workflows/electron.yml
+
+  packages:
+    uses: ./.github/workflows/electron-packages.yml
+    with:
+      version: ${{ inputs.version || '' }}
+
+  plugins:
+    uses: ./.github/workflows/plugins.yml
+    with:
+      version: ${{ inputs.version || '' }}
+
+  verify:
+    name: Windows build, tests and migration integrity
+    needs: [dotnet, electron, packages, plugins]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every backend, Electron, migration and package gate
+        env:
+          DOTNET_RESULT: ${{ needs.dotnet.result }}
+          ELECTRON_RESULT: ${{ needs.electron.result }}
+          PACKAGE_RESULT: ${{ needs.packages.result }}
+          PLUGIN_RESULT: ${{ needs.plugins.result }}
+        run: |
+          test "$DOTNET_RESULT" = success
+          test "$ELECTRON_RESULT" = success
+          test "$PACKAGE_RESULT" = success
+          test "$PLUGIN_RESULT" = success

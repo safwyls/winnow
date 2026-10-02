@@ -74,7 +74,20 @@ write_launcher() {
     cat > "$destination" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
+EOF
+    if [[ -n ${2:-} ]]; then
+        printf 'app_root=%q\n' "$2" >> "$destination"
+    else
+        cat >> "$destination" <<'EOF'
 app_root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+EOF
+    fi
+    cat >> "$destination" <<'EOF'
+for arg in "$@"; do
+    if [[ $arg == --epic-login && -x $app_root/backend/Winnow.Backend ]]; then
+        exec "$app_root/backend/Winnow.Backend" "$@"
+    fi
+done
 exec "$app_root/Winnow" "$@"
 EOF
     chmod 0755 "$destination"
@@ -129,12 +142,7 @@ mkdir -p -- \
 cp -a -- "$publish_dir/." "$install_root/"
 printf 'deb\n' > "$install_root/package-managed"
 if [[ $frontend != electron ]]; then rm -f -- "$install_root/appsettings.local.json"; fi
-cat > "$deb_root/usr/bin/winnow" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-exec /opt/winnow/Winnow "$@"
-EOF
-chmod 0755 "$deb_root/usr/bin/winnow"
+write_launcher "$deb_root/usr/bin/winnow" /opt/winnow
 write_desktop_entry "$deb_root/usr/share/applications/winnow.desktop"
 cp -- "$icon_source" "$deb_root/usr/share/icons/hicolor/scalable/apps/winnow.svg"
 dependencies='ca-certificates, libc6 (>= 2.27), libgcc-s1 | libgcc1, libgssapi-krb5-2, libicu74, libssl3t64, libstdc++6, tzdata, zlib1g, libx11-6, libice6, libsm6, libfontconfig1'

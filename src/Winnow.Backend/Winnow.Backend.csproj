@@ -3,7 +3,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <ProjectReference Include="../Winnow.Api.Contracts/Winnow.Api.Contracts.csproj" />
+    <ProjectReference Include="../Winnow.Api.Client/Winnow.Api.Client.csproj" />
     <ProjectReference Include="../Winnow.Activation/Winnow.Activation.csproj" />
     <ProjectReference Include="../Winnow.Application/Winnow.Application.csproj" />
+    <InternalsVisibleTo Include="Winnow.Backend.Tests" />
   </ItemGroup>
 </Project>

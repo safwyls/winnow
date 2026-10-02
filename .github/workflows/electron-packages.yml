@@ -1,17 +1,6 @@
 name: Electron package validation
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/**'
-      - 'packaging/**'
-      - 'src/**'
-      - 'tests/**'
-      - 'plugins/**'
-      - 'Directory.Build.props'
-      - 'Version.props'
-      - 'global.json'
-      - 'NuGet.Config'
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -23,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: electron-packages-${{ github.ref }}
+  group: electron-packages-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -66,6 +55,7 @@ jobs:
         run: |
           ./packaging/Publish-Electron.ps1 -Runtime win-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA -OutputDirectory artifacts/electron-publish
           ./packaging/Verify-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish -Runtime win-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA
+          ./packaging/Test-BundledPlugin.ps1 -BuildDirectory artifacts/electron-publish
       - name: Verify package integrity contracts
         run: |
           node --test src/Winnow.Electron/tests/packaging/linux-command-line.test.mjs
@@ -182,6 +172,7 @@ jobs:
         run: |
           ./packaging/Publish-Electron.ps1 -Runtime linux-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA -OutputDirectory artifacts/electron-publish
           ./packaging/Verify-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish -Runtime linux-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA
+          ./packaging/Test-BundledPlugin.ps1 -BuildDirectory artifacts/electron-publish
       - name: Verify package integrity and baseline contracts
         run: |
           node --test src/Winnow.Electron/tests/packaging/linux-command-line.test.mjs

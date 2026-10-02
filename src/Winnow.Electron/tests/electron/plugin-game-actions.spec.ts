@@ -1,6 +1,6 @@
+import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
@@ -8,8 +8,6 @@ import { closeFixture } from './fixture-cleanup'
 import type { ApiRequest } from '../../src/shared/bridge'
 import type { LibraryResponse, Workspace } from '../../src/renderer/api/types'
 
-const artifacts = resolve('../..', '.tmp/task3818-plugin-fixture-artifacts')
-const fixture = join(artifacts, 'bin/Winnow.Electron.Fixtures/debug/Winnow.Electron.Fixtures.dll')
 const label = 'Played history — not proof of ownership'
 let application: ElectronApplication | undefined, page: Page, directory: string
 let endpoint: { address: string; token: string }
@@ -26,23 +24,6 @@ interface PluginState {
   shellAttempts: string[]
 }
 
-test.beforeAll(async () => {
-  test.setTimeout(120_000)
-  await promisify(execFile)(
-    'dotnet',
-    [
-      'build',
-      resolve('../..', 'tests/Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj'),
-      '--artifacts-path',
-      artifacts,
-      '--nologo',
-      '--verbosity',
-      'quiet',
-    ],
-    { windowsHide: true, timeout: 115000 },
-  )
-})
-
 test.beforeEach(async () => {
   directory = await mkdtemp(join(resolve('../..', '.tmp'), 'winnow-electron-plugin-actions-'))
   errors.length = 0
@@ -56,6 +37,7 @@ test.beforeEach(async () => {
         ),
       ) as Record<string, string>),
       WINNOW_BACKEND_PATH: fixture,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
     },
     chromiumSandbox: true,
   })

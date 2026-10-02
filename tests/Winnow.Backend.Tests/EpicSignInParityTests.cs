@@ -20,7 +20,7 @@ using Xunit;
 namespace Winnow.Backend.Tests;
 
 /// <summary>Exercises the Electron-facing HTTP boundary and the real provider token pipeline.</summary>
-public sealed class EpicSignInParityTests
+public sealed partial class EpicSignInParityTests
 {
     private const string Code = "SECRET-FIXTURE-CODE";
     private const string Access = "SECRET-FIXTURE-ACCESS";
@@ -253,6 +253,8 @@ public sealed class EpicSignInParityTests
     private sealed class Host : IAsyncDisposable
     {
         private readonly string _directory = Path.Combine(Path.GetTempPath(), "winnow-epic-parity", Guid.NewGuid().ToString("N"));
+        public string DirectoryPath => _directory;
+        public ConcurrentQueue<string> Routes { get; } = new();
         private WebApplication _app = null!;
         private readonly bool _authorize;
         public Clock Clock { get; } = new();
@@ -283,6 +285,11 @@ public sealed class EpicSignInParityTests
                 options.RequestsPerSecond = 1000;
                 services.AddHttpClient(EpicTokenProvider.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Handler);
                 services.AddLogging(logging => logging.AddProvider(Logs).AddFilter<Logs>(null, LogLevel.Trace));
+            });
+            _app.Use(async (context, next) =>
+            {
+                Routes.Enqueue(context.Request.Path.Value!);
+                await next();
             });
             await _app.StartAsync();
             Api = WinnowApiClient.Attach(_directory);

@@ -1,6 +1,6 @@
 # Winnow Electron
 
-An independent Electron/TypeScript frontend for Winnow's local backend. **Avalon** is the
+The primary Electron/TypeScript frontend for Winnow's independent local backend. **Avalon** is the
 default composition, carrying the original Winnow palette, bundled typography, portrait
 covers and dormancy treatment into Electron. Desktop uses a side rail and cover wall;
 fullscreen uses a hero and a directional recommendation shelf. Theme Studio also offers
@@ -315,7 +315,7 @@ themes. See [Electron themes](../../docs/electron-themes.md) for the validation 
 The approved [Rift design study](../../docs/spikes/2026-09-28-rift-design/README.md)
 records the composition that informed the production theme. Production screens use the
 real backend and cached artwork; the mock's sample games are not shipped with the app.
-The existing executable and application ID retain their Afterglow names for compatibility.
+The application ID retains its Afterglow suffix for compatibility; the executable is Winnow.
 
 Navigation and the footer stay visible as you browse. Library results and the list index
 scroll independently; other screens scroll within the content pane. Afterglow's featured
@@ -414,28 +414,30 @@ modes display as Fit without writing back; only a valid Fit or Fill selection is
 
 ## Run from source
 
-Install a current Node.js release compatible with Vite 7 (Node 22.12 or later) and the .NET 10 SDK.
-From this directory:
+Install PowerShell 7, Node.js 24 (CI uses 24.19.0) and the .NET 10 SDK. From the repository root:
 
 ```powershell
+Push-Location src/Winnow.Electron
 npm ci
-dotnet build ../Winnow.Backend/Winnow.Backend.csproj
-npm run dev -- --data-dir C:\Temp\winnow-electron-demo --seed-sample
+Pop-Location
+./Run.ps1 -DataDirectory .tmp/winnow-electron-demo -SeedSample -NoSync
 ```
 
-Development requires an explicit data directory. It attaches to a responsive backend there,
-or starts `Winnow.Backend` from the adjacent source project with automatic synchronization
-disabled. Sample seeding works only with a Debug backend and an empty library. Sample games
-do not include artwork or recorded sessions; missing data has visible empty states.
+Development requires an explicit data directory. The wrapper builds the backend and update
+helper and starts Vite with those companion paths. Electron attaches to a responsive backend
+in the chosen directory, or starts the built companion. Sample seeding works only with a
+Debug backend and an empty library. Sample games do not include artwork or recorded sessions;
+missing data has visible empty states.
 
 To view the production bundle without packaging:
 
 ```powershell
-npm run build
-npm run preview -- --data-dir C:\Temp\winnow-electron-demo --no-sync
+./Run.ps1 -Preview -DataDirectory .tmp/winnow-electron-demo -NoSync
 ```
 
-Set `WINNOW_BACKEND_PATH` to an absolute backend executable or DLL to use another build.
+For direct `npm run dev` or `npm run preview` commands in this directory, set
+`WINNOW_BACKEND_PATH` to an absolute backend executable or DLL to use another build and
+forward `-- --data-dir <path>`. Preview expects an existing `npm run build` output.
 Startup switches configure a newly started backend, not one already running. Closing the
 frontend leaves the backend running, as described in the [API guide](../../docs/frontend-api.md).
 
@@ -453,15 +455,19 @@ Without any usable helper host, Windows startup reports a fatal error with build
 with a helper available, an unavailable backend retains the recoverable connection screen.
 
 Application settings on desktop and fullscreen show the frontend package version and the
-source commit embedded when the bundle was built. Development uses `package.json`, and a
-packaged application uses its installed version. Builds outside a Git checkout show
+source commit embedded when the bundle was built. Development uses the source package version;
+primary publishing validates `Version.props`, supplies the release version and commit through
+build environment variables and overrides packaged metadata without changing `package.json`.
+A packaged application uses its installed version. Builds outside a Git checkout show
 `Unavailable` for the commit. Electron's runtime version is not the application version.
 
 An invalid startup argument or unusable frontend data directory exits with code 2. A newly
 started companion's refusal preserves exit 2 or 3, including malformed configuration,
-invalid logging settings and an unsupported database schema. Backend configuration comes
-from its installation directory. A failure during frontend initialization shows a diagnostic
-message and exits with code 3, including a failed primary renderer load; cancellation
+invalid logging settings and an unsupported database schema. The backend reads
+`appsettings.local.json` from the installation root above a packaged `backend/` directory,
+or its own output directory in development. That local file is excluded from releases.
+A failure during frontend initialization shows a diagnostic message and exits with code 3,
+including a failed primary renderer load; cancellation
 exits cleanly. Messages redact credentials and incidental paths. When the selected library
 directory exists, initialization failures also write a bounded structured log in its `logs`
 folder. It records the exception type, named call frames, available native error code,
@@ -665,9 +671,12 @@ Refreshing Details preserves its local section and an open journal draft. Expans
 separation names both games, initially selects Keep relationship, and sends the child
 identity only after confirmation.
 
-Complete Avalonia parity has not yet been established. The [migration inventory](../../docs/spikes/2026-09-28-electron-parity/test-inventory.json)
-tracks original presentation contracts individually; unported and partially verified tests
-remain visible and fail the completion gate. Provider connections and game actions depend on backend
+The [migration inventory](../../docs/spikes/2026-09-28-electron-parity/test-inventory.json)
+tracks original presentation contracts individually; any pending or partially verified method
+fails the completion gate. Retained Avalonia tests provide reference coverage, while Electron
+component, API, native and package checks exercise the delivered frontend. The complete
+migration/regression gate and physical-device validation remain separate from the verified
+Windows and Ubuntu package flows. Provider connections and game actions depend on backend
 capabilities. A launch result means a launcher handoff, not confirmed gameplay or download
 progress. Manual entries do not accept arbitrary launch commands.
 
@@ -705,14 +714,19 @@ shared fullscreen and native-window preferences use the backend.
 
 ## Build and verify
 
+Use PowerShell 7, .NET 10 and Node.js 24. After `npm ci` in this directory, the root
+`Build.ps1` builds the primary frontend and its companions. Before integration or rendered
+checks, run `./scripts/Build-ElectronTestFixtures.ps1` from the repository root in the same
+PowerShell session. It builds isolated Debug companions and exports their absolute paths.
+Then, from this directory:
+
 ```powershell
 npm run typecheck
 npm test
 npm run test:integration
 npm run test:rendered
 npm run migration:report
-npm run package
-npm run test:packaged
+npm run test:migration
 ```
 
 `test:rendered` launches the built Electron app and an isolated sample backend. Set
@@ -723,37 +737,56 @@ the source-method inventory contains pending or partial contracts. Passing the c
 Electron suite does not mean every original test has been migrated.
 
 The native activation, host and startup-contract suites require prebuilt backend and
-fixture apphosts. From this directory, build
-`dotnet build ../../tests/Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj`
-before running them. Their default paths use the ordinary Debug output. For scratch
-builds, set `WINNOW_BACKEND_PATH`, `WINNOW_ACTIVATION_HELPER_PATH` and
-`WINNOW_ELECTRON_FIXTURE_PATH` to the corresponding absolute apphost paths. A separate
-helper path lets startup-recovery tests deliberately remove the backend while retaining
+fixture apphosts. The root fixture script prepares these; when using other scratch
+builds, set `WINNOW_BACKEND_PATH`, `WINNOW_ACTIVATION_HELPER_PATH`,
+`WINNOW_ELECTRON_FIXTURE_PATH` and `WINNOW_UPDATE_HELPER_PATH` to the corresponding absolute
+apphost paths. A separate helper path lets startup-recovery tests deliberately remove the backend while retaining
 frontend ownership. These suites never use `dotnet run` for the parent-bound helper.
 
-`package` builds the renderer and preload, publishes a self-contained backend for the current
-OS/architecture, then produces an unpacked application. On Windows, run:
+`npm run package` calls the primary publisher for the matching Windows x64 or Linux x64 host.
+It builds Electron, the self-contained backend and update helper, then verifies the directory
+at `artifacts/electron-publish/<runtime>` beneath the repository root. `npm run dist` also
+creates the primary Inno Setup installer and ZIP on Windows, or Debian package and tar archive
+on Ubuntu 24.04, under `artifacts/electron-packages`. Windows installer creation requires Inno
+Setup; the [release guide](../../docs/releases.md) lists packaging prerequisites.
+
+Both commands default to the repository's development version and current Git commit.
+Use `--version`, `--commit` and `--runtime` for an explicit release identity.
+`--output` selects the verified directory for `package` or the archive directory for `dist`;
+`dist --publish-directory` selects its separate build directory. Publish directories must be
+empty. These commands create local files and do not upload a release.
+
+On Windows, build and check the primary package from this directory:
 
 ```powershell
-& '.\release\win-unpacked\Winnow.exe' --data-dir C:\Temp\winnow-electron-demo --no-sync
+npm run package
+$env:WINNOW_PACKAGED_EXE = (Resolve-Path ../../artifacts/electron-publish/win-x64/Winnow.exe).Path
+npm run test:packaged
+& $env:WINNOW_PACKAGED_EXE --data-dir C:\Temp\winnow-electron-demo --no-sync
 ```
 
-`npm run dist` additionally creates the configured distributables (Windows NSIS installer and
-portable executable). The [Electron updater](../../docs/electron-updates.md) stages verified
-updates and requires an explicit restart to install; its new installer paths still need
-disposable-machine update and recovery smoke tests.
+`package:secondary` and `dist:secondary` retain the optional electron-builder targets,
+including NSIS, portable EXE, AppImage and DMG. They do not replace the primary package or
+upgrade qualification. The [Electron updater](../../docs/electron-updates.md) stages verified
+updates and requires an explicit restart to install.
 `npm run format` formats TypeScript, CSS, tests and the example package. Packaging collects
 the production dependencies' license notices, including the bundled fonts, under `resources/`.
-Windows builds are unsigned. Windows x64 is the locally verified target; macOS/Linux
-configuration is provisional and has not been packaged or device-tested. This frontend is
-not part of the repository's existing Avalonia release or update pipeline.
+Windows builds are unsigned. Primary Windows x64 and Ubuntu 24.04 x64 packages have passed
+disposable-runner launch, previous-release upgrade, data-preserving removal and portable
+recovery checks. Ubuntu runs sandboxed Electron under Xvfb and Openbox with an exact-path
+AppArmor profile; see the [Linux package instructions](../../packaging/linux/README.md).
+These checks do not establish physical compositor, Wayland, controller or live-account
+compatibility. The optional secondary macOS DMG remains unverified and outside the supported
+release matrix; no macOS signing, notarization or Keychain support is claimed.
 
-`test:packaged` runs Windows executable and real shortcut activation checks against the
-unpacked build and its bundled backend. It creates a temporary library whose path contains
-spaces, verifies profile ownership and preserves the global installation-link association.
+The Windows `test:packaged` suite runs against the selected executable and its bundled
+backend, checking executable and real shortcut activation. The cross-platform packaged
+probe used by the release smoke scripts also checks Ubuntu restricted AppArmor user namespaces,
+actual process identity and both presentation modes. Tests use temporary libraries, verify
+profile ownership and preserve the global installation-link association.
 Explicit `--data-dir` sessions do not register themselves as the global `winnow://` handler;
 the ordinary packaged profile registers that handler on startup. The packaged suite does
-not install or publish a release. `WINNOW_PACKAGED_EXE` can select another unpacked build.
+not install or publish a release. Set `WINNOW_PACKAGED_EXE` to the primary executable as above.
 
 The integration runner starts and stops its own backend with a fresh sample database,
 adds a synthetic recorded session, and clears inherited IGDB credentials in that process.

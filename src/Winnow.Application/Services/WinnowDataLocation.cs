@@ -182,8 +182,24 @@ public static class WinnowDataLocation
         var probe = Path.Combine(root, WriteProbeName);
         try
         {
-            File.WriteAllBytes(probe, []);
-            File.Delete(probe);
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    File.WriteAllBytes(probe, []);
+                    File.Delete(probe);
+                    break;
+                }
+                catch (IOException busy) when (OperatingSystem.IsWindows()
+                    && busy.HResult == unchecked((int)0x80070020) && attempt < 8)
+                {
+                    // Concurrent frontends probe the same selected root before backend ownership
+                    // is established. Only Windows' transient sharing violation earns a short retry;
+                    // ACL failures, directory blockers and persistent locks still refuse this root.
+                    log?.LogDebug("Data directory write probe is busy; retrying.");
+                    Thread.Sleep(25);
+                }
+            }
         }
         catch (Exception cannotWrite) when (cannotWrite
             is IOException or UnauthorizedAccessException or NotSupportedException)

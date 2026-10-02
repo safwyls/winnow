@@ -1,7 +1,7 @@
 {
   "name": "winnow-electron",
   "productName": "Winnow",
-  "version": "0.1.0",
+  "version": "0.2.0-dev",
   "private": true,
   "description": "An extensible Electron frontend for Winnow",
   "author": "Winnow contributors",
@@ -9,7 +9,7 @@
   "type": "module",
   "scripts": {
     "dev": "electron-vite dev --",
-    "build": "tsc --noEmit && electron-vite build",
+    "build": "tsc --noEmit && node scripts/check-version.mjs && electron-vite build",
     "preview": "electron-vite preview --skipBuild --",
     "test": "vitest run",
     "test:integration": "node scripts/test-integration.mjs",
@@ -21,8 +21,12 @@
     "format": "prettier --write src tests scripts examples *.json *.ts README.md",
     "backend:publish": "node scripts/publish-backend.mjs",
     "notices": "node scripts/third-party-notices.mjs",
-    "package": "npm run build && npm run backend:publish && npm run notices && electron-builder --dir",
-    "dist": "npm run build && npm run backend:publish && npm run notices && electron-builder"
+    "package": "node scripts/package-primary.mjs package",
+    "dist": "node scripts/package-primary.mjs dist",
+    "package:secondary": "npm run build && npm run backend:publish && npm run notices && electron-builder --dir --publish never",
+    "dist:secondary": "npm run build && npm run backend:publish && npm run notices && electron-builder --publish never",
+    "check:version": "node scripts/check-version.mjs",
+    "test:entrypoints": "node --test scripts/entrypoints.test.mjs"
   },
   "build": {
     "appId": "app.winnow.afterglow",

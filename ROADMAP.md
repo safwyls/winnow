@@ -34,7 +34,7 @@ hardware validation. The remaining validation is listed in §6.
 
 | Area | Implemented behavior |
 |---|---|
-| Frontend independence | One local backend owns the library and workers. Avalonia and the independent Electron/TypeScript frontend use the authenticated versioned HTTP API and receive live committed changes. Electron defaults to Avalon with the original palettes and typography, alongside Afterglow, Rift and Catalogue. It includes setup, account capture, activity and spending, library/detail editors, controller input and native desktop integration, plus Theme Studio and replaceable React screens. Complete behavior and test parity remains under validation; see its [feature and validation scope](src/Winnow.Electron/README.md). |
+| Frontend independence | Electron/TypeScript is the primary desktop/fullscreen frontend. One independent .NET backend owns the library and workers behind an authenticated versioned HTTP API. Electron defaults to Avalon with the original palettes and typography, alongside Afterglow, Rift and Catalogue. It includes setup, account capture, activity and spending, library/detail editors, controller input and native desktop integration, plus Theme Studio and replaceable React screens. Avalonia remains a reference with retained contracts; the complete migration/regression gate and device validation are separate. See the [frontend guide](src/Winnow.Electron/README.md). |
 | Library | Local Steam, Epic and GOG discovery, optional Steam/Epic connections, manual entries, search, filters and user lists. Optional Xbox imports installed PC games and opt-in PC/console played history. Optional PlayStation imports the PS4/PS5 account library and opt-in played/legacy trophy history. Steam collections are not imported. |
 | Identity | Exact external IDs resolve automatically. Fuzzy matches require confirmation. Same-game, expansion and variant relations apply immediately through reversible links on desktop and fullscreen. |
 | History | Playtime snapshots, process-based session recording and restart recovery, optional journal notes, Steam history backfill and account-page imports. Unknown history remains unknown. |
@@ -45,7 +45,7 @@ hardware validation. The remaining validation is listed in §6.
 | Presentation | Desktop and fullscreen views, controller navigation and text entry, shared themes, separate layout preferences, accessibility and reduced-motion support. |
 | Setup | Optional resumable setup for providers, themes and preferences, available again from Application settings on both surfaces. GOG uses local discovery. |
 | Export | Acquisition CSV with title, store, acquisition date, licence and price paid. Missing values stay blank; recorded prices are cents without a currency. |
-| Distribution | Windows/Linux x64 packages, release checks and draft publication workflow. Installed Windows updating and portable Windows/Ubuntu update staging, paired backup and journal recovery; shared desktop/fullscreen update-and-restart action. |
+| Distribution | Primary Electron Windows x64 Inno/ZIP and Ubuntu 24.04 x64 Debian/tar packages, with an independent self-contained backend. Disposable-runner checks cover launch, previous-release upgrade, data-preserving removal and portable recovery. Windows updating uses the registered installer; portable Windows/Ubuntu staging retains paired backups and journals. Desktop/fullscreen share update state. Debian uses the package manager. macOS is outside the supported release matrix. |
 
 ## 4. Excluded and deferred
 
@@ -63,7 +63,6 @@ library matching, mobile, and a 3D shelf view. Fullscreen is a separate TV inter
 | GOG sign-in | Local Galaxy discovery supplies owned games and available local play facts. The authorized sessions probe returned only aggregates, without dates; sign-in remains deferred unless additional dated history is demonstrated ([evidence](docs/spikes/gog-session-history.md), TASK-49). |
 | Other data research | Steam support-export format and availability (TASK-46). |
 | Navigation and notifications | Windows post-session notification (TASK-108), user-selected destinations for links (TASK-114). |
-| App updates | Disposable Windows/Ubuntu release-upgrade CI evidence for portable recovery (TASK-159); local Windows engine and presentation tests cover the implementation. |
 
 Unowned-game recommendations are outside the current feed. A later wishlist feature would
 start from titles the user has explicitly selected, rather than a general purchase feed.
@@ -108,11 +107,17 @@ publication checks.
   establish that every Winnow-owned operation is reachable, focus is visible and no mouse or
   keyboard is required. Record the controller, OS, display, failing operations and external
   provider or launcher input requirements.
-- **Linux:** real-process tests cover native session discovery and synthetic Proton-environment
-  attribution. They do not establish compatibility across actual Wine/Proton games. Local
-  Epic/GOG discovery and embedded sign-in retain Windows-specific integration limits.
+- **Linux:** Ubuntu 24.04 x64 package checks use sandboxed Electron under Xvfb and Openbox.
+  Real-process tests cover native session discovery and synthetic Proton-environment attribution.
+  They do not establish physical compositor, Wayland, controller or actual Wine/Proton game
+  compatibility. Local Epic/GOG discovery retains Windows-specific paths. The Chromium browser
+  is cross-platform; persistent secrets still require Windows DPAPI, and live Linux provider
+  sign-in is unverified.
 - **Providers and recommendations:** fixtures and local tests do not establish live sign-in
   availability or a measurable feed improvement for a particular user's backfill. Keep those
   observations separate from implemented data ingestion.
 - **Packaging:** release smoke scripts run on disposable CI runners. A local publish or
   passing unit tests do not establish installer behavior on a user's device.
+- **Migration:** source-contract mappings, full backend/reference tests, Electron component/API
+  tests and native presentation checks are distinct gates. Package qualification alone does
+  not establish that the complete migration/regression gate has passed.

@@ -1,3 +1,4 @@
+import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import {
   test,
   expect,
@@ -17,10 +18,6 @@ import { DEFAULT_PROFILE } from '../../src/shared/theme'
 import type { Mode } from '../../src/renderer/api/types'
 import type { ApiRequest } from '../../src/shared/bridge'
 
-const fixture = resolve(
-  '../..',
-  '.tmp/task38121-fixture-artifacts/bin/Winnow.Electron.Fixtures/debug/Winnow.Electron.Fixtures.dll',
-)
 const probeDirectory = resolve('../..', '.tmp/task38121-native-probe')
 let app: ElectronApplication, page: Page, shellPage: Page, directory: string, mode: Mode
 let endpoint: { address: string; token: string }
@@ -291,6 +288,7 @@ test.beforeEach(async ({}, info) => {
         ),
       ) as Record<string, string>),
       WINNOW_BACKEND_PATH: fixture,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
     },
     chromiumSandbox: true,
     timeout: 60000,

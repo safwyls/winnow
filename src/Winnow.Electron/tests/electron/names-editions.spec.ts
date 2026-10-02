@@ -1,3 +1,4 @@
+import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import {
   test,
   expect,
@@ -10,8 +11,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import electronPath from 'electron'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+
 import { closeFixture } from './fixture-cleanup'
 import { fillLibrarySearch, libraryAction, setLibrarySort } from './library-controls'
 import type { ApiRequest } from '../../src/shared/bridge'
@@ -20,10 +20,7 @@ import type { MergeReview } from '../../src/renderer/features/parity-merge-model
 
 // The test-only backend runs the frozen edition fixture's external substitutes through the real
 // evidence acquirer and sync service. All named preload/API, SQLite and UI mutation paths remain real.
-const fixture = resolve(
-  '../..',
-  '.tmp/task38111-fixture-artifacts/bin/Winnow.Electron.Fixtures/debug/Winnow.Electron.Fixtures.dll',
-)
+
 let app: ElectronApplication, page: Page, directory: string, mode: Mode
 let endpoint: { address: string; token: string }
 const errors: string[] = []
@@ -276,22 +273,6 @@ async function closeEditor() {
   await expect(editor()).toHaveCount(0)
 }
 
-test.beforeAll(async () => {
-  test.setTimeout(120000)
-  await promisify(execFile)(
-    'dotnet',
-    [
-      'build',
-      resolve('../..', 'tests/Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj'),
-      '--artifacts-path',
-      resolve('../..', '.tmp/task38111-fixture-artifacts'),
-      '--nologo',
-      '--verbosity',
-      'quiet',
-    ],
-    { windowsHide: true, timeout: 115000 },
-  )
-})
 test.beforeEach(async ({}, info) => {
   mode = info.title.startsWith('fullscreen') ? 'fullscreen' : 'desktop'
   directory = await mkdtemp(join(resolve('../..', '.tmp'), 'winnow-electron-editions-'))
@@ -306,6 +287,7 @@ test.beforeEach(async ({}, info) => {
         ),
       ) as Record<string, string>),
       WINNOW_BACKEND_PATH: fixture,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
     },
     chromiumSandbox: true,
     timeout: 60000,

@@ -4,6 +4,8 @@ using System.Text.Json;
 
 try
 {
+    if (args.Contains(EpicConsoleCommand.Argument))
+        return await EpicConsoleCommand.RunAsync(args);
     if (args.Contains(Winnow.Activation.FrontendActivationHost.Argument))
         return await Winnow.Activation.FrontendActivationHost.RunAsync(
             WinnowDataLocation.ResolveFrom(args).Root,

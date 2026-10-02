@@ -9,7 +9,9 @@ import { quoteArgument } from '../../src/main/activation'
 import type { ApplicationActivation } from '../../src/shared/bridge'
 
 test.skip(process.platform !== 'win32', 'Windows executable and shortcut integration')
-const executable = resolve(process.env.WINNOW_PACKAGED_EXE ?? 'release/win-unpacked/Winnow.exe')
+const executable = resolve(
+  process.env.WINNOW_PACKAGED_EXE ?? '../../artifacts/electron-publish/win-x64/Winnow.exe',
+)
 let application: ElectronApplication, page: Page, directory: string
 let endpoint: { processId: number; epoch: string }
 let protocolBefore: string

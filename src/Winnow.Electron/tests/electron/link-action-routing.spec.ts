@@ -1,32 +1,10 @@
+import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import { test, expect, _electron as electron } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
-
-const fixture = resolve(
-  '../..',
-  '.tmp/task3818-plugin-fixture-artifacts/bin/Winnow.Electron.Fixtures/debug/Winnow.Electron.Fixtures.dll',
-)
-
-test.beforeAll(async () => {
-  test.setTimeout(120_000)
-  await promisify(execFile)(
-    'dotnet',
-    [
-      'build',
-      resolve('../..', 'tests/Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj'),
-      '--artifacts-path',
-      resolve('../..', '.tmp/task3818-plugin-fixture-artifacts'),
-      '--nologo',
-      '--verbosity',
-      'quiet',
-    ],
-    { windowsHide: true, timeout: 115000 },
-  )
-})
 
 for (const mode of ['desktop', 'fullscreen'] as const) {
   test(`${mode} original Steam run destination uses the authenticated action once without reader or fallback`, async ({}, info) => {
@@ -41,6 +19,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
           ),
         ) as Record<string, string>),
         WINNOW_BACKEND_PATH: fixture,
+        WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
       },
       chromiumSandbox: true,
     })

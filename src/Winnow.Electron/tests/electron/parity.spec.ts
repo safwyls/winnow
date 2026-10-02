@@ -100,7 +100,7 @@ async function noHorizontalOverflow() {
 }
 
 test('native startup uses Avalon and keeps credentials behind the preload boundary', async () => {
-  await expect(page).toHaveTitle('Winnow · Avalon')
+  await expect(page).toHaveTitle('Winnow')
   const exposed = await page.evaluate(() => ({
     node: typeof (window as unknown as { require?: unknown }).require,
     token: typeof (window.winnow as unknown as { token?: unknown }).token,
@@ -132,7 +132,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       expect(navigation!.y).toBeGreaterThanOrEqual(0)
       expect(navigation!.y + navigation!.height).toBeLessThanOrEqual(height)
       await page.screenshot({
-        path: join(resolve('../..', '.tmp/electron-rendered-results'), `${mode}-${width}-library.png`),
+        path: test.info().outputPath(`${mode}-${width}-library.png`),
       })
     })
   }
@@ -178,7 +178,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await expect(page.locator('.journal-page')).toBeVisible()
     await noHorizontalOverflow()
     await page.screenshot({
-      path: join(resolve('../..', '.tmp/electron-rendered-results'), `${mode}-activity.png`),
+      path: test.info().outputPath(`${mode}-activity.png`),
     })
   })
   test(`${mode} spending preserves currency boundaries and chart focus at large text sizes`, async () => {
@@ -225,7 +225,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       .evaluate((element) => parseFloat(getComputedStyle(element).fontSize))
     expect(font).toBeGreaterThanOrEqual(mode === 'fullscreen' ? 40 : 22)
     await page.screenshot({
-      path: join(resolve('../..', '.tmp/electron-rendered-results'), `${mode}-spending.png`),
+      path: test.info().outputPath(`${mode}-spending.png`),
     })
     await page.evaluate(() => {
       document.documentElement.style.removeProperty('--theme-text-scale')

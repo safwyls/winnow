@@ -3,7 +3,9 @@
 Local-first desktop app that surfaces forgotten games in large Steam/Epic/GOG libraries
 ("your library has unread mail"). No hosted service, no accounts.
 
-The product, the assembly, the binary and the mascot (a dragon) are all **Winnow**.
+The product, the binary and the mascot (a dragon) are all **Winnow**. Electron is the primary
+frontend; the independent .NET backend owns the library. Avalonia remains a reference
+frontend with retained regression tests.
 
 ## Where to read
 
@@ -77,7 +79,8 @@ Each one is load-bearing for an install that predates the 2026-08-28 rename.
 - `src/Winnow.Monitor` — process watching and session recording.
 - `src/Winnow.Recommend` — the scoring model. No IO beyond repositories; references
   `Winnow.Core` only.
-- `src/Winnow.Auth.WebView` — embedded sign-in. References Avalonia and `Winnow.Core` only.
+- `src/Winnow.Auth.WebView` — reference Avalonia embedded sign-in. References Avalonia and
+  `Winnow.Core` only; Electron uses its own isolated Chromium browser hosts.
 - `src/Winnow.Application` — backend use cases, repository composition and background workers.
 - `src/Winnow.Backend` — independent loopback HTTP/JSON API, authentication, discovery and SSE.
   Owns the data directory and database lifecycle; has no Avalonia dependency.
@@ -85,20 +88,23 @@ Each one is load-bearing for an install that predates the 2026-08-28 rename.
   uses a parent-bound helper in the backend executable, before HTTP hosting or database locking.
   Frontend activation guards remain separate from backend ownership.
 - `src/Winnow.Api.Contracts`, `src/Winnow.Api.Client` — versioned contracts and HTTP/event client.
-- `src/Winnow.Electron` — independent Electron/TypeScript frontend. Main owns API credentials;
+- `src/Winnow.Electron` — primary Electron/TypeScript frontend. Main owns API credentials;
   the sandboxed renderer uses a named preload bridge. Build/test with npm from this directory.
 - `src/Winnow.Presentation`, `src/Winnow.Diagnostics` — shared presentation policies and logging.
-- `src/Winnow.Covers.Avalonia` — Avalonia bitmap rendering and leases, separate from fetching.
-- `src/Winnow.App` — Avalonia desktop/fullscreen frontend. Assembly name is `Winnow`, to match
-  `avares://Winnow/...`. Production composition uses the external API; never add backend
+- `src/Winnow.Covers.Avalonia` — reference Avalonia bitmap rendering and leases, separate from fetching.
+- `src/Winnow.App` — reference Avalonia desktop/fullscreen frontend. Assembly name is `Winnow`, to match
+  `avares://Winnow/...`. Its runnable composition uses the external API; never add backend
   implementation, repository, provider, or worker registrations. Legacy domain composition
   belongs only in `tests/Shared/LegacyTestServices.cs`.
 - `tests/Winnow.Tests` — xUnit on temp-file SQLite databases. Parser tests use the sanitized
   real fixtures in `tests/fixtures/steam/`.
-- `tests/Winnow.Ui.Tests` — isolated Avalonia headless pointer and keyboard tests with real
+- `tests/Winnow.Ui.Tests` — retained Avalonia headless pointer and keyboard contracts with real
   fonts and templates. Use temporary data and never start the production host.
   Intermediate animation assertions use controlled frame time; input helpers can pump real
   render frames before returning. Keep a separate real-frame integration test for scheduling.
+- `src/Winnow.Electron/tests` — production renderer/component, main-process, API and native
+  Electron checks. The migration inventory records their relationship to reference contracts;
+  retaining the old tests does not substitute for testing the delivered frontend.
 
 ## Agent instructions and writing
 
@@ -145,11 +151,18 @@ report the limitation and leave Backlog files untouched.
   Give each agent its scope, owned files and relevant charter; concurrent agents must preserve
   one another's edits. The coordinating agent owns integration and verification.
 - `Directory.Build.props` sets nullable, implicit usings and `TreatWarningsAsErrors`.
-- Build and test with `dotnet build` and `dotnet test` from the repository root.
-- CI runs full Windows Release build/test and Linux session checks for pull requests. On `main`
-  and releases, the same required jobs may reuse full-test evidence from the last 24 hours only
-  when checkout provenance, complete source tree, resolved SDK, runner image and restored
-  dependencies match. Missing or invalid evidence runs full tests. Restore/audit and migration
+- Build the primary frontend and its companions with `./Build.ps1` from the repository root.
+  Run `dotnet test` for backend, domain and retained reference tests. Electron's component/live
+  API gate is `npm run test:integration` from `src/Winnow.Electron`; rendered and packaged
+  checks have separate commands in its README.
+- The protected Windows CI aggregate requires .NET backend/reference tests, Electron
+  type/build and component/live-API checks, complete migration coverage, rendered tests,
+  Windows/Ubuntu package smoke checks and first-party plugin builds. Electron native cases
+  run on isolated Windows shards with one worker and zero retries; an aggregate verifies
+  complete discovered-case coverage. These Electron, package and plugin checks always run fresh.
+  On `main` and releases, only the .NET and Linux session jobs may reuse full-test evidence
+  from the last 24 hours, and only when checkout provenance, complete source tree, resolved SDK,
+  runner image and restored dependencies match. Missing or invalid evidence runs full tests. Restore/audit and migration
   checks stay fresh; warnings fail the gate. See `docs/releases.md` for the evidence contract. Windows CI
   and Linux session checks are required by `main` branch protection. Changes reach `main`
   through an up-to-date pull request; this also applies to administrators. No additional
@@ -159,8 +172,9 @@ report the limitation and leave Backlog files untouched.
   all other whitespace retained. Never replace an existing entry. Verify with
   `./scripts/Verify-Migrations.ps1 -BaselineRef HEAD`; mutation tests are in
   `scripts/Test-MigrationHashes.ps1`.
-- Windows CI prints completed tests and retains TRX plus hang diagnostics. A focused fullscreen
-  Home layout preflight runs first to report layout failures before the longer database suite.
+- The Windows .NET job prints completed tests and retains TRX plus hang diagnostics. A focused
+  reference fullscreen Home layout preflight runs first to report layout failures before the
+  longer database suite.
   Both stages retain results, and reusable evidence still requires the full suite. A five-minute
   test inactivity timeout captures a mini dump so a stalled host can be investigated.
   The job summary lists per-assembly timing and the slowest test cases. Feature branches run
@@ -171,16 +185,23 @@ report the limitation and leave Backlog files untouched.
   processes and a synthetic Proton environment. A two-minute test inactivity timeout captures
   a mini dump alongside its TRX results. Those tests explicitly skip on non-Linux hosts.
 - Release packaging lives in `packaging/`; `docs/releases.md` owns build and publication
-  instructions. Tag releases must pass the reusable CI gate and both installer smoke checks
-  before creating a draft release. Smoke scripts install only on disposable GitHub runners.
-- Run with `dotnet run --project src/Winnow.App`. `-- --seed-sample` seeds demo data.
-- **For any run where you might click something, pass `-- --data-dir <path>`** to redirect the
-  database, sidecars, covers, themes and WebView2 profile to a throwaway directory. Otherwise
-  clicks write to the real library. An unusable path is refused at startup with exit code 2;
-  it never falls back silently. Setting `%LOCALAPPDATA%` does not work, because
-  `Environment.GetFolderPath` uses the Windows shell API and ignores it.
-- A startup failure — migrations, hosted services, framework initialization — is caught,
-  logged and shown to the user (on the console when there is one, otherwise a message box),
+  instructions. `packaging/Publish.ps1` publishes the primary Electron distribution;
+  `Publish-Avalonia.ps1` is the explicit reference path. Tag releases consume the reusable
+  CI gate's verified package and plugin artifacts before creating a draft release.
+  Smoke scripts install only on disposable GitHub runners.
+- Run the primary frontend with `./Run.ps1 -DataDirectory .tmp/winnow-play -SeedSample -NoSync`
+  after `npm ci` in `src/Winnow.Electron`. Add `-Preview` for a compiled frontend;
+  `-ApplicationArguments @('--fullscreen')` forwards product flags. Reference Avalonia remains
+  runnable with `dotnet run --project src/Winnow.App -- --data-dir <path>`.
+  Unpackaged Electron launches require an explicit data directory; installed launches do not.
+- **For any run where you might click something, pass `--data-dir <path>`** (or Run.ps1's
+  `-DataDirectory <path>`) to redirect the database, sidecars, covers, themes and Chromium
+  profile to a throwaway directory. Otherwise clicks write to the real library. An unusable
+  path is refused at startup with exit code 2;
+  it never falls back silently. Do not substitute `%LOCALAPPDATA%` for the explicit flag:
+  the backend's `Environment.GetFolderPath` uses the Windows shell API and ignores it.
+- A startup failure — migrations, hosted services, frontend initialization — is caught,
+  logged and shown to the user through the console or native alert,
   and leaves exit code 3, distinct from the `--data-dir` refusal's 2.
 - If the app is running it holds a lock on the output assemblies. Build to a scratch path
   instead: `dotnet test -p:BaseOutputPath=C:\Temp\winnow-verify\`.

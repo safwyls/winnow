@@ -247,6 +247,39 @@ class NativeDependencyContracts(unittest.TestCase):
 
 
 class SandboxAndPreservationContracts(unittest.TestCase):
+    def test_terminal_launchers_forward_arguments_stdin_and_exit_without_display_or_frontend(self):
+        source = Path(__file__).with_name('build.sh').read_text(encoding='utf-8')
+        start = source.index('write_launcher() {')
+        writer = source[start:source.index('\n}\n', start) + 3]
+        self.assertIn('write_launcher "$deb_root/usr/bin/winnow" /opt/winnow', source)
+        bash = shutil.which('bash') or 'C:/Program Files/Git/bin/bash.exe'
+        environment = {key: value for key, value in os.environ.items() if key not in ['DISPLAY', 'WAYLAND_DISPLAY']}
+        for fixed_root in [False, True]:
+            for code in [0, 1, 2, 3]:
+                with self.subTest(fixed_root=fixed_root, exit=code), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    payload = root / 'package with spaces'
+                    (payload / 'backend').mkdir(parents=True)
+                    (payload / 'backend/Winnow.Backend').write_text('''#!/usr/bin/env bash
+set -euo pipefail
+[[ ! -v DISPLAY && ! -v WAYLAND_DISPLAY ]] || exit 91
+printf '%s\\0' "$@" > arguments
+cat > input
+exit "$EXPECTED_EXIT"
+''', encoding='utf-8', newline='\n')
+                    (payload / 'Winnow').write_text('#!/usr/bin/env bash\nexit 92\n', encoding='utf-8', newline='\n')
+                    create = 'write_launcher launcher "$PWD/package with spaces"' if fixed_root else 'write_launcher "package with spaces/winnow"'
+                    launcher = './launcher' if fixed_root else './package with spaces/winnow'
+                    program = ('PATH=/usr/bin:/bin:$PATH\nunset DISPLAY WAYLAND_DISPLAY\n' + f'export EXPECTED_EXIT={code}\n' + writer + '\n' + create +
+                               '\nchmod +x "package with spaces/backend/Winnow.Backend" "package with spaces/Winnow"\n' +
+                               f"printf 'pasted-code\\n' | '{launcher}' --epic-login --code fixture-code --data-dir 'data with spaces'\n")
+                    result = subprocess.run([bash, '-s'], input=program.encode(), cwd=directory,
+                                            env={**environment, 'EXPECTED_EXIT': str(code)}, capture_output=True)
+                    self.assertEqual(result.returncode, code, result.stderr.decode())
+                    self.assertEqual((root / 'arguments').read_bytes().split(b'\0')[:-1],
+                                     [b'--epic-login', b'--code', b'fixture-code', b'--data-dir', b'data with spaces'])
+                    self.assertEqual((root / 'input').read_bytes(), b'pasted-code\n')
+
     def test_desktop_entry_matches_measured_electron_class_and_preserves_legacy_integration(self):
         source = Path(__file__).with_name('build.sh').read_text(encoding='utf-8')
         start = source.index('write_desktop_entry() {')

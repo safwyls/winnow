@@ -1,13 +1,17 @@
 # Winnow — Design System
 
-**Applies to:** Avalonia desktop and fullscreen interfaces, dark by default with optional light themes.
+**Applies to:** Winnow's default Avalon composition on Electron desktop and fullscreen,
+dark by default with optional light themes, and the retained Avalonia reference interface.
 
-The independent Electron frontend uses its own Afterglow, Rift and Catalogue compositions.
-Its appearance controls and replaceable-screen contract are in [Electron themes](docs/electron-themes.md).
+Electron also offers Afterglow, Rift and Catalogue as alternative compositions. Its appearance
+controls and replaceable-screen contract are in [Electron themes](docs/electron-themes.md).
+Framework-specific XAML, bitmap and automation details below describe the Avalonia reference;
+Electron preserves their user-visible contracts through its renderer and native bridge.
 
 This is the current visual and interaction specification. It owns palette, typography,
 layout, dormancy, components, copy, accessibility, themes and translucency. Numeric resources
-live in [tokens.axaml](src/Winnow.App/Themes/tokens.axaml).
+are retained in [tokens.axaml](src/Winnow.App/Themes/tokens.axaml); Electron's Avalon palette
+and CSS role bindings live in `src/Winnow.Electron/src/renderer/themes/`.
 
 Desktop layout and components are described throughout; §8 describes fullscreen composition
 and controller navigation. Shared feature behavior applies to both surfaces. For a focused

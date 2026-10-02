@@ -1,3 +1,4 @@
+import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import {
   test,
   expect,
@@ -6,8 +7,7 @@ import {
   type Locator,
   type Page,
 } from '@playwright/test'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
@@ -24,10 +24,7 @@ import {
 } from '../../src/renderer/features/parity-merge-model'
 
 const longTitle = "Metal Gear Solid V: The Phantom Pain — The Definitive Experience Collector's Edition"
-const fixture = resolve(
-  '../..',
-  '.tmp/task38112-fixture-artifacts/bin/Winnow.Electron.Fixtures/debug/Winnow.Electron.Fixtures.dll',
-)
+
 let app: ElectronApplication, page: Page, directory: string, mode: Mode
 let endpoint: { address: string; token: string }
 const errors: string[] = []
@@ -222,22 +219,6 @@ async function contained(card: Locator) {
   expect(overflow).toEqual({ horizontal: false, outside: [] })
 }
 
-test.beforeAll(async () => {
-  test.setTimeout(120000)
-  await promisify(execFile)(
-    'dotnet',
-    [
-      'build',
-      resolve('../..', 'tests/Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj'),
-      '--artifacts-path',
-      resolve('../..', '.tmp/task38112-fixture-artifacts'),
-      '--nologo',
-      '--verbosity',
-      'quiet',
-    ],
-    { windowsHide: true, timeout: 115000 },
-  )
-})
 test.beforeEach(async ({}, info) => {
   mode = info.title.startsWith('fullscreen') ? 'fullscreen' : 'desktop'
   directory = await mkdtemp(join(resolve('../..', '.tmp'), 'winnow-electron-merges-'))
@@ -252,6 +233,7 @@ test.beforeEach(async ({}, info) => {
         ),
       ) as Record<string, string>),
       WINNOW_BACKEND_PATH: fixture,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
     },
     chromiumSandbox: true,
     timeout: 60000,

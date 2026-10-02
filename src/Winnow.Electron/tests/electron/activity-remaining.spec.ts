@@ -1,3 +1,4 @@
+import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import {
   test,
   expect,
@@ -6,8 +7,7 @@ import {
   type Page,
   type Locator,
 } from '@playwright/test'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 import { build } from 'esbuild'
@@ -16,8 +16,6 @@ import { closeFixture } from './fixture-cleanup'
 import type { ApiRequest } from '../../src/shared/bridge'
 import type { GameDetails, Mode } from '../../src/renderer/api/types'
 
-const artifacts = resolve('../..', '.tmp/task38116-fixture-artifacts')
-const fixture = join(artifacts, 'bin/Winnow.Electron.Fixtures/debug/Winnow.Electron.Fixtures.dll')
 const probeDirectory = resolve('../..', '.tmp/task38116-native-probe')
 let app: ElectronApplication, page: Page, directory: string, mode: Mode, workId: number
 let endpoint: { address: string; token: string }
@@ -277,21 +275,7 @@ async function measure(
 
 test.beforeAll(async () => {
   test.setTimeout(120000)
-  await promisify(execFile)(
-    'dotnet',
-    [
-      'build',
-      resolve('../..', 'tests/Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj'),
-      '--artifacts-path',
-      artifacts,
-      '--nologo',
-      '--verbosity',
-      'quiet',
-    ],
-    { windowsHide: true, timeout: 115000 },
-  ).catch((error: Error & { stdout?: string; stderr?: string }) => {
-    throw new Error(`${error.message}\n${error.stdout ?? ''}\n${error.stderr ?? ''}`)
-  })
+
   await mkdir(probeDirectory, { recursive: true })
   await build({
     entryPoints: [resolve('tests/electron/activity-remaining-probe.tsx')],
@@ -324,6 +308,7 @@ test.beforeEach(async ({}, info) => {
         ),
       ) as Record<string, string>),
       WINNOW_BACKEND_PATH: fixture,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
     },
     chromiumSandbox: true,
     timeout: 60000,

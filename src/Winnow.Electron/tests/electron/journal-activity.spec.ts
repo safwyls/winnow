@@ -1,3 +1,4 @@
+import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import {
   test,
   expect,
@@ -6,8 +7,7 @@ import {
   type Page,
   type Locator,
 } from '@playwright/test'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 import electronPath from 'electron'
@@ -16,8 +16,6 @@ import { expectFullscreenJournalTypography } from './journal-typography'
 import type { ApiRequest } from '../../src/shared/bridge'
 import type { Mode } from '../../src/renderer/api/types'
 
-const artifacts = resolve('../..', '.tmp/task38117-fixture-artifacts')
-const fixture = join(artifacts, 'bin/Winnow.Electron.Fixtures/debug/Winnow.Electron.Fixtures.dll')
 let app: ElectronApplication, page: Page, directory: string, mode: Mode
 let endpoint: { address: string; token: string }
 const errors: string[] = []
@@ -230,24 +228,6 @@ async function capture(name: string, target?: Locator) {
   await page.screenshot({ path: test.info().outputPath(`${mode}-${name}.png`), animations: 'disabled' })
 }
 
-test.beforeAll(async () => {
-  test.setTimeout(120000)
-  await promisify(execFile)(
-    'dotnet',
-    [
-      'build',
-      resolve('../..', 'tests/Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj'),
-      '--artifacts-path',
-      artifacts,
-      '--nologo',
-      '--verbosity',
-      'quiet',
-    ],
-    { windowsHide: true, timeout: 115000 },
-  ).catch((error: Error & { stdout?: string; stderr?: string }) => {
-    throw new Error(`${error.message}\n${error.stdout ?? ''}\n${error.stderr ?? ''}`)
-  })
-})
 test.beforeEach(async ({}, info) => {
   test.setTimeout(90000)
   mode = info.title.startsWith('fullscreen') ? 'fullscreen' : 'desktop'
@@ -263,6 +243,7 @@ test.beforeEach(async ({}, info) => {
         ),
       ) as Record<string, string>),
       WINNOW_BACKEND_PATH: fixture,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
     },
     chromiumSandbox: true,
     timeout: 60000,

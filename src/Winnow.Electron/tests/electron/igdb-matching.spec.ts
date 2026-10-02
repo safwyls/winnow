@@ -1,3 +1,4 @@
+import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import {
   test,
   expect,
@@ -6,8 +7,7 @@ import {
   type Page,
   type Locator,
 } from '@playwright/test'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
@@ -17,10 +17,6 @@ import { assertAccessibleControls, assertDirectionalReachability } from './contr
 import type { ApiRequest } from '../../src/shared/bridge'
 import type { Mode, Workspace } from '../../src/renderer/api/types'
 
-const fixture = resolve(
-  '../..',
-  '.tmp/task38113-fixture-artifacts/bin/Winnow.Electron.Fixtures/debug/Winnow.Electron.Fixtures.dll',
-)
 let app: ElectronApplication, page: Page, directory: string, mode: Mode, workId: number
 let endpoint: { address: string; token: string }
 const errors: string[] = []
@@ -217,22 +213,6 @@ async function explicitContent(enabled: boolean) {
   await api({ route: 'preferences.library.put', body: { ...prefs, showExplicitContent: enabled } })
 }
 
-test.beforeAll(async () => {
-  test.setTimeout(120000)
-  await promisify(execFile)(
-    'dotnet',
-    [
-      'build',
-      resolve('../..', 'tests/Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj'),
-      '--artifacts-path',
-      resolve('../..', '.tmp/task38113-fixture-artifacts'),
-      '--nologo',
-      '--verbosity',
-      'quiet',
-    ],
-    { windowsHide: true, timeout: 115000 },
-  )
-})
 test.beforeEach(async ({}, info) => {
   mode = info.title.startsWith('fullscreen') ? 'fullscreen' : 'desktop'
   const variant = info.title.includes('production GamesDB')
@@ -254,6 +234,7 @@ test.beforeEach(async ({}, info) => {
         ),
       ) as Record<string, string>),
       WINNOW_BACKEND_PATH: fixture,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
     },
     chromiumSandbox: true,
     timeout: 60000,

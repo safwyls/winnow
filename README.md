@@ -26,16 +26,19 @@ whether it's been patched since you last tried. Winnow does.
 
 ### Install and run
 
-Release packages include the .NET runtime. When a beta release is published, download it
+This checkout builds Electron packages with the backend's .NET runtime. Earlier published
+versions may still use Avalonia; check their release notes. Download published builds
 from [GitHub Releases](https://github.com/safwyls/winnow/releases):
 
 - **Windows x64:** run the `-setup.exe` installer, or extract the `.zip` and run `Winnow.exe`.
   The installer runs per user and preserves library data when removed. Windows packages
-  are currently unsigned. Embedded sign-in requires the Evergreen WebView2 Runtime.
+  are currently unsigned. Embedded sign-in uses the bundled Chromium browser.
 - **Linux x64:** the `.deb` targets Ubuntu 24.04 with a desktop session. Install it with
   `sudo apt install ./Winnow-<version>-linux-x64.deb`, then launch Winnow from the app menu
   or run `winnow`. The `.tar.gz` is a portable alternative: extract it and run `./winnow`.
-  Portable builds need the native libraries listed in [release instructions](docs/releases.md).
+  Portable builds need the native libraries and one-time permission for their exact executable
+  path described in the [Ubuntu instructions](packaging/linux/README.md). The Debian package
+  installs its own AppArmor profile; both formats keep Chromium's sandbox enabled.
 
 Supported Windows and portable Ubuntu copies can download updates in the background.
 When an update is available, choose **Update and restart** in the title bar or fullscreen
@@ -43,33 +46,44 @@ interface. Debian installations use the package manager. See the
 [update and recovery instructions](docs/releases.md#in-app-updates) for portable support,
 backups and recovery after an interrupted upgrade.
 
-To run from source, install the [.NET 10 SDK](https://dotnet.microsoft.com/download):
+To run from source, install PowerShell 7, the [.NET 10 SDK](https://dotnet.microsoft.com/download)
+and Node.js 24 (CI uses 24.19.0):
 
 ```powershell
 git clone https://github.com/safwyls/winnow.git
 cd winnow
-dotnet run --project src/Winnow.App
+Push-Location src/Winnow.Electron
+npm ci
+Pop-Location
+./Run.ps1 -DataDirectory .tmp/winnow-demo -SeedSample -NoSync
 ```
 
-The original Avalonia interface is codenamed **Avalon**. The Electron/TypeScript frontend
-now defaults to an Avalon composition with the original palettes and fonts; **Afterglow**,
+This starts the frontend and its backend against a throwaway sample library. Omit
+`-SeedSample` to scan local games into that directory. `-Preview` builds and runs the compiled
+frontend instead of the development server. Unpackaged development launches require an
+explicit data directory; normal installed launches use your existing library.
+
+The primary frontend uses Electron/TypeScript. Its default **Avalon** composition preserves
+the original Winnow palettes and fonts; **Afterglow**,
 **Rift** and **Catalogue** remain available as alternative designs. All belong to Winnow.
 
-Avalon attaches to the independent local backend, starting it when needed. Closing the
+Electron attaches to the independent local backend, starting it when needed. Closing the
 frontend leaves session tracking and library refresh running. Other frontends can attach
 to the same library and receive its live changes. See the [frontend API guide](docs/frontend-api.md)
 for independent startup, authentication, events and a JavaScript client example.
 
-An alternative [Electron/TypeScript frontend](src/Winnow.Electron/README.md)
-is available from source with desktop/fullscreen interfaces, Theme Studio and
-[developer-authored layouts](docs/electron-themes.md). Its feature and validation scope
-is documented separately. Complete behavior and test parity is still being verified;
-the release downloads and instructions below describe Avalonia.
+The [frontend guide](src/Winnow.Electron/README.md) describes desktop/fullscreen interfaces,
+Theme Studio and [developer-authored layouts](docs/electron-themes.md). The Avalonia frontend
+and its tests remain as a reference for migration contracts; it is not the default build or
+release target. The complete migration and regression gate remains separate from package
+qualification.
 
-Linux builds have limited storefront integration: Epic/GOG discovery targets Windows
-launcher locations, embedded sign-in uses Windows WebView2, and credential persistence
-requires the Windows DPAPI protector. Linux native session detection and Steam compatibility
-path attribution have Ubuntu smoke coverage; actual Wine/Proton game compatibility varies.
+Supported packages target Windows x64 and Ubuntu 24.04 x64. Linux Epic/GOG discovery still
+targets Windows launcher locations. Chromium supplies the embedded browser on both platforms,
+but persistent credentials require the Windows DPAPI protector. Linux native session detection
+and Steam compatibility path attribution have Ubuntu smoke coverage; actual Wine/Proton games,
+live provider sign-in and physical controllers require device validation. macOS is unverified
+and outside the supported release matrix.
 
 Diagnostics are saved under `%LOCALAPPDATA%\Winnow\logs` (or the selected `--data-dir`).
 Five rolling files retain roughly 5 MiB. Logs omit identity values, paths, credentials and
@@ -161,9 +175,9 @@ While the on-screen keyboard is open, **X** backspaces and **RT** presses Enter.
 Enter closes the keyboard and sends Enter to a single-line field, or adds a newline to
 a multiline field; **B** closes the keyboard without submitting.
 
-Windows supports XInput controllers; Linux supports controllers exposed through readable
-`/dev/input/js*` devices. Battery status appears when XInput supplies it. Input pauses while
-Winnow is inactive, and held buttons must be released after reconnecting or returning from
+Controller input uses standard-mapped devices exposed by Chromium's Gamepad API. On Windows,
+an additional XInput probe supplies battery status when it can identify the same controller.
+Input pauses while Winnow is inactive, and held buttons must be released after reconnecting or returning from
 a game. A fullscreen file browser supports controller selection. External launchers and
 third-party authentication challenges retain their own input requirements.
 Physical-controller compatibility and readability at your seating distance need device validation.
@@ -183,7 +197,14 @@ to connect, a Web API key and a browser sign-in, and they are alternatives rathe
 fallback pair — the screen explains the trade.
 
 Epic sign-in opens Epic's own page in an embedded browser. A console flow (`--epic-login`) is
-available as an alternative.
+available as an alternative: run `Winnow.exe --epic-login` on Windows, or `winnow --epic-login`
+(`./winnow` for a portable copy) on Linux. Add `--data-dir <path>` to select a library.
+The prompt explains consent and prints the sign-in URL before offering to open your browser.
+Paste the raw `authorizationCode` value, or supply `--code <code>` or `--code=<code>`;
+end-of-input cancels. The command uses the independent backend without opening Winnow's GUI.
+Linux launchers dispatch directly to that backend and do not require a display, but credential
+persistence still has the platform limit below. Windows terminal behavior has isolated
+integration coverage; Linux terminal execution and live provider sign-in remain unverified.
 
 ### Where your data lives
 
@@ -244,8 +265,10 @@ setx Igdb__ClientId     "your-client-id"
 setx Igdb__ClientSecret "your-client-secret"
 ```
 
-**Then open a new terminal** — environment variables are read at shell startup. Or use
-`src/Winnow.App/appsettings.local.json` (gitignored).
+**Then open a new terminal** — environment variables are read at shell startup. The backend
+also reads `appsettings.local.json` from its installation root (the parent of the packaged
+`backend/` directory, or the backend output directory in development). This file must not
+enter a distributable package.
 
 ### Optional: SteamGridDB
 
@@ -328,13 +351,13 @@ offer official assets, so some games have few choices; IGDB does not supply icon
 
 ### Writing a theme
 
-**Settings → Appearance → Typography** lets you choose heading, interface and data fonts,
+**Theme Studio → Typography** lets you choose heading, interface and data fonts,
 plus a text size from 80% to 120%. Choices apply live, are saved separately for each theme,
-and are included in theme exports. The same controls are available in fullscreen.
+and are included in theme exports. Fullscreen also exposes them in **Settings → Appearance**.
 **Reset theme typography** restores the theme's original choices.
 
 Exports store font names rather than font files. Install matching fonts on another computer;
-unavailable families use Winnow's bundled fallback and are identified in Appearance.
+unavailable families use Winnow's bundled fallback.
 
 Drop a `.json` file in `%LOCALAPPDATA%\Winnow\themes\`. A complete theme is eight colours and
 a few numbers; everything else is derived:
@@ -377,7 +400,8 @@ accent labels and focus outlines for readability; the audit checks action states
 
 ### Stack
 
-Avalonia 11 · .NET 10 · SQLite (Microsoft.Data.Sqlite + Dapper) · DbUp · CommunityToolkit.Mvvm.
+Electron · React/TypeScript · .NET 10 backend · SQLite (Microsoft.Data.Sqlite + Dapper) · DbUp.
+Avalonia and CommunityToolkit.Mvvm remain in the reference frontend and its tests.
 
 ### Module map
 
@@ -391,10 +415,10 @@ Winnow.PluginSdk      Public library, metadata, artwork and feed contracts.
 Winnow.Plugins        Plugin discovery, activation, dependency loading and HTTP.
 plugins/             Separately packaged providers, including SteamGridDB.
 Winnow.Covers[.Igdb]  Backend cover art pipeline and disk cache.
-Winnow.Covers.Avalonia  Avalonia bitmap rendering and leases.
+Winnow.Covers.Avalonia  Reference Avalonia bitmap rendering and leases.
 Winnow.Monitor        Process watching and session recording.
 Winnow.Recommend      The scoring model and the shelves.
-Winnow.Auth.WebView   WebView2 host for embedded sign-in.
+Winnow.Auth.WebView   Reference Avalonia WebView2 sign-in host.
 Winnow.Update[.Helper] Portable staging, database backup, replacement and recovery.
 Winnow.Application    Backend use cases and background-service composition.
 Winnow.Backend        Independent authenticated loopback HTTP/JSON and event host.
@@ -402,7 +426,8 @@ Winnow.Api.Contracts  Versioned frontend contracts and presentation interfaces.
 Winnow.Api.Client     Typed HTTP client and reconnecting event transport.
 Winnow.Presentation   Shared presentation policies without backend implementations.
 Winnow.Diagnostics    Bounded, redacted diagnostic logging and build identity.
-Winnow.App            Avalonia desktop/fullscreen API client. Assembly name `Winnow`.
+Winnow.Electron       Primary Electron/React desktop and fullscreen API client.
+Winnow.App            Reference Avalonia API client and source presentation contracts.
 ```
 
 What each module is allowed to do, and the boundaries between them, are in
@@ -411,21 +436,34 @@ What each module is allowed to do, and the boundaries between them, are in
 ### Build and test
 
 ```powershell
-dotnet build
+./Build.ps1
 dotnet test
+./scripts/Build-ElectronTestFixtures.ps1
+Push-Location src/Winnow.Electron
+npm run test:integration
+npm run test:rendered
+npm run test:migration
+Pop-Location
 ```
 
-GitHub Actions runs restore, dependency auditing, an analyzer-enabled Release build and all
-tests on Windows for pushes to `main` and pull requests. Advisory warnings fail the restore,
-including advisories on transitive packages. Test results are retained for seven days.
-The workflow also verifies migration hashes against the previous push or pull-request base.
-The contribution workflow requires the Windows and Linux session checks through an up-to-date
-pull request. Repository settings enforce branch protection separately from the workflow file.
+`Build.ps1` builds the primary frontend, backend and update helper. `dotnet test` retains the
+backend, domain and reference Avalonia suites. The fixture script builds test companions and
+sets their paths in the current shell; Electron's integration runner uses a temporary backend.
+See the [frontend verification guide](src/Winnow.Electron/README.md#build-and-verify) for those paths,
+packaged tests and the distinction between a passing suite and a complete migration inventory.
 
-The separate **Release builds** workflow packages Windows and Linux x64 applications.
-Branch/PR and manual runs keep installer artifacts; a `vX.Y.Z[-prerelease]` tag also runs
-the CI gate and creates a draft GitHub Release with SHA-256 checksums after both package
-smoke checks pass. See [release instructions](docs/releases.md) for builds and publication.
+GitHub Actions requires the .NET backend and reference tests, Electron type/build and
+component/live-API checks, the complete migration inventory, rendered tests, Windows/Ubuntu
+packages and first-party plugins. Native Electron checks run serially within each isolated
+Windows shard, with no retries; the aggregate checks that every discovered case completed.
+The protected Windows aggregate and separate Linux session check must pass on an up-to-date
+pull request. Dependency advisory warnings fail restore, and migration hashes are checked
+against the previous push or pull-request base.
+
+The **Release builds** workflow runs the same gate for tags and manual build-only requests.
+A `vX.Y.Z[-prerelease]` tag creates a draft GitHub Release with SHA-256 checksums from those
+verified package and plugin artifacts. CI package checks do not publish a release.
+See [release instructions](docs/releases.md) for prerequisites, evidence reuse and publication.
 
 To check migration integrity locally:
 
@@ -436,30 +474,28 @@ To check migration integrity locally:
 
 ### Working on the UI
 
-**The XAML previewer renders populated views.** In Rider, open any `.axaml` under
-`src/Winnow.App/Views/` and choose *Editor and Preview*; the same works in Visual Studio's
-Avalonia previewer. Every view assigns itself a design-time view model when it detects the
-previewer, so the details modal, the cover wall, the feed and the settings screens all draw
-with data rather than empty frames.
+The [isolated Electron previews](src/Winnow.Electron/README.md#isolated-design-previews)
+mount the production shell, Library, feed and Details on both surfaces, plus the original
+fifteen preview surfaces. Their fabricated eight-game library includes a two-store game,
+an unread patch and GOG patch notes. The in-memory bridge starts no backend and refuses
+native operations and writes; the native preview host blocks network requests.
 
-The data is a fabricated eight-game library in
-[`src/Winnow.App/Design/`](src/Winnow.App/Design/PreviewData.cs) — real domain records folded
-through the same code the SQLite read model uses, with no database, filesystem or network
-touch. One game per rail bucket, a two-store game for the chip treatment, an unread patch,
-and GOG patch notes for the expander. `tests/Winnow.Ui.Tests/DesignTimePreviewTests.cs`
-attaches the preview data to every previewable view, so a change that breaks the preview
-fails a test.
+The reference XAML previewer remains available in Rider's *Editor and Preview* or Visual
+Studio's Avalonia previewer for `src/Winnow.App/Views/`. Its data lives in
+[`src/Winnow.App/Design/`](src/Winnow.App/Design/PreviewData.cs), and
+`tests/Winnow.Ui.Tests/DesignTimePreviewTests.cs` retains the original attachment contracts.
 
 For click-through rather than pictures, run the app against a throwaway library:
 
 ```powershell
-dotnet run --project src/Winnow.App -- --data-dir C:\Temp\winnow-play --seed-sample
+./Run.ps1 -DataDirectory .tmp/winnow-play -SeedSample -NoSync
 ```
 
-`--data-dir` redirects the database, covers and sign-in state away from your real library;
-`--seed-sample` fills it with demo games. `WINNOW_UI_CAPTURE_DIR=<dir>` makes the UI tests
-drop rendered frames there, and `dotnet run -- --theme=<id> --open-library` style flags
-(DEBUG builds) land the window on a state worth screenshotting.
+`-DataDirectory` forwards `--data-dir`, redirecting the database, covers and sign-in state
+away from your real library; `-SeedSample` fills it with demo games. Forward other product
+flags with `-ApplicationArguments @('--fullscreen', '--open-library')`. Electron's rendered
+tests retain screenshots in their configured results directory. For reference Avalonia
+captures, `WINNOW_UI_CAPTURE_DIR=<dir>` makes its headless tests save rendered frames.
 
 No network calls: parser tests run against sanitized captures of real launcher files in
 `tests/fixtures/`, and every HTTP client is tested against canned responses. Fixtures carry
