@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 07:40'
+updated_date: '2026-10-02 08:10'
 labels:
   - electron
   - parity
@@ -60,4 +60,6 @@ Use the fresh primary Windows package and only disposable data to exercise attac
 
 <!-- SECTION:NOTES:BEGIN -->
 User explicitly accepted these controller hardware exceptions in the active six-task batch: physical button mapping, held-button suppression, reconnect and battery reporting remain unverified because no physical controller is connected; automated controller evidence remains separately identified. This does not approve the pending display/platform exception question. Available attached-display/native fullscreen checks still need execution.
+
+Available-device implementation and verification are complete: three real displays passed exact F11 bounds/restore, all six origin-focus returns and all three minimize/restore target checks. Twelve guarded native material captures passed solid/Acrylic/Mica/fullscreen/restoration with unchanged opaque covers. Cleanup202, no owned processes, package hashes unchanged. Checkpoint95 records environment, methods and limits. Task remains open only for explicit unavailable-matrix agreement; independent regression work in the already-authorized six-task batch can proceed while that review is pending.
 <!-- SECTION:NOTES:END -->
