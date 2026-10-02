@@ -30,7 +30,14 @@ if ($url.AbsoluteUri -cne $expectedUrl -or $previous.Asset.digest -notmatch '^sh
     throw 'The previous installer has no valid official URL or GitHub SHA-256 digest.'
 }
 $expectedHash = $Matches[1]
+$expectedSize = [long]$previous.Asset.size
+if ($expectedSize -le 0) { throw 'The previous installer has no valid GitHub asset size.' }
 $null = New-Item -ItemType Directory -Force -Path (Split-Path -Parent ([IO.Path]::GetFullPath($OutputPath)))
 Invoke-WebRequest -Uri $url -OutFile $OutputPath
-if ((Get-FileHash -LiteralPath $OutputPath -Algorithm SHA256).Hash -ine $expectedHash) { throw 'Previous installer checksum does not match GitHub.' }
+if ((Get-Item -LiteralPath $OutputPath).Length -ne $expectedSize -or
+    (Get-FileHash -LiteralPath $OutputPath -Algorithm SHA256).Hash -ine $expectedHash) {
+    throw 'Previous installer size or checksum does not match GitHub.'
+}
+@{ previousVersion = $previous.Version.ToString(); targetVersion = $Version; runtime = 'win-x64'; sha256 = $expectedHash; size = $expectedSize } |
+    ConvertTo-Json | Set-Content -LiteralPath "$OutputPath.evidence.json" -Encoding utf8NoBOM
 Write-Host "Upgrade smoke baseline: $($previous.Tag) -> $Version"
