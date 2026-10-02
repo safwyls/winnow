@@ -1,7 +1,7 @@
 ---
 id: TASK-381.35
 title: 'Electron: finish repository boundaries and preview coverage'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
@@ -58,7 +58,7 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary, completing the authorized TASK-381.31 through TASK-381.35 batch. Stop for user review before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary, completing the authorized TASK-381.31 through TASK-381.35 batch. Stop for user review before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -77,6 +77,8 @@ Source lane closed: original preview20/20, original hygiene6/8 with two previous
 First complete component/live API run finished: 4284 passed and two failed of4286 across226 files,209.84s, no integration backend processes remain. Both failures reviewed: singular list-name helper still matched plural games only; compact ReceptionLine added a second named group after .34. Fixes preserve expected names/order and split compact plain span from full named group without weakening enforcement. Native4 functional journeys passed, but capture review caught auto-height standalone fullscreen FeedView clipping; preview host needs definite height and native guard now checks both active source cards, near-full intersection, aspect, hit test and useful size. Fixing these within the batch regression gate, then fresh native and full component/API verification.
 
 Final gates: all4286 Electron/component/liveAPI cases across226files pass with zero skips in207.84s, including12liveAPI cases; temporary backend closed and no owned integration processes remain. Build/typecheck pass (index-CEqesFQd.js). Final native4/4 in8.7s with whole rawreport/captures in task38135-native-final4-results; both15surface matrices, source shell/card/detail journeys, corrected fully visible Feed and decoded/nonrectangular dragon masks pass. Native SVG loader now matches Vite file assets; production logo unchanged. Root reviewed final desktop/fullscreen captures; independent review found no blockers. All12assignedmethodsported. Inventory1682ported/706retained/41framework/6pending/0partial; completiongate correctly stillfails. Detailed limitations and original two traversal failures remain in checkpoint-ninety.md.
+
+Reviewable implementation milestone: 07d04744. All final verification evidence and limitations are recorded in checkpoint-ninety.md. The authorized TASK-381.31 through TASK-381.35 batch is complete; stopping for user review without beginning TASK-381.36.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
