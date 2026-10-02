@@ -15,21 +15,28 @@ const state = {
   downloads: 0,
   restarts: 0,
   links: [],
+  snapshots: [],
 }
 let finishDownload
 const publish = (patch) => {
   Object.assign(state.snapshot, patch)
+  state.snapshots.push(structuredClone(state.snapshot))
   for (const window of BrowserWindow.getAllWindows())
     window.webContents.send('winnow:update:changed', structuredClone(state.snapshot))
 }
 const finish = (success) => {
+  const verified = success === true
   publish({
     busy: false,
-    canDownload: !success,
+    canDownload: !verified,
     canCancel: false,
-    canRestart: success,
-    progress: success ? 100 : 0,
-    status: success ? 'Update ready. Restart when you are ready.' : 'Update download cancelled.',
+    canRestart: verified,
+    progress: verified ? 100 : 0,
+    status: verified
+      ? 'Update ready. Restart when you are ready.'
+      : success === 'failure'
+        ? 'The update could not be downloaded or verified. Try again.'
+        : 'Update download cancelled.',
   })
   finishDownload?.()
   finishDownload = undefined

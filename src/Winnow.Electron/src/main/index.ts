@@ -43,6 +43,9 @@ import { frontendDataLocation } from './frontend-data-location'
 import { createBackendServiceLifecycle } from './backend-service'
 import { ApplicationUpdater } from './application-updater'
 import { electronUpdateDriver } from './electron-update-driver'
+import { primaryDistribution } from './distribution-installation'
+import { distributionUpdateDriver } from './distribution-update-driver'
+import { distributionHelper, startDistributionLease, type DistributionLease } from './distribution-helper'
 import {
   clearUpdateResume,
   prepareUpdateResume,
@@ -104,6 +107,9 @@ const rendererRoot = resolve(here, '../renderer')
 let dataDirectory: string | undefined
 let explicitDataDirectory: string | undefined
 let activationHost: ActivationHost | undefined
+let distribution: ReturnType<typeof primaryDistribution>
+let distributionLease: DistributionLease | undefined
+let updateBackendReady = false
 let startupArgumentError: Error | undefined
 let startupArgs = [...process.argv]
 const resumeFile = updateResumeFile(app.getPath('appData'), app.getName())
@@ -404,7 +410,9 @@ async function initialize(): Promise<void> {
     },
     onConnection: (state) => {
       emit('winnow:connection', state)
+      updateBackendReady = state.connected
       if (state.connected) {
+        if (rendererAcceptsActivation) void distributionLease?.ready().catch(failStartup)
         void refreshPreferences()
         void jumpListRefresh.request()
       }
@@ -420,7 +428,17 @@ async function initialize(): Promise<void> {
   updater = new ApplicationUpdater({
     version: applicationBuildInfo(app.isPackaged, app.getVersion()).version,
     packaged: app.isPackaged,
-    driver: electronUpdateDriver({
+    driver: distribution ? {
+      ...distributionUpdateDriver({
+        ...distribution,
+        version: app.getVersion(),
+        dataDirectory: dataDirectory!,
+        args: startupArgs,
+        supported: distribution.supported && (distribution.kind !== 'portable' || !!distributionLease?.canUpdate),
+        quit: () => { quitting = true; app.quit() },
+      }),
+      recoveryStatus: distributionLease?.recoveryStatus,
+    } : electronUpdateDriver({
       version: applicationBuildInfo(app.isPackaged, app.getVersion()).version,
       packaged: app.isPackaged,
       appName: app.getName(),
@@ -451,6 +469,7 @@ async function initialize(): Promise<void> {
     stopBackend: () => backendService.stopForUpdate(),
     recoverBackend: () => backendService.recover(),
     async prepareRestart(version) {
+      if (distribution) return
       prepareUpdateResume(resumeFile, {
         version,
         dataDirectory: explicitDataDirectory,
@@ -555,6 +574,7 @@ async function initialize(): Promise<void> {
   )
   handle('winnow:activation:pending', () => {
     rendererAcceptsActivation = true
+    if (updateBackendReady) void distributionLease?.ready().catch(failStartup)
     return pendingActivations.drain()
   })
   ipcMain.handle(
@@ -973,6 +993,7 @@ async function initialize(): Promise<void> {
     signal: startupLifetime.signal,
   })
   if (problem) transport.setStartupProblem(problem)
+  updateBackendReady ||= !problem
   startupLifetime.signal.throwIfAborted()
   if (!problem && !preferencesLoaded) {
     const remaining = Math.max(0, initialDeadline - Date.now())
@@ -1002,6 +1023,7 @@ function failStartup(error: unknown): void {
   transport?.stop()
   windowTray?.dispose()
   activationHost?.dispose()
+  distributionLease?.dispose()
   startupLifetime.abort(new DOMException('Startup closed', 'AbortError'))
   app.exit(
     reportStartupFailure(error, {
@@ -1043,10 +1065,20 @@ else if (startupArgumentError) {
         dataDirectory = await resolveBackendDataDirectory({ ...location, signal: startupLifetime.signal })
       }
       startupLifetime.signal.throwIfAborted()
+      distribution = primaryDistribution({ packaged: app.isPackaged, executable: process.execPath, version: app.getVersion() })
+      if (distribution?.kind === 'portable') {
+        distributionLease = await startDistributionLease({
+          helper: distributionHelper(distribution.installation),
+          installation: distribution.installation,
+          dataDirectory: dataDirectory!,
+          signal: startupLifetime.signal,
+          onLost: failStartup,
+        })
+      }
       await initialize()
     })
     .catch(failStartup)
-app.on('will-quit', () => activationHost?.dispose())
+app.on('will-quit', () => { activationHost?.dispose(); distributionLease?.dispose() })
 const drainUpdates = quitDrain(
   () => updater?.dispose() ?? Promise.resolve(),
   () => app.quit(),

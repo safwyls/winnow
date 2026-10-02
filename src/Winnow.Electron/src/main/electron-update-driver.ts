@@ -1,13 +1,18 @@
 import { spawn, type StdioOptions } from 'node:child_process'
-import { createReadStream, existsSync } from 'node:fs'
+import { createReadStream, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
-import { dirname, isAbsolute, join } from 'node:path'
+import { isAbsolute } from 'node:path'
 import { AppImageUpdater, NsisUpdater } from 'electron-updater'
 import { CancellationToken, type UpdateInfo } from 'builder-util-runtime'
 import type { UpdateDriver, UpdateRelease } from './application-updater'
 import { electronAssetName, newerRelease, updateRepository, validateUpdateFiles } from './update-policy'
 import { manualRelease } from './manual-update-release'
 import { UpdateHttpExecutor } from './update-http'
+import {
+  isAppImageInstallation,
+  matchesWindowsInstallation,
+  readWindowsInstallDirectory,
+} from './installation-policy'
 
 export async function verifyStagedUpdate(paths: string[], file: { sha512: string; size?: number }) {
   if (paths.length !== 1) throw new Error('Invalid installer staging.')
@@ -205,15 +210,26 @@ export function electronUpdateDriver(options: {
   Object.assign(native, { httpExecutor: executor })
   native.setFeedURL({ provider: 'github', owner: 'safwyls', repo: 'winnow' })
   native.logger = null
+  let osRelease: string | null = null
+  if (linux) {
+    try {
+      osRelease = readFileSync('/etc/os-release', 'utf8')
+    } catch {
+      /* An unknown distribution requires manual updates. */
+    }
+  }
   const supported =
     options.packaged &&
+    process.arch === 'x64' &&
     (process.platform === 'win32'
       ? !process.env.PORTABLE_EXECUTABLE_DIR &&
-        existsSync(join(dirname(process.execPath), `Uninstall ${options.appName}.exe`))
-      : linux &&
-        !!process.env.APPIMAGE &&
-        isAbsolute(process.env.APPIMAGE) &&
-        existsSync(process.env.APPIMAGE))
+        matchesWindowsInstallation(
+          process.execPath,
+          readWindowsInstallDirectory('nsis'),
+          'nsis',
+          options.appName,
+        )
+      : linux && isAppImageInstallation(process.env.APPIMAGE, osRelease))
   return createUpdateDriver({
     native,
     version: options.version,

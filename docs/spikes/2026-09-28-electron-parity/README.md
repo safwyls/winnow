@@ -45,6 +45,15 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [application update and recovery checkpoint](checkpoint-ninety-one.md) records
+the final six source mappings, twelve original cases, 233 focused Electron cases,
+70 current helper/recovery cases and four native checks passing. It adds the primary
+Inno/archive update route and parent-bound portable startup guard, with separate
+desktop/fullscreen evidence. The inventory now has 1,688 ported, 706 retained-backend
+and 41 framework-specific methods, with zero pending or partial methods. Both audit
+commands pass. Packaging, required CI and physical-device checks remain distinct
+delivery gates; source mapping completion does not establish those results.
+
 The [repository and isolated preview checkpoint](checkpoint-ninety.md) records
 all 4,286 Electron/component/live-API cases across 226 files passing, without
 skips, including twelve live API cases. Four native journeys cover both shells
@@ -416,11 +425,10 @@ uses Chromium's actual permission checks and the named font-catalogue bridge.
 
 ## Verification limits
 
-The current passing suites cover substantially more behavior than the original Electron
-implementation, but many source contracts remain pending or partial. Original suites
-covering detailed focus, input, modal geometry, performance, source provenance and native
-application lifecycle still require equivalent Electron evidence. The inventory records
-that work explicitly instead of treating an aggregate green test run as migration completion.
+All frozen source methods now have explicit migration dispositions and recorded assertion
+scope. Focused and native evidence is recorded in the checkpoints above. The final combined
+regression run, packaging smoke, default delivery switch and physical-device matrix remain
+separate gates; a complete mapping inventory does not establish their completion.
 
 Native materials can be requested on supported Windows versions; Electron does not expose
 the compositor's active material as Avalonia does. A separate Windows compositor inspection

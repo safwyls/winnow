@@ -1,9 +1,10 @@
 import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
 import type { ApplicationUpdateSnapshot } from '../../src/shared/bridge'
+import { prebuiltActivationHelper, prebuiltBackend } from './prebuilt-backend'
 
 for (const [mode, scale] of [
   ['desktop', 1],
@@ -21,11 +22,15 @@ for (const [mode, scale] of [
         '--seed-sample',
         '--no-sync',
       ],
-      env: Object.fromEntries(
-        Object.entries(process.env).filter(
-          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-        ),
-      ) as Record<string, string>,
+      env: {
+        ...(Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+          ),
+        ) as Record<string, string>),
+        WINNOW_BACKEND_PATH: prebuiltBackend,
+        WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+      },
       chromiumSandbox: true,
     })
     try {
@@ -46,6 +51,7 @@ for (const [mode, scale] of [
         window.focus()
       }, mode)
       await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
+      await expect(page.locator('.startup-presentation')).toHaveCount(0)
       if (mode === 'fullscreen')
         await page.evaluate(async (scale) => {
           const result = await window.winnow.request({
@@ -105,7 +111,7 @@ for (const [mode, scale] of [
         status: 'A new version is available.',
         releaseUrl: 'https://github.com/safwyls/winnow/releases/tag/v2.0.0',
         downloadUrl:
-          'https://github.com/safwyls/winnow/releases/download/v2.0.0/Winnow-Electron-2.0.0-win-x64-Setup.exe',
+          'https://github.com/safwyls/winnow/releases/download/v2.0.0/Winnow-2.0.0-win-x64-setup.exe',
       })
       await expect(caption).toBeVisible()
       if (mode === 'fullscreen')
@@ -175,6 +181,12 @@ for (const [mode, scale] of [
       await page.keyboard.press('Enter')
       await expect(panel.getByRole('button', { name: 'Cancel download', exact: true })).toBeEnabled()
       await expect(panel.getByRole('button', { name: 'Cancel download', exact: true })).toBeFocused()
+      await application.evaluate(() => (globalThis as any).__updates.finish('failure'))
+      await expect(panel).toContainText('The update could not be downloaded or verified. Try again.')
+      await expect(panel.getByRole('button', { name: 'Download update', exact: true })).toBeEnabled()
+      expect((await state()).restarts).toBe(0)
+      await panel.getByRole('button', { name: 'Download update', exact: true }).click()
+      await expect(panel.getByRole('button', { name: 'Cancel download', exact: true })).toBeEnabled()
       await application.evaluate(() => (globalThis as any).__updates.finish(true))
       await expect(panel.getByRole('button', { name: 'Restart to update', exact: true })).toBeEnabled()
       await expect(panel.locator(':focus')).toBeVisible()
@@ -206,8 +218,27 @@ for (const [mode, scale] of [
       await expect(panel.getByRole('alert')).toHaveCount(0)
       await recovery.scrollIntoViewIfNeeded()
       await page.screenshot({ path: info.outputPath(`${mode}-recovery.png`) })
+      expect((await state()).downloads).toBe(3)
       expect(errors).toEqual([])
     } finally {
+      const state = await application.evaluate(() => (globalThis as any).__updates.state).catch(() => null)
+      await writeFile(
+        info.outputPath('update-workflow-ledger.json'),
+        JSON.stringify(
+          {
+            mode,
+            scale,
+            directory,
+            prebuiltBackend,
+            prebuiltActivationHelper,
+            state,
+            adapter:
+              'Actual renderer/preload/main/backend with controlled update snapshot/action handlers; no installer execution. Controller input is simulated.',
+          },
+          null,
+          2,
+        ),
+      )
       await closeFixture(application, directory)
     }
   })

@@ -1,9 +1,9 @@
 {
   "sourceRevision": "cf45d9f1127243a987d3cf6e664a32fc767ecb67",
   "counts": {
-    "pending": 6,
+    "pending": 0,
     "partial": 0,
-    "ported": 1682,
+    "ported": 1688,
     "retained-backend": 706,
     "framework-specific": 41
   },
@@ -33103,32 +33103,74 @@
     {
       "id": "UpdateInstallationTests.LinuxAutomationUsesTheTestedDistribution",
       "source": "tests/Winnow.Ui.Tests/UpdateInstallationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/update-installation-contracts.test.ts",
+          "case": "LinuxAutomationUsesTheTestedDistribution: %s"
+        }
+      ],
+      "reason": "Exact Ubuntu 24.04 quoted-version positive and Ubuntu 22.04/Debian 24.04/null negative source matrix. Supplemental ambiguity and AppImage tests enforce the same distribution boundary; this is policy evidence, not a Linux package smoke test."
     },
     {
       "id": "UpdateInstallationTests.PortableRequiresMatchingManifestAppHostAndHelper",
       "source": "tests/Winnow.Ui.Tests/UpdateInstallationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/update-installation-contracts.test.ts",
+          "case": "PortableRequiresMatchingManifestAppHostAndHelper: %s"
+        }
+      ],
+      "reason": "Exact win-x64/Winnow.exe/helper.exe and linux-x64/Winnow/helper fixtures: matching 1.0.0 manifest alone refuses; actual helper enables; dotnet host and adjacent Inno uninstaller refuse. Supplemental mismatched/development/invalid manifest, unsupported runtime, NSIS uninstaller and helper-directory refusal. The primary archive driver consumes the predicate; packaged helper handoff and recovery evidence is separate."
     },
     {
       "id": "UpdateInstallationTests.ManagedLinuxNeverUsesArchiveReplacement",
       "source": "tests/Winnow.Ui.Tests/UpdateInstallationTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/update-installation-contracts.test.ts",
+          "case": "ManagedLinuxNeverUsesArchiveReplacement"
+        }
+      ],
+      "reason": "Exact /opt/winnow/, /usr/lib/winnow/ and temporary package-managed marker fixture. Explicit assertion that otherwise valid portable manifest/helper remains ineligible under the marker; secondary AppImage path shares the same exclusion."
     },
     {
       "id": "WindowsUpdateInstallerTests.RestartPreservesSelectedLibraryAndNoSyncWithoutRepeatingSeedOrLogin",
       "source": "tests/Winnow.Ui.Tests/WindowsUpdateInstallerTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/update-installation-contracts.test.ts",
+          "case": "RestartPreservesSelectedLibraryAndNoSyncWithoutRepeatingSeedOrLogin"
+        }
+      ],
+      "reason": "Exact selected temp directory with spaces and original seed/login/wrong data/no-sync/unknown argument array yields only selected absolute --data-dir and --no-sync. Additional one-use native resume tests reject conflicting directory/URI, invalid timestamp/version/path, preserve ordinary launch behavior and strip inherited one-shot commands. Helper staging/handoff consumes its own equivalent explicit allowlist; actual installed restart smoke remains separate."
     },
     {
       "id": "WindowsUpdateInstallerTests.PortableExecutableCannotClaimARegisteredInstallation",
       "source": "tests/Winnow.Ui.Tests/WindowsUpdateInstallerTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/update-installation-contracts.test.ts",
+          "case": "PortableExecutableCannotClaimARegisteredInstallation: %s"
+        }
+      ],
+      "reason": "Original temporary root/unins000.exe fixture accepts only root Winnow.exe, rejects portable child and dotnet.exe and refuses after uninstaller deletion. Same assertions also execute for the secondary NSIS uninstaller. Separate read tests preserve original per-user 64-bit legacy key, builder-derived NSIS key, non-ASCII paths, missing/inaccessible registration and bounded hidden subprocess behavior."
     },
     {
       "id": "WindowsUpdateInstallerTests.MissingInstallRegistrationIsUnsupported",
       "source": "tests/Winnow.Ui.Tests/WindowsUpdateInstallerTests.cs",
-      "status": "pending"
+      "status": "ported",
+      "tests": [
+        {
+          "file": "tests/update-installation-contracts.test.ts",
+          "case": "MissingInstallRegistrationIsUnsupported: %s / %s"
+        }
+      ],
+      "reason": "Exact null/null, empty/empty, and Winnow.exe/relative fixtures refuse for both primary Inno and secondary NSIS. No default directory substitution or registry write is introduced."
     },
     {
       "id": "YearFilterParityTests.Both_surfaces_validate_the_same_range_and_invalid_edits_preserve_the_applied_filter",

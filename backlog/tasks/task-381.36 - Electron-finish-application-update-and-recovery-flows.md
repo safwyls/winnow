@@ -1,10 +1,11 @@
 ---
 id: TASK-381.36
 title: 'Electron: finish application update and recovery flows'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
+updated_date: '2026-10-02 03:21'
 labels:
   - electron
   - parity
@@ -43,13 +44,31 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 All original update download/install/cancel/restart and Windows installer contracts have equivalent Electron behavior and isolated failure/recovery tests.
-- [ ] #2 Desktop and fullscreen expose accurate progress and deliberate restart/cancel actions; packaged updates preserve user data, respect package-managed installations and recover interrupted upgrades.
-- [ ] #3 All 6 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
-- [ ] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+- [x] #1 All original update download/install/cancel/restart and Windows installer contracts have equivalent Electron behavior and isolated failure/recovery tests.
+- [x] #2 Desktop and fullscreen expose accurate progress and deliberate restart/cancel actions; packaged updates preserve user data, respect package-managed installations and recover interrupted upgrades.
+- [x] #3 All 6 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Audit the six remaining original updater contracts, close concrete Electron policy or recovery gaps, execute focused updater/component/native checks, and record complete source mappings and milestone evidence. The user has authorized finishing TASK-381.36 through TASK-381.41 as one batch; proceed sequentially without the older per-task pause.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Audit found functional delivery gaps beyond the six policy mappings: Electron had only NSIS/AppImage paths and no existing archive recovery integration. Preserve the original Inno AppId and Windows ZIP/Ubuntu deb/tar formats. Added primary distribution selection, official digest-verified release downloads, existing helper staging/handoff and parent-bound frontend lease/readiness. Secondary NSIS/AppImage now obey registered path and Ubuntu/package-manager guards. Source inventory reaches 1688 ported, 706 retained-backend, 41 framework-specific, 0 pending/partial; all six exact source contracts have executed replacement assertions. Packaging smoke remains TASK-381.37/.38, not implied by source mapping.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Preserved all six original contracts and restored primary Inno/archive updater dispatch with verified downloads, registered installation checks, safe restart arguments, and a parent-bound portable lease/readiness handshake using the existing backup/recovery engine. Twelve original source cases, 233 focused Electron cases, 70 helper/recovery cases and four native checks pass; builds/typecheck and complete migration audit pass (1688 ported,706 retained-backend,41 framework-specific,0 pending/partial). Desktop/fullscreen screenshots reviewed; all owned processes closed. Actual installer/platform smoke remains the next two delivery tasks; no release published. See checkpoint-ninety-one.md and task38136 evidence ledgers.
+<!-- SECTION:FINAL_SUMMARY:END -->

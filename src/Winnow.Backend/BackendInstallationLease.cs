@@ -16,8 +16,16 @@ internal sealed class BackendInstallationLease : IDisposable
     internal static string FindInstallationDirectory(string executableDirectory)
     {
         var directory = Path.GetFullPath(executableDirectory);
-        var parent = Directory.GetParent(Path.TrimEndingDirectorySeparator(directory))?.FullName;
-        return parent is not null && File.Exists(Path.Combine(parent, "release-info.json")) ? parent : directory;
+        if (File.Exists(Path.Combine(directory, "release-info.json"))) return directory;
+        // Only the two shipped backend layouts may borrow an enclosing installation lease.
+        var current = new DirectoryInfo(directory);
+        if (current.Name.Equals("backend", StringComparison.OrdinalIgnoreCase) && current.Parent is { } parent)
+        {
+            if (File.Exists(Path.Combine(parent.FullName, "release-info.json"))) return parent.FullName;
+            if (parent.Name.Equals("resources", StringComparison.OrdinalIgnoreCase) && parent.Parent is { } root &&
+                File.Exists(Path.Combine(root.FullName, "release-info.json"))) return root.FullName;
+        }
+        return directory;
     }
 
     public void Dispose() => _lease?.Dispose();

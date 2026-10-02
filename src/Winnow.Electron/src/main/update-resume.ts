@@ -1,5 +1,5 @@
 import { closeSync, existsSync, fstatSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
-import { isAbsolute, join } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import { releaseVersion } from './update-policy'
 
 interface Resume {
@@ -10,14 +10,41 @@ interface Resume {
 }
 export const updateResumeFile = (appData: string, appName: string) =>
   join(appData, `${appName}-update-resume.json`)
+
+/** A replacement restarts the selected library, never the previous launch's one-shot commands. */
+export function restartArguments(dataDirectory: string, originalArgs: readonly string[]): string[] {
+  if (
+    typeof dataDirectory !== 'string' ||
+    !dataDirectory.trim() ||
+    dataDirectory.includes('\0') ||
+    dataDirectory.length > 4096
+  )
+    throw new Error('Invalid update data directory.')
+  return ['--data-dir', resolve(dataDirectory), ...(originalArgs.includes('--no-sync') ? ['--no-sync'] : [])]
+}
+
 export function prepareUpdateResume(path: string, value: Omit<Resume, 'created'>, now = Date.now()): void {
   if (
+    typeof value.version !== 'string' ||
     !releaseVersion(value.version) ||
+    typeof value.noSync !== 'boolean' ||
+    !Number.isSafeInteger(now) ||
+    now < 0 ||
     (value.dataDirectory !== undefined &&
-      (!isAbsolute(value.dataDirectory) || value.dataDirectory.includes('\0')))
+      (typeof value.dataDirectory !== 'string' ||
+        !isAbsolute(value.dataDirectory) ||
+        value.dataDirectory.length > 4096 ||
+        value.dataDirectory.includes('\0')))
   )
     throw new Error('Invalid update restart context.')
-  writeFileSync(path, JSON.stringify({ ...value, created: now }), {
+  const json = JSON.stringify({
+    version: value.version,
+    dataDirectory: value.dataDirectory,
+    noSync: value.noSync,
+    created: now,
+  })
+  if (Buffer.byteLength(json, 'utf8') > 8192) throw new Error('Invalid update restart context.')
+  writeFileSync(path, json, {
     encoding: 'utf8',
     mode: 0o600,
     flag: 'w',
@@ -48,6 +75,8 @@ export function restoreUpdateResume(
       !value ||
       !releaseVersion(value.version) ||
       value.version !== options.version ||
+      !Number.isSafeInteger(value.created) ||
+      value.created < 0 ||
       !Number.isFinite(age) ||
       age < 0 ||
       age > 2 * 60 * 60_000 ||
@@ -69,9 +98,12 @@ export function restoreUpdateResume(
       )
     )
       throw new Error('Conflicting update startup arguments.')
-    if (value.dataDirectory) args.push('--data-dir', value.dataDirectory)
-    if (value.noSync && !args.includes('--no-sync')) args.push('--no-sync')
-    return { args }
+    // Native installers supply only their marker and apphost. Do not replay injected or inherited commands.
+    const restored = args[0] && !args[0].startsWith('--') ? [args[0]] : []
+    if (args.includes('--updated')) restored.push('--updated')
+    if (value.dataDirectory) restored.push('--data-dir', value.dataDirectory)
+    if (value.noSync) restored.push('--no-sync')
+    return { args: restored }
   } catch {
     // Refuse startup: silently losing an isolated directory would open the user's real library.
     throw new Error(

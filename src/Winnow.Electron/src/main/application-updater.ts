@@ -7,6 +7,7 @@ export interface UpdateRelease {
 }
 export interface UpdateDriver {
   supported: boolean
+  recoveryStatus?: string
   check(includeBeta: boolean, signal?: AbortSignal): Promise<UpdateRelease | null>
   download(release: UpdateRelease, signal: AbortSignal, progress: (percent: number) => void): Promise<void>
   install(): Promise<void>
@@ -48,7 +49,9 @@ export class ApplicationUpdater {
   private handedOff = false
   private timers: ReturnType<typeof setTimeout>[] = []
   private listeners = new Set<(snapshot: ApplicationUpdateSnapshot) => void>()
-  constructor(private readonly ports: UpdatePorts) {}
+  constructor(private readonly ports: UpdatePorts) {
+    if (ports.driver.recoveryStatus) this.value.recoveryStatus = ports.driver.recoveryStatus
+  }
   get snapshot(): ApplicationUpdateSnapshot {
     return { ...this.value }
   }

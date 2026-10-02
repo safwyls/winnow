@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text.Json;
-using Microsoft.Win32;
 
 namespace Winnow.App.Services;
 
@@ -18,45 +17,17 @@ public interface IUpdateInstaller
 /// <summary>Hands an authenticated installer to a separate process before normal shutdown.</summary>
 public sealed class WindowsUpdateInstaller : IUpdateInstaller
 {
-    public const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{A2A9E417-5D4B-4B85-8738-7D6E993E51CE}_is1";
+    public const string UninstallKey = Winnow.Update.WindowsInstallPolicy.UninstallKey;
     public bool IsSupported => OperatingSystem.IsWindows() && GetInstallDirectory() is not null;
 
     [SupportedOSPlatform("windows")]
-    private static string? GetInstallDirectory()
-    {
-        try
-        {
-            using var registry = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Registry64);
-            using var key = registry.OpenSubKey(UninstallKey);
-            var directory = key?.GetValue("InstallLocation") as string;
-            return MatchesInstallation(Environment.ProcessPath, directory) ? Path.GetFullPath(directory!) : null;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
-        {
-            return null;
-        }
-    }
+    private static string? GetInstallDirectory() => Winnow.Update.WindowsInstallPolicy.RegisteredDirectory(Environment.ProcessPath);
 
     public static bool MatchesInstallation(string? executable, string? registeredDirectory)
-    {
-        if (string.IsNullOrWhiteSpace(executable) || string.IsNullOrWhiteSpace(registeredDirectory)) return false;
-        try
-        {
-            return Path.IsPathFullyQualified(registeredDirectory) &&
-                string.Equals(Path.GetFullPath(executable), Path.Combine(Path.GetFullPath(registeredDirectory), "Winnow.exe"), StringComparison.OrdinalIgnoreCase) &&
-                File.Exists(Path.Combine(registeredDirectory, "unins000.exe"));
-        }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or IOException) { return false; }
-    }
+        => Winnow.Update.WindowsInstallPolicy.MatchesInstallation(executable, registeredDirectory);
 
     public static string[] RestartArguments(string dataDirectory, IEnumerable<string> arguments)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(dataDirectory);
-        // Seeding and sign-in commands must never be repeated by an upgrade.
-        var result = new List<string> { "--data-dir", Path.GetFullPath(dataDirectory) };
-        if (arguments.Contains("--no-sync", StringComparer.Ordinal)) result.Add("--no-sync");
-        return result.ToArray();
-    }
+        => Winnow.Update.WindowsInstallPolicy.RestartArguments(dataDirectory, arguments);
 
     public async Task PrepareAsync(string installerPath, string sha256, CancellationToken ct = default)
     {
