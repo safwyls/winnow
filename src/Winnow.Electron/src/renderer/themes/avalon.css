@@ -248,11 +248,15 @@
   .avalon-content:focus-visible {
     outline: none;
   }
-  .avalon-content > .settings-page,
   .avalon-content > .journal-page,
   .avalon-content > .details-page,
   .avalon-content > .studio-page {
     padding: 24px;
+  }
+  .avalon-shell.desktop .settings-page {
+    margin-left: 0;
+    padding: 24px;
+    width: 100%;
   }
   .avalon-content .page-heading h1 {
     font-size: calc(28px * var(--theme-text-scale, 1));

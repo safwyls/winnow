@@ -233,6 +233,10 @@ The grid/list switch, Settings sections, platform tabs and merge-kind filter use
 selection never changes segment dimensions. Borderless underline tabs on desktop and
 fullscreen keep their own focus treatment.
 
+Desktop Settings sections share a 24px inset inside the content frame, including Plugins.
+Their headings, section navigation and content align to that inset. Fullscreen keeps its
+display safe margins rather than adding the desktop inset.
+
 **Radius:** 6px on tiles, 4px on controls, 8px on a floating pane (§15.3). The three rank by
 the size of the object they round.
 
