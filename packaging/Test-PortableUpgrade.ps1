@@ -66,6 +66,13 @@ function Read-LibraryEvidence([string]$Database) {
     if ($LASTEXITCODE -ne 0 -or -not $result -or $result -eq '[]') { throw 'Disposable seeded library integrity or contents check failed.' }
     return $result
 }
+function Assert-PreservedPortableFiles([string]$DataDirectory, [string[]]$RelativePaths) {
+    foreach ($relative in $RelativePaths) {
+        if ([IO.File]::ReadAllText((Join-Path $DataDirectory $relative)) -cne 'preserve these user-owned bytes') {
+            throw "Upgrade or recovery lost $relative."
+        }
+    }
+}
 function Stop-ReplacedApplication([string]$Journal, [string]$Installation, [string]$DataDirectory) {
     $processRecord = Join-Path (Split-Path $Journal -Parent) 'child-process'
     if (Test-Path -LiteralPath $processRecord) {
@@ -172,6 +179,7 @@ try {
             $recovered = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json -AsHashtable
             if ($recovered.Phase -ne 8 -or -not (Test-WinnowSameFrontendPayload (Get-WinnowFrontendPayload $install) $oldPayload) -or
                 (Read-LibraryEvidence $database) -cne $libraryBefore) { throw 'Interrupted replacement did not recover prior binaries and internal data.' }
+            Assert-PreservedPortableFiles $data $preserved
             Write-Host "Passed durable replacement interruption recovery with internal data ($Runtime)."
             continue
         }
@@ -191,6 +199,7 @@ try {
                 throw 'Explicit recovery did not restore the paired previous binaries.'
             }
             if ((Read-LibraryEvidence $database) -cne $libraryBefore) { throw 'Explicit recovery did not preserve the paired library.' }
+            Assert-PreservedPortableFiles $data $preserved
             Write-Host "Passed real apphost failed startup and explicit backup recovery ($Runtime)."
             continue
         }
@@ -210,9 +219,7 @@ try {
             $report = Join-Path $PSScriptRoot "../artifacts/portable-smoke-logs/$scenario-electron.json"
             Invoke-WinnowPackagedProbe (Join-Path $install $executableName) $data $report 'desktop'
         }
-        foreach ($relative in $preserved) {
-            if ([IO.File]::ReadAllText((Join-Path $data $relative)) -cne 'preserve these user-owned bytes') { throw "Upgrade lost $relative." }
-        }
+        Assert-PreservedPortableFiles $data $preserved
         if (-not (Test-Path -LiteralPath $database)) { throw 'Upgrade lost the library database.' }
         if ((Read-LibraryEvidence $database) -cne $libraryBefore) { throw 'Upgrade changed seeded library identities or titles.' }
         Write-Host "Passed actual older-to-newer portable upgrade: $scenario ($Runtime)."

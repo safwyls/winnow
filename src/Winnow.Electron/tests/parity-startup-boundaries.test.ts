@@ -123,6 +123,7 @@ describe('native-ready frontend startup and external backend ownership', () => {
     const window = {
       setFullScreen: vi.fn(),
       show: vi.fn(),
+      isVisible: () => true,
       hide: vi.fn(),
       focus: vi.fn(),
       isMinimized: () => false,

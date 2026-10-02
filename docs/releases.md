@@ -14,7 +14,9 @@ has a separate local build described in
 [`src/Winnow.Electron/README.md`](../src/Winnow.Electron/README.md). Its primary package uses
 the existing distribution and update contracts. Windows x64 has passed packaged launch,
 installation, previous-release upgrade, uninstall and portable recovery checks on a
-disposable runner. Supported Linux packaging has a separate validation gate.
+disposable runner using the corrected updater. Compatibility with the older
+release's embedded updater is undergoing a separate smoke check. Supported Linux
+packaging has a separate validation gate.
 
 The primary Electron Windows package can be built separately with
 `packaging/Publish-Electron.ps1`, using the same arguments as `Publish.ps1` below,

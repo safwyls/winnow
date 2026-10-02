@@ -5,7 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 03:30'
+updated_date: '2026-10-02 04:36'
 labels:
   - electron
   - parity
@@ -48,8 +48,16 @@ Review boundary: work on this task only after the user prompts continuation from
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Preserve Ubuntu24.04 x64 Debian and tar.gz release names, launcher, protocol and update routes. Bundle primary Electron/backend/helper/provider/notices and verify native dependencies and executable modes. Establish exact-path AppArmor user-namespace profiles for managed installation and explicit portable setup without disabling the Chromium sandbox or weakening global policy. Fix backend installation leasing for managed and genuinely read-only copies while retaining fail-closed pending-update behavior. Extend native package probes to Linux desktop/fullscreen, real own backend, activation, renderer sandbox and cleanup; retain all four portable recovery scenarios and actual managed install/upgrade/uninstall data checks on disposable Ubuntu runners. Verify native/Proton session suite. Audit optional macOS configuration without claiming support or publishing. Record evidence and complete before defaults/device/final tasks.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Preparation during Windows packaging identified a Linux startup risk to verify: BackendInstallationLease currently creates its adjacent lock for every release manifest, including /opt/winnow package-managed installs. Debian non-root launch cannot assume parent /opt is writable. Assess managed and read-only backend lease behavior before Linux smoke; do not bypass Chromium sandbox to make startup pass.
+
+Implementation paused at safe boundary because37review found legacy embedded updater still uses hidden restart. Preserve prepared Linux baseline scripts/probe edits; no Linux completion claims.
 <!-- SECTION:NOTES:END -->

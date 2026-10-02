@@ -12,6 +12,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '../Stop-SmokeBackend.ps1')
 . (Join-Path $PSScriptRoot 'Test-ElectronPackageLayout.ps1')
 . (Join-Path $PSScriptRoot 'Smoke-Application.ps1')
+. (Join-Path $PSScriptRoot 'Installer-SmokeEvidence.ps1')
 
 function Invoke-SilentProcess {
     param(
@@ -164,6 +165,9 @@ try {
     }
     $applicationProcess = $null
     Stop-SmokeBackend $dataDirectory
+    $libraryBefore = Read-InstalledLibraryEvidence $databasePath
+    $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
+    $libraryBefore | Set-Content -LiteralPath (Join-Path $diagnosticsDirectory 'library-before.json') -Encoding utf8
 
     $sentinelPath = Join-Path $dataDirectory 'preserve-after-uninstall.txt'
     [System.IO.File]::WriteAllText($sentinelPath, 'keep this user data')
@@ -175,6 +179,11 @@ try {
     }
 
     $helperScript = Join-Path $PSScriptRoot '../../src/Winnow.App/Services/Install-Update.ps1'
+    # Successful upgrades must use the helper actually shipped in the installed release.
+    # Replacing the application cannot replace the old helper that is already running.
+    $previousHelperScript = Join-Path $smokeRoot 'previous-release-update-helper.ps1'
+    Export-InstalledUpdateHelper $installDirectory $previousHelperScript |
+        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $diagnosticsDirectory 'previous-helper.json') -Encoding utf8
     $previousBinaryDigest = (Get-FileHash -LiteralPath $applicationPath -Algorithm SHA256).Hash
     foreach ($scenario in @('bad-digest', 'cancelled', 'shutdown-timeout', 'locked-file', 'upgrade')) {
         Write-Host "Updater smoke scenario: $scenario"
@@ -202,8 +211,9 @@ try {
             [IO.File]::WriteAllText($lockedPath, 'locked binary fixture')
             $lockedFile = [IO.File]::Open($lockedPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
         }
+        $scenarioHelper = if ($scenario -eq 'upgrade') { $previousHelperScript } else { $helperScript }
         $helper = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @(
-            '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $helperScript), '-ManifestPath', ('"{0}"' -f $manifestPath)
+            '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $scenarioHelper), '-ManifestPath', ('"{0}"' -f $manifestPath)
         ) -WindowStyle Hidden -PassThru
         if ($scenario -in @('upgrade', 'locked-file')) {
             for ($attempt = 0; $attempt -lt 200 -and -not (Test-Path -LiteralPath (Join-Path $scenarioDirectory 'ready')); $attempt++) {
@@ -248,6 +258,9 @@ try {
         }
         $applicationProcess = $null
         Stop-SmokeBackend $dataDirectory
+        $libraryAfter = Read-InstalledLibraryEvidence $databasePath
+        $libraryAfter | Set-Content -LiteralPath (Join-Path $diagnosticsDirectory "$scenario-library.json") -Encoding utf8
+        if ($libraryAfter -cne $libraryBefore) { throw "The $scenario scenario changed seeded library identities or ownership facts." }
         if ((Get-Content -LiteralPath $sentinelPath -Raw) -cne 'keep this user data') { throw 'Upgrade changed user data.' }
         foreach ($relativePath in $preservedFiles) {
             if ((Get-Content -LiteralPath (Join-Path $dataDirectory $relativePath) -Raw) -cne 'preserve these user-owned bytes') {
@@ -311,6 +324,9 @@ try {
         -not (Test-Path -LiteralPath $sentinelPath -PathType Leaf)) {
         throw 'The uninstall removed user data outside the install directory.'
     }
+    $libraryAfter = Read-InstalledLibraryEvidence $databasePath
+    $libraryAfter | Set-Content -LiteralPath (Join-Path $diagnosticsDirectory 'uninstalled-library.json') -Encoding utf8
+    if ($libraryAfter -cne $libraryBefore) { throw 'Uninstall changed seeded library identities or ownership facts.' }
 
     Write-Host "Windows installer smoke test passed: $installerPath"
 }

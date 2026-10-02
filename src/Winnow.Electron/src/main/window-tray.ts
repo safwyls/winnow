@@ -1,5 +1,6 @@
 interface TrayWindow {
   show(): void
+  isVisible(): boolean
   hide(): void
   focus(): void
   isMinimized(): boolean
@@ -42,7 +43,7 @@ export class WindowTrayController {
   }
 
   ready(): void {
-    if (!this.stopped && (!this.background || !this.icon)) this.options.window()?.show()
+    if (!this.stopped && (!this.background || !this.icon)) this.show()
   }
 
   preferences(values: Record<string, string | null>): void {
@@ -80,7 +81,7 @@ export class WindowTrayController {
     window.setSkipTaskbar(false)
     // Calling restore on an already maximized window would change its presentation.
     if (window.isMinimized()) window.restore()
-    window.show()
+    this.show()
     window.focus()
     this.shown()
   }
@@ -89,6 +90,15 @@ export class WindowTrayController {
     this.stopped = true
     this.icon?.destroy()
     this.icon = undefined
+  }
+
+  private show(): void {
+    const window = this.options.window()
+    if (!window) return
+    window.show()
+    // Released Windows updaters used SW_HIDE. Windows consumes that startup flag
+    // on the first ShowWindow call, so an explicitly requested window needs a second call.
+    if (!window.isVisible()) window.show()
   }
 
   private hide(): boolean {

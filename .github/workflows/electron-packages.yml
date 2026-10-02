@@ -70,6 +70,7 @@ jobs:
           ./packaging/Test-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish
           ./packaging/windows/Test-ElectronPackageContracts.ps1 -PublishDirectory artifacts/electron-publish
           ./packaging/windows/Test-SmokeApplication.ps1
+          ./packaging/windows/Test-InstallerSmokeEvidence.ps1 -PublishDirectory artifacts/electron-publish
       - name: Verify packaged frontend and activation
         working-directory: src/Winnow.Electron
         env:

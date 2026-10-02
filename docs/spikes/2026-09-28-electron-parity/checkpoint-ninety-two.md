@@ -64,8 +64,9 @@ completed in 2.86 seconds with no remaining processes or held update locks.
 Smoke checks now retain exact-process window, backend and cleanup diagnostics.
 Reports are in `.tmp/task38137-close-startup-normal-65d98dbfd0a646eb9a99d9e0485ccc09`.
 
-The corrected [disposable run 36963975414](https://github.com/safwyls/winnow/actions/runs/36963975414)
-passed at source commit `aec9a0a3c481c8324bc602960eedb8e18a8d1d7d`:
+The [disposable run 36963975414](https://github.com/safwyls/winnow/actions/runs/36963975414)
+passed the current-helper scenarios at source commit
+`aec9a0a3c481c8324bc602960eedb8e18a8d1d7d`:
 
 - Clean primary publish, identity and integrity checks, and all 11 native
   packaged checks passed.
@@ -80,6 +81,23 @@ passed at source commit `aec9a0a3c481c8324bc602960eedb8e18a8d1d7d`:
   `electron-packages-win-x64` contains the validated Inno installer and ZIP.
   Both artifacts have a 14-day retention period. The local evidence copy is
   `.tmp/task38137-ci-passed`.
+
+Review found that this run used the corrected checkout helper against the old
+installed files. The published beta embeds its own helper, which still launches
+with `SW_HIDE`. The smoke now extracts that exact embedded resource without
+executing or loading its assembly and records both hashes. Its successful upgrade
+must use that old helper. Installed database identities and all portable recovery
+file sentinels are also compared, beyond merely checking database existence.
+
+Electron now retries an explicit show request once when the window remains
+hidden. A native probe confirmed that Windows suppresses the first show under
+`SW_HIDE` and accepts the second. The corrected production frontend became
+visible with its own backend in 2.24 seconds and closed normally in 2.31 seconds;
+no forced cleanup or held locks remained. This was the development bundle with
+the frozen package's backend; reports are in
+`.tmp/task38137-legacy-production-112fad0c6eac4568a5463d4ecd52a4c9`.
+All 21 tray tests and typecheck pass. The actual embedded-baseline-helper CI gate
+is pending, so the Windows task remains open.
 
 The local tests did not install software or change installer registration.
 Packages are unsigned. Linux, default delivery entry points, device validation

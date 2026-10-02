@@ -5,6 +5,7 @@ function fixture(background = false, unavailable = false) {
   const icons: Array<{ destroy: ReturnType<typeof vi.fn> }> = []
   const window = {
     show: vi.fn(),
+    isVisible: vi.fn(() => true),
     hide: vi.fn(),
     focus: vi.fn(),
     restore: vi.fn(),
@@ -24,6 +25,33 @@ function fixture(background = false, unavailable = false) {
 }
 
 describe('native window recovery and tray lifetime', () => {
+  it.each(['ready', 'restore'] as const)(
+    'recovers an explicit %s request suppressed by legacy startup flags',
+    (action) => {
+      const { controller, window } = fixture()
+      let visible = false
+      window.isVisible.mockImplementation(() => visible)
+      window.show
+        .mockImplementationOnce(() => {})
+        .mockImplementation(() => {
+          visible = true
+          controller.shown()
+        })
+      controller[action]()
+      expect(window.show).toHaveBeenCalledTimes(2)
+      expect(window.isVisible()).toBe(true)
+      expect(window.setSkipTaskbar).toHaveBeenLastCalledWith(false)
+    },
+  )
+
+  it('bounds visibility recovery to one additional show call', () => {
+    const { controller, window } = fixture()
+    window.isVisible.mockReturnValue(false)
+    window.show.mockImplementation(() => {})
+    controller.ready()
+    expect(window.show).toHaveBeenCalledTimes(2)
+  })
+
   it('ordinary startup and fullscreen preference alone need no icon', () => {
     const { controller, window, createIcon } = fixture()
     controller.prepare()
