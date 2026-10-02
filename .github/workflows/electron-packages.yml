@@ -65,6 +65,10 @@ jobs:
         run: |
           ./packaging/Publish-Electron.ps1 -Runtime win-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA -OutputDirectory artifacts/electron-publish
           ./packaging/Verify-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish -Runtime win-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA
+      - name: Verify package integrity contracts
+        run: |
+          ./packaging/Test-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish
+          ./packaging/windows/Test-ElectronPackageContracts.ps1
       - name: Verify packaged frontend and activation
         working-directory: src/Winnow.Electron
         env:
@@ -98,6 +102,7 @@ jobs:
             ${{ runner.temp }}/Winnow-installer-smoke-*/**/*.log
             ${{ runner.temp }}/Winnow-installer-smoke-*/**/failure.txt
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
       - name: Retain validated distributables
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
