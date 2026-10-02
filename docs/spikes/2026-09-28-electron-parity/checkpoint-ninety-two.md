@@ -24,7 +24,8 @@ obsolete frontend assemblies during an Electron upgrade.
   `49cf34b4e28c68c245657b3d01ae2d9e05c55cb7a469a74457b4ea02c8aaeea6`.
   The self-contained runtime notices include both .NET and ASP.NET Core 10.0.11.
 - **20** build-identity tests, **25** startup/activation tests, **16** package
-  verifier mutation checks and **54** Windows packaging contract checks passed.
+  verifier mutation checks, **61** Windows packaging contract checks (including
+  the actual published layout) and **4** startup-window smoke contracts passed.
 - **11 native packaged checks passed**, with no skips, in 34.5 seconds.
   Desktop and fullscreen load their own bundled backend and rendered ASAR,
   perform a named library read, activate the same owner and backend, and release
@@ -49,7 +50,37 @@ locked binaries, preserved user data, interrupted replacement and paired restore
 assertions. Successful upgrades also run the native desktop/fullscreen probe.
 The workflow retains package, baseline and recovery evidence without publishing.
 
-At this commit, the workflow is prepared but its remote execution is pending.
+The first disposable run exposed a runtime inventory assumption; validation now
+checks the graphics libraries actually shipped by the pinned Electron build.
+The second run passed the package/native checks and four rejected-update cases,
+but exposed an invisible restart: launching Chromium with `WindowStyle Hidden`
+left a healthy, responsive window hidden. The shared installer helper now starts
+the frontend normally. Background installers and helpers remain hidden.
+
+A native reproduction on Windows kept the hidden restart invisible for the full
+60-second readiness deadline. With the corrected launch, the visible window and
+its own authenticated backend became ready in 2.71 seconds; graceful shutdown
+completed in 2.86 seconds with no remaining processes or held update locks.
+Smoke checks now retain exact-process window, backend and cleanup diagnostics.
+Reports are in `.tmp/task38137-close-startup-normal-65d98dbfd0a646eb9a99d9e0485ccc09`.
+
+The corrected [disposable run 36963975414](https://github.com/safwyls/winnow/actions/runs/36963975414)
+passed at source commit `aec9a0a3c481c8324bc602960eedb8e18a8d1d7d`:
+
+- Clean primary publish, identity and integrity checks, and all 11 native
+  packaged checks passed.
+- All five installer scenarios passed, including the actual upgrade from
+  `v0.2.0-beta.3`, visible restart, both presentation probes, preserved data,
+  protocol and shortcut registration, and uninstall.
+- All four portable scenarios passed: external and internal data upgrades,
+  failed startup with explicit paired restore, and interrupted replacement.
+  The previous ZIP also came from digest-verified `v0.2.0-beta.3`.
+- `electron-windows-evidence` retains the baseline size/digest records,
+  process/window/backend reports, screenshots, journals and startup diagnostics;
+  `electron-packages-win-x64` contains the validated Inno installer and ZIP.
+  Both artifacts have a 14-day retention period. The local evidence copy is
+  `.tmp/task38137-ci-passed`.
+
 The local tests did not install software or change installer registration.
 Packages are unsigned. Linux, default delivery entry points, device validation
 and the combined final regression gates remain the subsequent tasks.

@@ -5,7 +5,7 @@ status: To Do
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 04:18'
+updated_date: '2026-10-02 04:26'
 labels:
   - electron
   - parity
@@ -93,4 +93,6 @@ Follow-up diagnosis of CI spawn-boundary timeout: scrubStartupDiagnostic unancho
 Second clean CI frontend run36961972740:4418passed/6failed of4424. Same four reproducible failures plus two parity-setup-settings tests finding Back to setup before accessibility/transition completion (full traces .tmp/task38137-ci-frontend-second-failure.log). Preserve assertions and diagnose asynchronous transition/focus timing; final CI should use explicit bounded worker count matching local evidence. This is not a completed full gate.
 
 Completed clean .NET CI36961972732 found11failures: Backend FrontendActivationParityTests.Loss_of_the_real_parent... timeout10s; BackendOwnershipTests.OwnerCanSecureModifyOnlyDataDirectoryWithoutTakeOwnershipPermission unauthorized ACL (Windows runner account); Update HelperProtocolTests.RealCopiedHelperAcknowledgesHandoffAndReleasesCommandPipesWhileItsParentLives timeout30s; UI FullscreenBrowse visiblefeed1280x720 expected4 actual2; all6 DerelictOverrideComposition cases have empty grouped library; core IdentityReadInventory lacks DetailsApplication.GetMetadataAsync reader classification. Detailed log .tmp/task38137-ci-dotnet-failure.log; retained GitHub TRX artifacts must be inspected. Counts by affected assembly: Core4999/5000, UI892/899, Backend323/325, Update69/70. Linux native/Proton CI job passed. Diagnose all before final full gate; do not weaken expectations or substitute migrated UI passes for failed originals.
+
+Read-only root-cause triage: six Derelict failures come from Sep 1 observations expiring after 30 days on Oct 2; inject a consistent fixed fixture clock, including reopen and later evidence. Fullscreen exposure test waits 150ms for a 220ms transition; use controlled frames plus committed rendering, retain exact 2-to-4 exposure assertions and separate real-frame coverage. Setup helper clicks Appearance while disabled by initial profile persistence; await enabled before one click and await provider entry. Theme roots must be canonicalized with strict child containment and link rejection retained. DetailsApplication.GetMetadataAsync fallback reads the exact editor target and belongs in DoNotResolve inventory with the same rationale as WorkMetadataEditService. Backend ACL fixture must establish current-SID ownership before applying Modify-only permissions. Activation and copied-helper failures both occur before first readiness, their PowerShell wrappers started 41ms apart; capture bounded phase/stderr/child cleanup evidence before changing implementation or deadlines. TRX downloaded to .tmp/task38141-ci-dotnet-results. No regression fixes implemented yet; task remains subsequent to package/device/default gates.
 <!-- SECTION:NOTES:END -->

@@ -12,8 +12,9 @@ uses neither setting; its performance was not measured in that study.
 The default release workflow still packages Avalonia. The independent Electron frontend
 has a separate local build described in
 [`src/Winnow.Electron/README.md`](../src/Winnow.Electron/README.md). Its primary package uses
-the existing distribution and update contracts. Windows x64 has local packaged launch
-coverage; installation and supported Linux packaging have separate validation gates.
+the existing distribution and update contracts. Windows x64 has passed packaged launch,
+installation, previous-release upgrade, uninstall and portable recovery checks on a
+disposable runner. Supported Linux packaging has a separate validation gate.
 
 The primary Electron Windows package can be built separately with
 `packaging/Publish-Electron.ps1`, using the same arguments as `Publish.ps1` below,
@@ -30,7 +31,9 @@ runners. It retains `electron-windows-evidence` and `electron-packages-win-x64` 
 14 days, without publishing a release. This pipeline preserves the Inno AppId, protocol
 handler and shortcuts; the installer removes the obsolete Avalonia UI assemblies during
 an Electron upgrade. Packages remain unsigned. The primary release entry point will be
-switched after both platform packaging gates pass.
+switched after both platform packaging gates pass. The
+[Windows package checkpoint](spikes/2026-09-28-electron-parity/checkpoint-ninety-two.md)
+records the clean commit, successful run and artifact names.
 
 `Version.props` owns the three-part version base (currently `0.2.0`). Ordinary builds
 append `-dev`; CI packages append `-ci.<run number>`. A tag such as `v0.2.0-beta.1`
