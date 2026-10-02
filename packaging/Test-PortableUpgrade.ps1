@@ -9,6 +9,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Stop-SmokeBackend.ps1')
+. (Join-Path $PSScriptRoot 'windows/Test-ElectronPackageLayout.ps1')
 if ($env:GITHUB_ACTIONS -cne 'true') { throw 'Portable upgrade smoke runs only on disposable GitHub Actions runners.' }
 $root = Join-Path ([IO.Path]::GetTempPath()) ('Winnow-portable-smoke-' + [guid]::NewGuid().ToString('N'))
 $null = New-Item -ItemType Directory -Path $root
@@ -65,6 +66,22 @@ function Read-LibraryEvidence([string]$Database) {
     if ($LASTEXITCODE -ne 0 -or -not $result -or $result -eq '[]') { throw 'Disposable seeded library integrity or contents check failed.' }
     return $result
 }
+function Stop-ReplacedApplication([string]$Journal, [string]$Installation, [string]$DataDirectory) {
+    $processRecord = Join-Path (Split-Path $Journal -Parent) 'child-process'
+    if (Test-Path -LiteralPath $processRecord) {
+        $identity = @(Get-Content -LiteralPath $processRecord)
+        if ($identity.Count -ne 2) { throw 'The updated application process record is invalid.' }
+        $child = Get-Process -Id ([int]$identity[0]) -ErrorAction SilentlyContinue
+        if ($null -ne $child) {
+            $expected = [IO.Path]::GetFullPath((Join-Path $Installation $executableName))
+            if ($child.Path -ine $expected -or $child.StartTime.ToUniversalTime().Ticks -ne [long]$identity[1]) {
+                throw 'The updated application process identity changed; refusing cleanup.'
+            }
+            Stop-SmokeProcess $child
+        }
+    }
+    Stop-SmokeBackend $DataDirectory
+}
 try {
     foreach ($scenario in @('external-data', 'internal-data', 'failed-startup', 'interrupted-replacement')) {
         Write-Host "Starting portable upgrade scenario: $scenario ($Runtime)."
@@ -99,7 +116,7 @@ try {
             $null = New-Item -ItemType Directory -Path (Split-Path $path -Parent) -Force
             [IO.File]::WriteAllText($path, 'preserve these user-owned bytes')
         }
-        $oldHash = (Get-FileHash -LiteralPath (Join-Path $install 'Winnow.dll')).Hash
+        $oldPayload = Get-WinnowFrontendPayload $install
         $scenarioArchive = $Archive
         if ($scenario -eq 'failed-startup') {
             # A deliberately broken release fixture, hashed before staging, exercises
@@ -108,7 +125,9 @@ try {
             $null = New-Item -ItemType Directory -Path $broken
             if ($Runtime -eq 'win-x64') {
                 Expand-Archive -LiteralPath $Archive -DestinationPath $broken
-                [IO.File]::WriteAllText((Join-Path $broken 'Winnow.runtimeconfig.json'), '{ invalid JSON')
+                $brokenPayload = Get-WinnowFrontendPayload $broken
+                $brokenTarget = if ($brokenPayload.Electron) { $brokenPayload.RelativePath } else { 'Winnow.runtimeconfig.json' }
+                [IO.File]::WriteAllText((Join-Path $broken $brokenTarget), '{ invalid startup payload')
                 $scenarioArchive = Join-Path $scenarioRoot 'broken.zip'
                 [IO.Compression.ZipFile]::CreateFromDirectory($broken, $scenarioArchive)
             } else {
@@ -117,7 +136,9 @@ try {
                 $packages = @(Get-ChildItem -LiteralPath $broken -Directory)
                 if ($packages.Count -ne 1) { throw 'Expected a single portable archive root.' }
                 $package = $packages[0]
-                [IO.File]::WriteAllText((Join-Path $package.FullName 'Winnow.runtimeconfig.json'), '{ invalid JSON')
+                $brokenPayload = Get-WinnowFrontendPayload $package.FullName
+                $brokenTarget = if ($brokenPayload.Electron) { $brokenPayload.RelativePath } else { 'Winnow.runtimeconfig.json' }
+                [IO.File]::WriteAllText((Join-Path $package.FullName $brokenTarget), '{ invalid startup payload')
                 $scenarioArchive = Join-Path $scenarioRoot 'broken.tar.gz'
                 & tar -czf $scenarioArchive -C $broken $package.Name
                 if ($LASTEXITCODE -ne 0) { throw 'Could not package failed-startup fixture.' }
@@ -126,7 +147,7 @@ try {
         $stageArguments = @('stage', '--archive', $scenarioArchive, '--sha256', ('0' * 64), '--version', $Version,
             '--runtime', $Runtime, '--installation', $install, '--data-dir', $data, '--executable', $executableName, '--no-sync')
         Invoke-Helper $stageArguments $true
-        if ((Get-FileHash -LiteralPath (Join-Path $install 'Winnow.dll')).Hash -ne $oldHash) { throw 'Bad digest changed existing binaries.' }
+        if (-not (Test-WinnowSameFrontendPayload (Get-WinnowFrontendPayload $install) $oldPayload)) { throw 'Bad digest changed existing frontend bytes.' }
         $stageArguments[4] = (Get-FileHash -LiteralPath $scenarioArchive -Algorithm SHA256).Hash
         Invoke-Helper $stageArguments
         $journal = Join-Path $scenarioRoot '.portable.winnow-update/journal.json'
@@ -149,7 +170,7 @@ try {
             Move-Item -LiteralPath $install -Destination $previous
             Invoke-Helper @('recover', '--journal', $journal)
             $recovered = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json -AsHashtable
-            if ($recovered.Phase -ne 8 -or (Get-FileHash -LiteralPath (Join-Path $install 'Winnow.dll')).Hash -ne $oldHash -or
+            if ($recovered.Phase -ne 8 -or -not (Test-WinnowSameFrontendPayload (Get-WinnowFrontendPayload $install) $oldPayload) -or
                 (Read-LibraryEvidence $database) -cne $libraryBefore) { throw 'Interrupted replacement did not recover prior binaries and internal data.' }
             Write-Host "Passed durable replacement interruption recovery with internal data ($Runtime)."
             continue
@@ -159,11 +180,14 @@ try {
         $state = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json -AsHashtable
         if ($scenario -eq 'failed-startup') {
             if ($state.Phase -ne 6 -or -not $state.Failure) { throw 'Failed startup did not leave actionable recovery state.' }
-            if ((Get-FileHash -LiteralPath (Join-Path $install 'Winnow.dll')).Hash -eq $oldHash) { throw 'Failed startup silently rolled back binaries.' }
+            if (Test-WinnowSameFrontendPayload (Get-WinnowFrontendPayload $install) $oldPayload) { throw 'Failed startup silently rolled back frontend bytes.' }
+            # Electron may retain a native startup-error window. Recovery still requires
+            # the exact failed child and independent backend to be closed first.
+            Stop-ReplacedApplication $journal $install $data
             Invoke-Helper @('recover', '--journal', $journal) $true
             Invoke-Helper @('recover', '--journal', $journal, '--restore-backup')
             $restored = Get-Content -LiteralPath $journal -Raw | ConvertFrom-Json -AsHashtable
-            if ($restored.Phase -ne 8 -or (Get-FileHash -LiteralPath (Join-Path $install 'Winnow.dll')).Hash -ne $oldHash) {
+            if ($restored.Phase -ne 8 -or -not (Test-WinnowSameFrontendPayload (Get-WinnowFrontendPayload $install) $oldPayload)) {
                 throw 'Explicit recovery did not restore the paired previous binaries.'
             }
             if ((Read-LibraryEvidence $database) -cne $libraryBefore) { throw 'Explicit recovery did not preserve the paired library.' }
@@ -174,7 +198,18 @@ try {
         if ($state.Failure -or $state.Phase -ne 5 -or -not $state.MigrationMayHaveStarted) { throw "New app did not acknowledge readiness: $($state.Failure)" }
         $newManifest = Get-Content -LiteralPath (Join-Path $install 'release-info.json') -Raw | ConvertFrom-Json
         if ($newManifest.version -cne $Version) { throw 'Replacement did not install the requested release.' }
-        if ((Get-FileHash -LiteralPath (Join-Path $install 'Winnow.dll')).Hash -eq $oldHash) { throw 'The upgrade did not change the application assembly.' }
+        $newPayload = Get-WinnowFrontendPayload $install
+        if (Test-WinnowSameFrontendPayload $newPayload $oldPayload) { throw 'The upgrade did not change the frontend payload.' }
+        if (-not (Test-WinnowSameFrontendPayload $newPayload (Get-WinnowFrontendPayload $PublishDirectory))) {
+            throw 'The installed frontend does not match the validated new publish directory.'
+        }
+        if ($newPayload.Electron -and $Runtime -eq 'win-x64') {
+            Assert-WinnowWindowsDirectory $install $data
+            Assert-WinnowPackagedHashes $install
+            Stop-ReplacedApplication $journal $install $data
+            $report = Join-Path $PSScriptRoot "../artifacts/portable-smoke-logs/$scenario-electron.json"
+            Invoke-WinnowPackagedProbe (Join-Path $install $executableName) $data $report 'desktop'
+        }
         foreach ($relative in $preserved) {
             if ([IO.File]::ReadAllText((Join-Path $data $relative)) -cne 'preserve these user-owned bytes') { throw "Upgrade lost $relative." }
         }

@@ -44,3 +44,35 @@ it('builds source archives without Git using their package version and an unavai
     await rm(directory, { recursive: true, force: true })
   }
 })
+
+it('embeds an explicit release identity without changing package metadata or requiring Git', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'winnow-release-info-'))
+  try {
+    const original = JSON.stringify({ version: '0.1.0' })
+    await writeFile(join(directory, 'package.json'), original)
+    expect(
+      buildInformationalVersion(directory, {
+        WINNOW_BUILD_VERSION: '0.2.0-beta.2',
+        WINNOW_BUILD_COMMIT: 'ABCDEF0123456789ABCDEF0123456789ABCDEF01',
+      }),
+    ).toBe('0.2.0-beta.2+abcdef0123456789abcdef0123456789abcdef01')
+    const { readFile } = await import('node:fs/promises')
+    expect(await readFile(join(directory, 'package.json'), 'utf8')).toBe(original)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+it.each([
+  { WINNOW_BUILD_VERSION: '0.2.0' },
+  { WINNOW_BUILD_COMMIT: 'a'.repeat(40) },
+  { WINNOW_BUILD_VERSION: '' },
+  ...['v0.2.0', '0.2.0+source', '0.02.0', '0.2.0-beta.01', '65536.2.0', '0.2.0\n'].map((version) => ({
+    WINNOW_BUILD_VERSION: version,
+    WINNOW_BUILD_COMMIT: 'a'.repeat(40),
+  })),
+  { WINNOW_BUILD_VERSION: '0.2.0', WINNOW_BUILD_COMMIT: 'short' },
+  { WINNOW_BUILD_VERSION: '0.2.0', WINNOW_BUILD_COMMIT: 'a'.repeat(64) },
+])('refuses malformed or incomplete release overrides before building (%j)', (environment) => {
+  expect(() => buildInformationalVersion('does-not-need-a-checkout', environment)).toThrow('valid version')
+})

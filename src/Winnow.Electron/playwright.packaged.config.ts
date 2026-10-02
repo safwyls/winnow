@@ -6,6 +6,14 @@ export default defineConfig({
   fullyParallel: false,
   timeout: 60000,
   expect: { timeout: 15000 },
-  outputDir: '../../.tmp/electron-packaged-results',
-  reporter: [['list'], ['json', { outputFile: '../../.tmp/electron-packaged-results/results.json' }]],
+  outputDir: process.env.WINNOW_PACKAGED_RESULTS ?? '../../.tmp/electron-packaged-results',
+  reporter: [
+    ['list'],
+    [
+      'json',
+      {
+        outputFile: `${process.env.WINNOW_PACKAGED_RESULTS ?? '../../.tmp/electron-packaged-results'}/results.json`,
+      },
+    ],
+  ],
 })

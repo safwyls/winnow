@@ -1,10 +1,11 @@
 ---
 id: TASK-381.37
 title: 'Electron: verify the Windows Electron installer and portable build'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
+updated_date: '2026-10-02 03:38'
 labels:
   - electron
   - parity
@@ -46,3 +47,15 @@ Review boundary: work on this task only after the user prompts continuation from
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Build primary Electron Windows packages with existing Inno identity and ZIP layout, bundled independent backend/helper/providers/notices and version provenance. Preserve legacy upgrade/data behavior and protocol/shortcut/single-instance paths. Validate locally without installation, then execute actual install/upgrade/uninstall/recovery smoke on disposable GitHub runners, retaining artifacts and diagnostics. Do not publish a release; continue sequentially under the six-task batch authorization.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Primary Windows package built with no Avalonia UI assemblies: 695 payload files, self-contained backend/helper, provider, notices and exact ASAR/version/source identity. Local build identity20, startup/activation25, package mutation16, pure Windows packaging54 and native packaged11 checks pass with no native skips. Native desktop/fullscreen package uses its own backend and releases real update lease. Disposable GitHub install/upgrade/uninstall/recovery execution is the remaining gate; workflow prepared. Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-ninety-two.md. No software installed locally and no release published.
+<!-- SECTION:NOTES:END -->

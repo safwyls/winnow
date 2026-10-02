@@ -45,6 +45,10 @@ names; executing those tests and reviewing the assertion scope remain separate c
 
 ## Measured checks
 
+The [primary Windows package checkpoint](checkpoint-ninety-two.md) records the
+Electron publisher, preserved Inno/ZIP contracts and eleven passing native
+packaged checks. Disposable installation and upgrade CI remains pending there.
+
 The [application update and recovery checkpoint](checkpoint-ninety-one.md) records
 the final six source mappings, twelve original cases, 233 focused Electron cases,
 70 current helper/recovery cases and four native checks passing. It adds the primary

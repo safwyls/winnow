@@ -5,6 +5,7 @@ import type { ApplicationActivation } from '../shared/bridge'
 import { validatedActivation } from './activation'
 import { BackendStartupFailure } from './startup-backend'
 import { scrubStartupDiagnostic } from './startup-failure'
+import { bundledBackendPaths } from './backend-location'
 
 export interface ActivationHostLocation {
   appPath: string
@@ -28,7 +29,7 @@ export async function activationHostCommand(
     ? [explicit]
     : [
         environment.WINNOW_BACKEND_PATH,
-        join(options.resourcesPath, 'backend', name),
+        ...bundledBackendPaths(options.resourcesPath, options.platform),
         resolve(options.appPath, '..', 'Winnow.Backend', 'bin', 'Debug', 'net10.0', name),
         resolve(options.appPath, '..', 'Winnow.Backend', 'bin', 'Release', 'net10.0', name),
       ]

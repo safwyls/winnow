@@ -3,7 +3,32 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /** Capture identity while building; installed applications do not need a Git checkout. */
-export function buildInformationalVersion(packageDirectory: string): string {
+export function buildInformationalVersion(
+  packageDirectory: string,
+  environment: NodeJS.ProcessEnv = process.env,
+): string {
+  const releaseVersion = environment.WINNOW_BUILD_VERSION
+  const releaseCommit = environment.WINNOW_BUILD_COMMIT
+  if (releaseVersion !== undefined || releaseCommit !== undefined) {
+    if (
+      !releaseVersion ||
+      !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.test(
+        releaseVersion,
+      ) ||
+      releaseVersion
+        .split('-')[0]
+        .split('.')
+        .some((part) => Number(part) > 65535) ||
+      releaseVersion
+        .slice(releaseVersion.indexOf('-') + 1)
+        .split('.')
+        .some((part) => /^0\d+$/.test(part)) ||
+      !releaseCommit ||
+      !/^[a-f0-9]{40}$/i.test(releaseCommit)
+    )
+      throw new Error('Release builds require a valid version and a complete source commit.')
+    return `${releaseVersion}+${releaseCommit.toLowerCase()}`
+  }
   const { version } = JSON.parse(readFileSync(join(packageDirectory, 'package.json'), 'utf8')) as {
     version: unknown
   }

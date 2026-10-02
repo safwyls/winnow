@@ -4,6 +4,7 @@ import { homedir } from 'node:os'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { readDiscovery, type Discovery } from './transport'
 import { scrubStartupDiagnostic } from './startup-failure'
+import { bundledBackendPaths } from './backend-location'
 
 export function dataDirectoryArgument(args: string[]): string | undefined {
   const index = args.findIndex((arg) => arg === '--data-dir' || arg.startsWith('--data-dir='))
@@ -85,13 +86,17 @@ export async function startBackend(options: {
   const configured = process.env.WINNOW_BACKEND_PATH
   if (configured && !isAbsolute(configured))
     throw new Error('WINNOW_BACKEND_PATH must be an absolute executable or DLL path')
-  const executable =
-    configured ??
-    join(
-      options.resourcesPath,
-      'backend',
-      process.platform === 'win32' ? 'Winnow.Backend.exe' : 'Winnow.Backend',
-    )
+  const candidates = configured ? [configured] : bundledBackendPaths(options.resourcesPath)
+  let executable = candidates[0]
+  if (!configured) {
+    for (const candidate of candidates) {
+      try {
+        await access(candidate)
+        executable = candidate
+        break
+      } catch {}
+    }
+  }
   const args = options.dataDirectory ? ['--data-dir', options.dataDirectory] : []
   if (!options.packaged || options.args.includes('--no-sync')) args.push('--no-sync')
   if (options.args.includes('--seed-sample')) args.push('--seed-sample')

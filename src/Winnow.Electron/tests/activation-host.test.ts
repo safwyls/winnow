@@ -58,6 +58,21 @@ async function begin() {
   return { process, onLost, onActivation, abort, pending, launch }
 }
 describe('secure frontend activation host', () => {
+  it('resolves the primary release companion beside resources without a development fallback', async () => {
+    const primary = resolve(location.resourcesPath, '..', 'backend', 'Winnow.Backend.exe')
+    const result = await activationHostCommand({
+      ...location,
+      environment: {},
+      exists: async (path) => {
+        if (path !== primary) throw Error('missing')
+      },
+    })
+    expect(result).toEqual({
+      command: primary,
+      prefix: [],
+      cwd: resolve(location.resourcesPath, '..', 'backend'),
+    })
+  })
   it('uses an independent helper fallback when the configured backend is missing and never dotnet run', async () => {
     const seen: string[] = []
     const result = await activationHostCommand({

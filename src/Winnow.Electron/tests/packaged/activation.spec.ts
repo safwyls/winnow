@@ -2,7 +2,7 @@ import { test, expect, _electron as electron, type ElectronApplication, type Pag
 import { execFile, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { promisify } from 'node:util'
-import { mkdtemp, readFile, stat } from 'node:fs/promises'
+import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { closeFixture } from '../electron/fixture-cleanup'
 import { quoteArgument } from '../../src/main/activation'
@@ -28,10 +28,21 @@ async function protocolSnapshot() {
 const environment = Object.fromEntries(
   Object.entries(process.env).filter(
     ([key, value]) =>
-      !['ELECTRON_RUN_AS_NODE', 'WINNOW_BACKEND_PATH', 'WINNOW_APPIMAGE_UPDATED'].includes(key) &&
-      value !== undefined,
+      ![
+        'ELECTRON_RUN_AS_NODE',
+        'ELECTRON_RENDERER_URL',
+        'WINNOW_BACKEND_PATH',
+        'WINNOW_ACTIVATION_HELPER_PATH',
+        'WINNOW_UPDATE_HELPER_PATH',
+        'WINNOW_ELECTRON_FIXTURE_PATH',
+        'WINNOW_APPIMAGE_UPDATED',
+      ].includes(key) &&
+      value !== undefined &&
+      !/^Igdb__(ClientId|ClientSecret)$/i.test(key),
   ),
 ) as Record<string, string>
+// Match the integration runner, including case-insensitive inherited key removal.
+Object.assign(environment, { Igdb__ClientId: '', Igdb__ClientSecret: '' })
 
 test.beforeAll(async () => {
   expect((await stat(executable)).isFile(), 'Run npm run package before the packaged suite').toBe(true)
@@ -47,7 +58,8 @@ test.beforeAll(async () => {
   page = await application.firstWindow()
   await page.getByRole('button', { name: 'Skip setup', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Winnow home' })).toBeVisible()
-  endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
+  const discovery = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
+  endpoint = { processId: discovery.processId, epoch: discovery.epoch }
   await application.evaluate(({ BrowserWindow }) => {
     const state = { received: [] as unknown[] }
     ;(globalThis as any).__packagedActivation = state
@@ -76,6 +88,26 @@ test.beforeEach(async () => {
     ;(globalThis as any).__packagedActivation.received = []
     BrowserWindow.getAllWindows()[0].hide()
   })
+})
+
+test.afterEach(async ({}, info) => {
+  if (!application || !page) return
+  const state = await application.evaluate(({ app, BrowserWindow }) => ({
+    packaged: app.isPackaged,
+    version: app.getVersion(),
+    executable: process.execPath,
+    activations: (globalThis as any).__packagedActivation.received,
+    windows: BrowserWindow.getAllWindows().map((window) => ({
+      visible: window.isVisible(),
+      fullscreen: window.isFullScreen(),
+    })),
+  }))
+  await writeFile(
+    info.outputPath('packaged-activation-ledger.json'),
+    JSON.stringify({ directory, endpoint, state }, null, 2),
+  )
+  if (state.windows.some((window) => window.visible))
+    await page.screenshot({ path: info.outputPath('packaged-activation.png') })
 })
 
 const variants: { name: string; args: string[]; expected: ApplicationActivation }[] = [

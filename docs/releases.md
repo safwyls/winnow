@@ -9,11 +9,28 @@ uses neither setting; its performance was not measured in that study.
 
 ## Application version
 
-The independent Electron frontend has a separate local build described in
-[`src/Winnow.Electron/README.md`](../src/Winnow.Electron/README.md). It packages a self-contained
-backend companion with Electron, but is not included in the release workflow or updater
-described on this page. Its Windows x64 package has local smoke coverage; other platforms
-and distributable installation remain unvalidated.
+The default release workflow still packages Avalonia. The independent Electron frontend
+has a separate local build described in
+[`src/Winnow.Electron/README.md`](../src/Winnow.Electron/README.md). Its primary package uses
+the existing distribution and update contracts. Windows x64 has local packaged launch
+coverage; installation and supported Linux packaging have separate validation gates.
+
+The primary Electron Windows package can be built separately with
+`packaging/Publish-Electron.ps1`, using the same arguments as `Publish.ps1` below,
+then `packaging/windows/New-WindowsPackage.ps1`. Install locked frontend dependencies
+with `npm ci` in `src/Winnow.Electron` first. The directory contains `Winnow.exe`,
+`resources/app.asar`, independent `backend/` and `update-helper/` runtimes, and the
+bundled provider. `release-info.json` identifies the Electron frontend; ASAR and managed
+assemblies contain the same version and commit. `Verify-ElectronPackage.ps1` checks
+identity, assets, runtime and notices and writes `PACKAGE-SHA256SUMS`.
+
+`Electron package validation` runs the packaged frontend checks and existing Inno/ZIP
+installation, previous-version upgrade and recovery scenarios on disposable Windows
+runners. It retains `electron-windows-evidence` and `electron-packages-win-x64` for
+14 days, without publishing a release. This pipeline preserves the Inno AppId, protocol
+handler and shortcuts; the installer removes the obsolete Avalonia UI assemblies during
+an Electron upgrade. Packages remain unsigned. The primary release entry point will be
+switched after both platform packaging gates pass.
 
 `Version.props` owns the three-part version base (currently `0.2.0`). Ordinary builds
 append `-dev`; CI packages append `-ci.<run number>`. A tag such as `v0.2.0-beta.1`

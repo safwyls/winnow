@@ -1,0 +1,108 @@
+name: Electron package validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'packaging/**'
+      - 'src/**'
+      - 'plugins/**'
+      - 'Directory.Build.props'
+      - 'Version.props'
+      - 'global.json'
+      - 'NuGet.Config'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: electron-packages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Electron Windows install and portable recovery
+    runs-on: windows-2025
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.19.0'
+          cache: npm
+          cache-dependency-path: src/Winnow.Electron/package-lock.json
+      - name: Resolve validation version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          [xml]$props = Get-Content Version.props
+          $base = $props.Project.PropertyGroup.VersionPrefix
+          $value = if ($env:REQUESTED_VERSION) { $env:REQUESTED_VERSION } else { "$base-ci.$env:GITHUB_RUN_NUMBER" }
+          $version = ./packaging/Resolve-Version.ps1 -Version $value
+          if ($version.Numeric -ne $base) { throw 'Version must match Version.props.' }
+          "RELEASE_VERSION=$value" >> $env:GITHUB_ENV
+      - name: Install locked frontend dependencies
+        working-directory: src/Winnow.Electron
+        run: npm ci
+      - name: Publish primary Electron distribution
+        run: |
+          ./packaging/Publish-Electron.ps1 -Runtime win-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA -OutputDirectory artifacts/electron-publish
+          ./packaging/Verify-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish -Runtime win-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA
+      - name: Verify packaged frontend and activation
+        working-directory: src/Winnow.Electron
+        env:
+          WINNOW_PACKAGED_EXE: ${{ github.workspace }}/artifacts/electron-publish/Winnow.exe
+        run: npm run test:packaged
+      - name: Package installer and portable ZIP
+        run: ./packaging/windows/New-WindowsPackage.ps1 -PublishDirectory artifacts/electron-publish -OutputDirectory artifacts/electron-packages -Version $env:RELEASE_VERSION
+      - name: Select verified previous Windows releases
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ./packaging/windows/Get-PreviousWindowsInstaller.ps1 -Version $env:RELEASE_VERSION -OutputPath artifacts/electron-previous/Winnow-setup.exe
+          ./packaging/Get-PreviousPortableArchive.ps1 -Version $env:RELEASE_VERSION -Runtime win-x64 -OutputPath artifacts/electron-previous/portable.zip
+      - name: Verify installed upgrade and uninstall
+        run: ./packaging/windows/Test-WindowsInstaller.ps1 -InstallerPath "artifacts/electron-packages/Winnow-$env:RELEASE_VERSION-win-x64-setup.exe" -PreviousInstallerPath artifacts/electron-previous/Winnow-setup.exe
+      - name: Verify archive upgrade and recovery
+        run: ./packaging/Test-PortableUpgrade.ps1 -PreviousArchive artifacts/electron-previous/portable.zip -Archive "artifacts/electron-packages/Winnow-$env:RELEASE_VERSION-win-x64.zip" -PublishDirectory artifacts/electron-publish -Version $env:RELEASE_VERSION -Runtime win-x64
+      - name: Retain package and recovery evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: electron-windows-evidence
+          path: |
+            .tmp/electron-packaged-results/**
+            artifacts/electron-previous/*.evidence.json
+            artifacts/portable-smoke-logs/**
+            artifacts/windows-smoke-logs/**
+            artifacts/electron-smoke/**
+            artifacts/electron-publish/release-info.json
+            artifacts/electron-publish/resources/*NOTICES*
+            ${{ runner.temp }}/Winnow-installer-smoke-*/**/*.log
+            ${{ runner.temp }}/Winnow-installer-smoke-*/**/failure.txt
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain validated distributables
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: electron-packages-win-x64
+          path: artifacts/electron-packages/*
+          if-no-files-found: error
+          retention-days: 14

@@ -10,6 +10,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '../Stop-SmokeBackend.ps1')
+. (Join-Path $PSScriptRoot 'Test-ElectronPackageLayout.ps1')
 
 function Invoke-SilentProcess {
     param(
@@ -66,6 +67,8 @@ $databasePath = Join-Path $dataDirectory 'winnow.db'
 $applicationProcess = $null
 $lockedFile = $null
 $helper = $null
+$shortcutPath = Join-Path ([Environment]::GetFolderPath('Programs')) 'Winnow.lnk'
+$diagnosticsDirectory = Join-Path $PSScriptRoot '../../artifacts/windows-smoke-logs'
 
 # Hidden CI windows are not returned by Process.MainWindowHandle. Send the same
 # WM_CLOSE to the test process's titled top-level window without making it visible.
@@ -232,6 +235,21 @@ try {
     if (-not (Test-Path -LiteralPath $applicationPath -PathType Leaf)) {
         throw 'The silent reinstall did not preserve the selected install location.'
     }
+    $installedManifest = Get-Content -LiteralPath (Join-Path $installDirectory 'release-info.json') -Raw | ConvertFrom-Json
+    if (Test-WinnowElectronManifest $installedManifest) {
+        Assert-WinnowWindowsDirectory $installDirectory
+        Assert-WinnowPackagedHashes $installDirectory
+        foreach ($legacy in @('Winnow.dll', 'Winnow.deps.json', 'Winnow.runtimeconfig.json', 'Winnow.Auth.WebView.dll', 'Winnow.Covers.Avalonia.dll')) {
+            if (Test-Path -LiteralPath (Join-Path $installDirectory $legacy)) { throw "Upgrade left obsolete frontend file $legacy." }
+        }
+        if (@(Get-ChildItem -LiteralPath $installDirectory -Filter 'Avalonia*.dll' -File).Count -ne 0) {
+            throw 'Upgrade left obsolete Avalonia frontend assemblies.'
+        }
+        $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
+        foreach ($mode in @('desktop', 'fullscreen')) {
+            Invoke-WinnowPackagedProbe $applicationPath $dataDirectory (Join-Path $diagnosticsDirectory "installed-$mode.json") $mode
+        }
+    }
     foreach ($required in @('backend/Winnow.Backend.exe', 'backend/Winnow.Backend.runtimeconfig.json', 'backend/Microsoft.AspNetCore.dll')) {
         if (-not (Test-Path -LiteralPath (Join-Path $installDirectory $required) -PathType Leaf)) { throw "Installed backend is missing $required." }
     }
@@ -241,6 +259,14 @@ try {
         $protocolCommand -cne ('"{0}" --uri "%1"' -f $applicationPath)) {
         throw 'The installer did not register the quoted per-user Winnow URI command for this installation.'
     }
+    if (-not (Test-Path -LiteralPath $shortcutPath -PathType Leaf)) { throw 'The Start menu shortcut is missing.' }
+    $shell = New-Object -ComObject WScript.Shell
+    try {
+        $shortcut = $shell.CreateShortcut($shortcutPath)
+        if ($shortcut.TargetPath -ine $applicationPath -or $shortcut.WorkingDirectory -ine $installDirectory -or $shortcut.Arguments) {
+            throw 'The Start menu shortcut does not target this installed Winnow without extra arguments.'
+        }
+    } finally { $null = [Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }
 
     if (-not (Test-Path -LiteralPath $uninstallerPath -PathType Leaf)) {
         throw "The install did not create its uninstaller: $uninstallerPath"
@@ -253,6 +279,10 @@ try {
     if (Test-Path -LiteralPath 'HKCU:\Software\Classes\winnow') {
         throw 'The silent uninstall left the Winnow URI registration behind.'
     }
+    if (Test-Path -LiteralPath $shortcutPath) { throw 'The silent uninstall left its Start menu shortcut behind.' }
+    foreach ($removed in @('resources/app.asar', 'backend/Winnow.Backend.exe', 'update-helper/Winnow.Update.Helper.exe')) {
+        if (Test-Path -LiteralPath (Join-Path $installDirectory $removed)) { throw "The silent uninstall left packaged file $removed." }
+    }
     if (-not (Test-Path -LiteralPath $databasePath -PathType Leaf) -or
         -not (Test-Path -LiteralPath $sentinelPath -PathType Leaf)) {
         throw 'The uninstall removed user data outside the install directory.'
@@ -262,7 +292,6 @@ try {
 }
 catch {
     Write-Host "Windows updater smoke failed: $($_.Exception.Message)"
-    $diagnosticsDirectory = Join-Path $PSScriptRoot '../../artifacts/windows-smoke-logs'
     $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
     Get-ChildItem -LiteralPath $smokeRoot -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -eq 'failure.txt' -or $_.Extension -eq '.log' } |
