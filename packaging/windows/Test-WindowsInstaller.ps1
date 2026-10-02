@@ -76,7 +76,11 @@ function Save-SmokeDiagnostics {
     $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
     if (-not (Test-Path -LiteralPath $smokeRoot -PathType Container)) { return }
     Get-ChildItem -LiteralPath $smokeRoot -Recurse -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -in @('failure.txt', 'complete', 'restarted.json') -or $_.Extension -eq '.log' } |
+        Where-Object {
+            $_.Name -in @('failure.txt', 'complete', 'restarted.json') -or
+            ($_.Extension -eq '.log' -and ($_.DirectoryName -eq $smokeRoot -or
+                $_.Directory.Parent.FullName -eq $smokeRoot -or $_.Directory.Name -eq 'logs'))
+        } |
         ForEach-Object {
             if ($_.Name -eq 'failure.txt') { Write-Host (Get-Content -LiteralPath $_.FullName -Raw) }
             Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $diagnosticsDirectory ($_.Directory.Name + '-' + $_.Name)) -ErrorAction Continue

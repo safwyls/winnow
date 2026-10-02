@@ -43,6 +43,19 @@ before repackaging. The Debian marker and portable integration files receive a f
 complete inventory. No package may contain a local database, secret configuration, legacy
 UI assembly, symlink, world-writable file or privileged executable mode.
 
+Native dependency verification runs `ldd` on every shipped ELF and checks resolved system
+libraries against the Debian package's declared dependency closure. One absence is classified
+explicitly: the upstream .NET 10.0.12 `libcoreclrtraceptprovider.so` in `backend/` and
+`update-helper/` requests `liblttng-ust.so.0`, while
+[Ubuntu 24.04's LTTng package](https://packages.ubuntu.com/noble/amd64/liblttng-ust1t64/filelist)
+provides ABI 1. The [.NET tracing loader](https://github.com/dotnet/runtime/blob/v10.0.12/src/coreclr/pal/src/misc/tracepointprovider.cpp)
+tolerates this optional provider failing to load. Verification reports OS-level LTTng tracing
+as unavailable and still checks every other dependency of those files. If ABI 0 is present,
+its owning package must also be covered by the declared dependency closure. The package
+retains the original provider bytes; it neither substitutes ABI versions nor changes runtime
+diagnostic settings. [EventPipe](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/eventpipe)
+is a separate runtime tracing mechanism; this packaging check does not measure trace collection.
+
 ```bash
 python3 packaging/linux/test-package.py
 bash packaging/linux/build.sh artifacts/electron-publish artifacts/electron-packages "$VERSION"

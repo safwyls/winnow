@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline mutation tests; synthetic payloads are never executed or installed."""
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -10,7 +11,8 @@ import shutil
 import sqlite3
 import subprocess
 import sys
-from contextlib import closing
+from contextlib import closing, redirect_stdout
+from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location('package', Path(__file__).with_name('verify-package.py'))
@@ -170,6 +172,78 @@ class PackageContracts(unittest.TestCase):
         self.assertEqual(actual, {'libgtk', 'libglib', 'libc', 'libgcc-s1', 'libgcc1'})
         self.assertNotIn('unrelated', actual)
         self.assertNotIn('secret', actual)
+
+
+class NativeDependencyContracts(unittest.TestCase):
+    missing_lttng = '\tliblttng-ust.so.0 => not found\n'
+
+    def test_only_exact_runtime_providers_allow_absent_optional_lttng_and_report_it(self):
+        for name in ['backend/libcoreclrtraceptprovider.so', 'update-helper/libcoreclrtraceptprovider.so']:
+            with self.subTest(name=name), redirect_stdout(io.StringIO()) as diagnostics:
+                package.check_native_dependencies(name, self.missing_lttng, 0)
+                self.assertIn('Optional .NET OS-level LTTng tracing unavailable', diagnostics.getvalue())
+                self.assertIn(name, diagnostics.getvalue())
+
+    def test_optional_soname_does_not_exempt_apphost_coreclr_or_other_paths(self):
+        for name in ['Winnow', 'backend/Winnow.Backend', 'backend/libcoreclr.so',
+                     'plugins/libcoreclrtraceptprovider.so', 'backend/nested/libcoreclrtraceptprovider.so']:
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'Unresolved native dependencies'):
+                package.check_native_dependencies(name, self.missing_lttng, 0)
+
+    def test_provider_requires_every_other_missing_library_and_exact_soname(self):
+        for output in ['\tliblttng-ust.so.1 => not found\n', '\tlibc.so.6 => not found\n',
+                       self.missing_lttng + '\tlibstdc++.so.6 => not found\n',
+                       self.missing_lttng + 'ldd: unexpected dependency not found\n']:
+            with self.subTest(output=output), self.assertRaisesRegex(ValueError, 'Unresolved native dependencies'):
+                package.check_native_dependencies('backend/libcoreclrtraceptprovider.so', output, 0)
+
+    def test_optional_provider_does_not_hide_ldd_command_failure(self):
+        for output in [self.missing_lttng, 'ldd: Permission denied\n']:
+            with self.subTest(output=output), self.assertRaisesRegex(ValueError, 'Unresolved native dependencies'):
+                package.check_native_dependencies('backend/libcoreclrtraceptprovider.so', output, 1)
+
+    def test_static_and_resolved_elf_results_remain_accepted_without_optional_warning(self):
+        for output, code in [('statically linked\n', 0), ('not a dynamic executable\n', 1),
+                             ('\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x123)\n', 0)]:
+            with self.subTest(output=output), redirect_stdout(io.StringIO()) as diagnostics:
+                package.check_native_dependencies('Winnow', output, code)
+                self.assertEqual(diagnostics.getvalue(), '')
+
+    def test_optional_missing_provider_still_checks_resolved_dependency_owners(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            name = 'backend/libcoreclrtraceptprovider.so'
+            output = self.missing_lttng + '\tlibstdc++.so.6 => /lib/libstdc++.so.6 (0x123)\n'
+
+            def command(args, **kwargs):
+                if args[0] == 'ldd':
+                    self.assertEqual(args[1], str(root / name))
+                    return subprocess.CompletedProcess(args, 0, output, '')
+                self.assertEqual(args[:2], ['dpkg-query', '-S'])
+                return subprocess.CompletedProcess(args, 0, 'libstdc++6:amd64: /lib/libstdc++.so.6\n', '')
+
+            with patch.object(package.subprocess, 'run', side_effect=command), redirect_stdout(io.StringIO()):
+                package.verify_native_library(root, name, root / name, {'libstdc++6'})
+                with self.assertRaisesRegex(ValueError, 'not covered by package Depends'):
+                    package.verify_native_library(root, name, root / name, {'libc6'})
+
+    def test_present_lttng_library_must_belong_to_declared_dependency_closure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            name = 'update-helper/libcoreclrtraceptprovider.so'
+
+            def command(args, **kwargs):
+                if args[0] == 'ldd':
+                    return subprocess.CompletedProcess(args, 0,
+                        '\tliblttng-ust.so.0 => /lib/liblttng-ust.so.0 (0x123)\n', '')
+                self.assertEqual(args[:2], ['dpkg-query', '-S'])
+                return subprocess.CompletedProcess(args, 0, 'liblttng-ust0:amd64: /lib/liblttng-ust.so.0\n', '')
+
+            with patch.object(package.subprocess, 'run', side_effect=command), redirect_stdout(io.StringIO()) as diagnostics:
+                with self.assertRaisesRegex(ValueError, 'not covered by package Depends'):
+                    package.verify_native_library(root, name, root / name, {'libc6'})
+                package.verify_native_library(root, name, root / name, {'liblttng-ust0'})
+                self.assertEqual(diagnostics.getvalue(), '')
 
 
 class SandboxAndPreservationContracts(unittest.TestCase):

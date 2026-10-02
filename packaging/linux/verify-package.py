@@ -20,6 +20,9 @@ REQUIRED = (
 )
 APPHOSTS = ('Winnow', 'chrome_crashpad_handler', 'chrome-sandbox',
             'backend/Winnow.Backend', 'update-helper/Winnow.Update.Helper')
+OPTIONAL_LTTNG_PROVIDERS = frozenset((
+    'backend/libcoreclrtraceptprovider.so', 'update-helper/libcoreclrtraceptprovider.so',
+))
 
 
 def payload(root):
@@ -68,6 +71,41 @@ def declared_packages(deb):
     declared = subprocess.check_output(['dpkg-deb', '-f', str(deb), 'Depends'], text=True)
     rows = subprocess.check_output(['dpkg-query', '-W', '-f=${Package}\t${Depends},${Pre-Depends}\n'], text=True)
     return dependency_closure(declared, dict(line.split('\t', 1) for line in rows.splitlines()))
+
+
+def check_native_dependencies(name, output, returncode):
+    missing = set(re.findall(r'^\s*(\S+)\s+=>\s+not found\s*$', output, re.MULTILINE))
+    # .NET's PAL_InitializeTracing tolerates this provider's dlopen failure. Ubuntu
+    # 24.04 ships LTTng ABI 1; the upstream linux-x64 runtime requests optional ABI 0.
+    # Do not exempt the provider's other dependencies or any other shipped ELF.
+    optional = name in OPTIONAL_LTTNG_PROVIDERS and missing == {'liblttng-ust.so.0'}
+    missing_lines = [line for line in output.splitlines() if 'not found' in line]
+    missing_failure = missing_lines and (not optional or len(missing_lines) != 1)
+    status_failure = returncode and (optional or
+        'not a dynamic executable' not in output and 'statically linked' not in output)
+    if missing_failure or status_failure:
+        raise ValueError(f'Unresolved native dependencies: {name}\n{output}')
+    if optional:
+        print(f'Optional .NET OS-level LTTng tracing unavailable: {name}: liblttng-ust.so.0 not found.')
+
+
+def verify_native_library(root, name, path, allowed):
+    env = {**os.environ, 'LD_LIBRARY_PATH': f'{path.parent}:{root}'}
+    result = subprocess.run(['ldd', str(path)], env=env, text=True, capture_output=True, check=False)
+    output = result.stdout + result.stderr
+    check_native_dependencies(name, output, result.returncode)
+    if allowed is not None:
+        for dependency in re.findall(r'(?:=>\s*)?(/[^\s]+)\s+\(', output):
+            library = Path(dependency).resolve()
+            if library.is_relative_to(root):
+                continue
+            owners = set()
+            for candidate in {str(library), dependency}:
+                result = subprocess.run(['dpkg-query', '-S', candidate], capture_output=True, text=True)
+                if result.returncode == 0:
+                    owners.update(line.split(':', 1)[0] for line in result.stdout.splitlines() if ': ' in line)
+            if not owners & allowed:
+                raise ValueError(f'Native dependency is not covered by package Depends: {name}: {library} ({owners})')
 
 
 def verify(root, version, kind='published', refresh=False, dependencies=False, deb=None):
@@ -127,23 +165,7 @@ def verify(root, version, kind='published', refresh=False, dependencies=False, d
             with path.open('rb') as stream:
                 if stream.read(4) != b'\x7fELF':
                     continue
-            env = {**os.environ, 'LD_LIBRARY_PATH': f'{path.parent}:{root}'}
-            result = subprocess.run(['ldd', str(path)], env=env, text=True, capture_output=True, check=False)
-            output = result.stdout + result.stderr
-            if 'not found' in output or result.returncode and 'not a dynamic executable' not in output and 'statically linked' not in output:
-                raise ValueError(f'Unresolved native dependencies: {name}\n{output}')
-            if allowed is not None:
-                for dependency in re.findall(r'(?:=>\s*)?(/[^\s]+)\s+\(', output):
-                    library = Path(dependency).resolve()
-                    if library.is_relative_to(root):
-                        continue
-                    owners = set()
-                    for candidate in {str(library), dependency}:
-                        result = subprocess.run(['dpkg-query', '-S', candidate], capture_output=True, text=True)
-                        if result.returncode == 0:
-                            owners.update(line.split(':', 1)[0] for line in result.stdout.splitlines() if ': ' in line)
-                    if not owners & allowed:
-                        raise ValueError(f'Native dependency is not covered by package Depends: {name}: {library} ({owners})')
+            verify_native_library(root, name, path, allowed)
     return len(files)
 
 

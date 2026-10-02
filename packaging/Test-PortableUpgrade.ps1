@@ -9,6 +9,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Stop-SmokeBackend.ps1')
+. (Join-Path $PSScriptRoot 'Portable-SmokeEvidence.ps1')
 . (Join-Path $PSScriptRoot 'windows/Test-ElectronPackageLayout.ps1')
 if ($env:GITHUB_ACTIONS -cne 'true') { throw 'Portable upgrade smoke runs only on disposable GitHub Actions runners.' }
 $root = Join-Path ([IO.Path]::GetTempPath()) ('Winnow-portable-smoke-' + [guid]::NewGuid().ToString('N'))
@@ -20,6 +21,8 @@ $helper = $currentHelper
 $Archive = (Resolve-Path -LiteralPath $Archive).Path
 $PreviousArchive = (Resolve-Path -LiteralPath $PreviousArchive).Path
 $processes = [Collections.Generic.List[Diagnostics.Process]]::new()
+$dataDirectories = [Collections.Generic.List[string]]::new()
+$replacementWitnesses = [Collections.Generic.Dictionary[string,object]]::new()
 $sandboxPaths = [Collections.Generic.List[string]]::new()
 $sandboxSetup = Join-Path $PSScriptRoot 'linux/setup-sandbox.sh'
 $targetPayload = Get-WinnowFrontendPayload $PublishDirectory
@@ -49,9 +52,33 @@ function Invoke-Helper([string[]]$Arguments, [bool]$ExpectFailure = $false) {
     }
     $helperCalls.Add($call)
     ConvertTo-Json -InputObject @($helperCalls.ToArray()) -Depth 5 | Set-Content -LiteralPath $helperCallsPath -Encoding utf8
-    if (-not $process.WaitForExit([int]$helperTimeout.TotalMilliseconds)) {
-        throw "Portable helper '$($Arguments[0])' did not exit within $($helperTimeout.TotalMinutes) minutes (PID $($process.Id))."
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    $watchedJournal = $null
+    if ($IsLinux -and $Arguments[0] -ceq 'apply') {
+        $journalIndex = [Array]::IndexOf($Arguments, '--journal')
+        if ($journalIndex -lt 0 -or $journalIndex + 1 -ge $Arguments.Count) { throw 'Apply has no journal.' }
+        $watchedJournal = $Arguments[$journalIndex + 1]
+        $ownedHelper = Get-PortableLinuxProcessIdentity $process.Id
+        if ($null -eq $ownedHelper -or $ownedHelper.executable -cne [IO.Path]::GetFullPath($helper)) {
+            throw 'Cannot witness the exact owned update helper.'
+        }
+        $applyState = Get-Content -LiteralPath $watchedJournal -Raw | ConvertFrom-Json -AsHashtable
+        $expectedChild = Join-Path $applyState.InstallationDirectory $applyState.ExecutableName
     }
+    do {
+        if ($watchedJournal -and -not $replacementWitnesses.ContainsKey($watchedJournal) -and -not $process.HasExited) {
+            $record = Join-Path (Split-Path $watchedJournal -Parent) 'child-process'
+            $witness = Get-PortableReplacementWitness $record $ownedHelper $expectedChild
+            if ($null -ne $witness) {
+                $replacementWitnesses.Add($watchedJournal, $witness)
+                $witness | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $evidenceDirectory "$scenario-child-witness.json") -Encoding utf8
+            }
+        }
+        if ($process.WaitForExit(50)) { break }
+        if ($timer.Elapsed -gt $helperTimeout) {
+            throw "Portable helper '$($Arguments[0])' did not exit within $($helperTimeout.TotalMinutes) minutes (PID $($process.Id))."
+        }
+    } while ($true)
     $code = $process.ExitCode
     $call.exited = $true
     $call.exitCode = $code
@@ -130,15 +157,37 @@ function Assert-PreservedPortableFiles([string]$DataDirectory, [string[]]$Relati
 function Stop-ReplacedApplication([string]$Journal, [string]$Installation, [string]$DataDirectory) {
     $processRecord = Join-Path (Split-Path $Journal -Parent) 'child-process'
     if (Test-Path -LiteralPath $processRecord) {
-        $identity = @(Get-Content -LiteralPath $processRecord)
-        if ($identity.Count -ne 2) { throw 'The updated application process record is invalid.' }
-        $child = Get-Process -Id ([int]$identity[0]) -ErrorAction SilentlyContinue
+        $recordBytes = [IO.File]::ReadAllBytes($processRecord)
+        $identity = Read-PortableChildRecord $recordBytes
+        $child = Get-Process -Id $identity.processId -ErrorAction SilentlyContinue
         if ($null -ne $child) {
             $expected = [IO.Path]::GetFullPath((Join-Path $Installation $executableName))
-            if ($child.Path -ine $expected -or $child.StartTime.ToUniversalTime().Ticks -ne [long]$identity[1]) {
-                throw 'The updated application process identity changed; refusing cleanup.'
+            $diagnostic = [ordered]@{
+                processId = $child.Id; expectedExecutable = $expected; observedExecutable = $null
+                helperUtcTicks = $identity.helperUtcTicks.ToString(); observedUtcTicks = $null
+                linux = $null; hasWitness = $replacementWitnesses.ContainsKey($Journal); accepted = $false; errorType = $null
             }
-            Stop-SmokeProcess $child
+            try {
+                $diagnostic.observedExecutable = $child.Path
+                $diagnostic.observedUtcTicks = $child.StartTime.ToUniversalTime().Ticks.ToString()
+                if ($IsLinux) {
+                    $observed = Get-PortableLinuxProcessIdentity $child.Id
+                    $diagnostic.linux = $observed
+                    $witness = if ($replacementWitnesses.ContainsKey($Journal)) { $replacementWitnesses[$Journal] } else { $null }
+                    Assert-PortableReplacementIdentity $witness $recordBytes $observed $expected
+                    # Recheck immutable kernel birth/executable immediately before the owned kill.
+                    Assert-PortableReplacementIdentity $witness $recordBytes (Get-PortableLinuxProcessIdentity $child.Id) $expected
+                } elseif ($child.Path -ine $expected -or $child.StartTime.ToUniversalTime().Ticks -ne $identity.helperUtcTicks) {
+                    throw 'The updated application process identity changed; refusing cleanup.'
+                }
+                $diagnostic.accepted = $true
+                Stop-SmokeProcess $child
+            } catch {
+                $diagnostic.errorType = $_.Exception.GetType().FullName
+                throw
+            } finally {
+                $diagnostic | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $evidenceDirectory "$scenario-child-cleanup.json") -Encoding utf8
+            }
         }
     }
     Stop-SmokeBackend $DataDirectory
@@ -170,6 +219,7 @@ try {
             }
         }
         $data = if ($inside) { Join-Path $install 'user-data' } else { Join-Path $scenarioRoot 'user-data' }
+        $dataDirectories.Add($data)
         $old = Start-SmokeProcess (Join-Path $install $executableName) @('--data-dir', $data, '--no-sync') -Frontend
         $database = Join-Path $data 'winnow.db'
         for ($attempt = 0; $attempt -lt 120 -and -not (Test-Path -LiteralPath $database); $attempt++) {
@@ -313,8 +363,9 @@ try {
 } finally {
     foreach ($process in $processes) { Stop-SmokeProcess $process }
     # Relaunched applications have a different PID. Restrict cleanup by exact executable path.
+    $cleanupComparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
     Get-Process -Name Winnow,Winnow.Backend -ErrorAction SilentlyContinue | ForEach-Object {
-        if ($_.Path -and $_.Path.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { Stop-SmokeProcess $_ }
+        if ($_.Path -and $_.Path.StartsWith($root + [IO.Path]::DirectorySeparatorChar, $cleanupComparison)) { Stop-SmokeProcess $_ }
     }
     $sandboxCleanupFailed = $false
     foreach ($sandboxExecutable in $sandboxPaths) {
@@ -323,13 +374,7 @@ try {
     }
     $diagnostics = Join-Path $PSScriptRoot '../artifacts/portable-smoke-logs'
     $null = New-Item -ItemType Directory -Path $diagnostics -Force
-    Get-ChildItem -LiteralPath $root -Filter journal.json -Recurse -Force | ForEach-Object {
-        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $diagnostics ($_.Directory.Parent.Name + '-journal.json'))
-    }
-    Get-ChildItem -LiteralPath $root -Filter '*.log' -Recurse -Force | ForEach-Object {
-        $name = [IO.Path]::GetRelativePath($root, $_.FullName).Replace('/', '_').Replace('\', '_')
-        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $diagnostics $name)
-    }
+    Copy-PortableSmokeDiagnostics $root $dataDirectories.ToArray() $diagnostics
     Write-Host "Disposable smoke data retained at $root until runner disposal."
     if ($sandboxCleanupFailed) { throw 'Could not remove a disposable portable AppArmor profile.' }
 }

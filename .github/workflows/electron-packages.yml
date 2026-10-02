@@ -71,6 +71,7 @@ jobs:
           node --test src/Winnow.Electron/tests/packaging/linux-command-line.test.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Packaged process inspection contracts failed.' }
           ./packaging/Test-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish
+          ./packaging/Test-PortableSmokeEvidence.ps1
           ./packaging/windows/Test-ElectronPackageContracts.ps1 -PublishDirectory artifacts/electron-publish
           ./packaging/windows/Test-SmokeApplication.ps1
           ./packaging/windows/Test-InstallerSmokeEvidence.ps1 -PublishDirectory artifacts/electron-publish
@@ -106,7 +107,9 @@ jobs:
             artifacts/electron-smoke/**
             artifacts/electron-publish/release-info.json
             artifacts/electron-publish/resources/*NOTICES*
-            ${{ runner.temp }}/Winnow-installer-smoke-*/**/*.log
+            ${{ runner.temp }}/Winnow-installer-smoke-*/*.log
+            ${{ runner.temp }}/Winnow-installer-smoke-*/*/*.log
+            ${{ runner.temp }}/Winnow-installer-smoke-*/**/logs/*.log
             ${{ runner.temp }}/Winnow-installer-smoke-*/**/failure.txt
           if-no-files-found: error
           include-hidden-files: true
@@ -184,6 +187,7 @@ jobs:
           node --test src/Winnow.Electron/tests/packaging/linux-command-line.test.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Packaged process inspection contracts failed.' }
           ./packaging/Test-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish
+          ./packaging/Test-PortableSmokeEvidence.ps1
           ./packaging/Test-PreviousDebianPackage.ps1
           bash packaging/linux/test-electron-package.sh artifacts/electron-publish
           if ($LASTEXITCODE -ne 0) { throw 'Linux package contracts failed.' }

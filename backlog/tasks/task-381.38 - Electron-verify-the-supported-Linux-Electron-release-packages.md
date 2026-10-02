@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 05:56'
+updated_date: '2026-10-02 06:18'
 labels:
   - electron
   - parity
@@ -78,4 +78,8 @@ First Ubuntu run36969598691 at136342b9 passed87/87 focused lease/recovery tests 
 Second Ubuntu run36970126301 atc49782af passes cache-freepreflight and launches desktop/fullscreen under exact AppArmor profile. Reports establish visible native1920x1080fullscreen, ownbackend/libraryread, rendererNoNewPrivs1/Seccomp2 andcleanclose. Probe failed parsing Chromium rewritten /proc commandline (one combinedstring, type null); correcting parser and forbiddenflag detection without looseningkernelassertions. Actual WM_CLASS is lowercase winnow forbothinstance/class, so Electron desktopmetadata willmatchit. Reports .tmp/task38138-linux-second-evidence; log .tmp/task38138-linux-second.log. Fullscreenreadiness willrewaitaftermodechange; screenshotobserved transientPreparingfullscreenbeforeparserfailure.
 
 Chromium title parser corrected with24 passing offline contracts; renderer/main forbidden switches and kernel sandbox assertions remain strict. Post-mode and pre-capture waits require startup presentation absent. Full TypeScript, syntax, formatting checks pass. Desktop entry now uses measured lowercase winnow; actual production writer regression preserves Avalonia uppercase. Package contracts18passWindows/3Linux-only (21total). Companion Windows job36970126301 now fully passed native11,installer5,portable5. Preparing corrected Ubuntu rerun.
+
+Third Ubuntu run36971220965 atb677ec93 passes both native desktop/fullscreen probes, all21Linux contracts,24commandline cases and Debian/tar package creation. Root reviewed both full rendered screenshots. Actual beta.3 managed install and upgrade succeed before dependency closure rejects optional-looking .NET libcoreclrtraceptprovider.so missing liblttng-ust.so.0; investigating exact upstream/runtime policy rather than skipping ELF checks. Portable external-data helper stage/apply succeeds with journalReady phase5 and noFailure, then smoke exact child identity comparison refuses cleanup; investigating recorded versus observed process identity without unrelated process termination. Logs .tmp/task38138-linux-third.log; evidence .tmp/task38138-linux-third-evidence. Managed/remove/recovery/session qualification still pending.
+
+Targeted corrections verified locally: optional LTTng classification has seven new negative/closure contracts; package suite25passWindows/3Linux-only (28total). Linux portable cleanup now witnesses exact helper-parent and child kernel birth/executable plus unchanged child-record bytes; Windows UTC comparison unchanged.33offline identity/diagnostic contracts and all7existing packaged helper/evidence groups pass; logs .tmp/task38138-portable-identity.log and .tmp/task38138-portable-existing-contracts.log. CI also runs actual own /proc identity check. Product/installer diagnostic retention excludes Chromium profile persistence and retains child comparison evidence. Third run companion Windows job fully passed again. No local installs or native launches; corrected Ubuntu rerun next.
 <!-- SECTION:NOTES:END -->

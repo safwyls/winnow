@@ -72,6 +72,33 @@ Logs and reports are in `.tmp/task38138-linux-second.log` and
 `.tmp/task38138-linux-second-evidence`. Linux installation and recovery qualification
 remain pending the corrected run.
 
+The [third Ubuntu run 36971220965](https://github.com/safwyls/winnow/actions/runs/36971220965)
+at `b677ec938a0a1b69437d583a85223502b8865159` passed both native probes, all 21 Linux
+package contracts, all 24 process-parser cases and Debian/tar creation. Both captured
+surfaces render completely. The actual previous Debian installation and upgrade succeed,
+then dependency verification stops at `libcoreclrtraceptprovider.so` because its
+`liblttng-ust.so.0` dependency is unavailable. The first portable upgrade reaches Ready
+with no journal failure, then the smoke refuses cleanup because its recorded child
+identity differs from the observed process. These checks remain failures until their
+causes are resolved. Evidence is `.tmp/task38138-linux-third.log` and
+`.tmp/task38138-linux-third-evidence`.
+
+The dependency verifier now classifies only that exact missing soname in the two
+runtime tracepoint providers as optional. The
+[.NET 10.0.12 loader](https://github.com/dotnet/runtime/blob/v10.0.12/src/coreclr/pal/src/misc/tracepointprovider.cpp)
+tolerates this load failure; Ubuntu 24.04 supplies LTTng ABI 1. Every other missing
+dependency, command failure and undeclared resolved library still fails. The original
+provider bytes and runtime diagnostic settings remain unchanged. Seven additional
+contracts pass, bringing the offline Windows result to 25 passing cases and three
+explicit Linux-only cases. OS-level LTTng tracing is recorded as unavailable; this
+check does not measure EventPipe trace collection.
+
+Portable cleanup now witnesses the replacement while its exact owned helper is still
+its parent, then compares Linux kernel birth ticks, executable path and unchanged
+child-record bytes before stopping it. Windows retains its existing exact timestamp
+check. Compared identities are retained in the smoke evidence. Diagnostic collection
+keeps product and installer logs and excludes Chromium profile storage.
+
 ## Optional macOS audit
 
 The secondary Electron builder configuration declares a DMG target and its backend
