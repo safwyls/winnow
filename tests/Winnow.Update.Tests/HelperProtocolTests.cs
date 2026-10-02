@@ -134,26 +134,16 @@ public sealed class HelperProtocolTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AnUnavailableLeaseAllowsReadOnlyStartupOnlyWithoutAnyPendingJournal(bool journal)
+    public async Task AnExclusiveReplacementLeaseRefusesStartupEvenWithoutAPendingJournal(bool journal)
     {
         using var fixture = new Fixture();
         if (journal) fixture.Journal(UpdatePhase.Installed);
         using var locked = fixture.ExclusiveLease();
         using var child = fixture.StartFrontend();
+        await Exit(child, 1);
+        Assert.Empty(await child.StandardOutput.ReadToEndAsync());
         if (journal)
-        {
-            await Exit(child, 1);
-            Assert.Empty(await child.StandardOutput.ReadToEndAsync());
             Assert.Equal(UpdatePhase.Installed, PortableUpdateEngine.ReadJournal(fixture.JournalPath).Phase);
-        }
-        else
-        {
-            var frame = await Frame(child);
-            Assert.False(frame.GetProperty("canUpdate").GetBoolean());
-            Assert.Contains("manual update", frame.GetProperty("recoveryStatus").GetString());
-            child.StandardInput.Close();
-            await Exit(child, 0);
-        }
         Assert.Empty(Directory.GetFiles(fixture.Data));
     }
 

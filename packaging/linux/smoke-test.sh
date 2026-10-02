@@ -4,7 +4,7 @@
 set -euo pipefail
 
 usage() {
-    printf 'Usage: %s <package-dir> <version>\n' "${0##*/}" >&2
+    printf 'Usage: %s <package-dir> <version> [previous-deb]\n' "${0##*/}" >&2
     exit 64
 }
 
@@ -13,7 +13,7 @@ fail() {
     exit 1
 }
 
-[[ $# -eq 2 ]] || usage
+[[ $# -eq 2 || $# -eq 3 ]] || usage
 [[ ${GITHUB_ACTIONS:-} == true ]] \
     || fail "this smoke test installs and removes a package and may run only in GitHub Actions"
 
@@ -34,6 +34,12 @@ deb_version=${version/-/\~}
 command -v dpkg-deb >/dev/null || fail "dpkg-deb is required"
 command -v sudo >/dev/null || fail "sudo is required to install the package"
 command -v setsid >/dev/null || fail "setsid is required to isolate the smoke-test process group"
+frontend=$(dpkg-deb --fsys-tarfile "$deb_path" | tar -xOf - ./opt/winnow/release-info.json |
+    python3 -c 'import json,sys; print(json.load(sys.stdin).get("frontend", "avalonia"))')
+if [[ $frontend == electron ]]; then
+    [[ $# -eq 3 ]] || fail 'Electron smoke requires a digest-verified previous released Debian package.'
+    exec bash "$(dirname -- "$0")/smoke-electron.sh" "$package_dir" "$version" "$3"
+fi
 [[ ! -e /usr/bin/winnow ]] || fail "/usr/bin/winnow already exists; refusing to replace it"
 if dpkg-query -W -f='${db:Status-Status}' winnow 2>/dev/null | grep -Fqx installed; then
     fail "the winnow Debian package is already installed; refusing to replace it"

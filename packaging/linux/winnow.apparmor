@@ -1,0 +1,8 @@
+# Winnow's own Chromium sandbox needs an unprivileged user namespace on Ubuntu 24.04.
+# This attachment is deliberately one installed executable, never a user-writable wildcard.
+abi <abi/4.0>,
+include <tunables/global>
+profile winnow-electron "/opt/winnow/Winnow" flags=(unconfined) {
+  userns,
+  include if exists <local/winnow-electron>
+}

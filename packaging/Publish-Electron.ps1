@@ -71,6 +71,11 @@ try {
     finally { Pop-Location }
     $unpacked = Join-Path $scratch ('electron/' + $(if ($Runtime -eq 'win-x64') { 'win-unpacked' } else { 'linux-unpacked' }))
     Get-ChildItem -LiteralPath $unpacked -Force | Copy-Item -Destination $output -Recurse -Force
+    if ($Runtime -eq 'linux-x64') {
+        # Ubuntu uses the exact-path AppArmor user-namespace permission. A portable
+        # directory must never distribute a privileged setuid sandbox helper.
+        [IO.File]::SetUnixFileMode((Join-Path $output 'chrome-sandbox'), [IO.UnixFileMode]493)
+    }
     foreach ($project in @('Winnow.Backend', 'Winnow.Update.Helper')) {
         $destination = Join-Path $output $(if ($project -eq 'Winnow.Backend') { 'backend' } else { 'update-helper' })
         & dotnet publish "$repo/src/$project/$project.csproj" --configuration Release --runtime $Runtime `

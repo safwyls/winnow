@@ -46,6 +46,14 @@ if manifest.get("runtime") != "linux-x64":
 if not re.fullmatch(r"[0-9a-f]{40}", str(manifest.get("commit", ""))):
     raise SystemExit("error: release-info.json commit must be a 40-character lowercase SHA-1")
 PY
+frontend=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8-sig")).get("frontend", "avalonia"))' "$release_info")
+[[ $frontend == avalonia || $frontend == electron ]] || fail 'unsupported frontend in release manifest'
+if [[ $frontend == electron ]]; then
+    python3 "$script_dir/verify-package.py" "$publish_dir" "$version"
+    node "$repository_root/src/Winnow.Electron/scripts/verify-primary-asar.mjs" \
+        "$publish_dir/resources/app.asar" "$version" \
+        "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["commit"])' "$release_info")"
+fi
 
 icon_source=$repository_root/src/Winnow.App/Assets/Icons/dragon.svg
 [[ -f $icon_source ]] || fail "application icon does not exist: $icon_source"
@@ -94,10 +102,15 @@ mkdir -p -- "$portable_root"
 cp -a -- "$publish_dir/." "$portable_root/"
 # A developer-local config can be copied by dotnet publish. It must never be
 # present in a distributable archive.
-rm -f -- "$portable_root/appsettings.local.json"
+if [[ $frontend != electron ]]; then rm -f -- "$portable_root/appsettings.local.json"; fi
 write_launcher "$portable_root/winnow"
 write_desktop_entry "$portable_root/winnow.desktop"
 cp -- "$icon_source" "$portable_root/dragon.svg"
+if [[ $frontend == electron ]]; then
+    install -m 0755 "$script_dir/setup-sandbox.sh" "$portable_root/setup-sandbox.sh"
+    install -m 0644 "$script_dir/README.md" "$portable_root/LINUX-README.md"
+    python3 "$script_dir/verify-package.py" "$portable_root" "$version" --kind portable --refresh-hashes
+fi
 
 tar -C "$stage_root" -czf "$output_dir/$tar_name" "$portable_name"
 
@@ -112,7 +125,7 @@ mkdir -p -- \
     "$deb_root/DEBIAN"
 cp -a -- "$publish_dir/." "$install_root/"
 printf 'deb\n' > "$install_root/package-managed"
-rm -f -- "$install_root/appsettings.local.json"
+if [[ $frontend != electron ]]; then rm -f -- "$install_root/appsettings.local.json"; fi
 cat > "$deb_root/usr/bin/winnow" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -121,6 +134,18 @@ EOF
 chmod 0755 "$deb_root/usr/bin/winnow"
 write_desktop_entry "$deb_root/usr/share/applications/winnow.desktop"
 cp -- "$icon_source" "$deb_root/usr/share/icons/hicolor/scalable/apps/winnow.svg"
+dependencies='ca-certificates, libc6 (>= 2.27), libgcc-s1 | libgcc1, libgssapi-krb5-2, libicu74, libssl3t64, libstdc++6, tzdata, zlib1g, libx11-6, libice6, libsm6, libfontconfig1'
+if [[ $frontend == electron ]]; then
+    # Ubuntu 24.04's t64 package names are deliberate. The smoke also checks ldd against
+    # every shipped ELF, so runner preinstallation cannot hide a missing binary dependency.
+    dependencies='apparmor, ca-certificates, libc6 (>= 2.39), libgcc-s1, libgssapi-krb5-2, libicu74, libssl3t64, libstdc++6, tzdata, zlib1g, libfontconfig1, libgtk-3-0t64, libnss3, libnspr4, libasound2t64, libgbm1, libdrm2, libx11-6, libxcb1, libxcomposite1, libxdamage1, libxext6, libxfixes3, libxrandr2, libxkbcommon0, libatk1.0-0t64, libatk-bridge2.0-0t64, libatspi2.0-0t64, libdbus-1-3, libcups2t64, libpango-1.0-0, libcairo2, libsecret-1-0, xdg-utils'
+    mkdir -p -- "$deb_root/etc/apparmor.d"
+    install -m 0644 "$script_dir/winnow.apparmor" "$deb_root/etc/apparmor.d/winnow-electron"
+    install -m 0755 "$script_dir/postinst" "$deb_root/DEBIAN/postinst"
+    install -m 0755 "$script_dir/postrm" "$deb_root/DEBIAN/postrm"
+    printf '/etc/apparmor.d/winnow-electron\n' > "$deb_root/DEBIAN/conffiles"
+    python3 "$script_dir/verify-package.py" "$install_root" "$version" --kind managed --refresh-hashes
+fi
 
 installed_size=$(du -sk "$deb_root/opt/winnow" | awk '{ print $1 }')
 cat > "$deb_root/DEBIAN/control" <<EOF
@@ -132,7 +157,7 @@ Architecture: amd64
 Installed-Size: $installed_size
 Maintainer: Winnow contributors
 Homepage: https://github.com/safwyls/winnow
-Depends: ca-certificates, libc6 (>= 2.27), libgcc-s1 | libgcc1, libgssapi-krb5-2, libicu74, libssl3t64, libstdc++6, tzdata, zlib1g, libx11-6, libice6, libsm6, libfontconfig1
+Depends: $dependencies
 Description: Surface forgotten games in your library
  Winnow is a local-first desktop app for rediscovering games you already own.
 EOF

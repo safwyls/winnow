@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+if [ "$1" = configure ] && aa-enabled --quiet; then
+    apparmor_parser --replace /etc/apparmor.d/winnow-electron
+fi
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications
+fi

@@ -372,3 +372,9 @@ package does not introduce a Linux browser or secret-store backend.
 
 Native dependencies follow [Microsoft's .NET requirements](https://learn.microsoft.com/en-us/dotnet/core/install/linux-ubuntu-install)
 and [Avalonia's desktop Linux requirements](https://docs.avaloniaui.net/docs/platform-specific-guides/linux).
+
+The secondary Electron configuration includes an optional macOS DMG target, but macOS is
+outside the supported release matrix. The primary publisher and CI do not produce it;
+signing, notarization, installation, URL association and physical-device behavior are
+unverified. Shared browser and Unix monitoring paths do not establish macOS support.
+There is no Keychain credential store, and the macOS update path only opens a release page.

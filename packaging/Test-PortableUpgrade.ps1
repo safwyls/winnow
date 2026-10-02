@@ -20,6 +20,9 @@ $helper = $currentHelper
 $Archive = (Resolve-Path -LiteralPath $Archive).Path
 $PreviousArchive = (Resolve-Path -LiteralPath $PreviousArchive).Path
 $processes = [Collections.Generic.List[Diagnostics.Process]]::new()
+$sandboxPaths = [Collections.Generic.List[string]]::new()
+$sandboxSetup = Join-Path $PSScriptRoot 'linux/setup-sandbox.sh'
+$targetPayload = Get-WinnowFrontendPayload $PublishDirectory
 function Start-SmokeProcess([string]$File, [string[]]$Arguments, [switch]$Frontend) {
     $start = [Diagnostics.ProcessStartInfo]::new($File)
     $start.UseShellExecute = $false
@@ -157,6 +160,14 @@ try {
         } else {
             & tar -xzf $PreviousArchive --strip-components=1 -C $install
             if ($LASTEXITCODE -ne 0) { throw 'Could not extract previous portable archive.' }
+            if ($targetPayload.Electron) {
+                # The executable path stays stable across replacement. Authorize that
+                # exact path before either release starts, without weakening userns policy.
+                $sandboxExecutable = Join-Path $install $executableName
+                & sudo bash $sandboxSetup --executable $sandboxExecutable
+                if ($LASTEXITCODE -ne 0) { throw 'Could not configure the portable Chromium sandbox.' }
+                $sandboxPaths.Add($sandboxExecutable)
+            }
         }
         $data = if ($inside) { Join-Path $install 'user-data' } else { Join-Path $scenarioRoot 'user-data' }
         $old = Start-SmokeProcess (Join-Path $install $executableName) @('--data-dir', $data, '--no-sync') -Frontend
@@ -275,12 +286,24 @@ try {
         if (-not (Test-WinnowSameFrontendPayload $newPayload (Get-WinnowFrontendPayload $PublishDirectory))) {
             throw 'The installed frontend does not match the validated new publish directory.'
         }
-        if ($newPayload.Electron -and $Runtime -eq 'win-x64') {
-            Assert-WinnowWindowsDirectory $install $data
-            Assert-WinnowPackagedHashes $install
+        if ($newPayload.Electron) {
+            if ($Runtime -eq 'win-x64') {
+                Assert-WinnowWindowsDirectory $install $data
+                Assert-WinnowPackagedHashes $install
+            } else {
+                Push-Location $install
+                try {
+                    & sha256sum --check --quiet PACKAGE-SHA256SUMS
+                    if ($LASTEXITCODE -ne 0) { throw 'Portable Linux files differ from the verified publish directory.' }
+                } finally { Pop-Location }
+            }
             Stop-ReplacedApplication $journal $install $data
             $report = Join-Path $PSScriptRoot "../artifacts/portable-smoke-logs/$scenario-electron.json"
             Invoke-WinnowPackagedProbe (Join-Path $install $executableName) $data $report 'desktop'
+            if ($Runtime -eq 'linux-x64') {
+                $fullscreenReport = Join-Path $PSScriptRoot "../artifacts/portable-smoke-logs/$scenario-electron-fullscreen.json"
+                Invoke-WinnowPackagedProbe (Join-Path $install $executableName) $data $fullscreenReport 'fullscreen'
+            }
         }
         Assert-PreservedPortableFiles $data $preserved
         if (-not (Test-Path -LiteralPath $database)) { throw 'Upgrade lost the library database.' }
@@ -293,6 +316,11 @@ try {
     Get-Process -Name Winnow,Winnow.Backend -ErrorAction SilentlyContinue | ForEach-Object {
         if ($_.Path -and $_.Path.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { Stop-SmokeProcess $_ }
     }
+    $sandboxCleanupFailed = $false
+    foreach ($sandboxExecutable in $sandboxPaths) {
+        & sudo bash $sandboxSetup --executable $sandboxExecutable --remove
+        if ($LASTEXITCODE -ne 0) { $sandboxCleanupFailed = $true }
+    }
     $diagnostics = Join-Path $PSScriptRoot '../artifacts/portable-smoke-logs'
     $null = New-Item -ItemType Directory -Path $diagnostics -Force
     Get-ChildItem -LiteralPath $root -Filter journal.json -Recurse -Force | ForEach-Object {
@@ -303,4 +331,5 @@ try {
         Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $diagnostics $name)
     }
     Write-Host "Disposable smoke data retained at $root until runner disposal."
+    if ($sandboxCleanupFailed) { throw 'Could not remove a disposable portable AppArmor profile.' }
 }

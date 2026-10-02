@@ -5,12 +5,15 @@ namespace Winnow.Backend;
 internal sealed class BackendInstallationLease : IDisposable
 {
     private readonly IDisposable? _lease;
-    public string InstallationDirectory { get; } = FindInstallationDirectory(AppContext.BaseDirectory);
+    public string InstallationDirectory { get; }
 
-    public BackendInstallationLease()
+    public BackendInstallationLease() : this(AppContext.BaseDirectory) { }
+
+    internal BackendInstallationLease(string executableDirectory)
     {
+        InstallationDirectory = FindInstallationDirectory(executableDirectory);
         if (File.Exists(Path.Combine(InstallationDirectory, "release-info.json")))
-            _lease = PortableUpdateEngine.AcquireApplicationLease(InstallationDirectory);
+            _lease = PortableUpdateEngine.AcquireStartupLease(InstallationDirectory);
     }
 
     internal static string FindInstallationDirectory(string executableDirectory)

@@ -30,20 +30,17 @@ internal static class FrontendInstallationHost
         installation = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installation));
         dataDirectory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(dataDirectory));
         var journal = PortableUpdateEngine.GetJournalPath(installation);
-        IDisposable? lease = null;
+        InstallationStartupLease? lease = null;
         var pendingStartup = false;
         string? recoveryStatus = null;
         try
         {
-            try { lease = PortableUpdateEngine.AcquireApplicationLease(installation); }
-            catch (Exception error) when ((error is IOException or UnauthorizedAccessException) && !File.Exists(journal))
-            {
+            lease = PortableUpdateEngine.AcquireStartupLease(installation);
+            if (!lease.CanUpdate && !lease.IsManaged)
                 recoveryStatus = "This read-only portable copy requires a manual update from the release page.";
-            }
             // Never turn an interrupted upgrade into a read-only launch: the backend may migrate data.
             if (File.Exists(journal))
             {
-                if (lease is null) throw new IOException("The pending update cannot obtain its installation lease.");
                 var state = PortableUpdateEngine.ReadJournal(journal);
                 if (state.Phase == UpdatePhase.Installed)
                 {
@@ -57,7 +54,7 @@ internal static class FrontendInstallationHost
                 else if (!string.IsNullOrWhiteSpace(state.Failure))
                     recoveryStatus = "A previous update failed. Recovery details: " + journal;
             }
-            await WriteAsync(output, new { kind = "leased", canUpdate = lease is not null, recoveryStatus });
+            await WriteAsync(output, new { kind = "leased", canUpdate = lease.CanUpdate, recoveryStatus });
             using var lifetime = new CancellationTokenSource();
             var parentEnded = parent.WaitForExitAsync(lifetime.Token);
             try
