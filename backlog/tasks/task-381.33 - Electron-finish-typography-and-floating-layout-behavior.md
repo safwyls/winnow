@@ -1,11 +1,11 @@
 ---
 id: TASK-381.33
 title: 'Electron: finish typography and floating layout behavior'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:49'
-updated_date: '2026-10-02 00:16'
+updated_date: '2026-10-02 00:17'
 labels:
   - electron
   - parity
@@ -63,7 +63,7 @@ Batch boundary: the user authorized TASK-381.31 through TASK-381.35 in order. Ke
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.34 within the user-authorized TASK-381.31 through TASK-381.35 batch.
+- [x] #1 Record a reviewable milestone commit and verification summary, then continue to TASK-381.34 within the user-authorized TASK-381.31 through TASK-381.35 batch.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -82,6 +82,8 @@ TASK-381.32 completed at 1d85c480. Starting task three of the five-task batch. R
 All 30 unchanged source cases across the thirteen methods pass; twenty original captures and frozen-source provenance are recorded in .tmp/task38133-source-evidence.json. Demonstrated gaps include desktop-sized fullscreen Theme Studio labels, theme-sized keyboard hint icons, and fixed-font trusted browser popouts. The implementation adds bounded theme typography updates only to local toolbar/composer documents, preserving drafts and focus; provider pages remain isolated. Native verification will follow renderer freeze.
 
 Renderer/main changes are frozen for native verification. All 212 focused cases across sixteen files pass; typecheck passes after native fixture props were corrected. Review found a fixed toolbar inset could cover enlarged hints; account and reference browser views now follow font-ready measured local toolbar height and remeasure on size, status and font changes. Native scope is sixteen cases, including separate original 28px and current Home 24px fullscreen roles, real consent and trusted popouts.
+
+Milestone commit c7689072 records all thirteen migrated methods and checkpoint eighty-eight. Final Home capture replay also passed on index-BESndGNg.js and root inspected its typography and stable shelf. Native lane is closed and task-owned processes are stopped.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
