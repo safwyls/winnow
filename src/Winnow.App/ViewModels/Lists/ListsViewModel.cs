@@ -15,6 +15,8 @@ namespace Winnow.App.ViewModels.Lists;
 public partial class ListsViewModel : ObservableObject
 {
     private readonly IGameListRepository? _lists;
+    private readonly Winnow.Api.Client.WinnowApiClient? _api;
+    private readonly Dictionary<long, string> _apiRevisions = [];
     private readonly SemaphoreSlim _writes = new(1, 1);
     internal long Revision { get; private set; }
 
@@ -52,8 +54,11 @@ public partial class ListsViewModel : ObservableObject
 
     internal event EventHandler? MembershipChanged;
 
-    public ListsViewModel(IGameListRepository? lists = null)
-        => _lists = lists;
+    public ListsViewModel(IGameListRepository? lists = null, Winnow.Api.Client.WinnowApiClient? api = null)
+    {
+        _lists = lists;
+        _api = api;
+    }
 
     /// <summary>Hand-built lists, alphabetical.</summary>
     public ObservableCollection<GameListViewModel> Lists { get; } = [];
@@ -104,6 +109,13 @@ public partial class ListsViewModel : ObservableObject
     {
         await WaitForWritesAsync(ct);
         var revision = Revision;
+        if (_api is not null)
+        {
+            var response = await _api.GetLibraryAsync(ct);
+            if (revision != Revision || IsBusy) { await LoadAsync(ct); return; }
+            ApplyApiSnapshot(response.Lists);
+            return;
+        }
         var loaded = await Task.Run(async () =>
         {
             var records = _lists is null ? [] : await _lists.GetAllAsync(ct);
@@ -114,6 +126,18 @@ public partial class ListsViewModel : ObservableObject
         ApplySnapshot(loaded.records, loaded.items);
     }
 
+    internal void ApplyApiSnapshot(IReadOnlyList<Winnow.Api.Contracts.Library.GameListResponse> lists)
+    {
+        _apiRevisions.Clear();
+        foreach (var list in lists) _apiRevisions[list.Id] = list.Revision;
+        ApplySnapshot(lists.Select(list => new GameList
+        {
+            Id = list.Id, Name = list.Name, Description = list.Description, IsSmart = list.IsLive,
+            FilterJson = list.Filter?.ToJson()
+        }).ToArray(), lists.SelectMany(list => list.ReleaseIds.Select((releaseId, index) =>
+            new ListItem { ListId = list.Id, ReleaseId = releaseId, Position = index })).ToArray());
+    }
+
     internal void ApplySnapshot(IReadOnlyList<GameList> records, IReadOnlyList<ListItem> items)
     {
         var openId = Open?.Id;
@@ -122,7 +146,7 @@ public partial class ListsViewModel : ObservableObject
         Lists.Clear();
         LiveLists.Clear();
 
-        if (_lists is null)
+        if (_lists is null && _api is null)
         {
             Open = null;
             RaiseSectionState();
@@ -163,7 +187,9 @@ public partial class ListsViewModel : ObservableObject
     /// </summary>
     public async Task<IReadOnlyList<GameListMembership>> MembershipForGameAsync(
         long workId, CancellationToken ct = default)
-        => _lists is null ? [] : await _lists.GetMembershipForGameAsync(workId, ct);
+        => _api is not null
+            ? (await _api.GetAsync<Winnow.Api.Contracts.Details.GameDetailsResponse>($"games/{workId}/details", ct)).ListMemberships
+            : _lists is null ? [] : await _lists.GetMembershipForGameAsync(workId, ct);
 
     /// <summary>Creates a hand-built list seeded with the current selection.</summary>
     public Task<GameListViewModel?> CreateListAsync(
@@ -171,13 +197,20 @@ public partial class ListsViewModel : ObservableObject
         => WriteAsync<GameListViewModel?>(async () =>
     {
         var trimmed = name.Trim();
-        if (_lists is null || trimmed.Length == 0)
+        if ((_lists is null && _api is null) || trimmed.Length == 0)
         {
             return null;
         }
 
         var distinct = releaseIds.Distinct().ToArray();
-        var id = await _lists.CreateManualAsync(trimmed, distinct, ct);
+        long id;
+        if (_api is not null)
+        {
+            var created = await _api.CreateListAsync(new(trimmed, distinct), ct);
+            id = created.Id;
+            _apiRevisions[id] = created.Revision;
+        }
+        else id = await _lists!.CreateManualAsync(trimmed, distinct, ct);
 
         var list = new GameListViewModel(GameList.Manual(trimmed) with { Id = id })
         {
@@ -196,13 +229,20 @@ public partial class ListsViewModel : ObservableObject
         => WriteAsync<GameListViewModel?>(async () =>
     {
         var trimmed = name.Trim();
-        if (_lists is null || trimmed.Length == 0)
+        if ((_lists is null && _api is null) || trimmed.Length == 0)
         {
             return null;
         }
 
         var record = GameList.Live(trimmed, filter);
-        var id = await _lists.InsertAsync(record, ct);
+        long id;
+        if (_api is not null)
+        {
+            var result = await _api.CreateLiveListAsync(new(trimmed, filter), ct);
+            id = result.Id;
+            _apiRevisions[id] = result.Revision;
+        }
+        else id = await _lists!.InsertAsync(record, ct);
 
         var list = new GameListViewModel(record with { Id = id });
         Insert(LiveLists, list);
@@ -221,7 +261,13 @@ public partial class ListsViewModel : ObservableObject
         }
 
         var requested = releaseIds.Distinct().ToArray();
-        list.ReleaseIds = _lists is null ? [.. list.ReleaseIds.Concat(requested).Distinct()]
+        if (_api is not null)
+        {
+            var result = await _api.AddListMembersAsync(list.Id, new(requested, await GetApiRevisionAsync(list.Id, ct)), ct);
+            _apiRevisions[list.Id] = result.Revision;
+            list.ReleaseIds = result.ReleaseIds;
+        }
+        else list.ReleaseIds = _lists is null ? [.. list.ReleaseIds.Concat(requested).Distinct()]
             : await _lists.AppendItemsAsync(list.Id, requested, ct);
         MembershipChanged?.Invoke(this, EventArgs.Empty);
         return true;
@@ -237,7 +283,13 @@ public partial class ListsViewModel : ObservableObject
         }
 
         var dropped = releaseIds.ToHashSet();
-        list.ReleaseIds = _lists is null ? [.. list.ReleaseIds.Where(id => !dropped.Contains(id))]
+        if (_api is not null)
+        {
+            var result = await _api.RemoveListMembersAsync(list.Id, new(dropped.ToArray(), await GetApiRevisionAsync(list.Id, ct)), ct);
+            _apiRevisions[list.Id] = result.Revision;
+            list.ReleaseIds = result.ReleaseIds;
+        }
+        else list.ReleaseIds = _lists is null ? [.. list.ReleaseIds.Where(id => !dropped.Contains(id))]
             : await _lists.RemoveItemsAsync(list.Id, dropped.ToArray(), ct);
         MembershipChanged?.Invoke(this, EventArgs.Empty);
         return true;
@@ -263,7 +315,13 @@ public partial class ListsViewModel : ObservableObject
 
         order.RemoveAt(from);
         order.Insert(to, releaseId);
-        if (_lists is not null)
+        if (_api is not null)
+        {
+            var result = await _api.ReorderListAsync(list.Id, new(order, await GetApiRevisionAsync(list.Id, ct)), ct);
+            _apiRevisions[list.Id] = result.Revision;
+            order = [.. result.ReleaseIds];
+        }
+        else if (_lists is not null)
         {
             order = [.. await _lists.ReorderAsync(list.Id, order, ct)];
         }
@@ -281,7 +339,12 @@ public partial class ListsViewModel : ObservableObject
             return false;
         }
 
-        if (_lists is not null)
+        if (_api is not null)
+        {
+            var result = await _api.EditListAsync(list.Id, new(trimmed, list.Description, await GetApiRevisionAsync(list.Id, ct)), ct);
+            _apiRevisions[list.Id] = result.Revision;
+        }
+        else if (_lists is not null)
         {
             // Pass description back unchanged to avoid erasing it.
             if (!await _lists.RenameAsync(list.Id, trimmed, list.Description, ct))
@@ -303,7 +366,12 @@ public partial class ListsViewModel : ObservableObject
             return false;
         }
 
-        if (_lists is not null)
+        if (_api is not null)
+        {
+            var result = await _api.SetListFilterAsync(list.Id, new(filter, await GetApiRevisionAsync(list.Id, ct)), ct);
+            _apiRevisions[list.Id] = result.Revision;
+        }
+        else if (_lists is not null)
         {
             if (!await _lists.SetFilterAsync(list.Id, filter, ct))
                 throw new InvalidOperationException("The list is no longer available.");
@@ -316,7 +384,12 @@ public partial class ListsViewModel : ObservableObject
     public Task DeleteAsync(GameListViewModel list, CancellationToken ct = default)
         => WriteAsync(async () =>
     {
-        if (_lists is not null) await _lists.DeleteAsync(list.Id, ct);
+        if (_api is not null)
+        {
+            await _api.DeleteListAsync(list.Id, await GetApiRevisionAsync(list.Id, ct), ct);
+            _apiRevisions.Remove(list.Id);
+        }
+        else if (_lists is not null) await _lists.DeleteAsync(list.Id, ct);
         if (ReferenceEquals(Open, list))
         {
             Open = null;
@@ -334,6 +407,13 @@ public partial class ListsViewModel : ObservableObject
         _writes.Release();
     }
 
+    private Task<string> GetApiRevisionAsync(long listId, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        return _apiRevisions.TryGetValue(listId, out var revision) ? Task.FromResult(revision)
+            : throw new InvalidOperationException("Reload the list before editing it.");
+    }
+
     private async Task<T> WriteAsync<T>(Func<Task<T>> write, CancellationToken ct)
     {
         await _writes.WaitAsync(ct);
@@ -341,6 +421,8 @@ public partial class ListsViewModel : ObservableObject
         IsBusy = true;
         Problem = null;
         try { return await write(); }
+        catch (Winnow.Api.Client.BackendApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        { Problem = GameListsCopy.Conflict; throw; }
         catch { Problem = GameListsCopy.SaveFailed; throw; }
         finally { Revision++; IsBusy = false; _writes.Release(); }
     }

@@ -47,4 +47,6 @@ public enum WorkFieldEditOutcome
 
     /// <summary>A blank name (<c>works.name</c> is NOT NULL), or a year that will not parse or is out of the 1900–2200 range.</summary>
     InvalidValue,
+
+    Conflict,
 }

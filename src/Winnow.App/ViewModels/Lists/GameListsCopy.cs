@@ -24,6 +24,7 @@ public static class GameListsCopy
         "Choose Add to list above to create a list for this game.";
 
     public const string Saving = "Saving list changes…";
+    public const string Conflict = "This list changed in another window. Reopen the list to review its latest contents before trying again.";
     public const string SaveFailed = "Couldn't save list changes. Try again.";
 
     /// <summary>

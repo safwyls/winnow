@@ -110,6 +110,33 @@ public sealed class CoverPipeline : IDisposable
         CoverKey key, int width, CoverLayers layers = CoverLayers.VividAndFloor, CancellationToken ct = default)
         => GetAsync(key, width, layers, null, static bitmaps => bitmaps, ct);
 
+    /// <summary>
+    /// Produces a vivid PNG while holding the supplied decode permit through encoding.
+    /// Fetching does not consume a decode permit. All intermediate pixels are released
+    /// before returning, including when conversion fails; the caller owns only bytes.
+    /// </summary>
+    public Task<byte[]?> GetPngAsync(CoverKey key, int width, SemaphoreSlim decodeGate, CancellationToken ct = default)
+        => GetPngAsync(key, width, decodeGate, EncodePng, ct);
+
+    internal Task<byte[]?> GetPngAsync(CoverKey key, int width, SemaphoreSlim decodeGate,
+        Func<SKBitmap, byte[]> encode, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(decodeGate);
+        ArgumentNullException.ThrowIfNull(encode);
+        return GetAsync(key, width, CoverLayers.Vivid, decodeGate, bitmaps =>
+        {
+            using var owned = bitmaps;
+            return encode(bitmaps.Vivid);
+        }, ct);
+    }
+
+    internal static byte[] EncodePng(SKBitmap bitmap)
+    {
+        using var image = SKImage.FromBitmap(bitmap);
+        using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+        return encoded.ToArray();
+    }
+
     // The callback consumes the decoded layers while the permit is held, so
     // native pixels and their Avalonia conversion share the same memory bound.
     internal async Task<T?> GetAsync<T>(CoverKey key, int width, CoverLayers layers,

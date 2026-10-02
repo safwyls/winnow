@@ -1,7 +1,7 @@
 # Winnow — build specification
 
 **Name:** Winnow · root namespace `Winnow`, binary `winnow`
-**Target:** Cross-platform desktop application, local-first, no server
+**Target:** Cross-platform desktop application, local-first, no hosted service
 **Audience:** Implementing engineer or coding agent
 
 This document owns the architecture, the module boundaries, the behaviour of every external
@@ -53,12 +53,18 @@ exposed by storefront APIs or not retained by anyone.
 
 ---
 
-## 2. Framework: Avalonia
+## 2. Frontend and backend
 
-This application is a **background daemon with a UI attached**. It sits in the tray
-enumerating processes every few seconds, all day, and the user interacts with it briefly and
-occasionally. Avalonia provides the native .NET desktop UI for that long-running, local-first
-process; the host and background services remain separate from its views.
+Winnow is a **background daemon with a UI attached**. The independent .NET backend owns
+monitoring, storage and background services and remains available after a frontend closes.
+Electron/React is the primary desktop and fullscreen frontend. Its main process owns native
+operations and authenticated transport; the sandboxed renderer receives named operations
+through preload and never owns database or provider services. Avalonia remains a runnable
+reference frontend and source of retained regression contracts. Both use the same versioned API.
+
+Primary distributions target Windows x64 and Ubuntu 24.04 x64. The optional secondary macOS
+configuration is unverified and outside the supported release matrix. Package checks do not
+establish physical-controller, display-distance, compositor or live-provider compatibility.
 
 ---
 
@@ -66,15 +72,16 @@ process; the host and background services remain separate from its views.
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Runtime | .NET 10 | |
-| UI | Avalonia 11+ with XAML | |
-| MVVM | `CommunityToolkit.Mvvm` | Source generators; AOT-friendlier than reflection-based MVVM |
+| Backend runtime | .NET 10 | Self-contained backend and update helper in primary packages |
+| Primary UI | Electron, React and TypeScript | Sandboxed renderer; isolated native browser hosts; named preload bridge |
+| Reference UI | Avalonia 11+ and `CommunityToolkit.Mvvm` | Retained XAML/view models and regression contracts; not the default release target |
 | Database | SQLite via `Microsoft.Data.Sqlite` | Local-first |
 | Data access | **Dapper**. No EF Core | Keep the SQL legible |
 | Migrations | **DbUp** | Embedded resources, checked into the repository |
 | VDF / ACF parsing | **ValveKeyValue** (xPaw) | Never hand-roll a parser |
 | Steam client protocol | SteamKit2 | Only if the Web API proves insufficient; not needed today |
 | HTTP | `HttpClient` + **Polly** | Retry, circuit-breaker and rate-limit policies |
+| Local frontend API | ASP.NET Core, HTTP/JSON and server-sent events | Authenticated loopback only; no hosted service |
 | HTML parsing | AngleSharp | The saved-page importer in §5.4 |
 | JSON | `System.Text.Json` | Source-generated contexts |
 | Logging | Serilog, rolling file sink | Ingest failures must be diagnosable |
@@ -82,7 +89,7 @@ process; the host and background services remain separate from its views.
 | Metadata | IGDB v4 API | Twitch client-credentials auth |
 | Packaging / updates | Inno Setup on Windows; Debian and portable archives on Linux | Installed Windows updates use the existing installer; §5.5 |
 
-**Deliberately excluded:** Postgres, any vector store, any server framework, any LLM
+**Deliberately excluded:** Postgres, any vector store, hosted server infrastructure, any LLM
 dependency. Do not add them speculatively.
 
 Publish untrimmed self-contained, as configured by `packaging/Publish.ps1`. The provider plugin
@@ -775,21 +782,28 @@ recorded in `docs/spikes/native-edition-evidence.md`.
 
 ## 5. Architecture
 
-Background services run as `IHostedService` implementations under the generic host, and the
-Avalonia UI resolves view models from the same DI container. **The UI never calls an ingest or
-enrichment component directly; it reads the database and raises commands.**
+Background services run under the independent `Winnow.Backend` host. `Winnow.Application`
+owns use cases, projections and commands over the existing domain modules. **Every frontend,
+including Electron and reference Avalonia desktop/fullscreen, reads snapshots and sends
+commands through the same authenticated `/api/v1` HTTP API.** No frontend registers database
+repositories or workers.
+The [frontend API guide](docs/frontend-api.md) defines discovery, events, conflicts and lifecycle.
 
-One process owns each data directory, enforced by a named mutex before the host starts.
-A repeated launch sends a bounded request over a current-user named pipe and exits without
-starting another host or showing an error. The owner queues requests until the UI is ready,
+One backend owns each data directory, enforced by a named mutex and exclusive lock. It runs
+without a frontend and stays alive after clients disconnect. Frontend ownership is separate
+from backend ownership, so Electron and Avalonia may attach concurrently. Windows Electron
+uses `Winnow.Activation` in a parent-bound backend helper before HTTP hosting or database
+locking. Avalonia retains its own activation guard; Electron on other platforms uses its
+native single-instance API. Repeated launches forward typed activation to their existing
+frontend. The frontend queues requests until the UI is ready,
 then restores and activates its existing desktop or fullscreen window, preserving its
 presentation and navigation state. Separate `--data-dir` libraries remain independent.
 On Windows the mutex and pipe explicitly belong to the current user's SID, deny network
 logons, and carry medium integrity so Explorer can contact a session started from an
 administrator terminal. The client verifies the pipe owner's SID before exchanging requests.
-Other platforms retain the runtime's current-user-only pipe restriction.
+The reference Avalonia pipe retains the runtime's current-user-only restriction on other platforms.
 On Windows the launcher grants the owner foreground permission before requesting activation;
-other desktops use Avalonia activation subject to the window manager's focus policy.
+other desktops remain subject to the window manager's focus policy.
 An unavailable or older owner's activation channel times out quietly after three seconds.
 
 Windows taskbar jump lists use the same channel for typed fullscreen and ownership-launch
@@ -809,72 +823,35 @@ then refreshes when artwork resolves; missing or timed-out artwork keeps the app
 
 ```mermaid
 graph TB
-    subgraph UI["Avalonia UI (MVVM)"]
-        LV[Library / Feed / Filter]
-        MQ[Merge Confirm Queue]
-        JN[Session Journal Prompt]
-        EX[Export View]
-    end
-
-    subgraph Services["Background Services"]
-        subgraph Ingest["Ingest"]
-            SI[Steam Local Reader]
-            EI[Epic Manifest Reader]
-            GI[GOG Galaxy Reader]
-            HB[Historical Backfill]
-        end
-
-        subgraph Enrich["Enrichment"]
-            IG[IGDB Client - 4 rps]
-            SA[Store Metadata Client]
-            UP[Update Signal Poller]
-        end
-
-        subgraph ApplicationLogic["Resolution, monitoring and recommendations"]
-            ER[Entity Resolver]
-            PM[Process Monitor - 5s]
-            SN[Snapshot Scheduler]
-            RC[Recommender]
-        end
-
-        DB[(SQLite / Dapper)]
-    end
-
-    subgraph External["External"]
-        FS[Local Filesystem]
-        IGDB[IGDB v4]
-        STEAM[Steam Web API]
-        SCMD[api.steamcmd.net]
-    end
-
-    LV --> DB
-    MQ --> ER
-    JN --> DB
-    EX --> DB
-
-    FS --> SI & EI & GI
-    SI & EI & GI & HB --> ER
-    ER --> DB
-    IGDB --> IG --> ER
-    STEAM --> SA & HB --> DB
-    SCMD --> UP --> DB
-    PM --> DB
-    SN --> DB
-    DB --> RC --> LV
+    A[Electron desktop and fullscreen]
+    O[Reference Avalonia and other frontends]
+    API[Authenticated HTTP JSON v1 + SSE]
+    APP[Application queries and commands]
+    WORK[Ingest / enrichment / monitoring / recommendations]
+    DB[(SQLite and backend caches)]
+    EXT[Launcher snapshots and provider APIs]
+    A <--> API
+    O <--> API
+    API --> APP
+    APP --> DB
+    WORK --> DB
+    WORK --> API
+    EXT --> WORK
 ```
 
 ### 5.1 Module boundaries
 
-Library loading reads buckets, works, ownerships, releases, external IDs and list membership
+Backend library loading reads buckets, works, ownerships, releases, external IDs and list membership
 with one multi-result SQLite command in a deferred read transaction. Bucket consolidation
-uses the same rules as standalone bucket reads. Library and startup Review, Display and
-Library settings loads perform repository work on a worker thread, then publish view-model
-state on the UI thread. Facets, identity maps, pins and storefront caches remain fixed-count
+uses the same rules as standalone bucket reads. Frontend Library, Review, Display and Library settings loads request API snapshots asynchronously,
+then publish a complete presentation snapshot. Facets, identity maps, pins and storefront caches remain fixed-count
 bulk reads. This does not change the pre-window appearance bootstrap or unrelated edit commands.
-Tile preparation on the UI thread yields to input and rendering after roughly 8ms or 128
+In reference Avalonia, tile preparation on the UI thread yields after roughly 8ms or 128
 items, whichever comes first. All prepared models remain local, and cancellation, disposal
 and publication generation are checked again after each yield. Publishing tiles, filters,
 lists and counts remains one uninterrupted update so readers never see a partial library.
+Electron validates library and list responses in batches of 128, yielding between batches
+and checking cancellation before publishing one complete query-cache snapshot.
 
 Every library refresh trigger shares one publication generation. Each request captures its
 presentation preferences before reading, assembles tile and open-details projections locally,
@@ -904,8 +881,14 @@ choice while a save is pending, then reconciles with the committed result on eit
 | `Winnow.Covers[.Igdb]` | Fetch and cache cover art; first source that answers wins | Block first paint |
 | `Winnow.Monitor` | Detect game start and stop, emit sessions | Assume any specific launcher is present |
 | `Winnow.Recommend` | Score and explain | Perform IO beyond repositories; reference anything but `Winnow.Core`; make identity decisions |
-| `Winnow.Auth.WebView` | Host the embedded sign-in | Reference anything but Avalonia and `Winnow.Core` |
-| `Winnow.App` | UI and composition root. Assembly name `Winnow` | Call an ingest reader or an enrichment client. Cover leases are how art reaches a tile and are not covered by this |
+| `Winnow.Auth.WebView` | Host reference Avalonia embedded sign-in | Reference anything but Avalonia and `Winnow.Core` |
+| `Winnow.Covers.Avalonia` | Decode API-provided artwork for the reference frontend into bounded bitmap leases | Fetch providers or read backend caches |
+| `Winnow.Application` | Backend use cases, projections, provider and repository composition | Reference Avalonia |
+| `Winnow.Backend` | HTTP/JSON, discovery, authentication, events and backend lifetime | Depend on a frontend |
+| `Winnow.Api.Contracts` / `Winnow.Api.Client` | Versioned contracts and typed external transport | Reference backend implementations |
+| `Winnow.Presentation` / `Winnow.Diagnostics` | Shared presentation policies and bounded logging | Reference database or provider implementations |
+| `Winnow.App` | Reference Avalonia desktop/fullscreen API client. Assembly name `Winnow` | Reference database, ingest, enrichment, monitor, resolver or plugin-host implementations |
+| `Winnow.Electron` | Primary desktop/fullscreen API client; main owns transport and embedded sign-in, preload exposes named operations | Import native or backend implementations into the renderer; put repository or provider logic in sign-in hosts |
 
 Built-in provider HTTP clients share linked transport infrastructure in `src/Shared`; this
 creates no dependency between enrichment modules or IO dependency in Core. Requests buffer
@@ -929,18 +912,16 @@ Independent phase failures leave other phases eligible. Committed ownerships are
 before metadata, even after a later ownership operation fails; subsequent publication boundaries
 expose enriched facts. IGDB credential refresh selects the IGDB steps from this same pipeline.
 
-Hosted services and background startup work begin after Avalonia initializes native platform
-services, before it constructs the application and opens either desktop or fullscreen. This
-keeps early UI publications from creating a fallback dispatcher that cannot run the native
-message loop. Database initialization and terminal-only authentication still precede UI setup.
-
-`LibraryChangePublisher` reloads desktop library and merge state on the UI dispatcher with a
-shutdown token. The library's existing committed-change event refreshes active fullscreen state;
-inactive fullscreen contexts refresh when entered. Account actions enqueue and coalesce work
-behind startup instead of holding their UI commands open. These application services live in
-`Winnow.App.Services` rather than Core because sync results refer to Resolve and publication
-belongs to the application. **No enrichment or remote client may be reachable from the
-first-paint path.**
+The backend initializes migrations and setup state before starting workers. It publishes
+committed invalidations with an epoch and sequence; slow consumers cannot block writes.
+Electron's main process owns discovery and HTTP/SSE credentials. Committed invalidations cross
+the named preload bridge to the renderer's query cache while preserving each surface's
+navigation. Reference Avalonia starts subscriptions after native platform setup and marshals
+refreshed snapshots onto its dispatcher. Restart or a missing event
+cursor requests a full resync. Account actions enqueue and coalesce backend work instead of
+holding UI commands open. Several extracted services retain their `Winnow.App.Services`
+namespace for source compatibility; their assembly is `Winnow.Application`. **No provider
+client is reachable from the frontend's first-paint path.**
 
 #### Provider plugins
 
@@ -1040,26 +1021,31 @@ immediately detached and rebuilt a second time.
 Shutdown refuses new admissions, cancels and drains work, then clears the LRU and disposes
 the pipeline. Outstanding leases keep their pixels valid until released; cancelled work
 cannot publish new decoded art after shutdown begins.
-The decode concurrency bound includes conversion into Avalonia bitmaps, so native and UI
-pixel allocations cannot outgrow it while waiting for publication. Network waits do not
-hold decode slots: artwork already on disk can load while other games await downloads.
-A failed second layer
+The reference frontend's decode concurrency bound includes conversion into Avalonia bitmaps,
+so native and UI pixel allocations cannot outgrow it while waiting for publication. The backend's image
+endpoint similarly holds its decode permit through PNG encoding and disposes intermediate
+pixels before returning bytes. Network waits do not hold decode slots: artwork already on
+disk can load while other games await downloads. A failed second Avalonia layer
 releases the first layer at either stage. Cancellation callbacks run outside the cache lock;
 their exceptions are logged and cannot interrupt cleanup or replace a caller's cancellation.
 A lease returns the exact art retained by its slot, including when another waiter replaces
-an evicted result before it resumes.
+an evicted result before it resumes. Electron reads authenticated image bytes through main;
+its artwork consumers share bounded requests, display-width buckets and cancellation without
+opening backend caches directly. Browser object URLs and decoded images have renderer-owned
+lifetimes. The backend remains responsible for selection, fetching and source precedence.
 
 #### Controller input
 
-Desktop and fullscreen are separate UI paths. Each owns its views, presentation view models, focus
+Desktop and fullscreen are separate UI paths. Each owns its views, presentation state, focus
 graph, navigation history, dialogs and text-entry layout. Fullscreen must not navigate the
 desktop visual tree or reuse desktop control templates merely to avoid maintaining a second
-surface. Share domain records, repositories, application services, validation and action
-semantics for launch, install, lists, journal, settings and recommendation explanations.
+surface. Share domain records, API contracts, validation and action semantics for launch,
+install, lists, journal, settings and recommendation explanations. Repositories and application
+services stay in the backend.
 Share palette and font identities; keep layout, spacing and type scales surface-specific.
-The fullscreen host reuses the input-source/filter code and dispatches to explicit focus rows
-owned by each page. It creates independent library, feed, list and motion state over the
-shared repositories and action services. It never scales or navigates the desktop tree.
+The fullscreen host dispatches to explicit focus rows owned by each page. It creates independent
+library, feed, list and motion state over the same API snapshots and commands. It never
+scales or navigates the desktop tree.
 Every entry paints a loading presentation before starting the initial context load or a
 refresh. Its readiness boundary is the library and primary feed result followed by
 layout/render opportunities, not completion of optional artwork or supplemental shelves.
@@ -1068,10 +1054,10 @@ the old presentation to reveal a detached view. A completed prior load triggers 
 refresh on re-entry, with the current page retained beneath the loading layer. Desktop
 startup and return from fullscreen also await the primary feed execution triggered by library
 publication before revealing its prepared layout. Both presentations use the shared vector loading mark.
-Its custom compositor visual owns its Skia paths, contour measurement, animation clock and
-paints on the rendering thread. The UI sends immutable color/state snapshots and reads an
-atomic completed-circuit flag to gate reveal. Theme changes preserve the current circuit;
-new presentations reset it. Data readiness does not stop animation before the fade ends.
+Electron's loading mark uses its canvas worker; the reference Avalonia compositor visual owns
+Skia paths and paints on its rendering thread. Each receives presentation state and reports
+a completed circuit to gate reveal. Theme changes preserve the current circuit; new
+presentations reset it. Data readiness does not stop animation before the fade ends.
 The presentations' layout and input lifetimes remain separate. The visual spec owns timing, motion and
 recovery controls.
 Fullscreen pages may supply a backdrop for the shell to mount behind its safe area and
@@ -1131,30 +1117,38 @@ high-resolution hero can therefore fall through to IGDB before the smaller Steam
 HTTP 404 records a missing asset; transport and service failures do not record a durable miss.
 Downloads happen on demand, without changing stored game metadata or requiring an API key.
 
-Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
+Electron controller input lives in the renderer's `controller.ts`, independent of ingest and
+process monitoring, and reads standard-mapped Chromium Gamepad API devices. Native browser
+windows own separate controller polling. Windows battery information comes from a read-only
+XInput helper only when its sampled controls uniquely identify the browser's selected device.
+Browser indexes are not XInput slots. Physical-device support remains a separate validation boundary.
 Fullscreen action pages retain their navigation-stack identity but render in the shell's
 edge overlay. The underlying page stays attached with input disabled, preserving its loaded
 state and scroll position. Dismissal removes the overlay and restores the invoking control;
 choosing an action dismisses before invoking it so a nested tool follows the normal page stack.
-The window polls a read-only source at 33 ms while open. Windows loads XInput from the system
+The retained Avalonia input implementation lives in `Winnow.App.Services` and polls a read-only
+source at 33 ms while open. It loads Windows XInput from the system
 directory; Linux reads nonblocking joydev events using kernel-reported button and axis maps.
 Discovery retries every two seconds. Battery readings are optional and queried every thirty
 seconds on Windows; Linux joydev does not report battery state. The input filter suppresses
 held buttons on reconnect or activation and repeats navigation after 400 ms, then every 110 ms.
 Only the active, visible window dispatches actions. Closing disposes the native source.
 
-Fullscreen Activity supplies its visible ownership IDs and local week's half-open UTC bounds
-to `IActivityRepository`. One background query joins notes, filters the selected section and
+Fullscreen Activity requests its visible ownership IDs and local week's half-open UTC bounds
+through the API. The backend's `IActivityRepository` query joins notes, filters the selected section and
 returns 50 rows plus a stable timestamp/ID continuation cursor. Updates appear once per
 visible release. Changing week or section cancels obsolete reads; loading older rows preserves
 selection, and failed reads offer retry without dropping committed rows. Returning from a
-note editor retains loaded pages and refreshes the saved note through `ISessionRepository`.
-Desktop and fullscreen details capture identity context on the dispatcher, read their history
+note editor retains loaded pages and refreshes the saved note through the API-backed session read.
+Reference desktop and fullscreen details capture identity context on the dispatcher, read their history
 snapshot on a worker, and publish only for the current uncancelled request. Gameplay statistics
 capture ownership IDs and resolved game IDs from `LibraryViewModel.AllTiles`, which already
 applies library visibility and identity rules. Temporary search and facet selections do not
 silently change this population. `IGameplayStatsRepository` returns bounded aggregates for
 the selected store and half-open UTC interval. Local date boundaries define the period bins.
+The backend derives that ownership scope and reads the aggregates inside one deferred
+read transaction. This keeps a consistent snapshot while allowing independent library
+writes and replacement reads to proceed if an obsolete statistics reader is still finishing.
 Completed valid sessions contribute their stored duration in proportion to overlap with each
 bin; exact duplicate evidence counts once per ownership. Top games fold the selected store's
 sessions by the supplied resolved game ID. Session-length bands and the median use full
@@ -1172,13 +1166,17 @@ fullscreen sizing; selecting a currency updates the money charts and detailed fi
 The measured bounds and remaining layout costs are recorded in
 `docs/spikes/large-history-read-responsiveness.md`. Manual-game and identity tools construct their own
 `LibrarySettingsViewModel` and `MergeQueueViewModel` from DI; editor state and focus do not
-leak into desktop tools. Shared settings remain common application state. Both surfaces use
-the shared `ThemeService` and `appearance.theme`; the former `fullscreen.theme` preference is
-ignored. Fullscreen keeps separate `fullscreen.*` sizing, margins and motion
-preferences and renders the shared theme with opaque local resource overrides.
+leak into desktop tools. Those named view models and `AccountStatsDashboard` are retained
+Avalonia implementations; Electron uses the corresponding API-backed Gameplay, Spending,
+library and merge components with independent per-surface state. Shared settings remain
+common application state. Electron profiles persist composition and appearance locally, and
+import existing `appearance.theme` and typography when no Electron choice exists. Reference
+Avalonia retains `ThemeService`. The former `fullscreen.theme` preference is ignored.
+Fullscreen keeps separate `fullscreen.*` sizing, margins and motion preferences and renders
+opaque surfaces in both frontends.
 
-Dim dormant covers is shared through `DisplaySettingsViewModel` and the persisted
-`display.dim_dormant_covers` preference. The former `fullscreen.dim-covers` preference is
+Dim dormant covers uses the shared persisted `display.dim_dormant_covers` preference,
+exposed through the API and reference `DisplaySettingsViewModel`. The former `fullscreen.dim-covers` preference is
 ignored. Desktop library and merge covers use the shared ramp; fullscreen mirrors its dimming
 choice onto its own ramp so reduced motion remains surface-specific. Changes propagate even
 while fullscreen is inactive and while the saved display settings load.
@@ -1194,8 +1192,14 @@ bases. Individual header choices remain local to that queue until confirmed.
 The optional ultrawide setting expands the TV reference canvas width to the viewport aspect
 ratio while retaining its reference height and uniform scaling. Controller prompts use a
 bundled CC0 vector subset; ambient page art uses bundled original SVG path geometry.
-`IWebViewInputSupport` lets the app supply controller chrome before a native browser is
-attached. Steam sign-in, Epic consent/sign-in and the patch-notes reader opt into it through
+Electron's trusted local browser chrome and masked composer occupy their own native views,
+separate from provider content. Browser windows use Chromium input APIs and have no provider
+access to application preload or credentials. The same origin, capture and navigation gates
+apply on desktop and fullscreen; Linux has this browser implementation but no persistent
+secret protector. The [browser guide](docs/electron-link-routing.md) describes reading links.
+
+In the reference Avalonia implementation, `IWebViewInputSupport` supplies controller chrome
+before a native browser is attached. Steam sign-in, Epic consent/sign-in and the patch-notes reader opt into it through
 DI. Desktop calls retain their existing presentation. TV browser windows poll their own
 read-only controller source while active and dispose it on close or content replacement.
 Input goes through ordered WebView2 DevTools keyboard and text-insertion methods; this bridge
@@ -1206,15 +1210,17 @@ Programmatic controller input obeys the host's input-disabled state during token
 Provider-specific CAPTCHA, third-party sign-in and phone approval remain external validation
 boundaries. The Windows-only WebView2 availability rules remain unchanged.
 
-`IGameLinkRouter` applies `application.link_destination` (`in-app`, `browser`, or `store`)
-to game-detail reading links on both surfaces. It revalidates `GameLink` before dispatch.
-In-app reading accepts HTTP and HTTPS pages through `PatchNotesPolicy`, including store
+Electron's main-process link router and reference Avalonia's `IGameLinkRouter` apply
+`application.link_destination` (`in-app`, `browser`, or `store`)
+to game-detail reading links on both surfaces. Each revalidates the target before dispatch.
+In-app reading accepts HTTP and HTTPS pages, including store
 pages and links outside Steam news. Web redirects, popups and frames can cross origins;
 page-requested non-web schemes remain blocked. The private
 browser has no sign-in capture, host objects or web-message bridge. Unavailable or refused
 readers use the system browser. The only alternative native reading route is a
 canonical HTTPS Steam store app page to `steam://store/<appid>`, with a registered Windows
-protocol-handler executable verified through `AssocQueryStringW`. No Epic or GOG web-to-client
+protocol-handler executable. The reference client verifies it through `AssocQueryStringW`;
+Electron uses its main-process store availability check. No Epic or GOG web-to-client
 route is assumed. Missing or refused clients fall back to the browser. The setting offers
 Store client only when Steam is available; a previously saved unavailable selection displays
 System browser without rewriting the stored preference. Each click rechecks availability.
@@ -1452,10 +1458,11 @@ is a no-op.
 
 ### 5.5 Application updates
 
-`ApplicationUpdater` is a hosted App service shared by desktop and fullscreen through
-`IApplicationUpdater`. It owns persisted automatic-check and beta preferences, serialized
-checks/downloads, cancellation, and the staged-install state. View models observe snapshots
-and raise commands; they do not call GitHub or launch installers themselves.
+Electron's main-process `ApplicationUpdater` owns automatic-check and beta preferences,
+serialized checks/downloads, cancellation and staged-install state. Desktop and fullscreen
+observe the same snapshots and dispatch named actions through preload. Reference Avalonia
+retains its hosted service behind `IApplicationUpdater`. Neither renderer nor view models
+call GitHub or launch installers directly.
 
 Checks use the public GitHub Releases API for `safwyls/winnow`, with bounded pagination,
 timeouts, semantic version ordering, and exclusion of drafts, development builds and CI
@@ -1468,20 +1475,21 @@ the size, restricts redirects to GitHub release-storage HTTPS hosts, and verifie
 SHA-256 digest. A verified installer is staged separately from the running application.
 GitHub's HTTPS API is the trust source; packages are not publisher-signed.
 
-Installed Windows uses `WindowsUpdateInstaller`: the registered Inno installation must match
-the running executable. On explicit restart, an external helper verifies and locks the
+Installed Windows uses the primary distribution driver and shared installer helper: the
+registered Inno installation must match the running executable. On explicit restart, an external helper verifies and locks the
 payload, waits for process exit after normal host shutdown, checks for locked binaries,
 then runs Setup without force-closing apps or rebooting Windows. It relaunches with the
 selected data directory. Failure logs describe manual recovery; there is no automatic
 rollback to a binary that may predate database migrations.
 
-Portable Windows and Ubuntu 24.04 archives use `PortableUpdateInstaller` and the separate
+Portable Windows and Ubuntu 24.04 archives use the primary distribution driver and the separate
 `Winnow.Update` engine/`Winnow.Update.Helper` executable. The engine stages validated archives
 beside the installation, backs up SQLite after shutdown, journals directory replacement,
 and preserves the selected data directory even when it lives within the portable folder.
 Installation and library guards exclude competing Winnow processes during replacement.
 Startup records possible migration before database initialization and acknowledges readiness
-after host and Avalonia initialization. Interrupted replacement can recover before migration;
+after a healthy backend and mounted renderer. Reference Avalonia retains its host/UI readiness
+boundary. Interrupted replacement can recover before migration;
 after migration may have started, restoring the paired database and binaries requires an
 explicit recovery command. Desktop and fullscreen consume the same recovery snapshot and
 update-and-restart action. Package-manager-owned files are never overwritten by the updater.
@@ -1498,7 +1506,8 @@ missing cursor to Welcome for a new library, or done for an existing library and
 runs. A stored cursor takes precedence, so restarting an interrupted new install resumes
 rather than treating the now-populated database as an established installation.
 
-`FirstRunSetupViewModel` shares navigation between the desktop overlay and fullscreen page.
+Electron's shared setup components and reference Avalonia's `FirstRunSetupViewModel` each
+provide navigation for their desktop overlay and fullscreen page.
 The shell loads saved app, appearance and library preferences before displaying setup. Hidden
 background launches retain their hidden window; setup is visible when the user opens it.
 Moving between steps persists the cursor; finishing or skipping all writes done. A failed
@@ -1506,8 +1515,8 @@ cursor write keeps the wizard open with retry copy. Continue waits for pending p
 writes; Back and Skip remain usable when a preference write failed. Reopening from Application
 settings resets only the cursor, preserving all saved preferences and credentials.
 
-The wizard composes existing App view models and commands; it does not introduce a second
-sign-in, credential store, ingest path or theme mechanism. Steam consent, Epic sign-in,
+Each wizard composes its existing presentation components and shared API commands; it does
+not introduce a second sign-in, credential store, ingest path or theme mechanism. Steam consent, Epic sign-in,
 protected IGDB saving and local GOG discovery retain their existing contracts. Navigating away
 clears credential drafts without saving them. Saving or removing IGDB credentials applies
 immediately and queues a metadata refresh; wizard completion itself does not launch another pass.

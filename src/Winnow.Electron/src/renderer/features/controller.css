@@ -1,0 +1,92 @@
+@layer components {
+  :root[data-controller='true'] *,
+  :root[data-controller='true'] {
+    cursor: none !important;
+  }
+  :root[data-controller='true'] :is(button, input, select, textarea, a[href], summary, [tabindex='0']):focus {
+    outline: 2px solid var(--accent-foreground, var(--accent));
+    outline-offset: 3px;
+  }
+  .controller-menu {
+    width: min(480px, 90vw);
+    display: grid;
+    gap: 12px;
+  }
+  .controller-menu button {
+    min-height: 48px;
+  }
+  .dialog-content.onscreen-keyboard {
+    width: min(920px, calc((100vw - 32px) / var(--effective-interface-scale, 1)));
+    max-width: none;
+    max-height: calc((100dvh - 32px) / var(--effective-interface-scale, 1));
+    top: auto;
+    bottom: 16px;
+    transform: translateX(-50%);
+    padding: 16px;
+    overflow-y: auto;
+  }
+  :root[data-mode='fullscreen'] .onscreen-keyboard {
+    width: min(1500px, 78.125vw);
+    --keyboard-font-size: calc(clamp(16px, 1.458333vw, 28px) * var(--fullscreen-text-scale, 1));
+    --keyboard-key-height: clamp(40px, 3.333333vw, 64px);
+  }
+  .dialog-overlay.keyboard-overlay {
+    z-index: 1040;
+  }
+  .dialog-content.onscreen-keyboard {
+    z-index: 1041;
+  }
+  .keyboard-row {
+    display: grid;
+    margin-top: 6px;
+  }
+  .keyboard-row button {
+    min-width: 0;
+    min-height: var(--keyboard-key-height, 40px);
+    padding: 4px 8px;
+    margin: 2px;
+    font-size: calc(var(--keyboard-font-size, 14px) * var(--theme-text-scale, 1));
+  }
+  .keyboard-preview {
+    display: block;
+    min-height: 52px;
+    max-height: 80px;
+    overflow-y: auto;
+    padding: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+    background: var(--bg);
+  }
+  .onscreen-keyboard > p,
+  .keyboard-preview {
+    font-size: calc(var(--keyboard-font-size, 14px) * var(--theme-text-scale, 1));
+  }
+  .onscreen-keyboard > .keyboard-hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px clamp(18px, 1.458333vw, 28px);
+    color: var(--muted);
+    font-size: calc(clamp(16px, 1.25vw, 24px) * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+  }
+  .keyboard-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+  }
+  .keyboard-hint-icon {
+    width: clamp(20px, 1.666667vw, 32px);
+    height: clamp(20px, 1.666667vw, 32px);
+    color: var(--text);
+    flex: 0 0 auto;
+  }
+  .keyboard-hint-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .keyboard-hint-icon path {
+    fill: currentColor;
+  }
+}

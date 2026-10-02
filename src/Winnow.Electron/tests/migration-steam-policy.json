@@ -1,0 +1,184 @@
+{
+  "SteamAccountPagePolicyTierTests.The_store_root_may_be_minted_from": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "The_store_root_may_be_minted_from"
+      }
+    ],
+    "reason": "Electron policy preserves the exact original store-origin, credential-path and narrow account-page boundary, with source-exact URL cases."
+  },
+  "SteamAccountPagePolicyTierTests.Every_fallback_mint_page_is_in_scope": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "Every_fallback_mint_page_is_in_scope"
+      }
+    ],
+    "reason": "Electron policy preserves the exact original store-origin, credential-path and narrow account-page boundary, with source-exact URL cases."
+  },
+  "SteamAccountPagePolicyTierTests.A_page_the_user_types_credentials_into_is_never_mintable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "A_page_the_user_types_credentials_into_is_never_mintable"
+      }
+    ],
+    "reason": "Electron policy preserves the exact original store-origin, credential-path and narrow account-page boundary, with source-exact URL cases."
+  },
+  "SteamAccountPagePolicyTierTests.Nothing_off_the_store_origin_is_mintable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "Nothing_off_the_store_origin_is_mintable"
+      }
+    ],
+    "reason": "Electron policy preserves the exact original store-origin, credential-path and narrow account-page boundary, with source-exact URL cases."
+  },
+  "SteamAccountPagePolicyTierTests.A_null_address_is_not_mintable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "A_null_address_is_not_mintable"
+      }
+    ],
+    "reason": "Electron policy preserves the exact original store-origin, credential-path and narrow account-page boundary, with source-exact URL cases."
+  },
+  "SteamAccountPagePolicyTierTests.The_mint_tier_is_a_subset_of_what_the_policy_already_trusts": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "The_mint_tier_is_a_subset_of_what_the_policy_already_trusts"
+      }
+    ],
+    "reason": "Electron policy preserves the exact original store-origin, credential-path and narrow account-page boundary, with source-exact URL cases."
+  },
+  "SteamAccountPagePolicyTierTests.The_harvest_gate_is_left_exactly_as_the_account_page_flow_needs_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "The_harvest_gate_is_left_exactly_as_the_account_page_flow_needs_it"
+      }
+    ],
+    "reason": "Electron policy preserves the exact original store-origin, credential-path and narrow account-page boundary, with source-exact URL cases."
+  },
+  "SteamAccountPagePolicyTierTests.The_two_tiers_deliberately_disagree_about_the_store_root": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "The_two_tiers_deliberately_disagree_about_the_store_root"
+      }
+    ],
+    "reason": "Electron policy preserves the exact original store-origin, credential-path and narrow account-page boundary, with source-exact URL cases."
+  },
+  "SteamAccountPagePolicyTierTests.The_two_account_pages_are_mintable_as_well_as_harvestable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "The_two_account_pages_are_mintable_as_well_as_harvestable"
+      }
+    ],
+    "reason": "Electron policy preserves the exact original store-origin, credential-path and narrow account-page boundary, with source-exact URL cases."
+  },
+  "SteamSignInSessionTests.A_page_and_a_token_naming_the_same_account_agree": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "A_page_and_a_token_naming_the_same_account_agree"
+      }
+    ],
+    "reason": "Native identity checks and executed provider-document script preserve this source assertion. Both token sources run with a cookie getter that throws if touched."
+  },
+  "SteamSignInSessionTests.A_page_and_a_token_naming_different_accounts_do_not_agree": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "A_page_and_a_token_naming_different_accounts_do_not_agree"
+      }
+    ],
+    "reason": "Native identity checks and executed provider-document script preserve this source assertion. Both token sources run with a cookie getter that throws if touched."
+  },
+  "SteamSignInSessionTests.The_login_page_is_navigable_and_never_mintable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "The_login_page_is_navigable_and_never_mintable"
+      }
+    ],
+    "reason": "Native identity checks and executed provider-document script preserve this source assertion. Both token sources run with a cookie getter that throws if touched."
+  },
+  "SteamSignInSessionTests.The_mint_script_reads_the_two_routes_the_spike_documented": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "The_mint_script_reads_the_two_routes_the_spike_documented: %s"
+      }
+    ],
+    "reason": "Native identity checks and executed provider-document script preserve this source assertion. Both token sources run with a cookie getter that throws if touched."
+  },
+  "SteamSignInSessionTests.The_mint_script_never_asks_for_a_cookie": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "The_mint_script_reads_the_two_routes_the_spike_documented: %s"
+      }
+    ],
+    "reason": "Native identity checks and executed provider-document script preserve this source assertion. Both token sources run with a cookie getter that throws if touched."
+  },
+  "SteamSignInSessionTests.Without_consent_no_window_is_opened_and_the_sign_in_is_cancelled": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "declined consent cancels before any window or backend request even with purchase capture=%s"
+      }
+    ],
+    "reason": "The actual main-process sign-in returns Cancelled before creating a profile, window, or backend challenge, with no pages or credential returned."
+  },
+  "SteamSignInSessionTests.Consent_is_checked_before_the_purchase_history_flag_can_matter": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "declined consent cancels before any window or backend request even with purchase capture=%s"
+      }
+    ],
+    "reason": "The actual main-process sign-in returns Cancelled before creating a profile, window, or backend challenge, with no pages or credential returned."
+  },
+  "SteamSignInSessionTests.A_declined_purchase_history_capture_is_the_default": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Auth/SteamSignIn.cs",
+      "src/Winnow.Application/Connections/StoreConnectionApplication.cs"
+    ],
+    "reason": "The unchanged SteamSignInRequest is used directly by production BeginSteam and CompleteSteam; its CapturePurchaseHistory=false and StaySignedIn=true defaults remain the exact implementation asserted by this original test."
+  },
+  "SteamSignInSessionTests.A_missing_identity_on_either_side_is_not_a_disagreement": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "A_missing_identity_on_either_side_is_not_a_disagreement: page=%s subject=%s"
+      },
+      {
+        "file": "tests/parity-steam-policy.test.ts",
+        "case": "identity agreement does not make a credential without an account valid"
+      }
+    ],
+    "reason": "The original four absent-identity cases now test the production identity-agreement predicate. A separate regression retains token-subject validation before a credential may be saved."
+  }
+}

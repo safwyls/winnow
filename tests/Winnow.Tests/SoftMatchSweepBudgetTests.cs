@@ -316,6 +316,8 @@ public sealed class SoftMatchSweepBudgetTests
 
         public void Reset() => BeginCalls = 0;
 
+        public IUnitOfWork BeginRead() => _inner.BeginRead();
+
         public IUnitOfWork Begin()
         {
             BeginCalls++;

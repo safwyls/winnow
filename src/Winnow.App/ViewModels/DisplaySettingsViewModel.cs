@@ -27,20 +27,23 @@ public partial class DisplaySettingsViewModel : ObservableObject
     private readonly DormancyRamp _ramp;
     private readonly ISettingsRepository? _settings;
     private readonly Func<Task>? _reloadLibrary;
-    private readonly SessionJournalService? _journal;
+    private readonly ISessionJournalService? _journal;
     private readonly ILibraryQueryRepository? _libraryQueries;
 
     /// <summary>Guards against write-back during initial load.</summary>
     private bool _loading;
+    private readonly Winnow.Api.Client.WinnowApiClient? _api;
 
     /// <param name="reloadLibrary">Re-runs the library query when ShowNonGameEntries changes.</param>
     public DisplaySettingsViewModel(
         DormancyRamp ramp,
         ISettingsRepository? settings = null,
         Func<Task>? reloadLibrary = null,
-        SessionJournalService? journal = null,
-        ILibraryQueryRepository? libraryQueries = null)
+        ISessionJournalService? journal = null,
+        ILibraryQueryRepository? libraryQueries = null,
+        Winnow.Api.Client.WinnowApiClient? api = null)
     {
+        _api = api;
         _ramp = ramp;
         _settings = settings;
         _reloadLibrary = reloadLibrary;
@@ -181,6 +184,11 @@ public partial class DisplaySettingsViewModel : ObservableObject
     /// </summary>
     public async Task RefreshCapCountAsync(CancellationToken ct = default)
     {
+        if (_api is not null)
+        {
+            CapHiddenCount = (await _api.GetAsync<Winnow.Api.Contracts.Details.VisibilityCountsResponse>("library/visibility-counts", ct)).RatingCapHidden;
+            return;
+        }
         if (_libraryQueries is null)
         {
             return;

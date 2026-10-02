@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Threading;
-using Winnow.Ingest.Epic.Web;
 using Winnow.Ingest.Epic.Web.Auth;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -73,15 +72,6 @@ public static class EpicSignInLauncher
             // by the spike and the third was an untested hypothesis — this line
             // says which one Epic actually exercised.
             Console.WriteLine("Captured by: " + (signIn.LastCaptureRoute ?? "route not recorded"));
-
-            // Same verification report --epic-login ends on. The playtime unit is
-            // still a reading rather than a verified fact, and this is the table
-            // that settles it — so it must not depend on which sign-in route the
-            // user happened to take.
-            if (services.GetService<IEpicAccountClient>() is { } account)
-            {
-                EpicLoginConsole.ReportLibraryAsync(account, services, ct).GetAwaiter().GetResult();
-            }
 
             return 0;
         }

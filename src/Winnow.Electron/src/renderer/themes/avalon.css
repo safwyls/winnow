@@ -1,0 +1,1338 @@
+@font-face {
+  font-family: 'Avalon Display';
+  src: url('./avalon/assets/BricolageGrotesque-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Avalon Body';
+  src: url('./avalon/assets/PlusJakartaSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Avalon Body';
+  src: url('./avalon/assets/PlusJakartaSans-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Avalon Body';
+  src: url('./avalon/assets/PlusJakartaSans-SemiBold.ttf') format('truetype');
+  font-weight: 600 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Avalon Data';
+  src: url('./avalon/assets/IBMPlexMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Avalon Data';
+  src: url('./avalon/assets/IBMPlexMono-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+}
+
+@layer themes {
+  .avalon-contrast-warning {
+    color: var(--avalon-amber, var(--muted));
+  }
+  :root[data-theme='avalon'][data-avalon-material='acrylic'],
+  :root[data-theme='avalon'][data-avalon-material='mica'] {
+    background: transparent;
+  }
+  .avalon-shell {
+    --avalon-flare: #ff4d93;
+    --avalon-well: #050d0e;
+    display: grid;
+    grid-template: 48px minmax(0, 1fr) 30px / 220px minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    background: var(--avalon-shell-ground, var(--bg));
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: calc(13px * var(--theme-text-scale, 1));
+    line-height: 1.4;
+    overflow: hidden;
+  }
+  .avalon-shell button,
+  .avalon-shell input,
+  .avalon-shell select,
+  .avalon-shell textarea {
+    border-radius: 4px;
+  }
+  .avalon-shell h1,
+  .avalon-shell h2,
+  .avalon-shell h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+  .avalon-shell h1 {
+    font-size: calc(22px * var(--theme-text-scale, 1));
+    line-height: calc(26px * var(--theme-text-scale, 1));
+  }
+  .avalon-shell h2 {
+    font-size: calc(18px * var(--theme-text-scale, 1));
+    line-height: calc(24px * var(--theme-text-scale, 1));
+  }
+  .avalon-shell p {
+    line-height: 1.5;
+  }
+  .avalon-shell :focus-visible {
+    outline: 2px solid var(--accent-foreground, var(--accent));
+    outline-offset: 3px;
+  }
+  .avalon-header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    background: var(--avalon-caption-fill, var(--surface));
+    border-bottom: 1px solid var(--line);
+    padding: 0 16px;
+    gap: 20px;
+  }
+  .avalon-brand {
+    gap: 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-family: var(--font-display);
+    letter-spacing: 0.07em;
+    font-size: calc(17px * var(--theme-text-scale, 1));
+  }
+  .avalon-brand .dragon-mark {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+  }
+  .avalon-utilities {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .avalon-utility-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+  .avalon-utilities button {
+    border: 0;
+    background: transparent;
+    padding: 8px;
+    color: var(--muted);
+  }
+  .avalon-rail {
+    min-height: 0;
+    overflow: hidden;
+    background: var(--avalon-chrome-surface, var(--surface));
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+  }
+  .avalon-rail-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 24px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .avalon-library-total {
+    padding: 0 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .avalon-library-total strong {
+    font-family: var(--font-display);
+    font-size: calc(36px * var(--theme-text-scale, 1));
+    line-height: 1;
+  }
+  .avalon-library-total span,
+  .avalon-rail-note {
+    color: var(--muted);
+    font-size: calc(11px * var(--theme-text-scale, 1));
+  }
+  .avalon-navigation {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .avalon-navigation button {
+    border: 0;
+    background: transparent;
+    justify-content: flex-start;
+    padding: 10px 12px;
+    min-height: 36px;
+  }
+  .avalon-navigation button[aria-current='page'] {
+    color: var(--accent-foreground, var(--accent));
+    background: var(--avalon-chrome-raised, var(--raised));
+  }
+  .avalon-label {
+    color: var(--muted);
+    font-size: calc(11px * var(--theme-text-scale, 1));
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .avalon-collections > .avalon-label {
+    display: block;
+    margin: 0 12px 8px;
+  }
+  .avalon-buckets {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .avalon-buckets button {
+    border: 0;
+    background: transparent;
+    padding: 9px 12px;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .avalon-buckets button > span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+  }
+  .avalon-buckets button[aria-pressed='true'] {
+    background: var(--avalon-chrome-raised, var(--raised));
+    color: var(--accent-foreground, var(--accent));
+  }
+  .avalon-buckets small {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: calc(11px * var(--theme-text-scale, 1));
+  }
+  .avalon-patch-pip {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--avalon-flare);
+  }
+  .avalon-list-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 24px 12px 0;
+    color: var(--muted);
+    font-size: calc(11px * var(--theme-text-scale, 1));
+  }
+  .avalon-list-picker select {
+    width: 100%;
+    font-size: calc(12px * var(--theme-text-scale, 1));
+    padding: 8px 30px 8px 8px;
+  }
+  .avalon-rail-note {
+    margin-top: auto;
+    padding: 8px 12px;
+  }
+  .avalon-content {
+    background: var(--avalon-pane-ground, var(--bg));
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    position: relative;
+  }
+  .avalon-content:focus,
+  .avalon-content:focus-visible {
+    outline: none;
+  }
+  .avalon-content > .settings-page,
+  .avalon-content > .journal-page,
+  .avalon-content > .details-page,
+  .avalon-content > .studio-page {
+    padding: 24px;
+  }
+  .avalon-content .page-heading h1 {
+    font-size: calc(28px * var(--theme-text-scale, 1));
+    line-height: 1.2;
+  }
+  .avalon-content .primary {
+    background: var(--accent);
+    color: var(--avalon-button-ink, var(--bg));
+    border-color: var(--accent);
+  }
+  :root[data-theme='avalon'] :is(.primary, .primary-button):hover {
+    background: var(--avalon-accent-hover, var(--accent));
+    color: var(--avalon-button-ink, var(--accent-text));
+    border-color: var(--avalon-accent-hover, var(--accent));
+  }
+  :root[data-theme='avalon'] :is(.primary, .primary-button):active {
+    background: var(--avalon-accent-press, var(--accent));
+    border-color: var(--avalon-accent-press, var(--accent));
+  }
+  :root[data-theme='avalon'] .text-button:hover {
+    color: var(--avalon-accent-hover-foreground, var(--accent-foreground));
+  }
+  :root[data-theme='avalon'] .danger-action {
+    background: var(--avalon-danger);
+    border-color: var(--avalon-danger);
+    color: var(--avalon-danger-ink);
+  }
+  :root[data-theme='avalon'] .danger-action:hover {
+    background: var(--avalon-danger-hover);
+    border-color: var(--avalon-danger-hover);
+  }
+  :root[data-theme='avalon'] .danger-action:active {
+    background: var(--avalon-danger-press);
+    border-color: var(--avalon-danger-press);
+  }
+  :root[data-theme='avalon'] input::placeholder {
+    color: var(--avalon-faint);
+  }
+  .avalon-content .empty-state h2 {
+    font-size: calc(24px * var(--theme-text-scale, 1));
+  }
+  .avalon-footer {
+    background: var(--avalon-caption-fill, var(--surface));
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    color: var(--muted);
+    font-size: calc(10px * var(--theme-text-scale, 1));
+  }
+  .avalon-page-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .avalon-page-heading p {
+    color: var(--muted);
+  }
+  .avalon-discover {
+    padding: 28px 16px;
+  }
+  .avalon-shelf {
+    margin-bottom: 32px;
+  }
+  .avalon-shelf > header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 16px;
+  }
+  .avalon-shelf > header h2 {
+    flex-shrink: 0;
+  }
+  .avalon-shelf-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .avalon-shelf-count {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: calc(12px * var(--theme-text-scale, 1));
+  }
+  .avalon-shelf > header p {
+    color: var(--muted);
+    font-size: calc(12px * var(--theme-text-scale, 1));
+    max-width: 410px;
+  }
+  .avalon-desktop-covers {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: var(--desktop-shelf-width, 180px);
+    gap: 18px;
+    align-items: start;
+    overflow-x: auto;
+    padding-block: 4px 12px;
+  }
+  .avalon-desktop-covers .avalon-home-card {
+    width: 100%;
+  }
+  .avalon-cover {
+    isolation: isolate;
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    aspect-ratio: 2 / 3;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px !important;
+    overflow: hidden;
+    text-align: left;
+    transition:
+      transform 140ms,
+      box-shadow 140ms;
+  }
+  .avalon-cover > .artwork {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    filter: var(--avalon-dormancy);
+    transition: filter 140ms;
+  }
+  .avalon-cover > .artwork img {
+    width: 100%;
+    height: 100%;
+    object-fit: var(--cover-art-fit, contain);
+  }
+  .avalon-cover .art-placeholder span {
+    visibility: hidden;
+  }
+  .avalon-cover-fallback {
+    position: absolute;
+    inset: 16px;
+    display: flex;
+    align-items: end;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: calc(18px * var(--theme-text-scale, 1));
+    font-weight: 700;
+    z-index: 1;
+  }
+  .avalon-cover:has(img.art-ready) .avalon-cover-fallback {
+    display: none;
+  }
+  .avalon-cover:is(:hover, :focus-visible, [data-selected='true']) > .artwork {
+    filter: none;
+  }
+  .avalon-cover:is(:focus-visible, [data-selected='true']) {
+    outline: 2px solid var(--accent-foreground, var(--accent));
+    outline-offset: 3px;
+  }
+  .avalon-shell.desktop .avalon-cover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px #0008;
+  }
+  .avalon-unread {
+    position: absolute;
+    top: 7px;
+    left: 7px;
+    width: 10px;
+    height: 10px;
+    background: var(--avalon-flare);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--bg);
+  }
+  .avalon-cover-caption {
+    z-index: 2;
+    position: absolute;
+    inset: auto 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 32px 12px 12px;
+    background: linear-gradient(transparent, color-mix(in srgb, var(--bg) 94%, transparent) 32%);
+    opacity: 0;
+    transition: opacity 140ms;
+  }
+  .avalon-cover:is(:hover, :focus-visible, [data-selected='true']) .avalon-cover-caption {
+    opacity: 1;
+  }
+  .avalon-cover-caption > strong {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: calc(15px * var(--theme-text-scale, 1));
+    font-weight: 600;
+    line-height: calc(22px * var(--theme-text-scale, 1));
+  }
+  .avalon-cover-caption > span:not(.avalon-store-chips) {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: calc(10px * var(--theme-text-scale, 1));
+    color: var(--muted);
+  }
+  .avalon-store-chips {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .avalon-store-chips > span {
+    padding: 2px 4px;
+    font-size: calc(9px * var(--theme-text-scale, 1));
+    border: 1px solid var(--line);
+    border-radius: 3px;
+  }
+  .avalon-feedback {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    padding-top: 8px;
+    color: var(--muted);
+    font-size: calc(10px * var(--theme-text-scale, 1));
+  }
+  .avalon-feedback button {
+    border: 0;
+    background: transparent;
+    padding: 3px 0;
+    font-size: inherit;
+  }
+  .avalon-feedback p[role='alert'] {
+    color: var(--avalon-amber-foreground, #ffb63d);
+  }
+  .avalon-empty {
+    min-height: 300px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 16px;
+    padding: 48px;
+  }
+  .avalon-empty p {
+    color: var(--muted);
+    max-width: 410px;
+  }
+  .avalon-empty .dragon-mark {
+    width: 96px;
+    height: 96px;
+    background: var(--accent);
+  }
+  .avalon-library {
+    position: relative;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+  }
+  .avalon-content > .screen-library {
+    height: 100%;
+    min-height: 0;
+  }
+  .avalon-fullscreen-grid,
+  .avalon-fullscreen-grid > .avalon-row-viewport {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+  .avalon-shell.fullscreen .avalon-library-scroll {
+    overflow: hidden;
+    padding: 0;
+    scrollbar-gutter: auto;
+  }
+  .avalon-fullscreen-grid-row {
+    height: 100%;
+    padding: 6px 6px 14px;
+    align-items: start;
+  }
+  .avalon-fullscreen-grid-row > .avalon-cover {
+    width: min(100%, calc((50cqh - 20px) * 2 / 3));
+  }
+  .avalon-library .avalon-page-heading {
+    margin-bottom: 16px;
+  }
+  .avalon-library-tools {
+    overflow: auto;
+    min-height: 0;
+  }
+  .avalon-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .avalon-toolbar > label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: calc(11px * var(--theme-text-scale, 1));
+  }
+  .avalon-toolbar select {
+    padding: 7px 30px 7px 8px;
+    font-size: calc(12px * var(--theme-text-scale, 1));
+  }
+  .avalon-toolbar .avalon-search {
+    flex: 1;
+    min-width: 180px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding-left: 10px;
+    background: var(--surface);
+  }
+  .avalon-search input {
+    width: 100%;
+    border: 0;
+    padding: 8px;
+    background: transparent;
+    font-size: calc(13px * var(--theme-text-scale, 1));
+  }
+  .avalon-search button {
+    border: 0;
+    padding: 6px;
+  }
+  .avalon-density input {
+    width: 84px;
+    accent-color: var(--accent);
+    padding: 0;
+  }
+  .avalon-segmented {
+    display: flex;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0;
+  }
+  .avalon-segmented button {
+    border: 0;
+    border-radius: 0;
+    padding: 7px;
+    background: transparent;
+    transform: none;
+  }
+  .avalon-segmented button:hover {
+    background: color-mix(in srgb, var(--raised) 50%, transparent);
+  }
+  .avalon-segmented button:active:not(:disabled) {
+    background: var(--raised);
+    transform: none;
+  }
+  .avalon-segmented button[aria-pressed='true'] {
+    background: var(--raised);
+    color: var(--accent-foreground, var(--accent));
+  }
+  .avalon-segmented :focus-visible,
+  .avalon-shell .segmented button:focus-visible,
+  :root[data-controller='true'] .avalon-shell .segmented button:focus {
+    outline-offset: -4px;
+  }
+  .avalon-results-count {
+    font-family: var(--font-mono);
+    font-size: calc(10px * var(--theme-text-scale, 1));
+    color: var(--muted);
+    padding: 16px 0 12px;
+  }
+  .avalon-library-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 4px 8px 4px 4px;
+    scrollbar-gutter: stable;
+  }
+  .avalon-library-results {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+  .avalon-library-results > .avalon-library-scroll {
+    width: 100%;
+  }
+  .avalon-shell.desktop .avalon-library[data-filters-open='true'] > .avalon-toolbar,
+  .avalon-shell.desktop .avalon-library[data-filters-open='true'] > .avalon-library-browse {
+    margin-right: 300px;
+  }
+  .avalon-filter-panel {
+    position: absolute;
+    z-index: 5;
+    right: 0;
+    top: 80px;
+    bottom: 0;
+    width: 292px;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    background: var(--surface);
+    border-left: 1px solid var(--line);
+    gap: 16px;
+  }
+  .avalon-filter-panel header,
+  .avalon-filter-panel footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .avalon-filter-panel header button,
+  .avalon-filter-panel footer button {
+    padding: 6px 10px;
+  }
+  .avalon-filter-fields {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .avalon-filter-fields > label,
+  .avalon-filter-year > label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: var(--muted);
+    font-size: calc(12px * var(--theme-text-scale, 1));
+  }
+  .avalon-filter-year {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .avalon-filter-year input {
+    width: 100%;
+  }
+  .avalon-filter-fields summary {
+    cursor: pointer;
+    padding: 8px 0;
+    font-weight: 600;
+  }
+  .avalon-filter-options {
+    display: flex;
+    flex-direction: column;
+    max-height: 240px;
+    overflow: auto;
+  }
+  .avalon-filter-options label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+  }
+  .avalon-filter-options input {
+    flex-shrink: 0;
+  }
+  .avalon-filter-options small {
+    margin-left: auto;
+    font-family: var(--font-mono);
+  }
+  .avalon-filter-fields p[role='alert'] {
+    color: var(--avalon-amber-foreground, #ffb63d);
+  }
+  .avalon-applied-filters,
+  .avalon-selection-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0 0;
+  }
+  .avalon-applied-filters button,
+  .avalon-selection-actions button {
+    padding: 6px 10px;
+  }
+  .avalon-record[aria-pressed='true'] {
+    background: var(--raised);
+    outline: 2px solid var(--accent-foreground, var(--accent));
+    outline-offset: -2px;
+  }
+  .avalon-grid-row {
+    display: grid;
+  }
+  .avalon-shell.desktop .avalon-grid-row > .avalon-cover {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+  .avalon-record {
+    width: 100%;
+    height: 60px;
+    display: grid;
+    grid-template-columns: 32px minmax(100px, 2fr) 1fr 1fr 70px;
+    gap: 12px;
+    padding: 4px 8px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    text-align: left;
+  }
+  .avalon-record > .artwork {
+    width: 32px;
+    height: 48px;
+  }
+  .avalon-record > .artwork img {
+    width: 100%;
+    height: 100%;
+    object-fit: var(--cover-art-fit, contain);
+  }
+  .avalon-record strong {
+    font-family: var(--font-display);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .avalon-record > span {
+    font-size: calc(10px * var(--theme-text-scale, 1));
+    color: var(--muted);
+  }
+  .avalon-record > span:last-child {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .avalon-shell.fullscreen {
+    --fullscreen-body-size: clamp(16px, 1.25vw, 24px);
+    background: var(--bg);
+    grid-template: auto minmax(0, 1fr) auto / minmax(0, 1fr);
+    font-size: calc(
+      calc(clamp(16px, 1.25vw, 24px) * var(--fullscreen-text-scale, 1)) * var(--theme-text-scale, 1)
+    );
+    padding: var(--fullscreen-safe-margin, 5%);
+    padding-block: calc(var(--fullscreen-safe-margin, 5%) * (100vh / 100vw));
+    position: relative;
+    gap: 24px;
+  }
+  .avalon-shell.fullscreen .avalon-header {
+    z-index: 2;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    border: 0;
+    padding: 0;
+    background: transparent;
+    gap: 20px;
+    /* Reserve both the navigation and the status/utility stack at the largest theme size. */
+    min-height: max(
+      calc(clamp(17px, 1.46vw, 28px) * 1.4 * 1.2 + 22px),
+      calc(clamp(14px, 1.25vw, 24px) * 1.2 * 1.2 + 4px + 48px)
+    );
+  }
+  .avalon-shell.fullscreen .avalon-brand {
+    grid-column: 1;
+    justify-self: start;
+    font-size: calc(clamp(18px, 1.5vw, 28px) * var(--theme-text-scale, 1));
+  }
+  .avalon-shell.fullscreen .avalon-brand .dragon-mark {
+    width: 36px;
+    height: 36px;
+  }
+  .avalon-shell.fullscreen .avalon-navigation {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+  }
+  .avalon-shell.fullscreen .avalon-utilities {
+    grid-column: 3;
+    display: grid;
+    min-width: 0;
+    margin-left: 0;
+    justify-self: stretch;
+  }
+  .avalon-system-status {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: clamp(10px, 1.25vw, 24px);
+    min-width: 0;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: calc(clamp(14px, 1.25vw, 24px) * var(--theme-text-scale, 1));
+    line-height: 1.2;
+  }
+  .avalon-controller-status {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: right;
+  }
+  .avalon-clock {
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .avalon-shell.fullscreen .avalon-navigation button {
+    padding: 10px 0;
+    font-size: calc(clamp(17px, 1.46vw, 28px) * var(--theme-text-scale, 1));
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+  }
+  .avalon-shell.fullscreen .avalon-navigation button[aria-current='page'] {
+    background: transparent;
+    color: var(--text);
+    border-bottom-color: var(--muted);
+  }
+  .avalon-shell.fullscreen .avalon-content {
+    position: static;
+    overflow: auto;
+  }
+  .avalon-shell.fullscreen .avalon-content:has(.journal-page) {
+    scrollbar-gutter: stable;
+  }
+  .avalon-shell.fullscreen .screen-details {
+    position: static;
+    height: 100%;
+    min-height: 0;
+  }
+  .avalon-details-return {
+    justify-self: start;
+    grid-column: 1 / 3;
+    border: 0;
+    background: transparent;
+    padding: 8px 0;
+  }
+  .avalon-shell.fullscreen .avalon-footer {
+    z-index: 2;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font-size: calc(clamp(13px, 1.15vw, 22px) * var(--theme-text-scale, 1));
+    min-height: calc(clamp(13px, 1.15vw, 22px) * 1.4 * 1.2);
+  }
+  .avalon-shell.fullscreen h1 {
+    font-size: calc(clamp(34px, 3.34vw, 64px) * var(--theme-text-scale, 1));
+    line-height: 1.15;
+  }
+  .avalon-shell.fullscreen h2 {
+    font-size: calc(
+      calc(clamp(22px, 1.67vw, 32px) * var(--fullscreen-text-scale, 1)) * var(--theme-text-scale, 1)
+    );
+    line-height: 1.2;
+  }
+  .avalon-shell.fullscreen .avalon-label {
+    font-size: calc(
+      calc(clamp(14px, 0.94vw, 18px) * var(--fullscreen-text-scale, 1)) * var(--theme-text-scale, 1)
+    );
+  }
+  .avalon-home {
+    --home-hero-top: calc(3vh / var(--fullscreen-viewport-scale));
+    --home-title-margin: 24px;
+    /* Reserve the supported theme-size range so typography changes do not resize covers. */
+    --home-body-reserve: calc(var(--fullscreen-body-size) * var(--fullscreen-text-scale, 1) * 1.2);
+    --home-heading-height: calc(clamp(22px, 1.67vw, 32px) * var(--fullscreen-text-scale, 1) * 1.2 * 1.2);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .avalon-home-backdrop,
+  .avalon-library-backdrop {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .avalon-library-backdrop {
+    opacity: 0.45;
+  }
+  .avalon-home-hero {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 1;
+    padding-top: var(--home-hero-top);
+    min-height: calc(
+      var(--home-hero-top) + clamp(14px, 0.94vw, 18px) * var(--fullscreen-text-scale, 1) * 1.4 * 1.2 +
+        clamp(34px, 3.34vw, 64px) * 1.15 * 1.2 + var(--home-title-margin) + var(--home-body-reserve) * 3 +
+        8px + max(48px, var(--home-body-reserve) * 1.4 + 16px)
+    );
+  }
+  .avalon-home-hero > .avalon-label {
+    display: block;
+    line-height: 1.4;
+  }
+  .avalon-home-hero h1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-wrap: nowrap;
+    margin: 12px 0;
+    max-width: 80%;
+  }
+  .avalon-home-hero > p {
+    max-width: min(65%, 900px);
+    height: 3em;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .avalon-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-top: 8px;
+  }
+  .avalon-hero-actions > button {
+    background: transparent;
+    border: 0;
+    padding: 8px 0;
+    font-size: inherit;
+  }
+  .avalon-hero-actions .avalon-feedback {
+    font-size: calc(
+      calc(clamp(14px, 1.1vw, 21px) * var(--fullscreen-text-scale, 1)) * var(--theme-text-scale, 1)
+    );
+    gap: 16px;
+    padding: 0;
+  }
+  .avalon-home-shelf {
+    position: relative;
+    z-index: 1;
+    margin-top: auto;
+    padding-top: 24px;
+    min-height: 0;
+    flex: 0 1 auto;
+    height: calc(var(--home-row-height, 300px) + var(--home-heading-height) + 12px + 24px);
+    display: grid;
+    grid-template: auto minmax(0, 1fr) / minmax(0, 1fr) 64px;
+    column-gap: 12px;
+  }
+  .avalon-home-shelf > h2 {
+    grid-column: 1;
+    margin: 0 0 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: var(--home-heading-height);
+  }
+  .avalon-row-viewport {
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+    min-width: 0;
+    container-type: size;
+    grid-row: 2;
+    grid-column: 1;
+  }
+  .avalon-home-shelf .avalon-row-viewport {
+    width: min(100%, var(--home-row-width, 100%));
+  }
+  .avalon-retained-row {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    will-change: transform;
+  }
+  .avalon-home-row {
+    display: flex;
+    gap: 24px;
+    overflow: hidden;
+    padding: 6px 6px 14px;
+    scrollbar-width: none;
+    height: 100%;
+    min-width: 0;
+  }
+  .avalon-home-row > .impression,
+  .avalon-home-row > .avalon-home-card {
+    flex: 0 0 calc((100cqh - 20px) * 2 / 3);
+    width: calc((100cqh - 20px) * 2 / 3);
+  }
+  .avalon-shell.fullscreen .avalon-cover-caption {
+    display: none;
+  }
+  .avalon-shell.fullscreen .avalon-cover-fallback {
+    top: auto;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    font-size: calc(clamp(16px, 1.25vw, 24px) * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+    line-height: 1.2;
+  }
+  .avalon-shell.fullscreen .avalon-library {
+    padding: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .avalon-shell.fullscreen .avalon-library > .avalon-page-heading {
+    margin-bottom: 20px;
+  }
+  .avalon-shell.fullscreen .avalon-collections {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 16px;
+  }
+  .avalon-shell.fullscreen .avalon-collections > .avalon-label,
+  .avalon-shell.fullscreen .avalon-buckets small {
+    display: none;
+  }
+  .avalon-shell.fullscreen .avalon-buckets {
+    flex-direction: row;
+    overflow: auto;
+  }
+  .avalon-shell.fullscreen .avalon-buckets button {
+    white-space: nowrap;
+    padding: 8px 4px;
+    font-size: calc(
+      calc(clamp(16px, 1.15vw, 22px) * var(--fullscreen-text-scale, 1)) * var(--theme-text-scale, 1)
+    );
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+  }
+  .avalon-shell.fullscreen .avalon-buckets button[aria-pressed='true'] {
+    border-bottom-color: var(--muted);
+    font-weight: 700;
+  }
+  .avalon-shell.fullscreen .avalon-buckets button:focus {
+    outline: none;
+    border-bottom-color: var(--accent-foreground, var(--accent));
+  }
+  .avalon-shell.fullscreen .avalon-list-picker {
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+    white-space: nowrap;
+    font-size: calc(16px * var(--theme-text-scale, 1));
+  }
+  .avalon-shell.fullscreen .avalon-list-picker select {
+    font-size: calc(16px * var(--theme-text-scale, 1));
+    min-width: 140px;
+  }
+  .avalon-shell.fullscreen .avalon-toolbar > label,
+  .avalon-shell.fullscreen .avalon-toolbar select {
+    font-size: calc(16px * var(--theme-text-scale, 1));
+  }
+  .avalon-shell.fullscreen .avalon-search input {
+    font-size: calc(18px * var(--theme-text-scale, 1));
+  }
+  .avalon-shell.fullscreen .avalon-results-count {
+    font-family: var(--font-body);
+    font-size: calc(16px * var(--theme-text-scale, 1));
+  }
+  .avalon-shell.fullscreen .avalon-content > :not(.avalon-home):not(.avalon-library):not(.screen-discover) {
+    position: relative;
+    z-index: 1;
+  }
+  .avalon-shell.fullscreen .avalon-content > .screen-discover {
+    position: static;
+    z-index: auto;
+    height: 100%;
+    min-height: 0;
+  }
+  [data-dim-dormant='false'] .avalon-cover > .artwork {
+    filter: none;
+  }
+  .reduced-motion .avalon-shell *,
+  .avalon-shell[data-reduced-motion='true'] *,
+  .avalon-shell[data-reduced-motion='true'] *::before,
+  .avalon-shell[data-reduced-motion='true'] *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .avalon-shell *,
+    .avalon-shell *::before,
+    .avalon-shell *::after {
+      transition: none !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  @media (min-aspect-ratio: 21/9) {
+    [data-fit-ultrawide='false'] .avalon-shell.fullscreen {
+      padding-inline: max(var(--fullscreen-safe-margin, 5%), calc((100vw - 177.78vh) / 2));
+    }
+  }
+  @media (max-width: 1050px) {
+    .avalon-shell.desktop {
+      grid-template-columns: 190px minmax(0, 1fr);
+    }
+    .avalon-discover {
+      padding: 24px 16px;
+    }
+    .avalon-shelf > header {
+      display: block;
+    }
+    .avalon-shelf > header p {
+      margin-top: 6px;
+    }
+    .avalon-density {
+      display: none !important;
+    }
+    .avalon-shell.fullscreen .avalon-header {
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 12px;
+    }
+    .avalon-shell.fullscreen .avalon-brand strong {
+      display: none;
+    }
+    .avalon-shell.fullscreen .avalon-navigation {
+      gap: 14px;
+      justify-content: center;
+    }
+  }
+  @media (max-width: 700px) {
+    .avalon-shell.desktop {
+      grid-template-columns: 150px minmax(0, 1fr);
+    }
+    .avalon-rail-scroll {
+      padding: 20px 4px 8px;
+    }
+    .avalon-library-total strong {
+      font-size: calc(28px * var(--theme-text-scale, 1));
+    }
+    .avalon-page-heading {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .avalon-record {
+      grid-template-columns: 28px minmax(70px, 1fr) 50px;
+    }
+    .avalon-record > span:not(:last-child) {
+      display: none;
+    }
+    .avalon-library,
+    .avalon-discover {
+      padding: 16px;
+    }
+    .avalon-shell.fullscreen {
+      padding: var(--fullscreen-safe-margin, 5%);
+      padding-block: calc(var(--fullscreen-safe-margin, 5%) * (100vh / 100vw));
+      gap: 16px;
+    }
+    .avalon-shell.fullscreen .avalon-brand {
+      display: none;
+    }
+    .avalon-shell.fullscreen .avalon-header {
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+    .avalon-home-hero h1,
+    .avalon-home-hero > p {
+      max-width: 100%;
+    }
+    .avalon-home-hero {
+      --home-hero-top: 0px;
+    }
+    .avalon-home-row {
+      gap: 16px;
+    }
+  }
+  @media (max-height: 700px) {
+    .avalon-home-hero {
+      --home-hero-top: 0px;
+      --home-title-margin: 16px;
+    }
+    .avalon-home-hero h1 {
+      margin: 8px 0;
+    }
+    .avalon-hero-actions .avalon-feedback {
+      font-size: calc(14px * var(--theme-text-scale, 1));
+    }
+    .avalon-home-shelf {
+      padding-top: 12px;
+    }
+  }
+}
+
+@layer themes {
+  .avalon-shell.desktop[data-pane-layout='floating'] {
+    padding: 0 12px 12px;
+    gap: 12px;
+  }
+  .avalon-shell.desktop[data-pane-layout='floating'] > .avalon-rail,
+  .avalon-shell.desktop[data-pane-layout='floating'] > .avalon-content {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .avalon-shell.desktop[data-pane-layout='floating'] > .avalon-header,
+  .avalon-shell.desktop[data-pane-layout='floating'] > .avalon-footer {
+    border: 0;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  .avalon-shell.desktop .avalon-content :is(input, select, textarea) {
+    background-color: var(--avalon-field-ground, var(--surface));
+  }
+  .avalon-shell.desktop .avalon-rail :is(input, select, textarea) {
+    background-color: var(--avalon-field-surface, var(--bg));
+  }
+  .avalon-shell.desktop .avalon-navigation button:hover,
+  .avalon-shell.desktop .avalon-buckets button:hover {
+    background: var(--avalon-chrome-raised-half, var(--raised));
+  }
+}
+@layer themes {
+  .avalon-hover-preview {
+    position: fixed;
+    z-index: 90;
+    pointer-events: none;
+    padding: 16px 16px 16px 26px;
+    color: var(--text);
+    font-family: var(--font-body);
+  }
+  .avalon-hover-preview[data-arrow-side='right'] {
+    padding-left: 16px;
+    padding-right: 26px;
+  }
+  .avalon-preview-shape {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+  }
+  .avalon-preview-fill {
+    fill: var(--preview-background, var(--raised));
+  }
+  .avalon-preview-outline {
+    fill: none;
+    stroke: var(--preview-border, var(--line));
+    stroke-width: 1;
+  }
+  .avalon-preview-art,
+  .avalon-preview-art > .artwork {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .avalon-preview-art {
+    opacity: 0.18;
+  }
+  .avalon-preview-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .avalon-hover-preview .art-placeholder,
+  .avalon-hover-preview .art-loading {
+    display: none;
+  }
+  .avalon-preview-copy {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: calc(100vh / var(--effective-interface-scale, 1) - 48px);
+    overflow: hidden;
+  }
+  .avalon-preview-copy h3 {
+    margin: 0;
+    font: 700 calc(22px * var(--theme-text-scale, 1)) / 1.25 var(--font-display);
+  }
+  .avalon-preview-copy p {
+    margin: 0;
+    font: 400 calc(13px * var(--theme-text-scale, 1)) / 1.5 var(--font-body);
+  }
+  .avalon-preview-meta,
+  .avalon-preview-copy .avalon-preview-ratings {
+    color: var(--muted);
+  }
+  .avalon-preview-copy .avalon-preview-ratings {
+    font-size: calc(12px * var(--theme-text-scale, 1));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .avalon-preview-summary {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

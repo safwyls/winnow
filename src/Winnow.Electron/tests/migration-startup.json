@@ -1,0 +1,181 @@
+{
+  "StartupErrorBoundaryTests.A_startup_fault_is_surfaced_and_leaves_a_nonzero_exit_code": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "surfaces the startup fault once with a nonzero exit status"
+      }
+    ],
+    "reason": "Electron startup-failure.ts implements the same failure boundary and main/index.ts uses it for startup rejection and argument refusal; the original decision contract is exercised without showing a native dialog."
+  },
+  "StartupErrorBoundaryTests.The_sentence_names_the_failure_and_the_library_it_failed_on": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "names the failure type, message and selected library separately"
+      }
+    ],
+    "reason": "Electron startup-failure.ts implements the same failure boundary and main/index.ts uses it for startup rejection and argument refusal; the original decision contract is exercised without showing a native dialog."
+  },
+  "StartupErrorBoundaryTests.A_library_with_no_resolved_path_still_produces_a_readable_sentence": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "explains that the data directory is unresolved without a dangling location"
+      }
+    ],
+    "reason": "Electron startup-failure.ts implements the same failure boundary and main/index.ts uses it for startup rejection and argument refusal; the original decision contract is exercised without showing a native dialog."
+  },
+  "StartupErrorBoundaryTests.Closing_the_window_mid_startup_is_a_shutdown_and_not_a_fault": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "cancellation as a clean shutdown without logging or showing an alert"
+      }
+    ],
+    "reason": "Electron startup-failure.ts implements the same failure boundary and main/index.ts uses it for startup rejection and argument refusal; the original decision contract is exercised without showing a native dialog."
+  },
+  "StartupErrorBoundaryTests.A_failure_early_enough_to_have_no_logger_is_still_surfaced": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "surfaces failures before the logger or a data directory exists"
+      }
+    ],
+    "reason": "Electron startup-failure.ts implements the same failure boundary and main/index.ts uses it for startup rejection and argument refusal; the original decision contract is exercised without showing a native dialog."
+  },
+  "StartupErrorBoundaryTests.The_boundary_never_becomes_the_second_exception": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "preserves the exit status when both logging and the alert throw"
+      }
+    ],
+    "reason": "Electron startup-failure.ts implements the same failure boundary and main/index.ts uses it for startup rejection and argument refusal; the original decision contract is exercised without showing a native dialog."
+  },
+  "StartupErrorBoundaryTests.The_startup_fault_code_is_distinct_from_the_data_dir_refusal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "keeps startup faults distinct from invalid data-directory refusals"
+      }
+    ],
+    "reason": "Electron startup-failure.ts implements the same failure boundary and main/index.ts uses it for startup rejection and argument refusal; the original decision contract is exercised without showing a native dialog."
+  },
+  "StartupErrorBoundaryTests.Configuration_secrets_are_redacted_before_a_logger_exists": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "redacts configuration secrets before a logger exists"
+      }
+    ],
+    "reason": "Electron startup-failure.ts implements the same failure boundary and main/index.ts uses it for startup rejection and argument refusal; the original decision contract is exercised without showing a native dialog."
+  },
+  "StartupErrorBoundaryTests.A_logger_construction_failure_cannot_replace_the_original_startup_fault": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "preserves the original fault when logger construction fails"
+      }
+    ],
+    "reason": "Electron startup-failure.ts implements the same failure boundary and main/index.ts uses it for startup rejection and argument refusal; the original decision contract is exercised without showing a native dialog."
+  },
+  "DataDirectoryOverrideTests.Both_spellings_of_the_argument_carry_the_path": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "accepts both spellings and resolves relative paths"
+      }
+    ],
+    "reason": "The Electron entry point calls dataDirectoryArgument before Chromium readiness and forwards its resolved override to the backend."
+  },
+  "DataDirectoryOverrideTests.An_absent_argument_is_no_override": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "does not invent an override when the argument is absent"
+      }
+    ],
+    "reason": "The Electron entry point calls dataDirectoryArgument before Chromium readiness and forwards its resolved override to the backend."
+  },
+  "DataDirectoryOverrideTests.The_argument_without_a_path_is_refused_rather_than_ignored": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "refuses a missing path in"
+      }
+    ],
+    "reason": "The Electron entry point calls dataDirectoryArgument before Chromium readiness and forwards its resolved override to the backend."
+  },
+  "DataDirectoryOverrideTests.A_relative_override_is_resolved_to_a_full_path": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "accepts both spellings and resolves relative paths"
+      }
+    ],
+    "reason": "The Electron entry point calls dataDirectoryArgument before Chromium readiness and forwards its resolved override to the backend."
+  },
+  "DataDirectoryOverrideTests.The_override_becomes_the_root_and_the_database_sits_inside_it": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/WinnowDataLocation.cs"],
+    "reason": "These tests execute WinnowDataLocation/SQLite directly. Winnow.Backend/Program.cs still calls the same ResolveFrom implementation before constructing the host; Electron passes --data-dir to that backend. No Avalonia control or presentation policy is involved."
+  },
+  "DataDirectoryOverrideTests.The_database_and_its_sidecar_are_created_in_the_override_and_nowhere_else": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/WinnowDataLocation.cs",
+      "src/Winnow.Data/SqliteConnectionFactory.cs",
+      "src/Winnow.Data/DatabaseInitializer.cs"
+    ],
+    "reason": "These tests execute WinnowDataLocation/SQLite directly. Winnow.Backend/Program.cs still calls the same ResolveFrom implementation before constructing the host; Electron passes --data-dir to that backend. No Avalonia control or presentation policy is involved."
+  },
+  "DataDirectoryOverrideTests.An_override_leaves_a_legacy_directory_completely_alone": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/WinnowDataLocation.cs"],
+    "reason": "These tests execute WinnowDataLocation/SQLite directly. Winnow.Backend/Program.cs still calls the same ResolveFrom implementation before constructing the host; Electron passes --data-dir to that backend. No Avalonia control or presentation policy is involved."
+  },
+  "DataDirectoryOverrideTests.An_override_pointed_at_an_old_folder_opens_the_database_it_finds_without_renaming_it": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/WinnowDataLocation.cs"],
+    "reason": "These tests execute WinnowDataLocation/SQLite directly. Winnow.Backend/Program.cs still calls the same ResolveFrom implementation before constructing the host; Electron passes --data-dir to that backend. No Avalonia control or presentation policy is involved."
+  },
+  "DataDirectoryOverrideTests.Without_the_argument_nothing_about_the_normal_resolution_changes": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/WinnowDataLocation.cs"],
+    "reason": "These tests execute WinnowDataLocation/SQLite directly. Winnow.Backend/Program.cs still calls the same ResolveFrom implementation before constructing the host; Electron passes --data-dir to that backend. No Avalonia control or presentation policy is involved."
+  },
+  "DataDirectoryOverrideTests.A_path_that_is_an_existing_file_is_refused": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/WinnowDataLocation.cs"],
+    "reason": "These tests execute WinnowDataLocation/SQLite directly. Winnow.Backend/Program.cs still calls the same ResolveFrom implementation before constructing the host; Electron passes --data-dir to that backend. No Avalonia control or presentation policy is involved."
+  },
+  "DataDirectoryOverrideTests.A_directory_that_cannot_be_created_is_refused": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/WinnowDataLocation.cs"],
+    "reason": "These tests execute WinnowDataLocation/SQLite directly. Winnow.Backend/Program.cs still calls the same ResolveFrom implementation before constructing the host; Electron passes --data-dir to that backend. No Avalonia control or presentation policy is involved."
+  },
+  "DataDirectoryOverrideTests.A_path_that_is_not_a_legal_path_is_refused": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/WinnowDataLocation.cs"],
+    "reason": "These tests execute WinnowDataLocation/SQLite directly. Winnow.Backend/Program.cs still calls the same ResolveFrom implementation before constructing the host; Electron passes --data-dir to that backend. No Avalonia control or presentation policy is involved."
+  },
+  "DataDirectoryOverrideTests.A_directory_that_exists_but_cannot_be_written_to_is_refused": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Application/Services/WinnowDataLocation.cs"],
+    "reason": "These tests execute WinnowDataLocation/SQLite directly. Winnow.Backend/Program.cs still calls the same ResolveFrom implementation before constructing the host; Electron passes --data-dir to that backend. No Avalonia control or presentation policy is involved."
+  }
+}

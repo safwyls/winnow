@@ -1,0 +1,30 @@
+{
+  "LibrarySettingsViewModelTests.Default_sort_round_trips_without_overwriting_temporary_sort": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-default-sort.test.tsx",
+        "case": "round trips %s through Settings and keeps a later temporary order out of the saved preference"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "applies changed default %s over a temporary sort without persisting browsing choices"
+      }
+    ],
+    "reason": "All six original default orders are saved by the actual Settings component through the named API, observed by Library, and restored into a fresh preference cache after a later temporary browsing sort. The temporary sort causes no preference write. Both desktop and fullscreen exercise the lifecycle and visible game order. API-backed preference storage replaces the original Settings repository fixture."
+  },
+  "LibraryViewModelTests.Filtering_away_the_selection_clears_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "clears filtered and explicitly cleared primary selection in the desktop %s"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "prunes hidden multi-selection without bringing it back when the filter is cleared"
+      }
+    ],
+    "reason": "Desktop grid and list remove the hidden primary selection and its actions, and clearing the query does not resurrect it. Both surfaces also prune hidden bulk selections. Fullscreen retains its separately specified navigation cursor on a remaining visible game."
+  }
+}

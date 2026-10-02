@@ -1,0 +1,289 @@
+{
+  "IgdbAssignmentModalTests.Choosing_a_candidate_rewrites_the_metadata_and_the_cover_and_preserves_the_tab": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbAssignmentParityTests.cs",
+        "case": "Assigning_and_clearing_Prey_rewrites_metadata_and_pin_art_without_changing_owned_identity_or_play_facts_over_HTTP"
+      },
+      {
+        "file": "tests/parity-igdb-assignment-contracts.test.tsx",
+        "case": "Choosing_a_candidate_rewrites_the_metadata_and_the_cover_and_preserves_the_tab"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "exact Prey assignment rewrites metadata and cover while preserving"
+      }
+    ],
+    "reason": "The original Prey 1234/2006/2K Games/co1r76 fixture, 120 minutes and dated play facts becomes Prey 5678/2017/Bethesda Softworks/Morgan Yu/co2abc. Components cover all five source sections on both surfaces, initial query, exact year/platform text, preserved ownership, confirmation without error, pin readback, and Overview after reopening. Native Electron exercises the production HTTP assignment and compares decoded cover pixels before/after. Fullscreen Activity maps to its History reading page. HTTP tests reopen the client and assert unchanged work/release/ownership/play facts and persisted pin."
+  },
+  "IgdbAssignmentModalTests.A_second_game_cannot_claim_an_entry_another_game_already_holds": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbAssignmentParityTests.cs",
+        "case": "A_claimed_Prey_entry_changes_nothing_until_the_user_accepts_a_same_game_link_over_HTTP"
+      },
+      {
+        "file": "tests/parity-igdb-assignment-contracts.test.tsx",
+        "case": "A_second_game_cannot_claim_an_entry_another_game_already_holds"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "exact Prey collision"
+      }
+    ],
+    "reason": "Real HTTP and native fixtures hold two Prey works with distinct 1234 and 5678 mappings; refused assignment changes no rows or pins. The component case preserves the original optional-holder-lookup absence through a claiming 404, exact bare refusal, unchanged 2006 and no link command. Native separately exercises the production named-holder offer and compares every fixture table before a decision."
+  },
+  "IgdbAssignmentModalTests.The_assignment_can_be_cleared_and_the_pin_goes_with_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbAssignmentParityTests.cs",
+        "case": "Assigning_and_clearing_Prey_rewrites_metadata_and_pin_art_without_changing_owned_identity_or_play_facts_over_HTTP"
+      },
+      {
+        "file": "tests/parity-igdb-assignment-contracts.test.tsx",
+        "case": "The_assignment_can_be_cleared_and_the_pin_goes_with_it"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "pin beats capsule and clearing restores it"
+      }
+    ],
+    "reason": "Components on both surfaces assign, read the pin, clear with the current revision, reopen matching and assert no pinned control or problem. Real HTTP clears the repository/workspace pin while preserving metadata and all entry facts. Native Steam cases prove the matching confirmation, absent API pin and restored capsule after clearing."
+  },
+  "IgdbAssignmentModalTests.No_service_means_no_control": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbAssignmentParityTests.cs",
+        "case": "Assignment_availability_reports_the_service_seam_independently_of_credentials_over_HTTP"
+      },
+      {
+        "file": "tests/parity-igdb-assignment-contracts.test.tsx",
+        "case": "No_service_means_no_control"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "absent service removes the optional Wrong game control"
+      }
+    ],
+    "reason": "A backend with IIgdbAssignmentService actually removed returns available=false while Details remains readable; native desktop/fullscreen hide Wrong game. Components cover Avalon Details, shared Details and direct matching, including removal while open. Service presence with missing credentials and an omitted legacy available field retain the control. Credentials are not treated as service availability."
+  },
+  "IgdbAssignmentModalTests.Accepting_the_offer_writes_a_same_game_link_and_pins_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbAssignmentParityTests.cs",
+        "case": "A_claimed_Prey_entry_changes_nothing_until_the_user_accepts_a_same_game_link_over_HTTP"
+      },
+      {
+        "file": "tests/parity-igdb-assignment-contracts.test.tsx",
+        "case": "Accepting_the_offer_writes_a_same_game_link_and_pins_nothing"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "exact Prey collision"
+      }
+    ],
+    "reason": "The original named Prey 2017 holder and wrong Steam3900 Prey fixture expose the holder/year offer. Both renderers send one same_game command with the displayed revision. Real API/native acceptance writes exactly one live user link with holder parent and wrong-game child, leaves both pins absent and publishes one visible tile; assignment is not retried."
+  },
+  "IgdbAssignmentModalTests.Declining_the_offer_leaves_both_games_as_they_were": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbAssignmentParityTests.cs",
+        "case": "A_claimed_Prey_entry_changes_nothing_until_the_user_accepts_a_same_game_link_over_HTTP"
+      },
+      {
+        "file": "tests/parity-igdb-assignment-contracts.test.tsx",
+        "case": "Declining_the_offer_leaves_both_games_as_they_were"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "exact Prey collision"
+      }
+    ],
+    "reason": "Both component surfaces decline without a new bridge request, remove the offer, preserve candidates and show the exact bare refusal. Real API/native tests compare original mappings, pins and links before/after; both game rows remain unchanged."
+  },
+  "IgdbAssignmentModalTests.A_refused_details_link_stays_in_the_modal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbAssignmentParityTests.cs",
+        "case": "A_structurally_refused_claim_returns_a_conflict_without_writing_a_link_or_pin_over_HTTP"
+      },
+      {
+        "file": "tests/parity-igdb-assignment-contracts.test.tsx",
+        "case": "A_refused_details_link_stays_in_the_modal"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "exact Prey collision"
+      }
+    ],
+    "reason": "The original ParentIsAlreadyAChild refusal is exercised through a real structural HTTP conflict and an isolated native repository refusal. Both surfaces retain the offer and unchanged database rows/pins. Components and final native reruns assert the exact source sentence, Couldn't link those. Nothing changed. Structural 409 retains its response and conflict recovery; ordinary revision conflicts and uncertain requests retain their separate recovery semantics."
+  },
+  "IgdbAssignmentModalTests.A_steam_owned_game_takes_the_pinned_art_and_gives_the_capsule_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbAssignmentParityTests.cs",
+        "case": "Assigning_and_clearing_Prey_rewrites_metadata_and_pin_art_without_changing_owned_identity_or_play_facts_over_HTTP"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "pin beats capsule and clearing restores it"
+      }
+    ],
+    "reason": "Real HTTP artwork/current follows Steam3900 to pinned IGDB co2abc and back to Steam3900 after clearing, with owned identity and play facts preserved. Native desktop/fullscreen compare decoded pixels from actual cached JPEGs and the displayed tile after each change; no mocked renderer key stands in for precedence."
+  },
+  "IgdbAssignmentModalTests.A_pinned_entry_with_no_cover_leaves_the_capsule_in_place": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbAssignmentParityTests.cs",
+        "case": "Assigning_and_clearing_Prey_rewrites_metadata_and_pin_art_without_changing_owned_identity_or_play_facts_over_HTTP"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "coverless pin retains capsule"
+      }
+    ],
+    "reason": "The exact Steam3900 fixture receives a successful Prey5678 metadata pin with no cover. Real HTTP verifies the active pin and unchanged Steam preview key. Native desktop/fullscreen compare decoded tile pixels to the original capsule while pinned and after clearing, retaining the Steam external ID and corrected metadata."
+  },
+  "IgdbObservationIsolationTests.An_old_response_cannot_write_after_reassignment_even_when_the_same_id_returns": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/IgdbObservationIsolationTests.cs",
+        "case": "An_old_response_cannot_write_after_reassignment_even_when_the_same_id_returns"
+      }
+    ],
+    "reason": "All seven production paths (facets, reception, maturity, lifecycle, refetch, enrichment, assignment) × reassignment111→222 or111→222→111 run unchanged on real SQLite. Pin cleared before old provider response released; original assertions preserve new mapping/name, no old summary/year, no pin/facets/images/ratings/maturity/lifecycle, MappingChanged assignment and MetadataFilled0 enrichment. No Avalonia control assertion; only source UI assembly historically hosted these unchanged backend services.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs",
+      "src/Winnow.Data/Repositories/WorkIgdbPinRepository.cs",
+      "src/Winnow.Data/Repositories/WorkIgdbMappingWrites.cs",
+      "src/Winnow.Application/Services/FacetSyncService.cs",
+      "src/Winnow.Application/Services/ReceptionSyncService.cs",
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Application/Services/LifecycleSyncService.cs",
+      "src/Winnow.Application/Services/GameRefetchService.cs",
+      "src/Winnow.Application/Services/EnrichmentSyncService.cs",
+      "src/Winnow.Enrich.Igdb/IgdbMaturitySync.cs",
+      "src/Winnow.Enrich.Igdb/IgdbManualAssignment.cs"
+    ]
+  },
+  "IgdbObservationIsolationTests.An_explicit_empty_rating_response_retires_igdb_evidence_but_an_unavailable_response_preserves_it": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/IgdbObservationIsolationTests.cs",
+        "case": "An_explicit_empty_rating_response_retires_igdb_evidence_but_an_unavailable_response_preserves_it"
+      }
+    ],
+    "reason": "Unchanged production IgdbMaturitySync real-SQLite cases: explicit empty deletes only IGDB maturity and reports1; missing/unavailable preserves it and reports0; independent steam_store descriptor remains in both. Uses captured mapping guard, no presentation behavior.",
+    "implementation": [
+      "src/Winnow.Enrich.Igdb/IgdbMaturitySync.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs",
+      "src/Winnow.Data/Repositories/WorkMaturityRepository.cs"
+    ]
+  },
+  "IgdbObservationIsolationTests.A_mapping_transition_retires_every_igdb_projection_and_keeps_independent_observations": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/IgdbObservationIsolationTests.cs",
+        "case": "A_mapping_transition_retires_every_igdb_projection_and_keeps_independent_observations"
+      }
+    ],
+    "reason": "Unchanged manual draft transition111→222 through real ManualEntryRepository/WorkIgdbMappingWrites clears IGDB background, work facets, maturity, images, user+critic ratings and obsolete projected lifecycle. Preserves user summary, Steam maturity/rating/lifecycle, plugin images/rating/facets, release facets and two append-only lifecycle observations; exact original repository assertions pass without frontend dependencies.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/ManualEntryRepository.cs",
+      "src/Winnow.Data/Repositories/WorkIgdbMappingWrites.cs",
+      "src/Winnow.Data/Repositories/LifecycleRepository.cs"
+    ]
+  },
+  "GamesDbRefreshCompositionTests.Production_refresh_pipeline_publishes_qualified_identity_links_on_both_surfaces": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "production GamesDB pipeline publishes qualified identity links to both surfaces"
+      }
+    ],
+    "reason": "Native fixtures reproduce LibraryReadFixtures.Seed(2), Shared game Epic catalog/Steam2 identities, cached CMS offer/page edition evidence, Bluebird aliases and Steam2 graph. Offline external HTTP is substituted; the actual LibraryRefreshPipeline and OwnershipRefreshCoordinator run. Each starting surface sees two tiles become one, a live link, two retained ownerships/external IDs, zero pending suggestions, two edition observations and no legacy version IDs; switching surface retains the published result."
+  },
+  "IgdbMappingRefreshTests.Correcting_the_mapping_refreshes_open_details_and_removes_old_visibility_evidence": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/IgdbAssignmentParityTests.cs",
+        "case": "Correcting_mapping_111_to_222_retires_old_visibility_facets_images_ratings_and_background_over_HTTP"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "mapping111 to222 updates the same open Details and retires old visibility evidence"
+      }
+    ],
+    "reason": "Original Old game111 fixture includes Old genre, esrb:ao, oldshot, IGDB rating95/count20 and old background with source attribution. Real assignment222 plus explicit-content filtering publishes Corrected game/summary/year2020. Native both-surface tests retain the same Details DOM element, show the corrected summary, remove old reception/images/facets/maturity/background and keep the tile visible. Fullscreen reception is inspected in About. HTTP tests independently verify repository retirement."
+  },
+  "IgdbCandidateRowLayoutTests.Every_child_of_the_candidate_row_declares_its_column": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-assignment-contracts.test.tsx",
+        "case": "Every_child_of_the_candidate_row_declares_its_column"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "candidate grid preserves cover text year platform and trailing action geometry"
+      }
+    ],
+    "reason": "Both source templates map to actual Details and manual-form candidate consumers on desktop/fullscreen. Components assert three children with explicit cover/text/action grid columns 1/2/3. Native Chromium measures computed columns, ordered nonoverlapping bounds, decoded cover and the trailing enabled action."
+  },
+  "IgdbCandidateRowLayoutTests.The_candidate_row_gives_the_text_the_star_column_and_the_button_the_last": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-assignment-contracts.test.tsx",
+        "case": "The_candidate_row_gives_the_text_the_star_column_and_the_button_the_last"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "candidate grid preserves cover text year platform and trailing action geometry"
+      }
+    ],
+    "reason": "Source-equivalent CSS guards assert 34px minmax(0,1fr) auto, a 34 by 51 cover and the action last, with the source 238px list cap. Four native surface/context cases measure cover aspect, remaining text space, nonoverlap and bounded action. Candidate actions remain accessible and fullscreen directional navigation reaches them."
+  },
+  "IgdbCandidateRowLayoutTests.The_detail_line_is_a_grid_and_not_a_horizontal_stack": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-assignment-contracts.test.tsx",
+        "case": "The_detail_line_is_a_grid_and_not_a_horizontal_stack"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "candidate grid preserves cover text year platform and trailing action geometry"
+      }
+    ],
+    "reason": "Both candidate consumers use an explicit auto/minmax(0,1fr) detail grid with year in column 1 and platform text in column 2. Components preserve the exact 2017 separator and original platform text; four native cases verify computed grid display and independent year/platform bounds."
+  },
+  "IgdbCandidateRowLayoutTests.The_platforms_trim_inside_the_star_column_and_keep_their_full_value": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-assignment-contracts.test.tsx",
+        "case": "The_platforms_trim_inside_the_star_column_and_keep_their_full_value"
+      },
+      {
+        "file": "tests/electron/igdb-matching.spec.ts",
+        "case": "candidate grid preserves cover text year platform and trailing action geometry"
+      }
+    ],
+    "reason": "Components assert the remaining-space platform column, min-width zero, hidden overflow, ellipsis, nowrap and full title tooltip in both consumers/surfaces. Native long and short platform fixtures prove actual truncation, equal row height, retained tooltip text and action visibility without database writes."
+  }
+}

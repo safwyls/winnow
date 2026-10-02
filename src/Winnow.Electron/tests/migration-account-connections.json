@@ -1,0 +1,296 @@
+{
+  "SteamConnectionPanelTests.Nothing_connected_reads_as_no_connection": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps health %s distinct in combined status and method state"
+      }
+    ],
+    "reason": "Fresh state has neutral combined status, no session action side effects and the independent methods remain available."
+  },
+  "SteamConnectionPanelTests.A_key_alone_reads_as_key_set": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps both methods present with key=%s session=%s and marks the credential carrying API calls"
+      }
+    ],
+    "reason": "The four credential combinations check combined status, both method controls, the carrying credential and clear/sign-out availability."
+  },
+  "SteamConnectionPanelTests.A_sign_in_alone_reads_as_signed_in_and_as_configured": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps both methods present with key=%s session=%s and marks the credential carrying API calls"
+      }
+    ],
+    "reason": "Session-only renders API on through login and the stored account; the live-health test withdraws another sign-in action."
+  },
+  "SteamConnectionPanelTests.Both_credentials_read_as_both_and_state_the_scheduler_rule": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps both methods present with key=%s session=%s and marks the credential carrying API calls"
+      }
+    ],
+    "reason": "Both credentials show the combined label and explicitly state that scheduled updates use the API key."
+  },
+  "SteamConnectionPanelTests.Every_health_state_has_its_own_message": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps health %s distinct in combined status and method state"
+      }
+    ],
+    "reason": "All six original health states retain separate full and terse messages; failure, expiry and unpersisted health remain outside disclosures."
+  },
+  "SteamConnectionPanelTests.The_six_health_messages_are_distinct": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "opening the panel starts no sign-in and all six health messages and terse lines stay distinct"
+      }
+    ],
+    "reason": "All six full health sentences remain distinct."
+  },
+  "SteamConnectionPanelTests.Only_a_failing_or_dead_sign_in_takes_the_attention_treatment": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "only failing or expired health=%s takes top-level attention even with an API key"
+      }
+    ],
+    "reason": "Ports the original five key-present health/live/attention rows."
+  },
+  "SteamConnectionPanelTests.A_sign_in_that_needs_renewing_says_so_and_offers_the_way_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps health %s distinct in combined status and method state"
+      }
+    ],
+    "reason": "RenewalDue and RenewalFailing each expose Sign in again and their distinct state."
+  },
+  "SteamConnectionPanelTests.An_expired_sign_in_is_named_as_an_expiry_not_as_an_absence": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps health %s distinct in combined status and method state"
+      }
+    ],
+    "reason": "Expired health keeps the stored account identity visible and offers renewal rather than presenting an absent account."
+  },
+  "SteamConnectionPanelTests.Opening_the_panel_never_starts_a_steam_sign_in": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "opening the panel starts no sign-in and all six health messages and terse lines stay distinct"
+      }
+    ],
+    "reason": "Mounting does not invoke the native account flow."
+  },
+  "SteamConnectionPanelTests.A_successful_sign_in_renders_the_reports_own_account_confirmation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "A_successful_sign_in_renders_the_reports_own_account_confirmation"
+      }
+    ],
+    "reason": "Both modes mount actual Settings, send the named connection command, refresh shared queries and verify the resulting method/account state rather than only testing a prebuilt snapshot."
+  },
+  "SteamConnectionPanelTests.A_refused_sign_in_is_reported_as_a_problem": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "reports refused native outcome %s as an error and a closed window as a neutral fact"
+      }
+    ],
+    "reason": "All four original NoToken, IdentityMismatch, Unavailable and Failed outcomes produce a visible error."
+  },
+  "SteamConnectionPanelTests.A_closed_window_is_a_fact_not_a_fault": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "presents closed-window outcome %s as a neutral fact"
+      }
+    ],
+    "reason": "Original NotSignedIn and Cancelled outcomes are neutral notices without an alert."
+  },
+  "SteamConnectionPanelTests.A_sign_in_in_progress_shows_progress_and_holds_the_button": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "allows cancelling a running native sign-in without presenting cancellation as a failure"
+      }
+    ],
+    "reason": "A pending native request holds Continue, exposes cancellation and ends with a neutral cancellation result."
+  },
+  "SteamConnectionPanelTests.Saving_a_key_hands_it_over_empties_the_field_and_says_it_is_in_use": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "Saving_a_key_hands_it_over_empties_the_field_and_says_it_is_in_use"
+      }
+    ],
+    "reason": "Both modes mount actual Settings, send the named connection command, refresh shared queries and verify the resulting method/account state rather than only testing a prebuilt snapshot."
+  },
+  "SteamConnectionPanelTests.A_signed_in_user_never_sees_the_blocked_message": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "does not display a blocked identity message after confirmation"
+      }
+    ],
+    "reason": "Confirmed identity enables the account filter and removes the blocked explanation."
+  },
+  "SteamConnectionPanelTests.A_key_only_unconfirmed_user_is_told_the_next_import_settles_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "explains unconfirmed identity with key=%s session=%s"
+      }
+    ],
+    "reason": "Credential-specific explanation identifies the next Steam import as the key-only account confirmation path."
+  },
+  "SteamConnectionPanelTests.A_user_with_neither_credential_is_told_both_routes_fix_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "explains unconfirmed identity with key=%s session=%s"
+      }
+    ],
+    "reason": "An unconfirmed user with neither credential is given both sign-in and API-key routes."
+  },
+  "SteamConnectionPanelTests.A_signed_in_user_whose_account_was_not_recorded_is_told_to_sign_in_again": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "explains unconfirmed identity with key=%s session=%s"
+      }
+    ],
+    "reason": "The stored-session branch names re-sign-in rather than pretending the account was confirmed."
+  },
+  "SteamConnectionPanelTests.A_calm_session_keeps_its_sentence_in_the_disclosure": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps health %s distinct in combined status and method state"
+      }
+    ],
+    "reason": "NotSignedIn, Live and RenewalDue health remain in the sign-in disclosure while actionable states remain exposed."
+  },
+  "SteamConnectionPanelTests.Every_health_state_has_a_terse_line_too": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "opening the panel starts no sign-in and all six health messages and terse lines stay distinct"
+      }
+    ],
+    "reason": "All six terse method states are distinct and are rendered beside the method heading."
+  },
+  "SteamConnectionPanelTests.An_environment_key_says_at_the_top_level_that_it_cannot_be_cleared_here": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps details folded independently and exposes environment-key restrictions before opening details"
+      }
+    ],
+    "reason": "External key ownership is explained beside the heading and no clear command is offered."
+  },
+  "SteamConnectionPanelTests.Clearing_removes_the_key_and_withdraws_the_clear_command": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "Clearing_removes_the_key_and_withdraws_the_clear_command"
+      }
+    ],
+    "reason": "Both modes mount actual Settings, send the named connection command, refresh shared queries and verify the resulting method/account state rather than only testing a prebuilt snapshot."
+  },
+  "SteamConnectionPanelTests.A_sign_in_with_no_refresh_token_is_reported_rather_than_dressed_up": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "A_sign_in_with_no_refresh_token_is_reported_rather_than_dressed_up"
+      }
+    ],
+    "reason": "Both modes mount actual Settings, send the named connection command, refresh shared queries and verify the resulting method/account state rather than only testing a prebuilt snapshot."
+  },
+  "SteamConnectionPanelTests.The_key_page_is_opened_through_the_shared_dispatcher": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "The_key_page_is_opened_through_the_shared_dispatcher and failures retain its address"
+      }
+    ],
+    "reason": "The real key form calls the shared named link dispatcher; a declined launch gives an inline error and readable registration address, and a successful retry clears the error."
+  },
+  "SteamConnectionPanelTests.A_platform_that_declines_the_link_says_so_rather_than_failing_silently": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "The_key_page_is_opened_through_the_shared_dispatcher and failures retain its address"
+      }
+    ],
+    "reason": "The real key form calls the shared named link dispatcher; a declined launch gives an inline error and readable registration address, and a successful retry clears the error."
+  },
+  "SteamConnectionPanelTests.A_link_that_will_not_open_still_gives_the_address": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "The_key_page_is_opened_through_the_shared_dispatcher and failures retain its address"
+      }
+    ],
+    "reason": "The real key form calls the shared named link dispatcher; a declined launch gives an inline error and readable registration address, and a successful retry clears the error."
+  },
+  "SteamConnectionPanelTests.Signing_out_withdraws_the_permission": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "Signing_out_clears_the_identity_the_session_earned and withdraws capture permission"
+      }
+    ],
+    "reason": "The actual Settings lifecycle completes an opted-in sign-in, signs out, refreshes identity and asks for fresh unticked purchase permission on reconnect."
+  },
+  "SteamConnectionPanelTests.Signing_out_clears_the_identity_the_session_earned": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-transitions.test.tsx",
+        "case": "Signing_out_clears_the_identity_the_session_earned and withdraws capture permission"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Sign_out_clears_memory_disk_identity_and_pending_attempts_and_requests_refresh"
+      }
+    ],
+    "reason": "Both actual Settings presentation paths clear account identity and status after sign-out. The replacement production HTTP test additionally proves that memory, encrypted disk state and account confirmation are removed and cannot return after backend restart."
+  }
+}

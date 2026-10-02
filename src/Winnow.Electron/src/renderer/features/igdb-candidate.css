@@ -1,0 +1,69 @@
+@layer components {
+  .igdb-candidates {
+    max-height: 238px;
+    overflow: auto;
+    padding-inline-end: 12px;
+    scroll-padding-block: 4px;
+  }
+  .igdb-candidate-row {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 68px;
+    padding-block: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .igdb-candidate-cover {
+    display: grid;
+    grid-column: 1;
+    place-items: center;
+    width: 34px;
+    height: 51px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--muted);
+  }
+  .igdb-candidate-cover img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .igdb-candidate-text {
+    grid-column: 2;
+    min-width: 0;
+  }
+  .igdb-candidate-row > button {
+    grid-column: 3;
+    white-space: nowrap;
+    scroll-margin-block: 4px;
+  }
+  .igdb-candidate-row .igdb-candidate-name {
+    margin: 0;
+    font-size: inherit;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .igdb-candidate-row .igdb-candidate-detail {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    margin: 0;
+    color: var(--muted);
+    font-size: inherit;
+  }
+  .igdb-candidate-year {
+    grid-column: 1;
+    font-family: var(--font-mono);
+    white-space: pre;
+  }
+  .igdb-candidate-platforms {
+    grid-column: 2;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "AccountStatsViewModelTests.With_no_facts_the_screen_is_an_empty_state_and_not_a_table_of_zeroes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "With_no_facts_the_screen_is_an_empty_state_and_not_a_table_of_zeroes"
+      }
+    ],
+    "reason": "Both rendered modes use an empty state with the current import location and no spending, year, licence, currency or largest-transaction figures. The unused Avalonia view-model zero is not a visible frontend contract."
+  },
+  "AccountStatsViewModelTests.Licences_alone_are_enough_to_leave_the_empty_state": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "Licences_alone_are_enough_to_leave_the_empty_state"
+      }
+    ],
+    "reason": "Both modes leave the empty state for four licences alone and show the friendly Steam Store label with its count."
+  },
+  "AccountStatsViewModelTests.A_mixed_currency_capture_renders_no_money_at_all_and_keeps_its_counts": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "A_mixed_currency_capture_renders_no_money_at_all_and_keeps_its_counts"
+      }
+    ],
+    "reason": "The original mixed-currency fixture retains gross, year, purchase, wallet and currency counts without any blended monetary total; its largest individual transaction uses its own pound symbol."
+  },
+  "AccountStatsViewModelTests.One_symbol_plus_a_symbol_less_row_is_still_mixed": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "One_symbol_plus_a_symbol_less_row_is_still_mixed"
+      }
+    ],
+    "reason": "One known symbol plus an unknown-symbol transaction retains both counts and refuses a combined amount on both surfaces."
+  },
+  "AccountStatsViewModelTests.A_single_currency_capture_renders_its_totals_with_the_symbol_as_stored": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "A_single_currency_capture_renders_its_totals_with_the_symbol_as_stored"
+      }
+    ],
+    "reason": "Both surfaces render the original euro gross, refunded and net values and eleven kept transactions, without a redundant single-symbol currency breakdown."
+  },
+  "AccountStatsViewModelTests.Wallet_credit_is_its_own_fact_and_never_joins_the_spend_figures": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "Wallet_credit_is_its_own_fact_and_never_joins_the_spend_figures"
+      }
+    ],
+    "reason": "The original product, top-up and redeemed-credit fixture renders each wallet fact separately and never adds either to product spending."
+  },
+  "AccountStatsViewModelTests.The_year_table_lists_the_undated_slice_as_its_own_line": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "The_year_table_lists_the_undated_slice_as_its_own_line"
+      }
+    ],
+    "reason": "Both modes render the original dated years in order and the separate undated count/amount row without moving it into a year."
+  },
+  "AccountStatsViewModelTests.With_every_row_dated_the_year_table_has_no_extra_line": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "With_every_row_dated_the_year_table_has_no_extra_line"
+      }
+    ],
+    "reason": "Both modes render only the supplied dated year when the undated count is zero."
+  },
+  "AccountStatsViewModelTests.A_bundle_shows_its_total_and_flags_itself_rather_than_being_split": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "A_bundle_shows_its_total_and_flags_itself_rather_than_being_split"
+      }
+    ],
+    "reason": "The original three-game bundle keeps its whole $120 transaction, captured UTC page date and explicit bundle label without an inferred per-game price."
+  },
+  "AccountStatsViewModelTests.An_absent_date_is_an_absent_row": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "An_absent_date_is_an_absent_row"
+      }
+    ],
+    "reason": "Both modes omit absent first/last date facts and preserve the count of two undated transactions."
+  },
+  "AccountStatsViewModelTests.Opening_the_screen_from_the_rail_recomputes_the_figures": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "opening Spending from navigation refreshes its capture and another navigation row leaves it on %s"
+      },
+      {
+        "file": "tests/parity-account-capture.test.tsx",
+        "case": "reopening Spending recomputes captured figures without waiting for the query cache to expire"
+      }
+    ],
+    "reason": "Actual desktop/fullscreen app navigation issues one account read per open, none on close; the composed Gameplay/Spending screen shows a changed three-licence capture immediately on reopen within the cache lifetime."
+  },
+  "AccountStatsViewModelTests.Another_rail_row_leaves_the_stats_screen": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "opening Spending from navigation refreshes its capture and another navigation row leaves it on %s"
+      }
+    ],
+    "reason": "The actual main navigation removes Spending, restores Library tiles, and preserves the previous Spending location when Activity is reopened on each surface."
+  }
+}

@@ -1,0 +1,243 @@
+name: Electron package validation
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: electron-packages-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Electron Windows install and portable recovery
+    runs-on: windows-2025
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.19.0'
+          cache: npm
+          cache-dependency-path: src/Winnow.Electron/package-lock.json
+      - name: Resolve validation version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          [xml]$props = Get-Content Version.props
+          $base = $props.Project.PropertyGroup.VersionPrefix
+          $value = if ($env:REQUESTED_VERSION) { $env:REQUESTED_VERSION } else { "$base-ci.$env:GITHUB_RUN_NUMBER" }
+          $version = ./packaging/Resolve-Version.ps1 -Version $value
+          if ($version.Numeric -ne $base) { throw 'Version must match Version.props.' }
+          "RELEASE_VERSION=$value" >> $env:GITHUB_ENV
+      - name: Install locked frontend dependencies
+        working-directory: src/Winnow.Electron
+        run: npm ci
+      - name: Publish primary Electron distribution
+        run: |
+          ./packaging/Publish-Electron.ps1 -Runtime win-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA -OutputDirectory artifacts/electron-publish
+          ./packaging/Verify-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish -Runtime win-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA
+          ./packaging/Test-BundledPlugin.ps1 -BuildDirectory artifacts/electron-publish
+      - name: Verify package integrity contracts
+        run: |
+          node --test src/Winnow.Electron/tests/packaging/linux-command-line.test.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged process inspection contracts failed.' }
+          ./packaging/Test-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish
+          ./packaging/Test-PortableSmokeEvidence.ps1
+          ./packaging/windows/Test-ElectronPackageContracts.ps1 -PublishDirectory artifacts/electron-publish
+          ./packaging/windows/Test-SmokeApplication.ps1
+          ./packaging/windows/Test-InstallerSmokeEvidence.ps1 -PublishDirectory artifacts/electron-publish
+      - name: Verify packaged frontend and activation
+        working-directory: src/Winnow.Electron
+        env:
+          WINNOW_PACKAGED_EXE: ${{ github.workspace }}/artifacts/electron-publish/Winnow.exe
+        run: npm run test:packaged
+      - name: Package installer and portable ZIP
+        run: ./packaging/windows/New-WindowsPackage.ps1 -PublishDirectory artifacts/electron-publish -OutputDirectory artifacts/electron-packages -Version $env:RELEASE_VERSION
+      - name: Select verified previous Windows releases
+        id: baseline
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ./packaging/windows/Get-PreviousWindowsInstaller.ps1 -Version $env:RELEASE_VERSION -OutputPath artifacts/electron-previous/Winnow-setup.exe
+          ./packaging/Get-PreviousPortableArchive.ps1 -Version $env:RELEASE_VERSION -Runtime win-x64 -OutputPath artifacts/electron-previous/portable.zip
+      - name: Verify installed upgrade and uninstall
+        run: ./packaging/windows/Test-WindowsInstaller.ps1 -InstallerPath "artifacts/electron-packages/Winnow-$env:RELEASE_VERSION-win-x64-setup.exe" -PreviousInstallerPath artifacts/electron-previous/Winnow-setup.exe
+      - name: Verify archive upgrade and recovery
+        if: ${{ !cancelled() && steps.baseline.conclusion == 'success' }}
+        run: ./packaging/Test-PortableUpgrade.ps1 -PreviousArchive artifacts/electron-previous/portable.zip -Archive "artifacts/electron-packages/Winnow-$env:RELEASE_VERSION-win-x64.zip" -PublishDirectory artifacts/electron-publish -Version $env:RELEASE_VERSION -Runtime win-x64
+      - name: Retain package and recovery evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: electron-windows-evidence
+          path: |
+            .tmp/electron-packaged-results/**
+            artifacts/electron-previous/*.evidence.json
+            artifacts/portable-smoke-logs/**
+            artifacts/windows-smoke-logs/**
+            artifacts/electron-smoke/**
+            artifacts/electron-publish/release-info.json
+            artifacts/electron-publish/resources/*NOTICES*
+            ${{ runner.temp }}/Winnow-installer-smoke-*/*.log
+            ${{ runner.temp }}/Winnow-installer-smoke-*/*/*.log
+            ${{ runner.temp }}/Winnow-installer-smoke-*/**/logs/*.log
+            ${{ runner.temp }}/Winnow-installer-smoke-*/**/failure.txt
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+      - name: Retain validated distributables
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: electron-packages-win-x64
+          path: artifacts/electron-packages/*
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    name: Electron Ubuntu install and portable recovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.19.0'
+          cache: npm
+          cache-dependency-path: src/Winnow.Electron/package-lock.json
+      - name: Resolve validation version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          [xml]$props = Get-Content Version.props
+          $base = $props.Project.PropertyGroup.VersionPrefix
+          $value = if ($env:REQUESTED_VERSION) { $env:REQUESTED_VERSION } else { "$base-ci.$env:GITHUB_RUN_NUMBER" }
+          $version = ./packaging/Resolve-Version.ps1 -Version $value
+          if ($version.Numeric -ne $base) { throw 'Version must match Version.props.' }
+          "RELEASE_VERSION=$value" >> $env:GITHUB_ENV
+      - name: Install desktop and sandbox prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth openbox x11-utils desktop-file-utils apparmor-utils \
+            ca-certificates tzdata libc6 libgcc-s1 libstdc++6 libgssapi-krb5-2 zlib1g libssl3t64 libicu74 \
+            libx11-6 libice6 libsm6 libfontconfig1 libgtk-3-0t64 libnss3 libasound2t64 libgbm1 \
+            libdrm2 libxss1 libxtst6 libxshmfence1 libxkbcommon0 libatspi2.0-0t64 libcups2t64 \
+            libnspr4 libxcb1 libxcomposite1 libxdamage1 libxext6 libxfixes3 libxrandr2 libatk1.0-0t64 \
+            libatk-bridge2.0-0t64 libdbus-1-3 libpango-1.0-0 libcairo2 libsecret-1-0 xdg-utils
+          # Qualify Ubuntu's restricted policy even if a hosted image has relaxed it.
+          test -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=1
+          sudo aa-status
+      - name: Install locked frontend dependencies
+        working-directory: src/Winnow.Electron
+        run: npm ci
+      - name: Verify Unix installation lease and recovery policy
+        run: |
+          # The real copied-parent fixture is covered by the complete regression gate.
+          # This focused package gate exercises replacement exclusion and Unix permissions.
+          dotnet test tests/Winnow.Update.Tests --configuration Release --filter "(FullyQualifiedName~InstallationStartupLeaseTests|FullyQualifiedName~InstallationBoundaryTests|FullyQualifiedName~PortableRecoveryTests|FullyQualifiedName~HelperProtocolTests)&FullyQualifiedName!~RealCopiedHelperAcknowledgesHandoffAndReleasesCommandPipesWhileItsParentLives" --logger trx --results-directory artifacts/linux-lease-results --blame-hang-timeout 2m --blame-hang-dump-type mini
+      - name: Publish primary Electron distribution
+        run: |
+          ./packaging/Publish-Electron.ps1 -Runtime linux-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA -OutputDirectory artifacts/electron-publish
+          ./packaging/Verify-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish -Runtime linux-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA
+          ./packaging/Test-BundledPlugin.ps1 -BuildDirectory artifacts/electron-publish
+      - name: Verify package integrity and baseline contracts
+        run: |
+          node --test src/Winnow.Electron/tests/packaging/linux-command-line.test.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged process inspection contracts failed.' }
+          ./packaging/Test-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish
+          ./packaging/Test-PortableSmokeEvidence.ps1
+          ./packaging/Test-PreviousDebianPackage.ps1
+          ./packaging/Test-SmokeBackend.ps1
+          bash packaging/linux/test-electron-package.sh artifacts/electron-publish
+          if ($LASTEXITCODE -ne 0) { throw 'Linux package contracts failed.' }
+      - name: Verify packaged frontend, sandbox and activation
+        shell: bash
+        run: |
+          set -euo pipefail
+          executable="$GITHUB_WORKSPACE/artifacts/electron-publish/Winnow"
+          sudo bash packaging/linux/setup-sandbox.sh --executable "$executable"
+          trap 'sudo bash packaging/linux/setup-sandbox.sh --executable "$executable" --remove' EXIT
+          export WINNOW_PACKAGED_EXE="$executable"
+          bash packaging/linux/with-desktop.sh bash -c 'cd src/Winnow.Electron && npm run test:packaged -- tests/packaged/primary.spec.ts'
+      - name: Package Debian installer and portable archive
+        shell: bash
+        run: bash packaging/linux/build.sh artifacts/electron-publish artifacts/electron-packages "$RELEASE_VERSION"
+      - name: Select verified previous Linux releases
+        id: baseline
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          ./packaging/Get-PreviousDebianPackage.ps1 -Version $env:RELEASE_VERSION -OutputPath artifacts/electron-previous/Winnow.deb
+          ./packaging/Get-PreviousPortableArchive.ps1 -Version $env:RELEASE_VERSION -Runtime linux-x64 -OutputPath artifacts/electron-previous/portable.tar.gz
+      - name: Verify installed upgrade and uninstall
+        shell: bash
+        run: bash packaging/linux/smoke-test.sh artifacts/electron-packages "$RELEASE_VERSION" artifacts/electron-previous/Winnow.deb
+      - name: Verify archive upgrade and recovery
+        if: ${{ !cancelled() && steps.baseline.conclusion == 'success' }}
+        shell: bash
+        run: |
+          bash packaging/linux/with-desktop.sh pwsh -NoProfile -File packaging/Test-PortableUpgrade.ps1 \
+            -PreviousArchive artifacts/electron-previous/portable.tar.gz \
+            -Archive "artifacts/electron-packages/Winnow-$RELEASE_VERSION-linux-x64.tar.gz" \
+            -PublishDirectory artifacts/electron-publish -Version "$RELEASE_VERSION" -Runtime linux-x64
+      - name: Verify Linux native and Proton session tracking
+        run: dotnet test tests/Winnow.Monitor.Linux.Tests --configuration Release --logger trx --logger "console;verbosity=normal" --results-directory artifacts/linux-session-results --blame-hang-timeout 2m --blame-hang-dump-type mini
+      - name: Retain package and recovery evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: electron-linux-evidence
+          path: |
+            .tmp/electron-packaged-results/**
+            artifacts/electron-previous/*.evidence.json
+            artifacts/portable-smoke-logs/**
+            artifacts/linux-smoke-logs/**
+            artifacts/linux-session-results/**
+            artifacts/linux-lease-results/**
+            artifacts/electron-publish/release-info.json
+            artifacts/electron-publish/resources/*NOTICES*
+            ${{ runner.temp }}/winnow-linux-smoke.*/**/*.log
+            ${{ runner.temp }}/winnow-linux-smoke.*/**/failure.txt
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+      - name: Retain validated distributables
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: electron-packages-linux-x64
+          path: artifacts/electron-packages/*
+          if-no-files-found: error
+          retention-days: 14

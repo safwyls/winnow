@@ -1,0 +1,52 @@
+{
+  "GamepadInputTests.UnknownBatteryIsAbsentRatherThanAnError": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-controller-status.test.ts",
+        "case": "UnknownBatteryIsAbsentRatherThanAnError: type %s level %s"
+      },
+      {
+        "file": "tests/electron/controller-status.spec.ts",
+        "case": "native preload validates samples and preserves unknown, wired, known, ambiguous and reconnect states"
+      }
+    ],
+    "reason": "Preserves all five original type/level rows (0/0, 255/3, wired 1/0, low 2/1, full 3/3), plus all known wireless levels. Native-boundary fixtures execute production sender validation, preload, response parsing and unique device matching. Separate Windows tests execute the production PowerShell/C# reader and its cache/reconnect normalization with controlled OS/time boundaries. Browser controller indexes are not assumed to be native slots; unsupported and ambiguous matches omit battery. Physical devices remain TASK-381.40."
+  },
+  "FullscreenInteractionTests.Main_navigation_stays_centered_with_varying_controller_status_and_clock": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/controller-status.spec.ts",
+        "case": "Main_navigation_stays_centered_with_varying_controller_status_and_clock at"
+      },
+      {
+        "file": "tests/parity-fullscreen-status.test.tsx",
+        "case": "shows local short time, refreshes every 15 seconds and releases timers on detach"
+      },
+      {
+        "file": "tests/electron/controller-status.spec.ts",
+        "case": "every fullscreen root page retains live status and local clock"
+      }
+    ],
+    "reason": "Replays original empty/disconnected/Controller connected · Battery 100% status and 1:01/11:59 PM clock fixtures at 1280x720, adds 1920x1080 and text/interface scale 1.4/1.2, and preserves the original 0.5px navigation-center, 1px clock-right and status-after-navigation assertions. Checks primary status/clock ink, data font, ellipsis, all four root pages and separate fullscreen Details header. The attached local clock refreshes at the source 15-second interval and releases timers on detach."
+  },
+  "FullscreenInteractionTests.External_restore_hides_tv_and_controller_status_omits_unknown_battery": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/controller-status.spec.ts",
+        "case": "External_restore_hides_tv_and_controller_status_omits_unknown_battery"
+      },
+      {
+        "file": "tests/parity-fullscreen-status.test.tsx",
+        "case": "rejects stale replies when a device reconnects at the same browser index"
+      },
+      {
+        "file": "tests/parity-fullscreen-status.test.tsx",
+        "case": "switches to the next navigation device and ignores the outgoing device reply"
+      }
+    ],
+    "reason": "Exercises an unknown battery through the real Electron main/preload boundary, asserts generic connected then disconnected status, enters native BrowserWindow fullscreen and externally restores it. Verifies desktop chrome, retained desktop page, no fullscreen status node and no remaining native helper. Component tests cover same-index reconnects, active-device changes, hidden-window resume and stale replies after detach. Native device readings are simulated; no physical-device claim is made."
+  }
+}

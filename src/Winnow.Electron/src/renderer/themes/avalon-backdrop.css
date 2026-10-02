@@ -1,0 +1,86 @@
+@layer themes {
+  .avalon-backdrop {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: var(--bg);
+  }
+  .avalon-backdrop-layer,
+  .avalon-backdrop-veil,
+  .avalon-backdrop-reading-veil {
+    position: absolute;
+    inset: 0;
+  }
+  .avalon-backdrop-layer {
+    background: var(--bg);
+  }
+  .avalon-backdrop-art {
+    position: absolute;
+    top: 0;
+    overflow: hidden;
+  }
+  .avalon-backdrop .avalon-backdrop-art img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    opacity: 1;
+  }
+  .avalon-backdrop-veil {
+    background: linear-gradient(180deg, transparent, var(--bg) 85%);
+  }
+  .avalon-backdrop-reading-veil {
+    background: linear-gradient(90deg, var(--bg) 30%, transparent 85%);
+  }
+  .avalon-backdrop[data-cinematic] .avalon-backdrop-veil {
+    background: linear-gradient(
+      180deg,
+      transparent,
+      color-mix(in srgb, var(--bg) 13.725%, transparent) 25%,
+      var(--bg) 55%
+    );
+  }
+  .avalon-backdrop[data-cinematic] .avalon-backdrop-reading-veil {
+    background:
+      linear-gradient(180deg, transparent 25%, var(--bg) 48%),
+      linear-gradient(
+        90deg,
+        var(--bg),
+        color-mix(in srgb, var(--bg) 86.275%, transparent) 32%,
+        color-mix(in srgb, var(--bg) 21.569%, transparent) 70%,
+        transparent
+      ),
+      linear-gradient(
+        180deg,
+        var(--bg),
+        color-mix(in srgb, var(--bg) 58.824%, transparent) 10%,
+        transparent 20%
+      );
+  }
+  .avalon-backdrop-art[data-fitted] .avalon-backdrop-veil {
+    background: linear-gradient(
+      180deg,
+      transparent 65%,
+      color-mix(in srgb, var(--bg) 28.235%, transparent) 78%,
+      color-mix(in srgb, var(--bg) 78.431%, transparent) 90%,
+      var(--bg) 98%
+    );
+  }
+  .avalon-backdrop .avalon-backdrop-art[data-fitted] img {
+    mask-image: linear-gradient(180deg, #fff 65%, #ffffffb7 78%, #ffffff37 90%, transparent 98%);
+  }
+  .avalon-backdrop[data-fullscreen] [data-fallback] img {
+    opacity: 0.16;
+  }
+  .avalon-backdrop:not([data-fullscreen]) {
+    background: var(--surface);
+  }
+  .avalon-backdrop:not([data-fullscreen]) .avalon-backdrop-veil {
+    background: var(--avalon-art-veil, color-mix(in srgb, var(--surface) 92%, transparent));
+  }
+  .avalon-backdrop:not([data-fullscreen]) .avalon-backdrop-reading-veil {
+    display: none;
+  }
+}

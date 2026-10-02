@@ -1,0 +1,130 @@
+{
+  "MergesSurfaceTests.The_sort_button_carries_the_sort_menu": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/sort-menu.test.tsx", "case": "sort button announces the current order and opens selected radio items that close and restore focus on selection" },
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "shared desktop sort menu keeps original rows and selected dot inside a lower window corner at scale" },
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "shared sort menu keyboard and outside dismissal restore the correct focus without writing a merge answer" },
+      { "file": "tests/electron/merge-contracts.spec.ts", "case": "keeps a real answered slot through separation and opens keyboard sort actions" },
+      { "file": "tests/electron/browse-spine.spec.ts", "case": "spine preserves ordering and selection with source pointer, scrub, halo and keyboard behavior" }
+    ],
+    "reason": "Library and desktop Merges use the same compact SortMenu component. Its name carries the selected order, each radio row closes the menu and restores focus, and native tests measure the original row/dot/inset geometry at 80%, 100% and 140% zoom. Keyboard navigation, typeahead, one-layer Escape, outside dismissal and real Library ordering are verified. Fullscreen retains its independent sort sheets."
+  },
+  "MergesSurfaceTests.Every_user_facing_string_on_the_screen_comes_from_copy": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-merge-surface-contract.test.ts", "case": "static merge markup reads its visible text and accessible copy through bindings" },
+      { "file": "tests/parity-merge-surface-contract.test.ts", "case": "queue and receipt copy use ordinary answers without retract merge records or cancel" }
+    ],
+    "reason": "Static queue markup text, labels, tooltips and placeholders bind to the copy module; section, sort and platform options are centralized there too. The AST guard rejects literal JSX text and literal user-facing attributes. As in the original XAML guard, dynamic bindings are allowed; model and fact sentences retain their separate behavioral tests."
+  },
+  "MergesSurfaceTests.The_rail_row_binds_its_label_and_carries_no_count_and_no_opacity": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/app.test.tsx", "case": "desktop Merges is a dedicated screen with no rail count and Escape returns to Library even when its queue is empty" },
+      { "file": "tests/electron/merge-contracts.spec.ts", "case": "dedicated desktop Merges keeps its rail identity and Details cursor then Escape returns to Library" }
+    ],
+    "reason": "The dedicated desktop rail destination retains its plain label and original explanatory tooltip, contains no count and computes to full opacity. Empty-queue application coverage preserves that identity; native routing checks Details return focus and Escape back to Library. Fullscreen retains its separate Library-tools path."
+  },
+  "MergesSurfaceTests.The_merge_queue_answers_seven_keys_and_nothing_else": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-merge.test.tsx", "case": "desktop leaves unrelated keys and modified shortcuts to their focused control without writing an answer" },
+      { "file": "tests/parity-merge.test.tsx", "case": "desktop keyboard promotion keeps the cursor and row movement asks the viewport to follow" },
+      { "file": "tests/parity-merge.test.tsx", "case": "answers the focused card exactly once with the current header" },
+      { "file": "tests/electron/merge-contracts.spec.ts", "case": "dedicated desktop Merges keeps its rail identity and Details cursor then Escape returns to Library" }
+    ],
+    "reason": "Desktop owns Up/Down, Space, S/Enter and D only while the queue or a member has focus. The host owns Escape back to Library. Home/End and unrelated keys remain unhandled, modified shortcuts never write decisions and focused input controls keep their keys. Fullscreen sheet-local Home/End navigation is independent."
+  },
+  "MergesSurfaceTests.Each_key_does_the_one_thing_the_screen_says_it_does": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-merge.test.tsx", "case": "desktop keyboard promotion keeps the cursor and row movement asks the viewport to follow" },
+      { "file": "tests/parity-merge.test.tsx", "case": "answers the focused card exactly once with the current header" },
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "row pointer and keyboard cursor keep promotion details and inclusion independent" },
+      { "file": "tests/electron/merge-contracts.spec.ts", "case": "dedicated desktop Merges keeps its rail identity and Details cursor then Escape returns to Library" }
+    ],
+    "reason": "Up/Down clamps the row cursor, Space promotes without writing, S and Enter dispatch exactly one link using the current parent, and D dispatches exactly one dismissal for that card. Handled answers suppress default activation. Real Escape navigates once without changing candidates or history."
+  },
+  "MergesSurfaceTests.The_row_template_takes_hover_click_and_focus": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "row pointer and keyboard cursor keep promotion details and inclusion independent" },
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "desktop row hover cross-fades reason ink in 120ms and restores row fill in 140ms without moving cards" },
+      { "file": "tests/parity-merge.test.tsx", "case": "keeps expansion parents fixed and leaves member details independently available" }
+    ],
+    "reason": "Real row-body pointer promotion, keyboard focus and cursor movement preserve independent Details and inclusion targets; hover swaps the reason. The main-row state follows promotion, while expansion bases remain fixed. React uses a named focusable row-title button inside the row instead of an Avalonia focusable Border."
+  },
+  "MergesSurfaceTests.Every_answer_on_the_card_carries_an_automation_name": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-merge.test.tsx", "case": "names every answer with its members and header and keeps one named undo after saving" },
+      { "file": "tests/parity-merge.test.tsx", "case": "answer names follow exclusions and promotion while the negative answer still identifies every member" },
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "named answers identify the exact group and one Undo restores it" }
+    ],
+    "reason": "Desktop and fullscreen assert exact source-equivalent names, visible labels and tooltips for Same game, Different games and Separate again. Names track included members and header changes, and the named controls dispatch one group act and one Undo."
+  },
+  "MergesSurfaceTests.Every_kind_segment_selects_its_kind": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-merge.test.tsx", "case": "every kind control selects only its own section and clearing restores the complete queue" }
+    ],
+    "reason": "All five kinds select their matching section on desktop and fullscreen. Desktop exposes pressed state; fullscreen closes the picker and shows the selected kind. All proposals restores the five sections and pending cards."
+  },
+  "MergesSurfaceTests.No_user_facing_string_says_retract_merge_records_or_cancel": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-merge-surface-contract.test.ts", "case": "queue and receipt copy use ordinary answers without retract merge records or cancel" },
+      { "file": "tests/parity-merge.test.tsx", "case": "names every answer with its members and header and keeps one named undo after saving" }
+    ],
+    "reason": "An AST guard inspects queue, action, model and facts literals and templates for the forbidden copy, and rendered desktop/fullscreen answers and receipts retain the ordinary verbs. Confirmation sheets keep their separate genuine Cancel action."
+  },
+  "MergesSurfaceTests.The_reason_slot_cross_fades_its_ink_in_120ms": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "desktop row hover cross-fades reason ink in 120ms and restores row fill in 140ms without moving cards" }
+    ],
+    "reason": "The real Chromium color transition lasts 120ms; its paused midpoint differs from both endpoint colors. Pointer exit restores the original reason and muted ink without changing card bounds."
+  },
+  "MergesSurfaceTests.The_row_restores_its_fill_over_the_hover_restore_duration": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "desktop row hover cross-fades reason ink in 120ms and restores row fill in 140ms without moving cards" }
+    ],
+    "reason": "The row's real background-color transition lasts 140ms and restores its transparent fill after pointer exit."
+  },
+  "MergesSurfaceTests.The_screen_has_no_third_transition": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "queue transitions affect only row fill and reason ink and reduced motion removes both" }
+    ],
+    "reason": "Computed styles across every queue descendant permit only the two source transitions. Generic button/artwork transitions are suppressed inside the queue; reduced motion removes both while selected and hovered states still update."
+  },
+  "MergesSurfaceTests.Flare_is_the_unread_dot_and_nothing_else": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "Flare marks unread rows and their group only and disappears from the group when its patched member is excluded" }
+    ],
+    "reason": "Computed text, background and border colors restrict Flare to the unread row and aggregate header dots, each carrying the source tooltip and accessible name. Excluding the patched member removes only the aggregate dot."
+  },
+  "MergesSurfaceTests.The_dock_binds_the_queue_and_its_one_undo": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-merge.test.tsx", "case": "names every answer with its members and header and keeps one named undo after saving" },
+      { "file": "tests/electron/merge-surface.spec.ts", "case": "named answers identify the exact group and one Undo restores it" }
+    ],
+    "reason": "Both surfaces expose the queue's saved title and note, exactly one Undo and one Dismiss button, original tooltips and one matching Undo write."
+  },
+  "MergesSurfaceTests.The_toolbar_and_chip_styles_are_defined_once_in_controls": {
+    "status": "framework-specific",
+    "reason": "This assertion checks five named Avalonia XAML selectors in controls.axaml and prohibits StaticResource because of Avalonia's parse-time resource ordering. Electron has no XAML resource parser or those selectors. Behavioral sort, kind and theme contracts are tracked separately; this classification does not waive their appearance or interaction."
+  },
+  "MergesSurfaceTests.No_view_defines_the_shared_styles_again": {
+    "status": "framework-specific",
+    "reason": "The source guard prohibits redeclaring five specific controls.axaml Style selectors in three Avalonia views. Electron components import shared CSS instead of declaring Avalonia Styles. The exact selector ownership assertion has no surviving mechanism; rendered control behavior is covered separately."
+  },
+  "MergesSurfaceTests.Every_member_the_rewrite_deleted_is_gone": {
+    "status": "framework-specific",
+    "reason": "This reflection/source guard requires seven retired CLR view-model types, twelve retired CLR members and four obsolete XAML binding names to remain absent after an earlier Avalonia rewrite. None participates in the Electron renderer. It does not assert current grouping or history behavior, which remains under behavioral migration tests."
+  }
+}

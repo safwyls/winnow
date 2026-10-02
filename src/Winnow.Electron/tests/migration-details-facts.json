@@ -1,0 +1,402 @@
+{
+  "GameAcquisitionViewModelTests.Neither_fact_means_no_block": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "omits the acquisition block when neither date nor recognized licence is held"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameAcquisitionViewModelTests.The_earliest_licence_is_the_one_that_answers_when_you_got_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "uses the earliest acquisition date and does not expose unknown licence values"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameAcquisitionViewModelTests.An_unrecognised_licence_says_nothing_rather_than_showing_a_stored_token": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "uses the earliest acquisition date and does not expose unknown licence values"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameAcquisitionViewModelTests.Price_paid_has_no_route_into_the_modal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "does not carry price fields into acquisition output or its rendered block"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameDetailsViewModelTests.With_no_readings_the_record_line_is_absent_rather_than_empty_prose": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "keeps a missing playtime series silent and describes a single reading as one reading"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameDetailsViewModelTests.One_reading_says_it_is_one_reading": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "keeps a missing playtime series silent and describes a single reading as one reading"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameDetailsViewModelTests.Several_readings_report_what_moved_between_them": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "describes only the change actually observed in time order"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameDetailsViewModelTests.A_flat_series_says_no_change_rather_than_up_zero": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "does not invent gained playtime for a flat or downward series"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameDetailsViewModelTests.The_series_is_read_in_time_order_whatever_order_it_arrives_in": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "describes only the change actually observed in time order"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameDetailsViewModelTests.Durations_read_as_the_app_writes_them": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "formats %s minutes as the original duration"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameDetailsViewModelTests.A_hostile_patch_notes_url_lists_the_update_and_offers_no_button": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "retains an update with a hostile URL while offering no open button"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameScreenshotsViewModelTests.No_screenshots_draws_nothing_rather_than_an_empty_frame": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "shows no screenshot frames for missing data or artwork-only rows"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameScreenshotsViewModelTests.An_artwork_row_is_not_a_screenshot": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "shows no screenshot frames for missing data or artwork-only rows"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameScreenshotsViewModelTests.The_strip_keeps_the_publishers_order_and_states_its_own_count": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "preserves publisher screenshot order, count, selection and source rendition"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "GameScreenshotsViewModelTests.Picking_a_thumbnail_opens_the_lightbox_on_that_shot": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "preserves publisher screenshot order, count, selection and source rendition"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "ScreenshotLightboxTests.It_opens_on_the_shot_that_was_pressed": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "opens on the pressed shot, wraps both ways and keeps the strip selection in sync"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "ScreenshotLightboxTests.Navigation_wraps_in_both_directions_and_the_strip_follows": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "opens on the pressed shot, wraps both ways and keeps the strip selection in sync"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "ScreenshotLightboxTests.One_screenshot_draws_no_navigation_at_all": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "omits navigation for one screenshot and leaves arrow input on that image"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "ScreenshotLightboxTests.Closing_drops_the_image_and_leaves_the_strips_mark_standing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "drops the open image while retaining its mark and returns focus to the original thumbnail"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "ScreenshotLightboxTests.A_closed_overlay_does_not_navigate": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "drops the open image while retaining its mark and returns focus to the original thumbnail"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "ScreenshotLightboxTests.The_name_spells_out_both_the_role_and_the_count": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "opens on the pressed shot, wraps both ways and keeps the strip selection in sync"
+      }
+    ],
+    "reason": "The original behavior is exercised by the named Electron test and used by the shared details components."
+  },
+  "ScreenshotLightboxTests.The_cap_is_the_shots_own_native_size": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/gallery.spec.ts",
+        "case": "gallery keeps wheel input, full image geometry, keyboard focus and origin return"
+      }
+    ],
+    "reason": "Actual Electron desktop and fullscreen assertions cover image containment/native-size cap, focus trap, navigation, one-layer Escape, original-thumbnail focus restoration and wheel containment at both strip edges. The fixture travels through production main, preload and renderer with a deterministic PNG."
+  },
+  "ScreenshotLightboxStructureTests.Focus_is_trapped_inside_the_overlay": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/gallery.spec.ts",
+        "case": "gallery keeps wheel input, full image geometry, keyboard focus and origin return"
+      }
+    ],
+    "reason": "Actual Electron desktop and fullscreen assertions cover image containment/native-size cap, focus trap, navigation, one-layer Escape, original-thumbnail focus restoration and wheel containment at both strip edges. The fixture travels through production main, preload and renderer with a deterministic PNG."
+  },
+  "ScreenshotLightboxStructureTests.The_frame_is_capped_at_the_shots_native_size_and_never_cropped": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/gallery.spec.ts",
+        "case": "gallery keeps wheel input, full image geometry, keyboard focus and origin return"
+      }
+    ],
+    "reason": "Actual Electron desktop and fullscreen assertions cover image containment/native-size cap, focus trap, navigation, one-layer Escape, original-thumbnail focus restoration and wheel containment at both strip edges. The fixture travels through production main, preload and renderer with a deterministic PNG."
+  },
+  "ScreenshotLightboxStructureTests.It_carries_a_close_control_and_navigation_with_keyboard_equivalents": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/gallery.spec.ts",
+        "case": "gallery keeps wheel input, full image geometry, keyboard focus and origin return"
+      }
+    ],
+    "reason": "Actual Electron desktop and fullscreen assertions cover image containment/native-size cap, focus trap, navigation, one-layer Escape, original-thumbnail focus restoration and wheel containment at both strip edges. The fixture travels through production main, preload and renderer with a deterministic PNG."
+  },
+  "ScreenshotLightboxStructureTests.It_announces_itself_as_a_dialog_and_says_which_shot_is_up": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "opens on the pressed shot, wraps both ways and keeps the strip selection in sync"
+      }
+    ],
+    "reason": "The DOM has an actual dialog role and a position/count accessible name; its changing visible caption is a polite live region. This provides the semantics for which Avalonia required name-based workarounds."
+  },
+  "GameReceptionViewModelTests.No_rows_means_no_line": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "omits reception when rows are absent, have no figure, or have zero respondents"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
+      }
+    ],
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
+  },
+  "GameReceptionViewModelTests.A_source_with_no_figure_contributes_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "omits reception when rows are absent, have no figure, or have zero respondents"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
+      }
+    ],
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
+  },
+  "GameReceptionViewModelTests.Every_figure_is_attributed_and_carries_its_count": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "orders three attributed populations without blending their figures"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
+      }
+    ],
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
+  },
+  "GameReceptionViewModelTests.Steams_own_label_is_on_hover_and_not_on_the_line": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "orders three attributed populations without blending their figures"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
+      }
+    ],
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
+  },
+  "GameReceptionViewModelTests.A_count_of_zero_is_no_figure_rather_than_a_score_from_nobody": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "omits reception when rows are absent, have no figure, or have zero respondents"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
+      }
+    ],
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
+  },
+  "GameReceptionViewModelTests.The_three_figures_are_never_blended": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "orders three attributed populations without blending their figures"
+      },
+      {
+        "case": "renders attributed reception and lifecycle evidence in the original reading surfaces",
+        "file": "tests/parity-action-controls.test.tsx"
+      }
+    ],
+    "reason": "The original population/formatting contracts and their integration into Avalon desktop Overview and fullscreen About are verified, including attributed accessible names."
+  },
+  "GameRefetchViewModelTests.Nothing_is_said_until_something_is_asked": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "stays quiet initially and refreshes snapshots only after a write"
+      },
+      {
+        "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
+        "file": "tests/parity-action-controls.test.tsx"
+      }
+    ],
+    "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
+  },
+  "GameRefetchViewModelTests.Every_outcome_is_a_word": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "with no invented percentage and supports the wire enum"
+      },
+      {
+        "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
+        "file": "tests/parity-action-controls.test.tsx"
+      }
+    ],
+    "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
+  },
+  "GameRefetchViewModelTests.Only_a_write_reopens_the_modal_and_carries_its_confirmation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "stays quiet initially and refreshes snapshots only after a write"
+      },
+      {
+        "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
+        "file": "tests/parity-action-controls.test.tsx"
+      }
+    ],
+    "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
+  },
+  "GameRefetchViewModelTests.A_carried_confirmation_is_shown_on_the_reopened_modal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "keeps a carried success visible when refreshed details reconstruct the control"
+      },
+      {
+        "case": "keeps refetch outcome %s in the Details footer across More close and reopen",
+        "file": "tests/parity-action-controls.test.tsx"
+      }
+    ],
+    "reason": "Source-equivalent outcome helpers and the actual More control are tested in both Avalon modes. Only the Updated outcome refreshes visible facts, and its confirmation survives menu reconstruction."
+  }
+}

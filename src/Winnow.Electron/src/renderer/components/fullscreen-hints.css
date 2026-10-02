@@ -1,0 +1,25 @@
+@layer themes {
+  .fullscreen-input-hints,
+  .fullscreen-input-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .fullscreen-input-hints {
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .fullscreen-input-hint > [data-input-glyph] {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+  }
+  .fullscreen-input-hint svg {
+    width: 100%;
+    height: 100%;
+  }
+  .fullscreen-input-hint path {
+    fill: currentColor;
+  }
+}

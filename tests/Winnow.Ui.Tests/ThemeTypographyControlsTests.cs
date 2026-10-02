@@ -96,7 +96,7 @@ public sealed class ThemeTypographyControlsTests
         finally
         {
             window.Close();
-            ThemeTypographyResources.Apply(Application.Current!.Resources, ThemeTypography.Default);
+            ThemeTypographyResources.Apply(Avalonia.Application.Current!.Resources, ThemeTypography.Default);
         }
     }
 

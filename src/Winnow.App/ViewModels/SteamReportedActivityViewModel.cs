@@ -2,6 +2,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
+using Winnow.Api.Client;
+using Winnow.Api.Contracts.Details;
 
 namespace Winnow.App.ViewModels;
 
@@ -10,6 +12,7 @@ public partial class SteamReportedActivityViewModel : ObservableObject, IDisposa
 {
     private readonly ISteamPlaytimeObservationRepository? _repository;
     private readonly ISettingsRepository? _settings;
+    private readonly WinnowApiClient? _api;
     private IReadOnlyDictionary<long, string> _scope;
     private CancellationTokenSource? _read;
     private int _revision;
@@ -19,8 +22,8 @@ public partial class SteamReportedActivityViewModel : ObservableObject, IDisposa
     private const int PageSize = 20;
 
     public SteamReportedActivityViewModel(ISteamPlaytimeObservationRepository? repository = null,
-        IReadOnlyDictionary<long, string>? scope = null, ISettingsRepository? settings = null)
-    { _repository = repository; _scope = scope ?? new Dictionary<long, string>(); _settings = settings; }
+        IReadOnlyDictionary<long, string>? scope = null, ISettingsRepository? settings = null, WinnowApiClient? api = null)
+    { _repository = repository; _scope = scope ?? new Dictionary<long, string>(); _settings = settings; _api = api; }
 
     public const string Heading = "Steam-reported activity";
     public const string Explanation = "Approximate increases in Steam's playtime, observed between library checks. These are not exact sessions and are not added to recorded-session totals. Steam's lifetime total already includes this playtime.";
@@ -56,6 +59,19 @@ public partial class SteamReportedActivityViewModel : ObservableObject, IDisposa
         _all = []; _page = 0; Publish();
         try
         {
+            if (_api is not null)
+            {
+                var response = await _api.SendAsync<SteamActivityRequest, SteamActivityResponse>(HttpMethod.Post,
+                    "activity/steam", new(scope.Keys.ToArray()), ct: cancellation.Token);
+                if (_disposed || revision != _revision) return;
+                _all = response.Activity.Where(row => scope.ContainsKey(row.OwnershipId))
+                    .Select(row => new SteamReportedActivityRow(row, scope[row.OwnershipId])).ToArray();
+                Status = response.AccountConfirmationRequired
+                    ? "Confirm your Steam account in Settings to see its reported activity."
+                    : _all.Count == 0 ? EmptyMessage : "";
+                Publish();
+                return;
+            }
             if (_repository is null)
             { Status = "Steam-reported activity is unavailable."; return; }
             var ownOnly = _settings is not null && AccountScope.IsOwnOnly(await _settings.GetAsync(AccountScope.SettingKey, cancellation.Token));

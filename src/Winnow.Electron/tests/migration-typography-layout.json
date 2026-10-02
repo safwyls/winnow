@@ -1,0 +1,236 @@
+{
+  "FloatingLayoutTests.The_layout_moves_only_the_ground_and_the_caption": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/floating-layout-contracts.test.ts",
+        "case": "only $id ground and caption move with layout at every whole slider position and reach"
+      },
+      {
+        "file": "tests/theme-token-golden.test.ts",
+        "case": "preserves all 61 frozen $id tokens through both JSON directions at every source slider position"
+      },
+      {
+        "file": "tests/electron/appearance.spec.ts",
+        "case": "desktop material requests preserve opaque covers and one coat per pane, with flush/floating geometry"
+      }
+    ],
+    "reason": "All nine original palettes compare the full 61-role set at every whole-percent slider position and both content-pane settings. Only ShellGround and CaptionFill may change between layouts. The shared test adapter names original extra-alpha and Fluent scrollbar roles as serialization arithmetic; it does not claim Chromium uses Fluent templates. The original golden matrix also passes after extracting the adapter."
+  },
+  "FloatingLayoutTests.A_field_is_one_step_above_the_pane_in_either_layout": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/floating-layout-contracts.test.ts",
+        "case": "$id fields are exactly one opaque palette step above their pane in both layouts"
+      },
+      {
+        "file": "tests/electron/appearance.spec.ts",
+        "case": "desktop material requests preserve opaque covers and one coat per pane, with flush/floating geometry"
+      }
+    ],
+    "reason": "All nine palettes and both layouts retain exact opaque Ground for PaneGround and Surface for ChromeFieldOnGround, with strictly higher field luminance. These are the complete original value assertions through the production projection."
+  },
+  "FloatingLayoutTests.An_unknown_stored_layout_reads_as_unset": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/floating-layout-contracts.test.ts",
+        "case": "reads original and unknown stored layout IDs with floating as the unset default"
+      }
+    ],
+    "reason": "Known flush/floating IDs survive preference interpretation; original future IDs and unset values resolve to Floating without writing a new preference. Electron stores the same IDs directly instead of round-tripping an Avalonia enum."
+  },
+  "FloatingLayoutTests.A_stored_layout_comes_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "restores the original saved floating layout without writing it again"
+      },
+      {
+        "file": "tests/electron/appearance.spec.ts",
+        "case": "fullscreen and disabled transparency restore solid surfaces while saved material and reach survive reload"
+      }
+    ],
+    "reason": "The exact single stored Floating preference loads through the real appearance hook with zero writes. Native application checks also preserve saved appearance through reload and retain flush/floating pane geometry on desktop; fullscreen keeps its separate opaque composition without losing the saved layout."
+  },
+  "FloatingLayoutTests.An_overridden_session_never_writes_a_layout": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/floating-layout-contracts.test.ts",
+        "case": "seals the exact Tungsten 60 Mica content-pane session through Flush then Floating without writes"
+      },
+      {
+        "file": "tests/appearance-session.test.ts",
+        "case": "all appearance edits stay live in memory while unrelated preferences retain normal persistence"
+      },
+      {
+        "file": "tests/electron/appearance-session.spec.ts",
+        "case": "development appearance overrides remain live on both surfaces without changing either saved appearance store"
+      }
+    ],
+    "reason": "The exact Tungsten/60/Mica/content-pane/Floating override accepts Flush then Floating in memory without invoking persistent writes. Native desktop and fullscreen journeys additionally prove both appearance stores remain unchanged while unrelated preferences retain normal persistence."
+  },
+  "SegmentedSelectorContainmentTests.Segment_states_preserve_the_rounded_group_boundary": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/typography-runtime.spec.ts",
+        "case": "actual segmented end states preserve all source rounded corner pixels and keep an inset focus ring"
+      }
+    ],
+    "reason": "Both original palettes render the 440 by 160 host and 392 by 120 segmented group with a 4px border, 16px outer radius and 12px inner arc. Native pixel checks preserve every original corner sample through first/last selected, hover and pressed states, retain all bounds, paint selected interiors and detect the unclipped negative control. Keyboard focus remains visible and inset. The checks corrected an Avalon cascade rule that overrode the generic inset outline."
+  },
+  "ThemeTypographyControlsTests.Desktop_font_pickers_and_size_follow_the_selected_theme": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "keeps independent role fonts and size through palette switches, restart and reset"
+      },
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "shows the canonical bundled choice without rewriting a lowercase saved family"
+      },
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "role fonts and text size scale text without enlarging icons or covers"
+      },
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "fullscreen Theme Studio and Settings Appearance separately retain TV typography font selection and keyboard focus"
+      }
+    ],
+    "reason": "Production controls retain the exact IBM/Bricolage/Jakarta choices and 115-percent size across palette switches, reload and reset. Lowercase saved names show canonical picker labels without a normalization write. Native desktop/fullscreen Studio verifies actual controls; the separate fullscreen Settings picker is exercised independently."
+  },
+  "ThemeTypographyControlsTests.Desktop_maximum_size_keeps_typography_controls_reachable_and_reset_restores_authored_values": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "resets maximum-size edits to the authored IBM heading and 105 percent"
+      },
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "desktop maximum theme size keeps every control inside its scroller and keyboard reset restores authored IBM 105 defaults"
+      }
+    ],
+    "reason": "The original authored IBM heading and 105-percent defaults are edited to 120 and restored by actual keyboard activation. At the original 1000 by 720 desktop boundary, all three font controls, the slider and reset remain reachable and contained in their scroll viewport. Fullscreen Studio and Settings controls are separately measured and focused."
+  },
+  "ThemeTypographyRuntimeTests.Desktop_text_and_reading_line_height_follow_live_resources_without_scaling_geometry": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "reapplies role fonts and text scale from stable baselines independently of interface geometry"
+      },
+      {
+        "file": "tests/theme-runtime.test.tsx",
+        "case": "publishes resolved typography after hydration and only repeats it for semantic typography changes"
+      },
+      {
+        "file": "tests/electron/typography-runtime.spec.ts",
+        "case": "desktop source text and reading line heights follow the repeated live scale without changing a fixed control width"
+      },
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "role fonts and text size scale text without enlarging icons or covers"
+      }
+    ],
+    "reason": "At the original 640 by 480 boundary, production text roles follow 120/80/100/120 from stable baselines: heading22, paragraph12 with line18, compact11 and the retained 120px-wide action. Interface and heading families retain their separate roles. Component runtime checks additionally preserve interface geometry and publish only semantic typography changes."
+  },
+  "ThemeTypographyRuntimeTests.Missing_font_falls_back_by_role_and_installed_fonts_are_available": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "falls back by role and resolves bundled family names case-insensitively"
+      },
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "loads installed fonts only on request and keeps an editable family fallback"
+      },
+      {
+        "file": "tests/parity-font-catalogue.test.ts",
+        "case": "grants only a pending trusted top-level font request and revokes after success"
+      },
+      {
+        "file": "tests/popout-typography.test.ts",
+        "case": "embeds only the three known bundled role fonts as data resources"
+      },
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "native installed-font enumeration supplies usable family choices"
+      }
+    ],
+    "reason": "Exact original missing-family names retain saved values while Chromium rendered-glyph inspection proves the correct bundled fallback for each role. Native enumeration includes usable installed families; bundled fonts are available and the missing family is rejected. Local popouts also render their known embedded font data. CSS stack assertions alone are not used as fallback proof."
+  },
+  "ThemeTypographyRuntimeTests.Plain_inputs_follow_theme_face_and_size": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/typography-runtime.spec.ts",
+        "case": "all six plain native input roles follow the source fourteen pixel font and exact live scale sequence"
+      }
+    ],
+    "reason": "All six ordinary Chromium input equivalents retain the original 14px interface baseline and IBM family through 100/120/80/100: button, text, choice, checkbox, switch and numeric input. The isolated host uses production base styles, matching the source fixture of ordinary controls outside specialized component styles."
+  },
+  "ThemeTypographyRuntimeTests.Native_fullscreen_popout_sizes_consent_hints_and_keyboard_from_stable_baselines": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/popout-typography.test.ts",
+        "case": "updates the retained local document across the exact scale sequence without replacing a masked draft or focus"
+      },
+      {
+        "file": "tests/popout-typography.test.ts",
+        "case": "isolates application owners, suppresses equal updates and releases closed subscriptions and destroyed owners"
+      },
+      {
+        "file": "tests/popout-typography.test.ts",
+        "case": "the application sender boundary refuses %s before publishing popout typography"
+      },
+      {
+        "file": "tests/popout-typography-preload.test.ts",
+        "case": "exposes only the named typography invocation from the frozen preload bridge"
+      },
+      {
+        "file": "tests/parity-link-browser.test.ts",
+        "case": "updates only the retained local toolbar, measures its font and resize height, and unsubscribes on close"
+      },
+      {
+        "file": "tests/electron/typography-popout.spec.ts",
+        "case": "trusted fullscreen native account and reference popouts keep live source typography draft focus and provider separation"
+      },
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "fullscreen combines page and theme text scales without scaling the chrome or icons twice"
+      }
+    ],
+    "reason": "The actual fullscreen consent dialog and separate trusted native account/reader documents follow theme-only 120/80/100/120 baselines: 28px copy/actions/keys, 42px reading line height and 24px hints. Live native changes preserve the masked draft, selection and focus. Measured provider insets keep wrapped local controls above the web page; narrow toolbar bounds are verified. Provider page typography is not changed. These are separate rendered hosts, explicitly replacing the original NativeThemeTypography fixture."
+  },
+  "ThemeTypographyRuntimeTests.Fullscreen_combines_theme_and_page_scale_without_accumulation_or_scaling_icons": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-typography.test.tsx",
+        "case": "reapplies role fonts and text scale from stable baselines independently of interface geometry"
+      },
+      {
+        "file": "tests/parity-fullscreen-theme-settings.test.tsx",
+        "case": "bounds theme text size in five-point steps and resets only the current palette typography"
+      },
+      {
+        "file": "tests/electron/typography-runtime.spec.ts",
+        "case": "source fullscreen page roles combine theme and page factors once while the shell clock and fixed icon remain independent"
+      },
+      {
+        "file": "tests/electron/typography.spec.ts",
+        "case": "fullscreen combines page and theme text scales without scaling the chrome or icons twice"
+      }
+    ],
+    "reason": "An explicit production-component probe preserves source page1.4 with 28px copy/action, 64px heading, 24px clock and fixed32 icon through 120/80/100/120. Actual Home separately proves its current 24px body/action roles, heading, clock and icons follow the same independent factors. Header reservation prevents font changes from crossing the cover-sizing threshold. Actual consent excludes page text scale as required by the native source contract."
+  }
+}

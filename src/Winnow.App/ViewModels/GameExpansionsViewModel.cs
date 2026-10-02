@@ -104,6 +104,10 @@ public sealed partial class GameExpansionsViewModel : ObservableObject
             // still this game. ChildWorkId names the link, never the row.
             await _ungroup(row.ChildWorkId);
         }
+        catch (Winnow.Api.Client.BackendApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            Problem = "This group changed in another window. Reopen the game to review its latest links before separating it.";
+        }
         catch
         {
             Problem = ExpansionCopy.UngroupProblem;

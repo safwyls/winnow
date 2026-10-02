@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Winnow.Api.Contracts/Winnow.Api.Contracts.csproj" />
+    <InternalsVisibleTo Include="Winnow" />
+    <InternalsVisibleTo Include="Winnow.Tests" />
+    <InternalsVisibleTo Include="Winnow.Backend.Tests" />
+    <InternalsVisibleTo Include="Winnow.Electron.Fixtures" />
+  </ItemGroup>
+</Project>

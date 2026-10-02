@@ -3,13 +3,16 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.Core.Domain;
 using Winnow.Core.Repositories;
+using Winnow.Api.Client;
+using Winnow.Api.Contracts.Details;
 
 namespace Winnow.App.ViewModels;
 
 /// <summary>Saved post-session notes for the game currently open in the details modal.</summary>
 public sealed partial class GameJournalViewModel : ObservableObject
 {
-    private readonly ISessionRepository _sessions;
+    private readonly ISessionRepository? _sessions;
+    private readonly WinnowApiClient? _api;
 
     public GameJournalViewModel(
         IEnumerable<SessionJournalEntry> entries,
@@ -28,6 +31,14 @@ public sealed partial class GameJournalViewModel : ObservableObject
 
     public ObservableCollection<JournalEntryViewModel> Entries { get; }
 
+    public GameJournalViewModel(IEnumerable<SessionJournalEntry> entries, bool promptEnabled, WinnowApiClient api)
+    {
+        _api = api;
+        PromptEnabled = promptEnabled;
+        Entries = new ObservableCollection<JournalEntryViewModel>(entries.OrderByDescending(x => x.SessionAt)
+            .ThenByDescending(x => x.SessionId).Select(x => new JournalEntryViewModel(x, this)));
+    }
+
     public bool PromptEnabled { get; }
 
     public bool HasEntries => Entries.Count > 0;
@@ -37,7 +48,8 @@ public sealed partial class GameJournalViewModel : ObservableObject
         ? GameDetailsCopy.JournalEmptyPromptOn
         : GameDetailsCopy.JournalEmptyPromptOff;
 
-    internal ISessionRepository Sessions => _sessions;
+    internal ISessionRepository? Sessions => _sessions;
+    internal WinnowApiClient? Api => _api;
 
     internal void ApplySnapshot(IReadOnlyList<SessionJournalEntry> entries)
     {
@@ -63,7 +75,8 @@ public sealed partial class GameJournalViewModel : ObservableObject
 
     internal async Task DeleteAsync(JournalEntryViewModel entry, CancellationToken ct)
     {
-        await _sessions.DeleteNoteAsync(entry.SessionId, ct);
+        if (_api is not null) await new DetailsClient(_api).DeleteJournalAsync(entry.SessionId, entry.ExpectedRevision, ct);
+        else await _sessions!.DeleteNoteAsync(entry.SessionId, ct);
         Entries.Remove(entry);
         OnPropertyChanged(nameof(HasEntries));
     }
@@ -73,11 +86,18 @@ public sealed partial class GameJournalViewModel : ObservableObject
 public sealed partial class JournalEntryViewModel : ObservableObject
 {
     private readonly GameJournalViewModel? _journal;
-    private readonly ISessionRepository _sessions;
+    private readonly ISessionRepository? _sessions;
+    private readonly WinnowApiClient? _api;
+    private string? _editRevision;
+    internal string ExpectedRevision => _editRevision ?? JournalRevision.For(SessionId, Note, Rating);
 
     internal JournalEntryViewModel(SessionJournalEntry entry, GameJournalViewModel journal)
-        : this(entry.SessionId, new SessionNote { SessionId = entry.SessionId, Note = entry.Note, Rating = entry.Rating }, journal.Sessions)
     {
+        _sessions = journal.Sessions;
+        _api = journal.Api;
+        SessionId = entry.SessionId;
+        Note = entry.Note;
+        Rating = entry.Rating;
         _journal = journal;
         DateText = UpdateEventViewModel.LocalDateText(entry.SessionAt);
     }
@@ -93,6 +113,14 @@ public sealed partial class JournalEntryViewModel : ObservableObject
     }
 
     public long SessionId { get; }
+
+    public JournalEntryViewModel(long sessionId, SessionNote? original, WinnowApiClient api)
+    {
+        _api = api;
+        SessionId = sessionId;
+        Note = original?.Note;
+        Rating = original?.Rating;
+    }
 
     public string DateText { get; } = string.Empty;
 
@@ -168,6 +196,7 @@ public sealed partial class JournalEntryViewModel : ObservableObject
 
         DraftNote = Note ?? string.Empty;
         DraftRating = Rating ?? 0;
+        _editRevision = JournalRevision.For(SessionId, Note, Rating);
         Problem = null;
         IsConfirmingDelete = false;
         IsEditing = true;
@@ -217,10 +246,12 @@ public sealed partial class JournalEntryViewModel : ObservableObject
         Problem = null;
         try
         {
-            await _sessions.SetNoteAsync(new SessionNote { SessionId = SessionId, Note = note, Rating = rating }, ct);
+            if (_api is not null) await new DetailsClient(_api).SaveJournalAsync(SessionId, new(note, rating, ExpectedRevision), ct);
+            else await _sessions!.SetNoteAsync(new SessionNote { SessionId = SessionId, Note = note, Rating = rating }, ct);
             Note = note;
             Rating = rating;
             IsEditing = false;
+            _editRevision = null;
         }
         catch
         {
@@ -238,6 +269,7 @@ public sealed partial class JournalEntryViewModel : ObservableObject
         if (!IsSaving)
         {
             IsConfirmingDelete = true;
+            _editRevision = JournalRevision.For(SessionId, Note, Rating);
             Problem = null;
         }
     }
@@ -258,7 +290,8 @@ public sealed partial class JournalEntryViewModel : ObservableObject
         try
         {
             if (_journal is not null) await _journal.DeleteAsync(this, ct);
-            else await _sessions.DeleteNoteAsync(SessionId, ct);
+            else if (_api is not null) await new DetailsClient(_api).DeleteJournalAsync(SessionId, ExpectedRevision, ct);
+            else await _sessions!.DeleteNoteAsync(SessionId, ct);
         }
         catch (OperationCanceledException)
         {

@@ -420,7 +420,7 @@ memory and shuffle seeds do not change its membership or order. It does not clai
 from the recommendation shelves. Items carry a last-played date, zero score and no scoring
 signals. Candidate, work and history-probe counts continue to describe recommendations.
 
-Desktop shows the first six cards and holds four; fullscreen exposes all ten through its
+Desktop shows the first five cards; fullscreen exposes all ten through its
 existing horizontal shelf. Neither surface offers verdict controls or logs feed surfacings
 for this collection. Empty collections are omitted.
 

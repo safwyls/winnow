@@ -364,7 +364,7 @@ public sealed class UpdateAcknowledgementCompositionTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-        Program.ConfigureServices(services, new(db.DatabasePath + "-data", db.DatabasePath, DataMigrationOutcome.Overridden));
+        Winnow.App.LegacyTestServices.ConfigureServices(services, new(db.DatabasePath + "-data", db.DatabasePath, DataMigrationOutcome.Overridden));
         services.AddSingleton<ISqliteConnectionFactory>(db.Factory);
         return services.BuildServiceProvider();
     }

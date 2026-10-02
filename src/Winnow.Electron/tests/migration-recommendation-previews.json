@@ -1,0 +1,178 @@
+{
+  "FeedCardBackdropTests.Released_card_ignores_late_pixels_and_reacquires_on_attach": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-preview-artwork.test.tsx",
+        "case": "released 440 by 190 Steam hero123 ignores late eight-pixel artwork and reacquires on attachment"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RecommendationPreviewParityTests.cs",
+        "case": "Canceled_hero_pixels_can_be_reacquired_from_the_real_pipeline_with_identical_encoded_bytes"
+      },
+      {
+        "file": "tests/electron/preview-shelves.spec.ts",
+        "case": "desktop preview releases a pending real artwork request ignores its late bytes and reacquires on attachment"
+      }
+    ],
+    "reason": "The exact 440 x 190 SteamHero 123 fixture cancels the outgoing consumer, rejects late 8 x 8 PNG bytes, reacquires through a distinct request, publishes the current image, and clears its source on final detach. The real Artwork/cache component supplies exact small-image lifecycle evidence; native adds authenticated request cancellation, actual decoded pixels and DOM source release. Electron uses its 480 px decode tier for the 440 px target and distinguishes releasing a live consumer from retaining unleased scrollback cache pixels."
+  },
+  "FeedCardBackdropTests.Detached_metadata_read_cannot_replace_reattached_cards_candidates": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-preview-artwork.test.tsx",
+        "case": "detached cancellation-ignoring artwork metadata cannot replace reattached currentart candidates"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RecommendationPreviewParityTests.cs",
+        "case": "Detached_artwork_metadata_keeps_staleart_separate_from_the_current_reattached_selection"
+      },
+      {
+        "file": "tests/electron/preview-shelves.spec.ts",
+        "case": "desktop detached metadata cannot replace the reattached preview artwork candidates"
+      }
+    ],
+    "reason": "The exact work 1/440 x 190 lifecycle cancels detached metadata, starts a fresh observer, lets staleart finish while the current read remains held, and starts no stale artwork request. Only currentart selects igdb-backdrop/currentart and reaches the image. Native verifies real green pixels and provider/id request provenance; HTTP proves the old immutable metadata response stays separate from the updated SQLite image row. The API-selected Hero candidate replaces the Avalonia WorkImages delegate without changing stale-result ownership."
+  },
+  "GamePreviewBubbleTests.Artwork_continues_through_pointer_without_border_seam_or_rectangular_spill": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/preview-shelves.spec.ts",
+        "case": "desktop source 200 by 100 artwork continues through the pointer without a seam or rectangular spill"
+      }
+    ],
+    "reason": "The exported production bubble runs in Chromium with the exact 200 x 100 black background, white border and red artwork. Native pixel checks retain alpha 0 at(2,10), exact equality across body(30,40), pointer root(10,40) and tip(5,40), opaque alpha 255 and red 44..48 from 18% artwork. The same SVG outline clips surface/artwork and draws the border without a seam."
+  },
+  "GamePreviewBubbleTests.Flipped_pointer_moves_artwork_and_content_gutter_together": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/preview-shelves.spec.ts",
+        "case": "desktop source flipped pointer moves artwork geometry and child gutter together"
+      }
+    ],
+    "reason": "The real production 200 x 100 bubble moves its child gutter fromX26 toX16 when the pointer flips, keeps child width unchanged, and preserves the source transparent/opaque pixel checks at(197,10),(195,40),(2,40). Pointer direction, artwork clip and content padding change together."
+  },
+  "FeedPreviewRatingsTests.Hover_displays_each_available_population_with_its_score_and_count": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-preview.test.tsx",
+        "case": "opens an immediate noninteractive preview with compact attributed ratings"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RecommendationPreviewParityTests.cs",
+        "case": "Preview_populations_preserve_each_original_score_count_label_and_empty_result"
+      },
+      {
+        "file": "tests/electron/preview-shelves.spec.ts",
+        "case": "desktop source hover loads compact populations lazily with accessible counts and no repeated reason"
+      }
+    ],
+    "reason": "The Hades work 1 fixture reads no ratings before hover and exactly once on entry, preserving Steam 93/1500/Very Positive, critics 88/12 and users 81/100 through actual SQLite/HTTP. The compact line matches source ordering and attribution, excludes visible counts and percent, has no tooltip or actions, and disappears on exit. Despite the method title, those exclusions are the actual source assertions; all populations/counts/Steam percentage remain in the accessible group name."
+  },
+  "FeedPreviewRatingsTests.Missing_ratings_do_not_reserve_preview_space": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-preview.test.tsx",
+        "case": "missing ratings leave the pending Hades preview content unchanged and reserve no rating row"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RecommendationPreviewParityTests.cs",
+        "case": "Preview_populations_preserve_each_original_score_count_label_and_empty_result"
+      },
+      {
+        "file": "tests/electron/preview-shelves.spec.ts",
+        "case": "desktop source missing ratings reserve no preview space"
+      }
+    ],
+    "reason": "Pending and empty Hades ratings both omit the rating row. Component evidence preserves identical content after[] and native compares actual bubble width/height before and after the held real empty response; there is no reserved rating space."
+  },
+  "FeedPreviewRatingsTests.Closed_or_disposed_preview_cancels_pending_ratings_and_ignores_late_result": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-preview.test.tsx",
+        "case": "ignores late metadata after preview %s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RecommendationPreviewParityTests.cs",
+        "case": "Completed_rating_response_is_held_without_a_SQLite_lease_and_late_release_preserves_original_bytes"
+      },
+      {
+        "file": "tests/electron/preview-shelves.spec.ts",
+        "case": "desktop source ${disposed ? 'disposed' : 'closed'} preview cancels ratings and ignores the late response"
+      }
+    ],
+    "reason": "Both source rows execute: pointer exit and disposal of the mounted preview owner cancel the specific named request, remove tooltip/described-by/reception content and ignore the late complete three-population response. Native holds exact production response bytes after repository completion and confirms underlying HTTP cancellation before late release; component teardown confirms no late state publication."
+  },
+  "FeedPreviewRatingsTests.Ratings_arriving_near_bottom_reposition_the_growing_preview_inside_window": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RecommendationPreviewParityTests.cs",
+        "case": "Preview_populations_preserve_each_original_score_count_label_and_empty_result"
+      },
+      {
+        "file": "tests/electron/preview-shelves.spec.ts",
+        "case": "desktop source ratings growth near the bottom reclamps the measured preview within the window"
+      }
+    ],
+    "reason": "The source 900 x 400 window and card atY340 receive the complete Hades rating populations after the initial bubble is measured. Native requires a strictly taller bubble, an upward reposition and all final bounds inside the viewport, exercising production ResizeObserver placement rather than mocked dimensions."
+  },
+  "FeedShelfVisualTests.Capture_cover_shelves_and_quick_details": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-preview.test.tsx",
+        "case": "opening a feed preview closes the library preview without a pointer exit"
+      },
+      {
+        "file": "tests/avalon-preview.test.tsx",
+        "case": "fullscreen covers keep selection in the hero without a hover metadata reader or bubble"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RecommendationPreviewParityTests.cs",
+        "case": "Visual_fixture_has_exactly_two_five_card_shelves_with_original_titles_reasons_and_Hades_summary"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RecommendationPreviewParityTests.cs",
+        "case": "Fixture_control_is_authenticated_and_supplied_source_artwork_has_portrait_and_landscape_dimensions"
+      },
+      {
+        "file": "tests/electron/preview-shelves.spec.ts",
+        "case": "desktop source two five-card shelves and Hades quick details at ${width} by 1000"
+      },
+      {
+        "file": "tests/electron/preview-shelves.spec.ts",
+        "case": "fullscreen separate shelf presentation keeps the selected hero and controller navigation without pointer previews at ${width}"
+      }
+    ],
+    "reason": "Both source 1600/900 x 1000 sizes preserve two shelves of five original titles/reasons, exact headings/blurbs, installed Steam facts, Hades summary, supplied portrait/hero artwork and fourth-card quick details. Native checks 180..240 px 2:3 covers,18 px gaps and bounded flipped preview, with separate fullscreen 1280/1920 selected-hero/controller navigation and no pointer preview. Capture-enabled frozen source failed because its empty, never-loaded FeedViewModel receives exactly 2 x 5 cards but asserted 12. Root corrected only 12 to 10; all 13 source cases then passed and both widths also passed with supplied artwork. API stable IDs 1..5 replace the source TileFixture reused default identity while preserving both repeated five-card tuples; candidate count remains the original unloaded 0. The unused sixth array entry Tunic stays absent. The source capture supplies the same bitmap for vivid and dormancy floor; native uses the real pipeline, which desaturates never-played unselected covers. Both preview heroes use vivid artwork. This fixture distinction is recorded rather than changing play facts or dormancy styling to force identical colors. The source capture has no sidebar; the real desktop shell leaves less room beside Hades at 1600px, so native asserts the measured side-selection rule, flush anchor and 8px viewport inset rather than hard-coding a side from the isolated capture. Fullscreen capacity is four at 1280px and five at 1920px; controller traversal verifies all five titles/reasons and the paged fifth card before returning to Hades and changing shelves."
+  },
+  "LibraryHoverPreviewTests.Exit_or_recycle_closes_preview_and_cancels_pending_metadata": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-preview.test.tsx",
+        "case": "ignores late metadata after preview %s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RecommendationPreviewParityTests.cs",
+        "case": "Completed_rating_response_is_held_without_a_SQLite_lease_and_late_release_preserves_original_bytes"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RecommendationPreviewParityTests.cs",
+        "case": "Preview_populations_preserve_each_original_score_count_label_and_empty_result"
+      },
+      {
+        "file": "tests/electron/preview-shelves.spec.ts",
+        "case": "desktop source library ${recycle ? 'same ID Replacement recycle' : 'pointer exit'} closes preview and cancels pending metadata"
+      }
+    ],
+    "reason": "Both pointer exit and same-workId Replacement recycling close the preview, cancel its exact pending request and ignore late Steam 93/1500 and critics 88/12 metadata. The component retains the original DOM button during recycle, proving lifecycle invalidation rather than a keyed remount. Native uses actual shell/library and real same-ID SQLite rename/publication, with no response rewriting; original standalone canvas positioning is incidental to this cancellation contract."
+  }
+}

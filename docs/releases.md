@@ -1,13 +1,48 @@
 # Release builds
 
-`Release builds` packages self-contained .NET 10 applications for Windows x64 and Linux
-x64. It leaves trimming and single-file publishing disabled because Winnow uses reflection,
-embedded migrations, Avalonia resources, and native libraries. The Windows x64 build is
-also ReadyToRun-compiled and ships with `System.GC.ConserveMemory=9`. The Windows
-[memory measurements](spikes/memory-footprint.md) support these settings. Linux x64
-uses neither setting; its performance was not measured in that study.
+`Release builds` packages the Electron desktop/fullscreen frontend with an independent
+self-contained .NET 10 backend and update helper for Windows x64 and Ubuntu 24.04 x64.
+Managed components keep trimming and single-file publishing disabled because they use
+reflection, embedded migrations and native libraries. Windows managed companions use
+ReadyToRun; the primary package does not set `System.GC.ConserveMemory=9`. The older
+[memory measurements](spikes/memory-footprint.md) describe the retained Avalonia frontend
+and do not establish Electron memory use.
 
 ## Application version
+
+The default publisher and release workflow select Electron. Source build and run commands
+are described in [`src/Winnow.Electron/README.md`](../src/Winnow.Electron/README.md).
+`packaging/Publish-Avalonia.ps1` retains the explicit reference frontend publisher;
+its output is not a primary release artifact. The Electron package uses the existing
+distribution and update contracts. Windows x64 has passed packaged launch,
+installation, previous-release upgrade, uninstall and portable recovery checks on a
+disposable runner, including the older release's embedded installer updater.
+A separate successful case uses the copied portable helper from that release.
+Ubuntu 24.04 x64 has also passed Debian install, actual previous-release upgrade,
+desktop/fullscreen startup, data-preserving removal, all five portable recovery cases
+and native/Proton session checks. The
+[Linux package checkpoint](spikes/2026-09-28-electron-parity/checkpoint-ninety-three.md)
+records the tested checkout and retained evidence. Xvfb qualification does not establish
+physical Linux compositor or controller behavior.
+
+The primary Electron Windows package is built with `packaging/Publish.ps1`, which forwards
+to `Publish-Electron.ps1` using the same arguments,
+then `packaging/windows/New-WindowsPackage.ps1`. Install locked frontend dependencies
+with `npm ci` in `src/Winnow.Electron` first. The directory contains `Winnow.exe`,
+`resources/app.asar`, independent `backend/` and `update-helper/` runtimes, and the
+bundled provider. `release-info.json` identifies the Electron frontend; ASAR and managed
+assemblies contain the same version and commit. `Verify-ElectronPackage.ps1` checks
+identity, assets, runtime and notices and writes `PACKAGE-SHA256SUMS`.
+
+CI calls `Electron package validation` for both platforms. It runs packaged frontend,
+Inno/ZIP and Debian/tar installation, previous-version upgrade and recovery scenarios
+on disposable runners. It retains `electron-windows-evidence`, `electron-linux-evidence`
+and `electron-packages-<runtime>` for 14 days without publishing a release.
+This pipeline preserves the Inno AppId, protocol
+handler and shortcuts; the installer removes the obsolete Avalonia UI assemblies during
+an Electron upgrade. Windows packages remain unsigned. The
+[Windows package checkpoint](spikes/2026-09-28-electron-parity/checkpoint-ninety-two.md)
+records the clean commit, successful run and artifact names.
 
 `Version.props` owns the three-part version base (currently `0.2.0`). Ordinary builds
 append `-dev`; CI packages append `-ci.<run number>`. A tag such as `v0.2.0-beta.1`
@@ -16,7 +51,7 @@ update that file when starting a new release series. Package builds embed the so
 in the assembly informational version and use the numeric base for Windows file versions.
 
 **Settings → Application → About Winnow** shows the running application's version and
-selectable source commit directly from its assembly, without depending on an adjacent file.
+selectable source commit from embedded frontend build metadata, without depending on an adjacent file.
 Source archives built without Git metadata show `Unavailable` for the commit.
 
 ## Artifacts
@@ -34,9 +69,14 @@ Source archives built without Git metadata show `Unavailable` for the commit.
 | `SHA256SUMS` | Checksums attached to a tagged draft release |
 
 Each application directory includes `release-info.json` with its version, runtime identifier,
-and source commit. A portable build still uses the normal user data location; pass
+and source commit. The `backend/` directory contains the independent `Winnow.Backend`
+companion and its self-contained ASP.NET Core runtime. Keep that directory with the app;
+Avalonia starts or attaches to the backend for the selected data directory. A portable build still uses the normal user data location; pass
 `--data-dir <path>` to select another location. Installers preserve user data on removal.
-For a manual upgrade, close Winnow first. Windows uses a stable Inno Setup AppId and prior install
+For a manual upgrade, close all frontend windows and stop the backend first. Closing the
+last window leaves the backend running. Use authenticated `POST /api/v1/lifecycle/shutdown`
+as described in the [frontend API guide](frontend-api.md#start-and-discover), then wait
+for the backend process to exit. Windows uses a stable Inno Setup AppId and prior install
 directory; Debian prereleases use `~` so they sort before the corresponding stable version.
 
 All three plugin ZIPs are built on every packaging run and attached to the same release as
@@ -97,8 +137,10 @@ signature. Windows packages remain unsigned. See GitHub's [release asset API](ht
 
 On explicit restart, a separate helper verifies and locks the installer, waits up to two
 minutes for the app process to exit, refuses locked application binaries, and runs Inno
-without forced process closure or Windows reboot. Normal shutdown cancels workers and
-disposes the host before process exit. Setup retains the registered installation directory;
+without forced process closure or Windows reboot. The explicit update action first stops
+the shared backend, which cancels workers and releases the database and installation lease.
+Ordinary frontend closure does not stop those workers. Close other frontend windows before
+updating; their binary locks can still prevent replacement. Setup retains the registered installation directory;
 the helper relaunches Winnow with the selected data directory and preserves `--no-sync`.
 Fullscreen startup follows the saved preference. One-time seeding and sign-in flags are not
 replayed. Library data, credentials, covers, themes and preferences remain in the data directory.
@@ -124,10 +166,10 @@ tests do not install software.
 
 ### Portable replacement and recovery
 
-The ZIP and tar.gz layouts are unchanged. Copies from before the portable helper was
+The ZIP and tar.gz contain the frontend, `backend/` companion, and `update-helper/` directories. Copies from before the portable helper was
 introduced need one manual archive upgrade; subsequent supported releases offer in-app
 replacement. Debian installations, including their `package-managed` marker, stay with the
-package manager: close Winnow and use `sudo apt install ./Winnow-<version>-linux-x64.deb`.
+package manager: close the frontends, stop the backend, and use `sudo apt install ./Winnow-<version>-linux-x64.deb`.
 The updater never invokes privilege elevation or replaces package-managed files.
 
 Portable downloads validate the release digest, version and runtime, archive paths and
@@ -142,7 +184,9 @@ while their backup files remain available for manual inspection. Recovery comman
 the current workspace's journal. Retained workspaces are not automatically pruned.
 
 After explicit restart, the copied `Winnow.Update.Helper` waits for the exact original
-process to exit. Installation and library guards exclude other Winnow instances during
+process to exit. Both the frontend and backend hold the installation lease; the explicit
+update action stops the backend before handing off. Installation and library guards exclude
+other Winnow instances during
 replacement. The helper makes and checks a SQLite backup, including committed WAL data,
 before moving the old binaries to `previous` and the staged release into the original
 location. It moves an internal selected data directory to the same relative location.
@@ -156,7 +200,7 @@ Keep the workspace, selected data directory and `before.db` until recovery is co
 Other files placed beside the app remain with the retained previous directory; custom
 themes, covers, credentials and preferences belong in the selected data directory.
 
-Close all Winnow instances before using the copied helper in the workspace's `helper`
+Close all frontend instances and stop their backends before using the copied helper in the workspace's `helper`
 directory. Pass the absolute path to its `journal.json`:
 
 ```text
@@ -206,10 +250,10 @@ timeout; the restarted application stays open until scenario cleanup.
 
 ## Build without publishing
 
-Pushes to `main` and `codex/**`, and pull requests, build packages when application,
-plugin, packaging, version, SDK, dependency configuration, or workflow files change. Their version is
+Every pull request and push to `main` runs CI, including fresh Electron and package gates.
+Feature branches use the pull-request event. Package versions are
 `<version base>-ci.<run number>`. Download
-`packages-win-x64`, `packages-linux-x64` and `packages-plugins` from the workflow's artifacts,
+`electron-packages-win-x64`, `electron-packages-linux-x64` and `packages-plugins` from CI artifacts,
 retained for 14 days. The plugin artifact contains all three ZIPs and the release catalogue.
 
 Publishing verifies the bundled plugin's source manifest, assembly identity and entry type
@@ -223,9 +267,11 @@ without creating a tag or GitHub Release. Versions use three numeric components 
 optional prerelease suffix; numeric components must fit 0–65535. Build metadata and a
 leading `v` are not accepted in this input.
 
-Local publish commands, from the repository root:
+Local publishing requires Node 24, locked frontend dependencies, PowerShell 7 and the
+.NET 10 SDK. From the repository root:
 
 ```powershell
+npm --prefix src/Winnow.Electron ci
 $commit = git rev-parse HEAD
 ./packaging/Publish.ps1 -Runtime win-x64 -Version 0.2.0-beta.1 -Commit $commit -OutputDirectory artifacts/publish-win
 ./packaging/windows/New-WindowsPackage.ps1 -PublishDirectory artifacts/publish-win -OutputDirectory artifacts/packages -Version 0.2.0-beta.1
@@ -233,8 +279,8 @@ $commit = git rev-parse HEAD
 ./packaging/Test-PluginRelease.ps1 -PackageDirectory artifacts/plugin-packages -Version 0.2.0-beta.1
 ```
 
-Windows packaging requires [Inno Setup 6](https://jrsoftware.org/isinfo.php). On Linux with
-PowerShell and the .NET SDK installed, publish with `-Runtime linux-x64`, then run:
+Windows packaging also requires [Inno Setup 6](https://jrsoftware.org/isinfo.php). On Linux,
+publish with `-Runtime linux-x64 -OutputDirectory artifacts/publish-linux`, then run:
 
 ```bash
 bash packaging/linux/build.sh artifacts/publish-linux artifacts/packages 0.2.0-beta.1
@@ -262,8 +308,9 @@ git tag -a v0.2.0-beta.1 -m "Winnow 0.2.0 beta 1"
 git push origin v0.2.0-beta.1
 ```
 
-The workflow validates the tag before starting the Windows/Linux CI gate, and builds and
-smoke-checks both platforms, and builds and validates all three plugins and their catalogue.
+The workflow validates the tag before calling the same CI workflow with that release
+version. CI builds and smoke-checks both platforms and validates all three plugins and
+their catalogue. The release job consumes those verified artifacts without rebuilding.
 Missing or invalid plugin assets fail the release. The gate can reuse matching full-test evidence as described below.
 Only then does its release job receive `contents: write` and
 create a **draft** release. A prerelease suffix also sets GitHub's prerelease flag. Review
@@ -277,8 +324,22 @@ rerun the failed job to replace any partially uploaded assets on the draft.
 
 ## Reusing CI validation
 
-Pull requests always run the full suite. After merge, and for tags or manual release builds,
-the existing required Windows and Linux jobs first restore and audit dependencies. Windows
+Pull requests always run the full suite. The protected Windows check aggregates the .NET
+backend/reference UI suite, Electron unit/live API tests, the complete migration audit,
+native desktop/fullscreen tests, both platform package gates and plugin packages.
+The protected Linux native/Proton session check retains its existing name.
+
+Electron and package gates always run fresh. Native tests run on eight isolated Windows
+runners, each with one worker, no retries and whole test files. Each builds Debug backend,
+fixture and update-helper companions once. A full collected inventory and per-shard plan
+must match executed results; every test must pass exactly once, with no skips, missing or
+duplicate results. The aggregate compares checkout/tree, lockfile, Node, Electron, SDK and
+runner image across receipts. Reports and screenshots are retained per shard; temporary
+databases and Chromium profiles stay outside that evidence directory.
+
+Only the .NET Windows suite and Linux session suite use the existing 24-hour evidence
+policy. After merge, and for tags or manual release builds, they first restore and audit
+dependencies. Windows
 also verifies migrations against the current event's baseline. These checks run even when
 tests can be reused; a fresh vulnerability warning still fails the gate.
 
@@ -318,20 +379,33 @@ fallback and dependency-fingerprint rules. The policy checks run on both CI plat
 
 ## Platform limits
 
-Windows packages are unsigned. Embedded Steam/Epic sign-in requires Microsoft's Evergreen
-WebView2 Runtime; it is not bundled with the installer. The app handles an unavailable runtime.
+Windows packages are unsigned. Embedded Steam/Epic sign-in uses bundled Chromium;
+the primary Electron package does not require WebView2. Persistent credential protection
+uses Windows DPAPI. Linux has no persistent secret-store backend, and live account
+authentication there is not established by package smoke tests.
 
 Linux packages are built and smoke-tested on Ubuntu 24.04 x64 under Xvfb. The Debian package
 declares its native runtime dependencies. For the portable archive on Ubuntu 24.04, install:
 
 ```bash
-sudo apt install ca-certificates tzdata libc6 libgcc-s1 libstdc++6 libgssapi-krb5-2 zlib1g libssl3t64 libicu74 libx11-6 libice6 libsm6 libfontconfig1
+sudo apt install ca-certificates tzdata libc6 libgcc-s1 libstdc++6 libgssapi-krb5-2 zlib1g libssl3t64 libicu74 libx11-6 libice6 libsm6 libfontconfig1 libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libdrm2 libxss1 libxtst6 libxshmfence1 libxkbcommon0 libatspi2.0-0t64 libcups2t64 libnspr4 libxcb1 libxcomposite1 libxdamage1 libxext6 libxfixes3 libxrandr2 libatk1.0-0t64 libatk-bridge2.0-0t64 libdbus-1-3 libpango-1.0-0 libcairo2 libsecret-1-0 xdg-utils
 ```
 
 A working graphical desktop is required. Other Linux distributions and ARM builds are not
 part of this release matrix. Linux storefront discovery is limited by the existing Windows
-launcher readers. WebView2 sign-in and DPAPI credential storage remain Windows-only; the
-package does not introduce a Linux browser or secret-store backend.
+launcher readers. Ubuntu's restricted user namespaces require an exact-path AppArmor
+permission: the Debian package manages it; for a portable copy run
+`sudo bash setup-sandbox.sh --executable "$(pwd)/Winnow"` in its extracted directory, then launch `./winnow` without
+sudo. Moving a portable copy requires granting its new path. Do not disable Chromium's
+sandbox. See [Linux packaging](../packaging/linux/README.md) for removal and troubleshooting.
 
-Native dependencies follow [Microsoft's .NET requirements](https://learn.microsoft.com/en-us/dotnet/core/install/linux-ubuntu-install)
-and [Avalonia's desktop Linux requirements](https://docs.avaloniaui.net/docs/platform-specific-guides/linux).
+The verifier checks every packaged ELF and its declared transitive dependency owners.
+The two exact .NET LTTng tracepoint providers may report missing `liblttng-ust.so.0`
+on Ubuntu 24.04; their optional tracing is unavailable. Other missing native libraries fail.
+Xvfb/Openbox tests establish package behavior, not a physical Linux compositor or Wayland session.
+
+The secondary Electron configuration includes an optional macOS DMG target, but macOS is
+outside the supported release matrix. The primary publisher and CI do not produce it;
+signing, notarization, installation, URL association and physical-device behavior are
+unverified. Shared browser and Unix monitoring paths do not establish macOS support.
+There is no Keychain credential store, and the macOS update path only opens a release page.

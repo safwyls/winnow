@@ -71,6 +71,9 @@
                             <StackPanel Spacing="12">
                                 <TextBlock Classes="body" TextWrapping="Wrap" Text="{x:Static vm:PluginSettingsViewModel.InstallationNote}"/>
                                 <Button Classes="act" HorizontalAlignment="Left" Content="Open plugins folder" Click="OnOpenPluginsFolder"/>
+                                <Button Classes="act" HorizontalAlignment="Left" Content="Restart library service"
+                                        Command="{Binding RestartLibraryServiceCommand}"
+                                        AutomationProperties.Name="Restart library service"/>
                                 <SelectableTextBlock Classes="data-s" Text="{Binding UserPluginDirectory}" TextWrapping="Wrap" Focusable="False"/>
                                 <TextBlock Classes="body" TextWrapping="Wrap" Text="{Binding Status}"
                                            AutomationProperties.LiveSetting="Polite"/>
@@ -100,7 +103,7 @@
                                                     Command="{Binding OpenWebsiteCommand}" AutomationProperties.Name="{Binding WebsiteAccessibleName}"/>
                                         </WrapPanel>
                                         <TextBlock Classes="body" Foreground="{StaticResource AmberForeground}" IsVisible="{Binding RestartRequired}"
-                                                   Text="Restart Winnow to apply the enable or disable change."/>
+                                                   Text="Choose Restart library service in Manage plugins to apply the enable or disable change."/>
                                         <StackPanel Spacing="8" IsVisible="{Binding HasAccount}">
                                             <TextBlock Classes="label section" Text="ACCOUNT" AutomationProperties.HeadingLevel="3"/>
                                             <TextBlock Classes="body prose" Text="{Binding AccountStatus}" AutomationProperties.LiveSetting="Polite"/>

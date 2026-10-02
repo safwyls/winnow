@@ -1,0 +1,84 @@
+.update-status {
+  position: fixed;
+  z-index: 90;
+  right: 1.5rem;
+  bottom: 3rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: min(42rem, calc(100vw - 3rem));
+  padding: 1rem 1.25rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 30px #0005;
+  font-size: calc(14px * var(--theme-text-scale, 1));
+}
+html[data-mode='fullscreen'] .update-status {
+  right: max(1.5rem, var(--fullscreen-safe-margin, 5%));
+  bottom: max(5rem, var(--fullscreen-safe-margin, 5%));
+  font-size: calc(20px * var(--theme-text-scale, 1));
+}
+.update-status progress {
+  max-width: 12rem;
+}
+.update-caption {
+  flex: none;
+  width: calc(160px * var(--theme-text-scale, 1));
+  margin-right: 12px;
+  text-align: center;
+  font-size: calc(12px * var(--theme-text-scale, 1));
+}
+.avalon-utilities .update-caption button {
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 8px;
+  color: var(--text);
+  border: 1px solid var(--line);
+  background: var(--raised);
+  font-size: inherit;
+}
+.update-caption-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.update-caption progress {
+  width: 100%;
+  height: 3px;
+  accent-color: var(--accent);
+}
+.update-caption.mode-fullscreen {
+  width: calc(330px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+  font-size: calc(24px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+.update-caption.mode-fullscreen progress {
+  height: 4px;
+}
+.avalon-shell.fullscreen .avalon-header:has(.update-caption) {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.mode-fullscreen .application-updates .form-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.mode-fullscreen .application-updates {
+  max-width: 1320px;
+}
+.mode-fullscreen .application-updates:not(.fullscreen-settings-content) :is(p, label, button) {
+  font-size: calc(28px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+  line-height: 1.5;
+}
+.mode-fullscreen .application-updates:not(.fullscreen-settings-content) button {
+  min-height: calc(64px * var(--fullscreen-text-scale, 1));
+}
+.mode-fullscreen .application-updates [role='status'] {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

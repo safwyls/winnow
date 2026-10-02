@@ -1,4 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType><AssemblyName>Winnow.Update.Helper</AssemblyName></PropertyGroup>
   <ItemGroup><ProjectReference Include="../Winnow.Update/Winnow.Update.csproj" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="../Winnow.Activation/WindowsParentProcess.cs" Link="WindowsParentProcess.cs" />
+    <EmbeddedResource Include="../Winnow.App/Services/Install-Update.ps1" LogicalName="Winnow.UpdateHelper.ps1" />
+    <InternalsVisibleTo Include="Winnow.Update.Tests" />
+  </ItemGroup>
 </Project>

@@ -28,6 +28,55 @@ public static class PortableUpdateEngine
         if (!File.Exists(path)) { using var created = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite); }
         return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
     }
+
+    /// <summary>
+    /// Acquires frontend/backend replacement exclusion without requiring package-managed
+    /// or genuinely read-only installations to create a sibling lock. A busy or inaccessible
+    /// existing lock and every journal without a lease remain startup failures.
+    /// </summary>
+    public static InstallationStartupLease AcquireStartupLease(string installationDirectory)
+    {
+        installationDirectory = Full(installationDirectory);
+        NoLinks(installationDirectory);
+        var journal = GetJournalPath(installationDirectory);
+        var lockPath = Workspace(installationDirectory) + ".lock";
+        NoLinks(lockPath);
+        var managed = IsManagedInstallation(installationDirectory);
+        if (managed)
+        {
+            // A package manager cannot resolve a portable transaction on the application's behalf.
+            if (EntryExists(journal)) throw new IOException("A portable update journal requires recovery before this managed installation can start.");
+            if (!EntryExists(lockPath)) return new InstallationStartupLease(null, managed: true);
+        }
+        try { return new InstallationStartupLease(AcquireApplicationLease(installationDirectory), managed); }
+        catch (Exception error) when (IsWriteDenied(error) && !EntryExists(lockPath) && !EntryExists(journal))
+        {
+            // Sharing violations, disk failures and malformed paths are not read-only media.
+            return new InstallationStartupLease(null, managed);
+        }
+    }
+
+    private static bool IsManagedInstallation(string directory)
+    {
+        if (OperatingSystem.IsLinux() && (directory is "/opt" or "/usr" ||
+            directory.StartsWith("/opt/", StringComparison.Ordinal) || directory.StartsWith("/usr/", StringComparison.Ordinal))) return true;
+        if (EntryExists(Path.Combine(directory, "package-managed"))) return true;
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "release-info.json")));
+        return manifest.RootElement.TryGetProperty("package-managed", out _);
+    }
+
+    private static bool EntryExists(string path)
+    {
+        // File.Exists hides access failures, which cannot establish that recovery evidence is absent.
+        try { _ = File.GetAttributes(path); return true; }
+        catch (FileNotFoundException) { return false; }
+        catch (DirectoryNotFoundException) { return false; }
+    }
+
+    private static bool IsWriteDenied(Exception error) => error is UnauthorizedAccessException ||
+        error is IOException && (OperatingSystem.IsWindows()
+            ? error.HResult == unchecked((int)0x80070013) // ERROR_WRITE_PROTECT
+            : OperatingSystem.IsLinux() && error.HResult == 30); // EROFS; .NET Unix IOExceptions retain raw errno.
     private static IDisposable ExclusiveLease(string installation)
     {
         var path = Workspace(installation) + ".lock"; NoLinks(path);

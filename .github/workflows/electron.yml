@@ -1,0 +1,124 @@
+name: Electron frontend
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Electron unit, live API and migration tests
+    runs-on: windows-2025
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: src/Winnow.Electron
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.19.0'
+          cache: npm
+          cache-dependency-path: src/Winnow.Electron/package-lock.json
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: npm ci
+      - name: Verify native test accounting
+        run: node --test tests/packaging/native-test-evidence.test.mjs tests/packaging/native-test-diagnostics.test.mjs tests/packaging/ci-workflow.test.mjs
+      - name: Verify primary entry points
+        run: |
+          npm run test:entrypoints
+          if ($LASTEXITCODE -ne 0) { throw 'Entry-point contracts failed.' }
+          ../../packaging/Test-PrimaryEntryPoints.ps1
+      - name: Build isolated Debug test companions
+        run: ../../scripts/Build-ElectronTestFixtures.ps1
+      - name: Typecheck and build both presentation surfaces
+        run: npm run build
+      - name: Unit and live API tests
+        run: node scripts/test-integration.mjs --reporter=default --reporter=json --outputFile=../../.tmp/electron-unit-results.json
+      - name: Require complete migration inventory
+        if: ${{ !cancelled() }}
+        run: node scripts/migration-audit.mjs --require-complete --write-report
+      - name: Preserve unit results and migration inventory
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: electron-unit-evidence
+          path: |
+            .tmp/electron-unit-results.json
+            docs/spikes/2026-09-28-electron-parity/test-inventory.json
+          if-no-files-found: error
+          retention-days: 14
+
+  native:
+    name: Electron native desktop and fullscreen shard ${{ matrix.shard }} of 8
+    runs-on: windows-2025
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: src/Winnow.Electron
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.19.0'
+          cache: npm
+          cache-dependency-path: src/Winnow.Electron/package-lock.json
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: npm ci
+      - name: Ensure pinned Electron is installed
+        run: node node_modules/electron/install.js
+      - name: Build isolated Debug test companions once
+        run: ../../scripts/Build-ElectronTestFixtures.ps1
+      - name: Build frontend
+        run: npm run build
+      - name: Run native shard with exact test accounting
+        run: node scripts/native-test-ci.mjs run ${{ matrix.shard }}/8
+      - name: Keep native reports, screenshots and shard receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: electron-native-${{ matrix.shard }}
+          path: .tmp/electron-native-${{ matrix.shard }}/**
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+  native-accounting:
+    name: Complete native test inventory
+    needs: native
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.19.0'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: electron-native-*
+          path: native-evidence
+      - name: Require all eight shards and every collected test exactly once
+        env:
+          NATIVE_RESULT: ${{ needs.native.result }}
+        run: |
+          test "$NATIVE_RESULT" = success
+          node src/Winnow.Electron/scripts/native-test-ci.mjs verify native-evidence 8

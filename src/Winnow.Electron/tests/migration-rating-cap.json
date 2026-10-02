@@ -1,0 +1,126 @@
+{
+  "RatingCapPreferenceTests.The_slider_spans_the_scale_and_starts_at_the_top": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-rating-cap.test.tsx",
+        "case": "spans the complete six-step scale and starts at the top without a settings store"
+      }
+    ],
+    "reason": "Both modes expose the complete ordered scale, minimum/maximum/step, default top index and named value without a settings dependency."
+  },
+  "RatingCapPreferenceTests.Every_slider_position_names_one_step_of_the_scale": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-rating-cap.test.tsx",
+        "case": "names and selects the %s step without IO"
+      }
+    ],
+    "reason": "Both presentation paths select each original tier and show its index, token and name."
+  },
+  "RatingCapPreferenceTests.A_position_between_or_beyond_the_steps_snaps_onto_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-rating-cap.test.tsx",
+        "case": "snaps the original slider position %s onto its nearest bounded tier"
+      }
+    ],
+    "reason": "The original -4, 0.4, 2.5 and 99 matrix verifies rounding and clamping."
+  },
+  "RatingCapPreferenceTests.An_unset_cap_loads_as_no_cap_and_is_not_written_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RatingCapParityTests.cs",
+        "case": "Missing_or_unreadable_caps_load_as_no_cap_without_writing_back"
+      }
+    ],
+    "reason": "A fresh production backend returns the top tier without creating a setting; renderer tests independently verify missing and unreadable values never trigger a PUT."
+  },
+  "RatingCapPreferenceTests.Moving_the_cap_writes_it_and_reloads_the_library": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-rating-cap.test.tsx",
+        "case": "saves against the latest complete preference snapshot and refreshes the library and cap-only count"
+      }
+    ],
+    "reason": "Both modes perform one write preserving freshly read sibling fields and refresh the subscribed library and visibility count. Production HTTP tests verify the resulting stored tier and visible games."
+  },
+  "RatingCapPreferenceTests.An_unreadable_stored_cap_loads_as_no_cap": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RatingCapParityTests.cs",
+        "case": "Missing_or_unreadable_caps_load_as_no_cap_without_writing_back"
+      }
+    ],
+    "reason": "Empty and unrecognized stored values produce no cap without rewriting the source row; both-mode renderer defaults have separate coverage."
+  },
+  "RatingCapPreferenceTests.The_cap_survives_a_restart": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RatingCapParityTests.cs",
+        "case": "A_saved_cap_survives_backend_restart_and_every_tier_round_trips"
+      }
+    ],
+    "reason": "Every tier round-trips through production HTTP and the original Mature setting survives stopping and recreating the backend against the same isolated database."
+  },
+  "RatingCapPreferenceTests.The_cap_works_without_a_settings_store": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-rating-cap.test.tsx",
+        "case": "names and selects the %s step without IO"
+      }
+    ],
+    "reason": "The controlled presentation leaf changes all six levels with local state and no API or settings provider."
+  },
+  "RatingCapPreferenceTests.The_popover_learns_the_eighteen_plus_setting_from_the_same_row_it_is_stored_in": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RatingCapParityTests.cs",
+        "case": "The_adult_toggle_and_cap_read_the_same_saved_rows_without_conflating_eighteen_plus"
+      }
+    ],
+    "reason": "The actual preference endpoint reads the shared explicit-content row, preserving the distinction between adults-only and ordinary 18+ evidence."
+  },
+  "RatingCapPreferenceTests.The_top_step_reads_as_clamped_only_while_the_eighteen_plus_setting_is_off": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-rating-cap.test.tsx",
+        "case": "shows the adult-toggle explanation only for a clamped top step"
+      }
+    ],
+    "reason": "Both modes show the original explanatory copy only at Adults only while the explicit-content toggle is off, and hide it for an allowed top step or lower tier."
+  },
+  "RatingCapPreferenceTests.The_popover_reports_what_the_cap_alone_is_hiding": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/RatingCapParityTests.cs",
+        "case": "Saving_a_cap_changes_the_visible_library_and_counts_only_its_own_exclusions"
+      }
+    ],
+    "reason": "The original adults-only and PEGI-18 fixture proves the cap adds one exclusion after the adult gate; an unrated title stays visible. Enabling adults-only content makes the cap count two. Both-mode renderer tests verify the resulting text."
+  },
+  "CoverPresentationTests.Desktop_display_selector_updates_shared_preference_and_root_presentation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-rating-cap.test.tsx",
+        "case": "persists the source display preferences through closing and reopening their popover"
+      },
+      {
+        "file": "tests/electron/rating-cap.spec.ts",
+        "case": "rating cap preserves six levels explicit-content composition counts and reload at text"
+      }
+    ],
+    "reason": "The real desktop Display flyout changes Fit to Fill and back, and verifies the shared root cover-art-fit property follows each saved preference. Component coverage verifies the exact persisted CoverArtMode field and reopening state."
+  }
+}

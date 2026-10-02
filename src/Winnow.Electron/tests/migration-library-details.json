@@ -1,0 +1,106 @@
+{
+  "GameDetailsTabInteractionTests.Focused_editor_returns_to_the_selected_tab_and_preserves_unsaved_fields": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "returns from metadata to the selected section with its unsaved fields and focus using %s"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps other metadata drafts when a field saves and advances only unchanged field revisions"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "preserves conflicting text until the user explicitly adopts the new saved revision"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "retains each reading offset and restores its selected tab after a focused metadata draft"
+      },
+      {
+        "file": "tests/electron/details-layout.spec.ts",
+        "case": "desktop Details at ${width}×${height} retains the header, bounded reading and modal origin"
+      }
+    ],
+    "reason": "Both Avalon surfaces open metadata from More, focus its input, hide tabs, retain an unfinished name through Back and Escape, restore Library and More focus, and avoid writes or repeat reads. Native desktop checks at1200×640 and2560×1440 also verify the bounded editor, one-layer Escape, focus and modal origin return. The initial API read replaces construction from an already supplied Avalonia snapshot."
+  },
+  "GameDetailsTabInteractionTests.Sparse_games_keep_all_tabs_and_do_not_claim_unread_updates": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps sparse detail sections available without claiming unread updates"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps the original sparse section set and uses tab selection semantics"
+      }
+    ],
+    "reason": "Avalon desktop retains all five enabled sections with exact names; fullscreen retains its four source sections. Sparse snapshots have no images, updates, ownership technical facts or history, suppress unread claims and installation disclosures, and keep one interactive selected tabpanel."
+  },
+  "GameDetailsTabInteractionTests.Update_shortcut_opens_updates_without_replacing_the_details_model": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "opens unread updates from the header without replacing metadata drafts or counting duplicate editions"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps refresh in place and routes the unread shortcut to the named Updates tab"
+      }
+    ],
+    "reason": "Both Avalon surfaces activate the existing named Updates tab from the authoritative unread shortcut and preserve its selection across an API refresh. Accessible names state the unread count; React component and query continuity replace the original view-model reference assertion. Shared tests additionally retain edits and avoid double-counting linked editions."
+  },
+  "ManualEntryFormTests.Saving_on_each_surface_corrects_tracked_ids_or_explains_why_the_form_stays_open": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/manual-settings.spec.ts",
+        "case": "Platforms and manual forms preserve counts, modal focus, validation, tracked corrections and confirmed removal"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/ManualGameParityTests.cs",
+        "case": "Fresh_form_identifiers_correct_safely_or_leave_stored_identifiers_unchanged"
+      },
+      {
+        "file": "tests/parity-manual-form.test.tsx",
+        "case": "retains corrected draft and explains %s on Steam field"
+      },
+      {
+        "file": "tests/parity-manual-form.test.tsx",
+        "case": "requires cancel and reopen when a concurrent IGDB mapping changed"
+      }
+    ],
+    "reason": "Real Electron desktop Enter and fullscreen controller Accept execute the original correction, legacy, store and mapping scenario matrix against isolated production HTTP/database composition. Opening refreshes stale identity/title; successful correction closes and persists all fields; each refusal keeps draft values and visible field-specific guidance without altering stored IDs. Production backend tests independently stage real IGDB pins and verify all four outcomes. Controller input is simulated through navigator.getGamepads, not physical hardware."
+  },
+  "FullscreenDetailsTests.Ungroup_from_the_expansion_end_requires_confirmation_and_uses_child_identity": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "confirms separation from expansion details with the child identity and preserves a failed confirmation"
+      },
+      {
+        "file": "tests/parity-library.test.tsx",
+        "case": "requires a named confirmation before separating an existing relationship"
+      },
+      {
+        "file": "tests/electron/details-contracts.spec.ts",
+        "case": "expansion-end separation keeps the safe choice and writes the child identity only after confirmation"
+      }
+    ],
+    "reason": "The original method records an ungroup callback for child 99 after Down and Accept confirm the safe-first dialog. Native Electron reproduces that child-end interaction through the real preload/action route, records DELETE identity/links/99 with the expected link ID, and verifies opening dispatches nothing. The desktop interaction, cancellation and retained failure are also covered. This method's recording seam does not claim new database-persistence evidence; repository and broader identity workflows remain separate tests."
+  },
+  "ScreenshotScrollInteractionTests.Wheel_scrolls_screenshots_sideways_without_moving_the_details_body": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/gallery.spec.ts",
+        "case": "gallery keeps wheel input, full image geometry, keyboard focus and origin return"
+      }
+    ],
+    "reason": "Actual Electron desktop and fullscreen tests verify horizontal wheel movement and unchanged outer details scrolling at the strip edge. Component tests additionally cover Shift-wheel, horizontal trackpad input and reverse movement."
+  }
+}

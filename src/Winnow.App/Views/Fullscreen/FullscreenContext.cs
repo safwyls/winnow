@@ -162,7 +162,7 @@ public sealed class FullscreenContext : IDisposable
             Library.ShowNonGameEntries = Shared.Library.ShowNonGameEntries;
             Library.GroupExpansions = Shared.Library.GroupExpansions;
             Library.MaturityCap = Shared.Library.MaturityCap;
-            await Library.LoadCommand.ExecuteAsync(null);
+            await Library.RefreshCommittedAsync(CancellationToken.None);
             if (_disposed) return;
             // The library's TilesChanged observer already schedules this score pass.
             if (Feed.LoadCommand.ExecutionTask is { } feedLoad) await feedLoad;
@@ -255,7 +255,7 @@ public sealed class FullscreenContext : IDisposable
             if (!link.IsLauncherProtocol && Services?.GetService<Winnow.Core.Reading.IPatchNotesReader>() is { IsAvailable: true } reader &&
                 reader.Open(uri, Library.Details?.Title ?? link.Label) == Winnow.Core.Reading.PatchNotesOutcome.Opened)
                 return;
-            if (link.IsLauncherProtocol && Services?.GetService<GameLaunchService>() is { } launcher && Library.Details is { } details)
+            if (link.IsLauncherProtocol && Services?.GetService<IGameLaunchService>() is { } launcher && Library.Details is { } details)
                 await launcher.LaunchAsync(details.Tile.PlayableEntry.OwnershipId, link);
             else if (Services?.GetService<IUriDispatcher>() is not { } dispatcher || !await dispatcher.OpenAsync(uri))
                 Notify("Could not open this link.");

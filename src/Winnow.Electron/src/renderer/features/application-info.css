@@ -1,0 +1,28 @@
+.application-build-info dl {
+  display: grid;
+  gap: 16px;
+  margin: 16px 0;
+}
+.application-build-info dl > div {
+  display: grid;
+  gap: 5px;
+}
+.application-build-info dt {
+  color: var(--muted);
+}
+.application-build-info dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.application-build-info.mode-fullscreen dl {
+  margin: 20px 24px;
+  gap: 24px;
+}
+.application-build-info.mode-fullscreen dt {
+  font-size: calc(clamp(16px, 1.25vw, 24px) * var(--settings-scale));
+}
+.application-build-info.mode-fullscreen dd {
+  font-size: calc(clamp(18.67px, 1.458vw, 28px) * var(--settings-scale));
+}

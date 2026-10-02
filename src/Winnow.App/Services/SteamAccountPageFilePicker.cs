@@ -77,7 +77,7 @@ public sealed class TopLevelSteamAccountPageFilePicker : ISteamAccountPageFilePi
     }
 
     private static TopLevel? MainTopLevel()
-        => Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime
+        => Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime
             { MainWindow: { } window }
             ? window
             : null;

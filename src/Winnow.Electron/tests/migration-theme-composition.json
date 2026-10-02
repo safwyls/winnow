@@ -1,0 +1,246 @@
+{
+  "BundledThemeTests.Authored_themes_ship_without_a_local_theme_directory": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/theme-original-contracts.test.ts",
+        "case": "ships the original authored %s palette without a local theme directory"
+      },
+      {
+        "file": "tests/avalon-json-runtime.test.tsx",
+        "case": "loads the custom catalog before migrating the legacy alias and authored typography"
+      },
+      {
+        "file": "tests/avalon-json-runtime.test.tsx",
+        "case": "uses a local bundled palette replacement and preserves its saved selection through reload"
+      },
+      {
+        "file": "tests/electron/appearance-contracts.spec.ts",
+        "case": "fresh appearance keeps first choices collapsed warnings authored selection and restored scroll across reload"
+      }
+    ],
+    "reason": "All five original authored theme rows retain their IDs, names, ground colors and optional transparency defaults without a local catalogue. Runtime checks preserve catalogue precedence before legacy hoard resolution, local same-ID replacement and saved selection after reload. Native application journeys additionally load an authored palette from the actual isolated themes directory."
+  },
+  "BundledThemeTests.Selecting_dawn_applies_its_solid_default_and_retains_audit_findings": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "selecting %s from 70 percent applies its solid default and retains bundled audit findings"
+      },
+      {
+        "file": "tests/theme-original-contracts.test.ts",
+        "case": "retains %s bundled audit findings and replaces them with the local same-ID findings"
+      },
+      {
+        "file": "tests/avalon-json-runtime.test.tsx",
+        "case": "shows file diagnostics, opens the library themes folder and exports effective typography"
+      },
+      {
+        "file": "tests/electron/appearance-contracts.spec.ts",
+        "case": "fresh appearance keeps first choices collapsed warnings authored selection and restored scroll across reload"
+      }
+    ],
+    "reason": "Both original Dawn palettes selected from a saved 70 percent apply and store their solid default and retain bundled audit findings. Local same-ID palettes replace those findings. File errors remain visible, while advisory warnings begin collapsed under the original disclosure text. Native desktop/fullscreen journeys verify actual Dawn selection and persisted authored selection."
+  },
+  "DawnThemeContrastTests.Legacy_files_infer_variant_and_explicit_variant_round_trips": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/theme-original-contracts.test.ts",
+        "case": "infers the legacy $id variant and round trips an explicit opposite variant"
+      }
+    ],
+    "reason": "All nine bundled palettes preserve inferred legacy variants, explicit opposite light/dark variants through export/parse, and the original invalid dakr rejection with a variant error and no document. This includes every original fixture."
+  },
+  "ThemeContrastTests.Applying_a_theme_writes_the_brushes_in_place": {
+    "status": "framework-specific",
+    "tests": [
+      {
+        "file": "tests/avalon-runtime.test.ts",
+        "case": "updates the existing root declaration and mounted controls without extending its palette variable schema"
+      },
+      {
+        "file": "tests/electron/theme-contrast.spec.ts",
+        "case": "retained native input and select follow dark Dawn Dawn dark without stale rendered colors"
+      }
+    ],
+    "reason": "The exact method asserts mutable SolidColorBrush identity in a sparse two-entry Avalonia ResourceDictionary and skips insertion of an absent Volt resource. Electron intentionally publishes a complete CSS palette and has no matching sparse brush dictionary mechanism. Supplemental tests verify exact BoxArt Surface/Flare values, retained root style declaration and mounted controls; native live theme switching verifies no stale control colors. Those tests do not claim the original absent-Volt assertion."
+  },
+  "ThemeContrastTests.A_substituted_backdrop_is_not_the_same_answer_as_a_refused_one": {
+    "status": "framework-specific",
+    "tests": [
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "requests each supported material and restores solid background without changing whole-window opacity"
+      },
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "recovers solid surfaces after a compositor request throws without modifying the requested preference"
+      },
+      {
+        "file": "tests/avalon-translucency.test.ts",
+        "case": "keeps unsupported conditions solid: %j"
+      },
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "clears the previous material answer immediately and ignores its late response after choosing another material"
+      },
+      {
+        "file": "tests/electron/appearance.spec.ts",
+        "case": "desktop material requests preserve opaque covers and one coat per pane, with flush/floating geometry"
+      },
+      {
+        "file": "tests/electron/appearance.spec.ts",
+        "case": "fullscreen and disabled transparency restore solid surfaces while saved material and reach survive reload"
+      }
+    ],
+    "reason": "The source distinguishes actual compositor refusal, substitution and the requested Mica grant at 40 percent through Avalonia transparency feedback. Electron exposes only the material request, without actual grant or substitution reporting. Supplemental executed tests cover supported requests, unsupported or throwing solid fallback, saved-choice preservation and stale-response rejection; successful requests are not measurements of visible OS material."
+  },
+  "ThemeContrastTests.The_field_opens_only_when_the_desktop_is_actually_arriving": {
+    "status": "framework-specific",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "opens content panes only for positive transparency with a current accepted native request"
+      },
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "ignores a late native material answer after entering fullscreen and releases material on unmount"
+      },
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "rechecks material after OS accessibility changes and keeps saved preferences when it becomes unavailable"
+      },
+      {
+        "file": "tests/electron/appearance.spec.ts",
+        "case": "desktop material requests preserve opaque covers and one coat per pane, with flush/floating geometry"
+      },
+      {
+        "file": "tests/electron/appearance.spec.ts",
+        "case": "fullscreen and disabled transparency restore solid surfaces while saved material and reach survive reload"
+      },
+      {
+        "file": "tests/electron/appearance-session.spec.ts",
+        "case": "development appearance overrides remain live on both surfaces without changing either saved appearance store"
+      }
+    ],
+    "reason": "The original wall/slider sequence opens and closes on actual Avalonia compositor grant/loss notifications, unavailable through Electron. Supplemental executed tests gate panes on positive transparency and a current accepted request, retain opaque fullscreen, reject late responses and fall back after accessibility changes. They do not establish actual desktop-material arrival."
+  },
+  "ThemeJsonTests.Every_token_matches_at_every_slider_position": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/theme-token-golden.test.ts",
+        "case": "preserves all 61 frozen $id tokens through both JSON directions at every source slider position"
+      },
+      {
+        "file": "tests/avalon-json.test.ts",
+        "case": "round trips all 24 colors and every surface token for $id"
+      }
+    ],
+    "reason": "The frozen C# exporter captures all 61 named color values for nine themes, both layouts, both content-transparency settings and every five-percent position: 756 states. Electron builtins, original JSON imports and Electron export/import each match every byte. The test-only role adapter also checks original extra-alpha and Fluent scrollbar arithmetic; it does not claim Chromium paints Fluent templates. The independent comparison corrected premature HSV rounding in Bottle green."
+  },
+  "UserThemeStoreTests.Preparing_the_theme_folder_reports_nothing_when_there_is_no_folder": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-json-runtime.test.tsx",
+        "case": "omits the authored folder controls without a configured theme store and reports no folder problem"
+      }
+    ],
+    "reason": "The original fixture has no configured theme store, rather than a missing directory on disk. Actual ThemeStudio without the optional store bridge omits the authored folder card and folder button and reports no folder problem. Folder creation tests are not substituted for this contract."
+  },
+  "AppearanceInteractionTests.Restored_focus_keeps_scrolled_position_but_keyboard_focus_reveals_control": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/appearance-contracts.spec.ts",
+        "case": "fresh appearance keeps first choices collapsed warnings authored selection and restored scroll across reload"
+      }
+    ],
+    "reason": "Native application windows at the original desktop dimensions retain the real Appearance control and 400-pixel scroll offset across native focus transfer/restoration; real Tab navigation then reveals that control. Fullscreen is verified separately. Playwright focus emulation is disabled for this proof so document focus observes the actual native transfer; no raw preventScroll call replaces the application behavior."
+  },
+  "AppearanceInteractionTests.Fresh_appearance_uses_first_choices_and_collapses_warnings": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-appearance.test.tsx",
+        "case": "fresh %s Appearance on %s uses the first original choices and %i percent without saving"
+      },
+      {
+        "file": "tests/avalon-json-runtime.test.tsx",
+        "case": "shows file diagnostics, opens the library themes folder and exports effective typography"
+      },
+      {
+        "file": "tests/electron/appearance-contracts.spec.ts",
+        "case": "fresh appearance keeps first choices collapsed warnings authored selection and restored scroll across reload"
+      }
+    ],
+    "reason": "Actual controls cover Windows and non-Windows first choices and 30/0-percent defaults without implicit writes. Native desktop/fullscreen application journeys verify fresh Acrylic/Floating/content-reach choices, collapsed legibility warnings, Dawn solid defaults and authored theme persistence through reload. File errors remain outside the disclosure."
+  },
+  "DawnControlContrastTests.Desktop_action_templates_keep_labels_and_focus_visible_in_every_interactive_state": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-palettes.test.ts",
+        "case": "keeps %s text accents readable without changing authored fills"
+      },
+      {
+        "file": "tests/electron/theme-contrast.spec.ts",
+        "case": "actual action and destructive templates retain contrast across pointer keyboard and disabled states"
+      }
+    ],
+    "reason": "Both original Dawn palettes exercise production primary/quiet actions and the actual destructive confirmation through normal, hover, pressed and keyboard-focus states. Computed text contrast stays at least 4.5 and focus contrast at least 3. Electron uses an external offset outline, measured against its actual adjacent parent surface; the source used an inner border over the button fill. Disabled states are recorded separately without inventing new thresholds."
+  },
+  "DawnControlContrastTests.Dawn_selected_segments_and_chip_hover_keep_contrast_over_tinted_fills": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-palettes.test.ts",
+        "case": "keeps %s text accents readable without changing authored fills"
+      },
+      {
+        "file": "tests/electron/theme-contrast.spec.ts",
+        "case": "selected segments and real Steam chip retain Dawn text hover glyph and focus contrast"
+      }
+    ],
+    "reason": "The production selected segment and actual Library filter chip preserve the original Dawn matrix: selected text contrast at least 4.5, a changed composited hover fill, hovered remove-glyph contrast at least 3 and keyboard focus contrast at least 3. Both palettes and actual pointer states are measured in the native renderer."
+  },
+  "DawnControlContrastTests.Fluent_templates_follow_dark_light_dark_switches_without_stale_control_brushes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-runtime.test.ts",
+        "case": "applies a light original palette and bundled typography to the root that owns dialogs"
+      },
+      {
+        "file": "tests/avalon-runtime.test.ts",
+        "case": "returns to Studio colors and another composition without leaking a former palette"
+      },
+      {
+        "file": "tests/avalon-runtime.test.ts",
+        "case": "updates the existing root declaration and mounted controls without extending its palette variable schema"
+      },
+      {
+        "file": "tests/electron/theme-contrast.spec.ts",
+        "case": "retained native input and select follow dark Dawn Dawn dark without stale rendered colors"
+      }
+    ],
+    "reason": "The same mounted input and choice controls follow the original Winnow/Rosé Pine Dawn/SilkCircuit Dawn/Winnow sequence. Native measurements verify light/dark color-scheme, fill-luminance polarity and text contrast at least 4.5 after each live switch, with retained control identity. Chromium controls replace Fluent templates explicitly."
+  },
+  "DawnControlContrastTests.Fullscreen_real_action_template_keeps_focus_underline_and_labels_readable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-palettes.test.ts",
+        "case": "keeps %s text accents readable without changing authored fills"
+      },
+      {
+        "file": "tests/electron/theme-contrast.spec.ts",
+        "case": "real action keeps readable labels and a contrasting pressed focus and current underline"
+      }
+    ],
+    "reason": "The real fullscreen action component preserves both Dawn palettes and normal, hover, pressed, keyboard-focus and current states. Labels remain at least 4.5 and visible underlines at least 3. Exact current state is bold normal text with a neutral underline; focused current state retains bold weight while focus/pressed use the accent treatment. Native measurements and captures establish these states separately from desktop controls."
+  }
+}

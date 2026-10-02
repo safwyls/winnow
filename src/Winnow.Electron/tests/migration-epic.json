@@ -1,0 +1,813 @@
+{
+  "AuthFlowPolicyTests.The_trusted_set_is_exactly_the_origins_the_request_named": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "trusts only request origins and allows configured social origins to render without capture"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.A_message_from_the_wrong_origin_is_refused": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "refuses credential messages from untrusted source %s"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.A_message_from_an_unidentifiable_source_is_refused": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "refuses credential messages from untrusted source %s"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.A_third_party_iframe_on_the_sign_in_page_is_not_trusted": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "permits HTTPS challenge frames without capture or application and loopback navigation"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.Plaintext_http_is_never_trusted_even_when_the_request_named_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "refuses credential messages from untrusted source %s"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.The_bridge_is_offered_only_to_trusted_origins": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "trusts only request origins and allows configured social origins to render without capture"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.The_redirect_must_match_on_the_port_as_well": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "binds a redirect to scheme host port and exact path with a harmless trailing slash"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.The_redirect_must_match_on_scheme_host_and_path_too": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "binds a redirect to scheme host port and exact path with a harmless trailing slash"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.There_is_no_redirect_target_when_the_request_registered_none": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "has no redirect target when the backend registers none"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.The_sign_in_journey_and_the_redirect_are_the_two_allowed_outcomes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "intercepts registered loopback before navigation and never renders other local addresses"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.An_unapproved_navigation_is_blocked_rather_than_hosted": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "intercepts registered loopback before navigation and never renders other local addresses"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.A_configured_social_provider_is_navigable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "trusts only request origins and allows configured social origins to render without capture"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.The_redirect_is_only_captured_when_that_strategy_is_armed": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "keeps redirect interception subject to its capture strategy"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.An_unapproved_popup_goes_to_the_users_own_browser": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "routes approved popups within the flow, unrelated web links externally, and refuses executable popups"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.An_approved_popup_is_still_folded_into_the_same_window": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "routes approved popups within the flow, unrelated web links externally, and refuses executable popups"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.A_popup_can_carry_the_redirect_and_is_captured_not_opened": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "routes approved popups within the flow, unrelated web links externally, and refuses executable popups"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.A_popup_to_something_that_is_not_a_web_page_is_refused_outright": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "routes approved popups within the flow, unrelated web links externally, and refuses executable popups"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.The_matching_state_is_the_only_one_that_passes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "requires exact opaque state and distinguishes missing state from mismatch"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.A_missing_state_is_reported_as_missing_rather_than_accepted": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "requires exact opaque state and distinguishes missing state from mismatch"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.A_wrong_state_is_a_mismatch_however_close_it_is": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "requires exact opaque state and distinguishes missing state from mismatch"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.A_state_that_needed_escaping_still_matches_after_the_round_trip": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "requires exact opaque state and distinguishes missing state from mismatch"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthFlowPolicyTests.No_state_sent_means_nothing_to_verify": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "requires exact opaque state and distinguishes missing state from mismatch"
+      }
+    ],
+    "reason": "Ports the original origin, navigation, popup or state decision into the Electron policy; native lifecycle tests additionally enforce it at actual capture boundaries."
+  },
+  "AuthCodeBodyTests.The_verbatim_no_session_body_is_no_session_not_no_code": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "reads sanitized original fixture bodies as no-session or authorization grant"
+      }
+    ],
+    "reason": "Ports the original provider-body classification or credential-redaction contract; sanitized original JSON fixtures are read directly where applicable."
+  },
+  "AuthCodeBodyTests.A_populated_body_yields_the_code_and_its_grant": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "reads sanitized original fixture bodies as no-session or authorization grant"
+      }
+    ],
+    "reason": "Ports the original provider-body classification or credential-redaction contract; sanitized original JSON fixtures are read directly where applicable."
+  },
+  "AuthCodeBodyTests.An_exchange_code_is_found_and_carries_the_exchange_grant": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "preserves field priority and the exchange grant"
+      }
+    ],
+    "reason": "Ports the original provider-body classification or credential-redaction contract; sanitized original JSON fixtures are read directly where applicable."
+  },
+  "AuthCodeBodyTests.Field_order_is_the_callers_priority_order": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "preserves field priority and the exchange grant"
+      }
+    ],
+    "reason": "Ports the original provider-body classification or credential-redaction contract; sanitized original JSON fixtures are read directly where applicable."
+  },
+  "AuthCodeBodyTests.Anything_that_is_not_the_providers_code_body_is_classified_as_such": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "rejects a non-code JSON body %s"
+      }
+    ],
+    "reason": "Ports the original provider-body classification or credential-redaction contract; sanitized original JSON fixtures are read directly where applicable."
+  },
+  "AuthCodeBodyTests.A_present_but_blank_field_is_still_no_session": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "recognizes blank or mistyped provider fields as no-session %s"
+      }
+    ],
+    "reason": "Ports the original provider-body classification or credential-redaction contract; sanitized original JSON fixtures are read directly where applicable."
+  },
+  "AuthCodeBodyTests.A_wrongly_typed_field_is_still_recognised_as_the_code_body": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "recognizes blank or mistyped provider fields as no-session %s"
+      }
+    ],
+    "reason": "Ports the original provider-body classification or credential-redaction contract; sanitized original JSON fixtures are read directly where applicable."
+  },
+  "AuthCodeBodyTests.The_reading_never_prints_the_code_it_found": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "never formats captured body credentials into diagnostic strings or JSON"
+      }
+    ],
+    "reason": "Ports the original provider-body classification or credential-redaction contract; sanitized original JSON fixtures are read directly where applicable."
+  },
+  "AuthCodeBodyTests.With_no_fields_to_look_for_nothing_is_a_code_body": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "never guesses a field and rejects oversized or control-bearing codes"
+      }
+    ],
+    "reason": "Ports the original provider-body classification or credential-redaction contract; sanitized original JSON fixtures are read directly where applicable."
+  },
+  "AuthStateTests.Every_state_is_unique_and_carries_its_full_entropy": {
+    "status": "retained-backend",
+    "reason": "Reviewed AuthState remains the production state generator/comparer used by EpicInteractiveSignIn.BuildRequest and StoreConnectionApplication.CompleteEpicAsync; Electron consumes that backend challenge rather than minting another OAuth state. Original .NET tests remain applicable.",
+    "implementation": [
+      "src/Winnow.Core/Auth/AuthState.cs",
+      "src/Winnow.Ingest.Epic/Web/Auth/EpicInteractiveSignIn.cs",
+      "src/Winnow.Application/Connections/StoreConnectionApplication.cs"
+    ]
+  },
+  "AuthStateTests.A_state_survives_a_query_string_without_escaping": {
+    "status": "retained-backend",
+    "reason": "Reviewed AuthState remains the production state generator/comparer used by EpicInteractiveSignIn.BuildRequest and StoreConnectionApplication.CompleteEpicAsync; Electron consumes that backend challenge rather than minting another OAuth state. Original .NET tests remain applicable.",
+    "implementation": [
+      "src/Winnow.Core/Auth/AuthState.cs",
+      "src/Winnow.Ingest.Epic/Web/Auth/EpicInteractiveSignIn.cs",
+      "src/Winnow.Application/Connections/StoreConnectionApplication.cs"
+    ]
+  },
+  "AuthStateTests.Matching_is_exact_and_never_matches_nothing": {
+    "status": "retained-backend",
+    "reason": "Reviewed AuthState remains the production state generator/comparer used by EpicInteractiveSignIn.BuildRequest and StoreConnectionApplication.CompleteEpicAsync; Electron consumes that backend challenge rather than minting another OAuth state. Original .NET tests remain applicable.",
+    "implementation": [
+      "src/Winnow.Core/Auth/AuthState.cs",
+      "src/Winnow.Ingest.Epic/Web/Auth/EpicInteractiveSignIn.cs",
+      "src/Winnow.Application/Connections/StoreConnectionApplication.cs"
+    ]
+  },
+  "AuthBridgeScriptTests.The_bridge_refuses_to_define_itself_outside_a_trusted_top_level_document": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-preload.test.ts",
+        "case": "never bootstraps inside a frame even on a trusted origin"
+      },
+      {
+        "file": "tests/parity-epic-preload.test.ts",
+        "case": "defines no launcher facade for %s"
+      }
+    ],
+    "reason": "Executed preload tests verify trusted-origin main-frame gating and the launcher facade; native fixtures also check early injection and no facade in social or same-origin frames."
+  },
+  "AuthBridgeScriptTests.An_empty_trusted_set_produces_a_bridge_that_can_never_arm": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-preload.test.ts",
+        "case": "cannot arm with an empty trusted set or a disabled bridge strategy"
+      }
+    ],
+    "reason": "Executes the capture preload with an empty trusted set; no provider facade is exposed."
+  },
+  "AuthBridgeScriptTests.The_harvester_carries_the_same_guard_and_its_url_as_a_literal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "executes guarded same-origin harvest scripts at five-second intervals with a 150-request ceiling"
+      }
+    ],
+    "reason": "Runs the generated harvester against a controlled document and fetch adapter, checking origin exclusion, endpoint, cadence, credentials, redirect refusal and request ceiling. Main rechecks the document generation after every asynchronous read."
+  },
+  "StoresViewModelTests.Signed_out_offers_a_sign_in_and_claims_nothing_else": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "opening and refreshing settings only reads account state without starting sign-in"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.A_live_session_shows_the_display_name_and_offers_sign_out": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "a live connection renders account name %s or explains its absence without offering another sign-in"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.A_session_with_no_display_name_says_so_rather_than_leaving_a_gap": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "a live connection renders account name %s or explains its absence without offering another sign-in"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.A_lapsed_session_is_named_as_an_expiry_not_as_an_absence": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "a failed renewal preserves the expired account identity and refreshing does not disturb its pending attempt"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.Opening_the_panel_never_starts_a_sign_in": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "opening and refreshing settings only reads account state without starting sign-in"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.A_sign_in_in_progress_shows_progress_and_hides_the_button": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "withdraws repeated sign-in actions while pending and cancels without launching fallback"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.Cancelling_a_running_sign_in_ends_it_and_changes_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "withdraws repeated sign-in actions while pending and cancels without launching fallback"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.A_prompt_that_reports_a_cancel_is_worded_as_a_fact_not_a_fault": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "explains failure %s with its specific remedy"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.A_successful_sign_in_shows_the_account_and_clears_the_button": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "successful sign-in keeps its run-only warning after query refresh, then sign-out forgets that account"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.A_session_that_could_not_be_stored_says_so": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "successful sign-in keeps its run-only warning after query refresh, then sign-out forgets that account"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.No_prompt_could_run_here_offers_the_console_route": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "explains failure %s with its specific remedy"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.A_changed_epic_page_offers_the_console_route": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "explains failure %s with its specific remedy"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.A_rejected_code_does_not_offer_the_console_route": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "explains failure %s with its specific remedy"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.An_unreachable_epic_does_not_offer_the_console_route": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "explains failure %s with its specific remedy"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.Rejected_client_credentials_are_reported_separately_from_a_rejected_code": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "explains failure %s with its specific remedy"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.A_failed_attempt_leaves_the_session_it_found_alone": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "a failed renewal preserves the expired account identity and refreshing does not disturb its pending attempt"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.A_new_attempt_clears_the_previous_failure_before_it_starts": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "clears old failure messages on a fresh attempt and cancels an owned attempt on unmount"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.Signing_out_forgets_the_account_and_offers_the_way_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "successful sign-in keeps its run-only warning after query refresh, then sign-out forgets that account"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "StoresViewModelTests.Refreshing_does_not_disturb_a_sign_in_in_progress": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "a failed renewal preserves the expired account identity and refreshing does not disturb its pending attempt"
+      }
+    ],
+    "reason": "Exercises the account presentation and transition in desktop and fullscreen. Electron offers its explicit system-browser/paste workflow where Avalonia offered the console peer; cancellation and token failures do not automatically select that fallback."
+  },
+  "EpicInteractiveSignInTests.An_authorization_code_is_spent_on_the_authorization_code_grant": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "completes %s exactly once using the correct backend grant and main-owned state"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+        "case": "Captured_codes_use_exact_grant_fields_and_never_reach_urls_logs_or_results"
+      }
+    ],
+    "reason": "Native capture selects the grant once. The production authenticated HTTP endpoint and real token pipeline assert the exact provider form, eg1 token type and absence of the other grant field."
+  },
+  "EpicInteractiveSignInTests.An_exchange_code_is_spent_on_the_exchange_code_grant": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "completes %s exactly once using the correct backend grant and main-owned state"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+        "case": "Captured_codes_use_exact_grant_fields_and_never_reach_urls_logs_or_results"
+      }
+    ],
+    "reason": "Native capture selects the grant once. The production authenticated HTTP endpoint and real token pipeline assert the exact provider form, eg1 token type and absence of the other grant field."
+  },
+  "EpicInteractiveSignInTests.An_unavailable_prompt_falls_through_to_the_next": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+      },
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "continues embedded failure %s in the manual form without preparing another attempt"
+      },
+      {
+        "file": "tests/electron/epic-workflow.spec.ts",
+        "case": "${mode} Epic embedded failure continues in a masked manual form at text ${scale} and cancels without reopening a browser"
+      }
+    ],
+    "reason": "An unavailable/throwing embedded host, unusable capture or no session selects the manual form and retains its attempt. The Electron manual form replaces the console prompt; opening the external browser remains an explicit action. Tests complete that continuation and verify exactly one challenge and token submission. Cancellation and provider refusal do not advance to it."
+  },
+  "EpicInteractiveSignInTests.A_prompt_that_captures_nothing_falls_through_to_the_next": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+      },
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "continues embedded failure %s in the manual form without preparing another attempt"
+      },
+      {
+        "file": "tests/electron/epic-workflow.spec.ts",
+        "case": "${mode} Epic embedded failure continues in a masked manual form at text ${scale} and cancels without reopening a browser"
+      }
+    ],
+    "reason": "An unavailable/throwing embedded host, unusable capture or no session selects the manual form and retains its attempt. The Electron manual form replaces the console prompt; opening the external browser remains an explicit action. Tests complete that continuation and verify exactly one challenge and token submission. Cancellation and provider refusal do not advance to it."
+  },
+  "EpicInteractiveSignInTests.A_prompt_that_throws_falls_through_instead_of_taking_the_app_down": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+      },
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "continues embedded failure %s in the manual form without preparing another attempt"
+      },
+      {
+        "file": "tests/electron/epic-workflow.spec.ts",
+        "case": "${mode} Epic embedded failure continues in a masked manual form at text ${scale} and cancels without reopening a browser"
+      }
+    ],
+    "reason": "An unavailable/throwing embedded host, unusable capture or no session selects the manual form and retains its attempt. The Electron manual form replaces the console prompt; opening the external browser remains an explicit action. Tests complete that continuation and verify exactly one challenge and token submission. Cancellation and provider refusal do not advance to it."
+  },
+  "EpicInteractiveSignInTests.Cancelling_does_not_escalate_to_the_next_prompt": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "closing or cancelling an untouched login is neutral and never launches manual fallback automatically"
+      }
+    ],
+    "reason": "A closed or cancelled native prompt returns cancellation, never exchanges credentials and never launches the fallback browser."
+  },
+  "EpicInteractiveSignInTests.Epics_own_origins_are_trusted_and_the_social_providers_are_only_navigable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-policy.test.ts",
+        "case": "trusts only request origins and allows configured social origins to render without capture"
+      }
+    ],
+    "reason": "The same two-tier policy is enforced by the Electron host and verified against actual intercepted provider/social documents."
+  },
+  "EpicInteractiveSignInTests.No_signed_in_account_is_reported_as_itself_not_as_a_broken_capture": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "distinguishes no-session JSON from an unrelated page and stops a cold-profile navigation loop"
+      }
+    ],
+    "reason": "Provider null code fields retain their distinct no-authenticated-session result and bounded return to login."
+  },
+  "EpicInteractiveSignInTests.The_code_never_reaches_the_uri_or_the_log": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+        "case": "Captured_codes_use_exact_grant_fields_and_never_reach_urls_logs_or_results"
+      }
+    ],
+    "reason": "Both captured grant kinds run through the production HTTP coordinator, provider token pipeline and trace logger. Codes stay in the form body and never appear in provider URLs, logs or returned results."
+  },
+  "EpicInteractiveSignInTests.The_request_carries_the_consent_notice_and_the_registered_redirect": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+        "case": "Each_challenge_carries_original_consent_cold_login_redirect_harvest_and_fresh_state"
+      },
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "returns only canonical consent and attempt metadata before any provider navigation"
+      }
+    ],
+    "reason": "Production challenge HTTP responses retain the exact consent, registered redirect, cold authorize URL, separate harvest URL, all capture strategies and a distinct state on every authorize request. Native main exposes consent before any provider navigation."
+  },
+  "EpicInteractiveSignInTests.The_default_start_url_can_render_a_login_form": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+        "case": "Each_challenge_carries_original_consent_cold_login_redirect_harvest_and_fresh_state"
+      },
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "returns only canonical consent and attempt metadata before any provider navigation"
+      }
+    ],
+    "reason": "Production challenge HTTP responses retain the exact consent, registered redirect, cold authorize URL, separate harvest URL, all capture strategies and a distinct state on every authorize request. Native main exposes consent before any provider navigation."
+  },
+  "EpicInteractiveSignInTests.Every_attempt_mints_its_own_state_and_sends_it_on_the_authorize_url": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+        "case": "Each_challenge_carries_original_consent_cold_login_redirect_harvest_and_fresh_state"
+      },
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "returns only canonical consent and attempt metadata before any provider navigation"
+      }
+    ],
+    "reason": "Production challenge HTTP responses retain the exact consent, registered redirect, cold authorize URL, separate harvest URL, all capture strategies and a distinct state on every authorize request. Native main exposes consent before any provider navigation."
+  },
+  "EpicInteractiveSignInTests.The_state_binds_the_redirect_the_browser_is_watching_for": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+        "case": "Missing_or_mismatched_state_is_consumed_before_any_provider_request"
+      },
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "refuses mismatched redirect state without permitting concurrently armed harvesting"
+      },
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "harvests after missing state or a signed-in signal and bounds deliberate navigations"
+      }
+    ],
+    "reason": "The renderer cannot spend an injected redirect. Native state policy and production HTTP completion reject mismatched state before token exchange; missing redirect state uses the existing bounded harvest route, while missing completion state is refused."
+  },
+  "EpicInteractiveSignInTests.Starting_on_the_code_endpoint_is_opt_out_and_still_carries_a_harvest_url": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+        "case": "Explicit_code_endpoint_opt_out_retains_harvest_without_requiring_unsent_state"
+      },
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "supports the backend opt-out code endpoint with no state while retaining the correct grant"
+      }
+    ],
+    "reason": "Explicit backend opt-out starts and harvests at the same code endpoint without generating or requiring a state that was never sent. Native main can complete that declared request with the authorization grant."
+  },
+  "EpicInteractiveSignInTests.A_rejected_code_reports_the_code_not_the_credentials": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+        "case": "Provider_refusals_preserve_specific_remedies_without_reflecting_codes"
+      },
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "preserves backend refusal %s without offering another prompt or exposing its private payload"
+      }
+    ],
+    "reason": "The real provider pipeline distinguishes invalid_grant from invalid_client, and native main preserves the failure enum without exposing reflected codes or offering another prompt."
+  },
+  "EpicInteractiveSignInTests.No_signed_in_account_still_falls_through_to_the_console_peer": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+      },
+      {
+        "file": "tests/parity-epic-settings.test.tsx",
+        "case": "continues embedded failure %s in the manual form without preparing another attempt"
+      },
+      {
+        "file": "tests/electron/epic-workflow.spec.ts",
+        "case": "${mode} Epic embedded failure continues in a masked manual form at text ${scale} and cancels without reopening a browser"
+      }
+    ],
+    "reason": "An unavailable/throwing embedded host, unusable capture or no session selects the manual form and retains its attempt. The Electron manual form replaces the console prompt; opening the external browser remains an explicit action. Tests complete that continuation and verify exactly one challenge and token submission. Cancellation and provider refusal do not advance to it."
+  },
+  "EpicInteractiveSignInTests.The_captured_result_never_prints_its_code": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-epic-native.test.ts",
+        "case": "continues %s embedded capture through the same manual attempt and returns no captured code"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/EpicSignInParityTests.cs",
+        "case": "Captured_codes_use_exact_grant_fields_and_never_reach_urls_logs_or_results"
+      }
+    ],
+    "reason": "Captured codes stay inside main and the provider form. Neither the native completion result nor the production API result contains the code; trace logging is also checked. Electron has no diagnostic captured-code record to stringify."
+  },
+  "InteractiveAuthPromptTests.The_browser_prompt_declines_when_no_avalonia_application_is_running": {
+    "status": "framework-specific",
+    "reason": "Avalonia application presence and WebView2 prompt availability are retired framework checks. Electron creates its browser inside the initialized main process; its real host-initialization failure and manual continuation are tested in parity-epic-native.test.ts."
+  },
+  "InteractiveAuthPromptTests.Probing_for_the_webview2_runtime_never_throws": {
+    "status": "framework-specific",
+    "reason": "Electron bundles Chromium and performs no WebView2 installation/version probe. The cached Microsoft runtime detection is specific to the retired Avalonia browser; Electron host initialization failures remain covered by the native controller tests."
+  }
+}

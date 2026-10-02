@@ -1,0 +1,61 @@
+@layer components {
+  .shared-sort-trigger {
+    min-height: 30px;
+    padding: 5px 9px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    gap: 7px;
+    font-size: calc(12px * var(--theme-text-scale, 1));
+  }
+  .shared-sort-trigger:hover,
+  .shared-sort-trigger[aria-expanded='true'] {
+    background: var(--raised);
+    color: var(--text);
+  }
+  .shared-sort-menu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    z-index: 200;
+    min-width: 176px;
+    width: max-content;
+    overflow: auto;
+    padding: 4px;
+    background: var(--raised);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-size: calc(12px * var(--theme-text-scale, 1));
+  }
+  .shared-sort-menu button {
+    display: flex;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 30px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    gap: 8px;
+    transition: none;
+    transform: none;
+  }
+  .shared-sort-menu button:hover,
+  .shared-sort-menu button:focus-visible {
+    background: var(--surface);
+    outline: none;
+  }
+  .shared-sort-dot {
+    width: 6px;
+    height: 6px;
+    flex: none;
+    border-radius: 50%;
+    background: transparent;
+  }
+  .shared-sort-menu [aria-checked='true'] .shared-sort-dot {
+    background: var(--accent-foreground, var(--accent));
+  }
+}

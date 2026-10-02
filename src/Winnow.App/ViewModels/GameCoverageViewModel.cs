@@ -116,6 +116,10 @@ public sealed partial class GameCoverageViewModel : ObservableObject
             Problem = null;
             await _separate(row.WorkId);
         }
+        catch (Winnow.Api.Client.BackendApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            Problem = "This group changed in another window. Reopen the game to review its latest links before separating it.";
+        }
         catch
         {
             Problem = "Couldn't separate that just now.";

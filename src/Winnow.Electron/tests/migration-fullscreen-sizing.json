@@ -1,0 +1,264 @@
+{
+  "FullscreenBackdropTests.Desktop_backdrop_tries_ranked_art_then_screenshot_and_keeps_portrait_separate": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/fullscreen-backdrop-lifetime.test.tsx",
+        "case": "desktop ranked backdrop and portrait keep independent ownership through failed candidates, resize and disposal"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/BackdropArtworkTests.cs",
+        "case": "Candidate_endpoint_preserves_grouped_choices_source_order_and_portrait_fallback_without_fetching_images"
+      },
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "tries ranked artwork then screenshots before a separately sized cover fallback"
+      },
+      {
+        "file": "tests/electron/backdrop.spec.ts",
+        "case": "${mode} Details uses its original reading veil and releases its backdrop on close"
+      }
+    ],
+    "reason": "The integrated desktop Artwork/Backdrop test keeps the portrait pending while ranked override/artwork candidates fail and a screenshot becomes ready. It verifies independent portrait cancellation on disposal, larger backdrop demand after resize, and late decoded/encoded completion disposal without cache resurrection. Existing API candidate ordering evidence is retained."
+  },
+  "FullscreenBackdropTests.Steam_hero_adapts_crop_and_crossfades_independent_geometry": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-artwork.spec.ts",
+        "case": "fullscreen Steam hero preserves pixel fades and independent transition geometry with cinematic ${cinematic} at ${width}"
+      },
+      {
+        "file": "tests/avalon-backdrop.test.ts",
+        "case": "Steam hero geometry and decode width stay independent of landscape layers with fullscreen %s"
+      },
+      {
+        "file": "tests/avalon-backdrop-renderer.test.tsx",
+        "case": "renders source geometry in independent transition layers with cinematic %s"
+      },
+      {
+        "file": "tests/electron/backdrop.spec.ts",
+        "case": "fullscreen Home crossfades independent source geometry, keeps visible art while loading, and releases replaced URLs"
+      }
+    ],
+    "reason": "Native BGRA samples cover all four source combinations: cinematic false/true at 1920 and 2520. White 384x 124 hero and 160x 90 landscape fixtures verify full crop below 21:9, centered scaled hero at 2520, Ground-only masked areas, independent old/new geometry and simultaneous half-opacity frames. Retained component evidence verifies scheduled-frame cleanup and release."
+  },
+  "FullscreenCoverPaddingTests.Padding_uses_each_artwork_edge_and_clears_when_released": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-artwork.spec.ts",
+        "case": "fullscreen padding keeps separate top and bottom artwork edges, clears on Fill and release, and restores on Fit"
+      },
+      {
+        "file": "tests/electron/fullscreen-artwork.spec.ts",
+        "case": "real fullscreen and desktop covers compose sampled edge padding with dormancy and Fit Fill"
+      }
+    ],
+    "reason": "Native 2x 2 red/blue art in 20x 60 verifies separate sampled top/bottom colors, transparent image center, Fill clearing, Fit restoration and source release. Real AvalonCover separately verifies sampled edge padding, dormancy composition and Fit/Fill on both surfaces."
+  },
+  "FullscreenCoverPaddingTests.Tall_artwork_fills_side_gaps_without_painting_over_the_image": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-artwork.spec.ts",
+        "case": "fullscreen padding fills tall artwork side gaps without painting the image center"
+      }
+    ],
+    "reason": "Native 2x 2 green/red art in 60x 20 verifies independently colored side gaps and zero alpha across the image center."
+  },
+  "FullscreenHomeLayoutTests.Reducing_interface_scale_reduces_rendered_home_covers": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/avalon-layout.spec.ts",
+        "case": "fullscreen interface scaling preserves shelf alignment at margin ${margin}, text ${text}"
+      },
+      {
+        "file": "tests/electron/fullscreen-scale.spec.ts",
+        "case": "fullscreen interface scale preserves physical safe margins and a full backdrop at ${width}x${height}"
+      },
+      {
+        "case": "sizes Home from an unscaled reference instead of consuming extra zoomed-out height",
+        "file": "tests/avalon-row-motion.test.ts"
+      }
+    ],
+    "reason": "Both source 1920x 1080 matrices use six shelves of 20 cards, baseline covers above 100px, .8 and 1 cover ratios within .02 including a shelf change at .8, bottom anchoring, 12px logical heading gap and centered rail through 1.2. Native 4K comparison additionally preserves reference cover count and proportional cover/hero height."
+  },
+  "FullscreenHomeLayoutTests.Long_title_keeps_single_line_cover_geometry": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/avalon-layout.spec.ts",
+        "case": "fullscreen keeps cover geometry stable for long titles and two-line reasons at every text scale"
+      }
+    ],
+    "reason": "At 1280x 720 and text .7/1/1.4, a title longer than 100 characters stays on one ellipsized line and every realized cover retains its rectangle. Electron responsive typography normalized to 1920 is 64px and composes with the restored .85 baseline; CSS truncation replaces the source text-layout mechanism."
+  },
+  "FullscreenHomeLayoutTests.Root_backdrops_fill_canvas_outside_safe_margins": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-information.spec.ts",
+        "case": "every root backdrop fills the canvas beyond ten percent safe margins at ${width}"
+      },
+      {
+        "case": "ultrawide fullscreen reaches every recommendation and its backdrop fills the canvas",
+        "file": "tests/electron/avalon-layout.spec.ts"
+      }
+    ],
+    "reason": "Both source 1920x 1080 and 2560x 1080 wide matrices visit all four roots at 10% safe margins. Actual Home/Library artwork and the original Activity/Settings decorative SVG layers are required, with full-canvas bounds outside inset content; missing layers cannot satisfy the test."
+  },
+  "FullscreenHomeLayoutTests.Description_length_preserves_home_cover_geometry": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/avalon-layout.spec.ts",
+        "case": "fullscreen keeps cover geometry stable for long titles and two-line reasons at every text scale"
+      }
+    ],
+    "reason": "Empty, short and long recommendations retain all three cover rectangles at 1280x 720 and text .7/1/1.4. Reasons reserve two physical line heights and normalize to the source 72xtext reference height through responsive CSS and the .85 baseline."
+  },
+  "FullscreenInformationHierarchyTests.Reading_has_a_bounded_measure_and_keeps_navigation_outside_scrolling_text": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-information.spec.ts",
+        "case": "fullscreen reading keeps the full note bounded and Back stationary at ${width}x${height}"
+      },
+      {
+        "file": "tests/electron/fullscreen-information.spec.ts",
+        "case": "desktop reading preserves its note dialog and restores the invoking action"
+      }
+    ],
+    "reason": "The source 1920x 1080 and 1280x 720 reading fixtures contain 24 complete paragraphs, a maximum 1200px logical measure, overflow, initially focused Back outside the scroll region and directional scrolling without moving Back. Tests also enforce saved 10% safe margins, Escape return focus, and the separate desktop note dialog."
+  },
+  "FullscreenInformationHierarchyTests.Activity_rows_separate_titles_dates_and_notes_while_retaining_selection": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-information.spec.ts",
+        "case": "fullscreen Activity separates the selected session title date and note, then shows the empty update week"
+      }
+    ],
+    "reason": "The source 1920x 1080 fixture supplies one selected 5400-second manual session with rating 4 and the source note. Native computed styles enforce 32px bold title, 22px date, 18px regular BodyFont uppercase note label; the note remains readable and switching to empty updates shows No updates this week."
+  },
+  "FullscreenRowViewportTests.Row_refresh_keeps_neighbors_and_notifies_only_for_realization_changes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-row-viewport.test.tsx",
+        "case": "publishes one realized content refresh without notifying for offscreen rows or animation frames"
+      },
+      {
+        "file": "tests/avalon-row-viewport.test.tsx",
+        "case": "refreshes one row without replacing its neighbors and immediately exposes appended data"
+      }
+    ],
+    "reason": "React retains neighboring row wrappers and emits exactly one observed realized-content mutation for a refreshed selected row; unchanged selection, an offscreen row 500 refresh and animation frames emit none. DOM mutation is the observed consumer boundary; no unused Avalonia RowsChanged event is introduced."
+  },
+  "FullscreenScaleTests.Scale_changes_all_content_with_fixed_physical_margins_and_full_backdrop": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-scale.spec.ts",
+        "case": "fullscreen interface scale preserves physical safe margins and a full backdrop at ${width}x${height}"
+      }
+    ],
+    "reason": "Both original 1920x 1080 and 3440x 1440-wide matrices plus 4K verify height/reference*.85*interface effective transform, inverse logical canvas dimensions, proportional navigation width, fixed physical 5% safe margins and full backdrop at .8/1.2/1. The controller keyboard fits at 1.2 and desktop restores zoom 1. 4K retains cover density; smaller windows retain separately verified responsive typography."
+  },
+  "FullscreenScaleTests.Scale_persists_clamps_and_resets_without_changing_text_size_until_confirmed": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fullscreen-settings.test.tsx",
+        "case": "persists five-point interface adjustments across reloads and clamps at both limits without changing text size"
+      },
+      {
+        "file": "tests/parity-fullscreen-settings.test.tsx",
+        "case": "reads saved interface scale %s as %s without overwriting it or the independent text size"
+      },
+      {
+        "file": "tests/parity-fullscreen-settings.test.tsx",
+        "case": "opens reset without writes starts on cancel and resets only the five fullscreen-owned settings"
+      },
+      {
+        "file": "tests/electron/fullscreen-scale.spec.ts",
+        "case": "empty saved interface scales use the baseline while preserving independent text size"
+      }
+    ],
+    "reason": "Settings tests exercise five-point persistence/reload, both finite clamps, invalid/empty saved values, independent text scale and Cancel-first confirmed reset of exactly five owned preferences. Native production API tests verify blank values use the .85 effective baseline while preserving text 1.3."
+  },
+  "FullscreenScaleTests.Legacy_scale_switches_to_new_baseline_while_other_preferences_and_new_adjustments_survive": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Application.Tests/PresentationPreferencesTests.cs",
+        "case": "LegacyFullscreenScaleIsExcludedWhileNewAdjustmentsAndOtherPreferencesSurviveReload"
+      },
+      {
+        "file": "tests/parity-fullscreen-settings.test.tsx",
+        "case": "persists five-point interface adjustments across reloads and clamps at both limits without changing text size"
+      },
+      {
+        "file": "tests/electron/fullscreen-scale.spec.ts",
+        "case": "fullscreen interface scale preserves physical safe margins and a full backdrop at ${width}x${height}"
+      }
+    ],
+    "reason": "Two migrated application-service theory cases cover legacy .85/1.2 without changing those keys, preserve all other preferences, write new 1.1 to ui-scale-v 2, publish its change and reload the new value. Renderer/native evidence separately verifies the default effective .85 baseline and persistent interface adjustments."
+  },
+  "FullscreenShelfIndicatorTests.Shelf_targets_select_by_mouse_without_taking_controller_focus": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-rows.spec.ts",
+        "case": "shelf mouse targets preserve controller focus and announce their ordinal and current state"
+      }
+    ],
+    "reason": "Native pointer input selects middle/adjacent shelves while preserving an existing controller focus stop; targets stay outside Tab order and expose title, ordinal and current state."
+  },
+  "FullscreenShelfIndicatorTests.Endpoint_arrows_are_disabled_and_all_shelf_dots_remain_visible": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-rows.spec.ts",
+        "case": "six shelf targets retain intrinsic geometry and disabled endpoint ${selected}"
+      }
+    ],
+    "reason": "Both source endpoint selections use six shelves with 44px targets, 4px gaps, 12/16px dots and 380px intrinsic rail height. Native tests enforce disabled endpoint arrows and visible non-overlapping dots; the rail scales to fit constrained rows."
+  },
+  "FullscreenStutterDiagnosticsTests.Scheduled_render_frames_finish_the_row_transition": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-rows.spec.ts",
+        "case": "scheduled browser render frames finish an eight row transition within three seconds"
+      }
+    ],
+    "reason": "An eight-row native fixture runs actual Chromium animation frames and completes the source transition within three seconds, retaining only intended realized rows."
+  },
+  "FullscreenStutterDiagnosticsTests.Row_navigation_keeps_geometry_stable_before_layout": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-rows.spec.ts",
+        "case": "forward and reversed navigation preserve arranged geometry until their first frame"
+      },
+      {
+        "file": "tests/avalon-row-viewport.test.tsx",
+        "case": "retains arranged translations before the first frame and immediately after reversing"
+      }
+    ],
+    "reason": "Native and controlled-frame component tests preserve arranged row translations immediately after forward and reversed navigation, before the first new frame. Browser frame/DOM geometry replace Avalonia dispatcher/layout counters."
+  },
+  "FullscreenStutterDiagnosticsTests.Home_navigation_preserves_geometry_and_unchanged_footer": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/fullscreen-rows.spec.ts",
+        "case": "ten Home shelves retain viewport, footer and one hero update per move at text ${scale}"
+      }
+    ],
+    "reason": "All source text .7/1/1.4 matrices use ten shelves of ten cards and eight Down moves. Every sampled frame retains viewport/footer geometry and node ownership, with exactly one hero update per move. Source elapsed/layout counts are diagnostics without a pass threshold; native scheduled completion is checked separately."
+  }
+}

@@ -97,6 +97,58 @@ public sealed class ApplicationUpdaterTests
     }
 
     [Fact]
+    public async Task FailedInstallerPreparationRestartsBackendBeforeReturning()
+    {
+        var stopped = false;
+        var recovered = false;
+        using var scope = new Scope(PackageHttp(), stopBackend: _ =>
+        {
+            stopped = true;
+            return Task.CompletedTask;
+        }, recoverBackend: _ =>
+        {
+            Assert.True(stopped);
+            recovered = true;
+            return Task.CompletedTask;
+        });
+        await scope.Updater.CheckAsync();
+        scope.Installer.Fail = true;
+        await scope.Updater.RestartAsync();
+        Assert.True(recovered);
+        Assert.False(scope.Shutdown);
+        Assert.False(scope.Updater.Snapshot.Busy);
+        Assert.True(scope.Updater.Snapshot.CanDownload);
+    }
+
+    [Fact]
+    public async Task BackendShutdownFailureNeverPreparesInstaller()
+    {
+        var recovered = false;
+        using var scope = new Scope(PackageHttp(), stopBackend: _ => throw new IOException("Still running"),
+            recoverBackend: _ => { recovered = true; return Task.CompletedTask; });
+        await scope.Updater.CheckAsync();
+        await scope.Updater.RestartAsync();
+        Assert.Equal(0, scope.Installer.Preparations);
+        Assert.False(scope.Shutdown);
+        Assert.True(recovered);
+    }
+
+    [Fact]
+    public async Task RemotePreferenceRefreshDiscardsPackageFromPreviousChannel()
+    {
+        using var scope = new Scope(PackageHttp());
+        await scope.Updater.CheckAsync();
+        Assert.True(scope.Updater.Snapshot.CanRestart);
+        scope.Settings.Values[ApplicationUpdater.AutomaticKey] = "false";
+        scope.Settings.Values[ApplicationUpdater.BetaKey] = "true";
+        await scope.Updater.RefreshPreferencesAsync();
+        Assert.False(scope.Updater.Snapshot.Automatic);
+        Assert.True(scope.Updater.Snapshot.IncludeBeta);
+        Assert.False(scope.Updater.Snapshot.CanRestart);
+        Assert.Equal(1, scope.Installer.Discards);
+    }
+
+    [Fact]
     public async Task Disabling_beta_discards_staged_prerelease_without_downgrading()
     {
         using var scope = new Scope(PackageHttp("2.0.0-beta.1"));
@@ -379,11 +431,13 @@ public sealed class ApplicationUpdaterTests
         public Installer Installer { get; }
         public ApplicationUpdater Updater { get; }
         public bool Shutdown { get; private set; }
-        public Scope(HttpClient http, bool supported = true, string current = "1.0.0")
+        public Scope(HttpClient http, bool supported = true, string current = "1.0.0",
+            Func<CancellationToken, Task>? stopBackend = null, Func<CancellationToken, Task>? recoverBackend = null)
         {
             _http = http;
             Installer = new(supported);
-            Updater = new(new(http), Settings, Installer, Directory, current, Suffix, () => Shutdown = true, NullLogger<ApplicationUpdater>.Instance);
+            Updater = new(new(http), Settings, Installer, Directory, current, Suffix, () => Shutdown = true, NullLogger<ApplicationUpdater>.Instance,
+                stopBackend, recoverBackend);
         }
         public void Dispose()
         {

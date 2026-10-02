@@ -1,0 +1,190 @@
+{
+  "InstallActionRefreshTests.Reload_updates_open_Epic_actions_without_losing_store_page_or_editor_draft": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-install-refresh.test.tsx",
+        "case": "reloads Moonlighter Install to Play and back while retaining the open editor draft and cached store URL"
+      },
+      {
+        "file": "tests/electron/install-action-refresh.spec.ts",
+        "case": "reload preserves the Moonlighter editor draft, Epic cache URL, folder state and selected work"
+      }
+    ],
+    "reason": "Both presentations retain source work/release/ownership 1, Moonlighter, Epic catalog-id, namespace moon-ns, artifact Eagle and https://store.epicgames.com/p/moonlighter. The backend cache's resolved store URL is supplied at the frontend HTTP boundary, the appropriate independent-frontend equivalent of constructing backend repositories. Actual production query invalidation changes Install to Play and back, preserves the mounted details/editor/input nodes and unsaved Name value An unsaved edit without metadata writes, and updates C:\\Games\\Moonlighter to a null folder path. Native coverage checks the actual folder action appears only while installed, keeps the store URL, closes details, refreshes again and verifies selected/focused work 1 still opens with Install. These observable retained React nodes, work identity and refreshed action facts replace Avalonia VM/tile reference identity and PropertyChanged notifications without dropping their state-preservation behavior."
+  },
+  "StoreLinkAfterInstallTests.Steam_uninstall_menu_row_disappears_when_refreshed_ownership_is_uninstalled": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-install-refresh.test.tsx",
+        "case": "removes the focusable Steam 620 uninstall action after ownership refresh and exposes Install"
+      },
+      {
+        "file": "tests/electron/install-action-refresh.spec.ts",
+        "case": "Steam 620 uninstall disappears after refresh and the retained details offer Install"
+      }
+    ],
+    "reason": "Source Portal 2 work/release/ownership 1 and Steam app 620 are preserved. Each surface opens the real More presentation, focuses the visible Uninstall in Steam button, closes it, publishes an uninstalled ownership snapshot and reopens it. Uninstall is absent, the retained details primary action is Install, and the Steam 620 store URL remains exact. No launcher or external-link dispatch occurs. Conditional unmounting replaces the Avalonia menu item's IsVisible false; both exclude the action from rendering and focus. Desktop uses the source 1200x640 bounds; fullscreen uses 1280x720."
+  },
+  "StoreLinkAfterInstallTests.Open_details_refreshes_install_to_play_without_losing_the_store_link": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-install-refresh.test.tsx",
+        "case": "refreshes the retained Moonlighter header and dispatches Play with the current ownership while preserving three store visits"
+      },
+      {
+        "file": "tests/electron/install-action-refresh.spec.ts",
+        "case": "Moonlighter refresh dispatches current Play and preserves three store visits through reopening details"
+      }
+    ],
+    "reason": "The source Moonlighter IDs 1, Epic sample-namespace/sample-catalog/Moonlighter launch tuple and exact en-US store URL are retained. Both presentations verify Install/download changes to Play/play on the same mounted details node, the pointer-dispatched Play request uses current ownership 1 and installed=true exactly once, and three physical store-row center clicks retain the exact URL before refresh, after refresh, and after details is closed and reopened. The native checks retain text, enabled state, positive text bounds, button geometry and elementFromPoint hit ownership. Reopening details provides the source fresh-Details-model check. React keys may preserve a URL button across refreshed snapshots while a closed More menu unmounts its contents; the source's list-regeneration NotSame assertion is represented by refreshed action semantics plus unchanged destination identity, and its Same-after-dispatch constraint by stable live DOM and native bounds. The explicit Electron label Epic Games store page identifies the same Store page action."
+  },
+  "StoreLinkAfterInstallTests.Epic_store_link_keeps_its_text_and_hit_target_during_and_after_install_dispatch": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-install-refresh.test.tsx",
+        "case": "keeps the store link enabled through one pending Install dispatch and after completion"
+      },
+      {
+        "file": "tests/electron/install-action-refresh.spec.ts",
+        "case": "store text and hit target survive pending and completed Install with one dispatch"
+      },
+      {
+        "file": "tests/electron/install-action-refresh.spec.ts",
+        "case": "fullscreen action sheet preserves interface scale, text size and safe margins with controller access to its last row"
+      }
+    ],
+    "reason": "All four source window sizes (1200x640, 1280x820, 1920x1080, 3840x2160) run separately in desktop and fullscreen with the exact Moonlighter IDs, Epic sample launch tuple and en-US URL. A controlled pending HTTP action response replaces the source TaskCompletionSource. The actual primary action is focused and pointer-clicked; a second pointer hit while disabled must leave exactly one Install request. Before, during and after completion, the source More trigger and store row retain their size and origin within the original one-pixel tolerance. The real store button must be enabled, fully opaque, show its complete positive-sized text and own the center hit target; center clicks during and after dispatch yield exactly two identical URLs. The open row retains DOM identity across completion and accepts keyboard focus afterward. Actual main/preload/renderer paths remain active; OS external opens are recorded and filesystem opens/network escapes are rejected. React's temporary unmount on closing More is documented rather than falsely claiming Avalonia menu-container identity. The action label stays Install while aria-busy reports the pending request, and fullscreen completion feedback retains its authored 24px size without moving More. Native 1920/3840 checks additionally prove the More sheet scales once from its 28px action/620px panel reference, retains percentage safe margins, and reaches every action through simulated standard-controller Down input. A separate 80% interface/140% text/8% margin case waits for all three preference publications and verifies the same sizing and final-row hit target."
+  },
+  "TileActionsTests.No_sentence_is_ever_a_placeholder": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-tile-command-contracts.test.tsx",
+        "case": "never exposes placeholder copy for %s"
+      }
+    ],
+    "reason": "All three values in frozen NoWayIn are exercised through the production noActionSentence policy: None returns null; InstallStateUnknown and NoStoreId return nonblank sentences with neither TODO nor PLACEHOLDER, case-insensitively. Exact frozen copy is additionally asserted. Fez's complete Epic key supplies the unknown-state fixture; removing that key supplies the missing-identifier fixture. This source method tests a shared copy policy rather than rendering; the same policy is used by desktop and fullscreen Details."
+  },
+  "TileActionsTests.The_detail_panel_offers_exactly_the_tiles_action": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-tile-command-contracts.test.tsx",
+        "case": "${mode} Fez %s details uses the tile's exact selected ownership and primary policy"
+      },
+      {
+        "file": "tests/electron/tile-command-contracts.spec.ts",
+        "case": "${mode} Fez ${store} tile and Details share one pending primary operation and exact ownership"
+      }
+    ],
+    "reason": "Preserves Fez ownership/release/work1, installed GOG1971477531, Never played, zero playtime and null last played. Component coverage proves detailsGame returns the very same LibraryGame and primaryEntry returns the very same GameEntry reference; both rendered primary controls say Play and use the same ownership-bound command. GOG Galaxy remains present under More with its literal expected URL. Electron carries action kind/ownership through a named API command rather than storing an Avalonia GameLink object on a view model; shared selection-policy/entry identity and a single pending dispatched operation are the functional replacement for Assert.Same(tile.PrimaryAction, details.PrimaryAction). Desktop and fullscreen are separately exercised; Steam620 is an additional companion row, not a substitute for the frozen GOG row."
+  },
+  "TileActionsTests.Every_tile_launches_through_the_librarys_own_command": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-tile-command-contracts.test.tsx",
+        "case": "the Anvil grid forwards its primary and Details actions to the supplied library commands"
+      },
+      {
+        "file": "tests/electron/tile-command-contracts.spec.ts",
+        "case": "${mode} exact Anvil fixture keeps rail bucket, grid Details and Install on the library command"
+      },
+      {
+        "file": "tests/electron/tile-command-contracts.spec.ts",
+        "case": "${mode} Fez ${store} tile and Details share one pending primary operation and exact ownership"
+      }
+    ],
+    "reason": "Preserves the real LibraryFixture seed: one Anvil work/release/ownership1, Windows release, Steam700001, default Installed=false, play record0/null last-played/source test/2026-08-26T12:00:00Z. The production desktop Library tile calls the exact supplied context.actions.launch once with ownership1 and performs no direct action request. Native production composition records the same ownership and Install action. Fullscreen retains its separate presentation contract: X invokes Play only for installed games, so Anvil X dispatches nothing and its Details Install remains available; installed Fez separately proves the fullscreen X route uses the shared owner. No simulated OS launch is mistaken for actual launch attribution evidence."
+  },
+  "TileActionsTests.The_detail_panel_launches_through_the_same_command_as_the_tile": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-tile-command-contracts.test.tsx",
+        "case": "${mode} Fez %s details uses the tile's exact selected ownership and primary policy"
+      },
+      {
+        "file": "tests/electron/tile-command-contracts.spec.ts",
+        "case": "${mode} Fez ${store} tile and Details share one pending primary operation and exact ownership"
+      }
+    ],
+    "reason": "Preserves the frozen installed Steam Fez fixture with ownership/release1 and Steam620. Component assertions retain the source tile reference via detailsGame, retain the selected entry reference, and prove tile plus Details invoke the identical PrimaryActionsContext launch function with [1],[1], without a fallback direct request. Native production App coverage holds the tile/fullscreen-X operation pending while opening Details: both surfaces join exactly one action request and operation ID for ownership1, then a later explicit launch uses a fresh ID after completion. This verifies shared command ownership across React components where Avalonia's ICommand property identity is not the UI mechanism. GOG supplies an additional companion row."
+  },
+  "TileActionsTests.The_grid_actions_carry_the_librarys_own_commands": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-tile-command-contracts.test.tsx",
+        "case": "the Anvil grid forwards its primary and Details actions to the supplied library commands"
+      },
+      {
+        "file": "tests/parity-tile-command-contracts.test.tsx",
+        "case": "${mode} Anvil tile names Never played with the rail vocabulary"
+      },
+      {
+        "file": "tests/electron/tile-command-contracts.spec.ts",
+        "case": "${mode} exact Anvil fixture keeps rail bucket, grid Details and Install on the library command"
+      }
+    ],
+    "reason": "The exact Anvil fixture is rendered by production AvalonLibrary and AvalonShell. Desktop primary Install invokes the provided library launch callback once, never the open callback; the Details affordance invokes the provided openGame callback once with work1, never another launch. Cover activation invokes openGame on both presentations. Native cases verify the real Details route and title preserve Anvil's identity and merely opening it adds no action request. React callbacks supplied by the host are the equivalent of the original LaunchCommand/OpenDetailsCommand references; tests exercise both independent controls and count side effects."
+  },
+  "TileActionsTests.The_tile_names_the_bucket_the_way_the_rail_does": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-tile-command-contracts.test.tsx",
+        "case": "${mode} Anvil tile names Never played with the rail vocabulary"
+      },
+      {
+        "file": "tests/electron/tile-command-contracts.spec.ts",
+        "case": "${mode} exact Anvil fixture keeps rail bucket, grid Details and Install on the library command"
+      }
+    ],
+    "reason": "Preserves the frozen Anvil/Steam700001/zero-play fixture and exact Never played vocabulary. Both production cover paths and desktop list rows now use the rail's libraryBucketLabel for their accessible description, preserving existing accessible names and any feed reason. The exact source accesses Library.VisibleTiles, so these component and native assertions cover Library rather than feed tiles; existing feed aria-describedby continues to expose its recommendation reason. Components compare the literal Library description and displayed rail label; native cases read Chromium's accessibility tree and require description Never played. The raw derived-bucket key never substitutes for the user-facing name."
+  },
+  "PluginGameActionIntegrationTests.Resource_identifier_fallback_is_promoted_when_the_real_title_becomes_available": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginGameActionService.cs",
+      "src/Winnow.Application/Services/PluginSyncService.cs",
+      "src/Winnow.Plugins/PluginCatalog.cs"
+    ],
+    "tests": [
+      {
+        "file": "tests/electron/plugin-game-actions.spec.ts",
+        "case": "plugin resource title promotion preserves the work and imported source identity"
+      }
+    ],
+    "reason": "Every frozen assertion is retained application policy: provisional imported work becomes a real title without changing its work ID. PluginCatalog, PluginSyncService and resolver remain backend-owned and contain no Avalonia presentation. The unchanged source test passes; supplement with Electron/API cases verifying exact imported source, ownership and release identities and one correctly titled tile after live publication on each surface. All three original PluginGameActionIntegrationTests pass without skips in .tmp/task3818-plugin-dotnet-results/plugin-game-actions.trx. Native desktop and fullscreen supplemental evidence is recorded in checkpoint-sixty-three.md."
+  },
+  "PluginGameActionIntegrationTests.Imported_actions_survive_offline_refresh_and_route_through_the_active_provider_with_launch_attribution": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/plugin-game-actions.spec.ts",
+        "case": "offline plugin tile actions use the active provider and retain exact launch attribution"
+      }
+    ],
+    "reason": "This method cannot be retained solely because most assertions are backend policy: it constructs an Avalonia LibraryViewModel and asserts the tile's source label and primary action. The replacement loads the real provider, commits inventory, returns null during offline refresh, observes the retained tile and workspace source label, then launches from the actual desktop tile or fullscreen controller X. It asserts the exact ownership path, named Play action, HandedOff result, a live intent for that ownership and exactly one stable-package:Play provider call. A second operation receives AlreadyRunning without another provider call. The actual details Open store button routes OpenStore to the same provider/source; both surfaces show Xbox and the original inclusion label. Original wrong-ownership and forged-URI factory rejection execute against retained services. The source GameLinkRouter branch is replaced in Electron by the typed action API; its preserved backend behavior also runs in the unchanged source test. All three original PluginGameActionIntegrationTests pass without skips in .tmp/task3818-plugin-dotnet-results/plugin-game-actions.trx. Native desktop and fullscreen supplemental evidence is recorded in checkpoint-sixty-three.md."
+  },
+  "PluginGameActionIntegrationTests.Uninstall_removes_play_and_stale_buttons_cannot_bypass_the_latest_observation": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginGameActionService.cs",
+      "src/Winnow.Application/Services/PluginSyncService.cs",
+      "src/Winnow.Plugins/PluginCatalog.cs"
+    ],
+    "tests": [
+      {
+        "file": "tests/electron/plugin-game-actions.spec.ts",
+        "case": "plugin uninstall rejects stale Play and unload retains inclusion evidence without actions"
+      }
+    ],
+    "reason": "Every frozen assertion targets retained catalog, import and action services: a removed observation removes Play but preserves OpenStore; execution of the previously captured GameLink fails; disposing the real catalog removes both actions but preserves the source label. The unchanged source test passes. Supplemental Electron/API cases leave details open, apply the real removed observation, assert live Play removal and retained Open store, execute both the original captured service action and stale typed API Play (refused), unload the real catalog, assert Open store removal and visible retained label, and refuse the typed store action without any provider or OS call. All three original PluginGameActionIntegrationTests pass without skips in .tmp/task3818-plugin-dotnet-results/plugin-game-actions.trx. Native desktop and fullscreen supplemental evidence is recorded in checkpoint-sixty-three.md."
+  }
+}

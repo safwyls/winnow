@@ -1,0 +1,119 @@
+@layer components {
+  .update-result {
+    scroll-margin-block: 8px;
+  }
+  .screenshot-strip {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-block: 10px;
+  }
+  .screenshot-strip > button {
+    flex: 0 0 120px;
+    padding: 0;
+  }
+  .screenshot-strip img {
+    display: block;
+    width: 120px;
+    height: 68px;
+    object-fit: contain;
+  }
+  .screenshot-previews {
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .screenshot-previews > button {
+    flex: 0 1 calc(var(--screenshot-preview-height, 240px) * 16 / 9);
+    max-width: calc((100% - 16px) / 2);
+    min-width: 0;
+    min-height: 0;
+  }
+  .screenshot-previews img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: var(--screenshot-preview-height, 240px);
+    object-fit: contain;
+  }
+  .metadata-art-preview {
+    max-width: 380px;
+    max-height: 200px;
+    margin-block: 12px;
+  }
+  .metadata-art-preview img {
+    object-fit: contain;
+  }
+  .screenshot-dialog {
+    width: min(1282px, calc(100vw - 48px), calc((100vh - 96px) * 16 / 9));
+    max-width: 1282px;
+    max-height: calc(100vh - 48px);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+  .screenshot-frame {
+    position: relative;
+    width: 100%;
+    max-width: 1282px;
+    max-height: 722px;
+    aspect-ratio: 16 / 9;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .screenshot-frame > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 1280px;
+    max-height: 720px;
+    object-fit: contain;
+  }
+  .screenshot-frame > button {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
+    background: var(--avalon-lightbox-fill, color-mix(in srgb, var(--surface) 70%, transparent));
+    border: 1px solid transparent;
+  }
+  .screenshot-frame > button:is(:hover, :focus-visible) {
+    background: var(--avalon-lightbox-active-fill, color-mix(in srgb, var(--raised) 85%, transparent));
+  }
+  .screenshot-frame > button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .screenshot-close {
+    right: 12px;
+    top: 12px;
+  }
+  .screenshot-previous {
+    left: 12px;
+    top: calc(50% - 18px);
+  }
+  .screenshot-next {
+    right: 12px;
+    top: calc(50% - 18px);
+  }
+  .screenshot-dialog .screenshot-position {
+    margin: 8px 0 0;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: calc(14px * var(--theme-text-scale, 1));
+    font-weight: 400;
+  }
+  .update-unread-dot {
+    color: var(--avalon-flare, var(--accent));
+  }
+  .details-page .editor-form + .editor-form {
+    border-top: 1px solid var(--line);
+    padding-block-start: 24px;
+    margin-block-start: 24px;
+  }
+}

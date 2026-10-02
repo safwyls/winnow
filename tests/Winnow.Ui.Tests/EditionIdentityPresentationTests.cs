@@ -51,6 +51,7 @@ public sealed class EditionIdentityPresentationTests
         services.AddSingleton<ILibraryQueryRepository>(fixture.Queries);
         services.AddSingleton<IExpansionRefusalRepository>(new ExpansionRefusalRepository(fixture.Db.Factory));
         services.AddSingleton(new LibraryExpansionScan(fixture.Releases, fixture.Links, new ExpansionRefusalRepository(fixture.Db.Factory)));
+        services.AddSingleton<IExpansionReviewScan>(sp => sp.GetRequiredService<LibraryExpansionScan>());
         services.AddSingleton(library);
         using var provider = services.BuildServiceProvider();
         using var context = new FullscreenContext(library, PreviewData.Feed, PreviewData.Shell, provider);

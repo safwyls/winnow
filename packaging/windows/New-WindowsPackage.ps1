@@ -15,6 +15,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Test-ElectronPackageLayout.ps1')
 
 function Resolve-RequiredDirectory {
     param(
@@ -63,6 +64,9 @@ function Assert-ReleaseManifest {
     if ([string]$manifest.commit -cnotmatch '^[0-9a-f]{40}$') {
         throw 'release-info.json commit must be a 40-character lowercase SHA-1.'
     }
+    if ($null -ne $manifest.PSObject.Properties['frontend'] -and $manifest.frontend -cne 'electron') {
+        throw 'release-info.json contains an unsupported frontend identity.'
+    }
 }
 
 function Assert-PortableArchive {
@@ -80,6 +84,9 @@ function Assert-PortableArchive {
         if ($null -eq $archive.GetEntry('Winnow.exe')) {
             throw 'Portable archive does not contain Winnow.exe.'
         }
+        foreach ($required in @('backend/Winnow.Backend.exe', 'backend/Winnow.Backend.dll', 'backend/Winnow.Backend.runtimeconfig.json', 'backend/Microsoft.AspNetCore.dll')) {
+            if ($null -eq $archive.GetEntry($required)) { throw "Portable archive is missing $required." }
+        }
         $manifestEntry = $archive.GetEntry('release-info.json')
         if ($null -eq $manifestEntry) {
             throw 'Portable archive does not contain release-info.json.'
@@ -87,7 +94,10 @@ function Assert-PortableArchive {
 
         $reader = [System.IO.StreamReader]::new($manifestEntry.Open())
         try {
-            Assert-ReleaseManifest -ManifestJson $reader.ReadToEnd() -ExpectedVersion $ExpectedVersion
+            $json = $reader.ReadToEnd()
+            Assert-ReleaseManifest -ManifestJson $json -ExpectedVersion $ExpectedVersion
+            $manifest = $json | ConvertFrom-Json
+            Assert-WinnowWindowsEntries @($archive.Entries | ForEach-Object FullName) (Test-WinnowElectronManifest $manifest)
         }
         finally {
             $reader.Dispose()
@@ -108,11 +118,17 @@ if (-not (Test-Path -LiteralPath (Join-Path $publishDirectory 'Winnow.exe') -Pat
 if (Test-Path -LiteralPath (Join-Path $publishDirectory 'appsettings.local.json') -PathType Leaf) {
     throw 'PublishDirectory contains appsettings.local.json, which must not enter a release artifact.'
 }
+foreach ($required in @('backend/Winnow.Backend.exe', 'backend/Winnow.Backend.dll', 'backend/Winnow.Backend.runtimeconfig.json', 'backend/Microsoft.AspNetCore.dll')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $publishDirectory $required) -PathType Leaf)) { throw "PublishDirectory is missing $required." }
+}
 $manifestPath = Join-Path $publishDirectory 'release-info.json'
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
     throw "PublishDirectory does not contain release-info.json: $publishDirectory"
 }
 Assert-ReleaseManifest -ManifestJson (Get-Content -LiteralPath $manifestPath -Raw) -ExpectedVersion $Version
+Assert-WinnowWindowsDirectory $publishDirectory
+Assert-WinnowPackagedHashes $publishDirectory
+$electronFrontend = Test-WinnowElectronManifest (Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json)
 
 if (-not (Test-Path -LiteralPath $OutputDirectory -PathType Container)) {
     $null = New-Item -ItemType Directory -Path $OutputDirectory -Force
@@ -120,7 +136,7 @@ if (-not (Test-Path -LiteralPath $OutputDirectory -PathType Container)) {
 $outputDirectory = Resolve-RequiredDirectory -Path $OutputDirectory -Name 'OutputDirectory'
 
 $installerSource = Join-Path $PSScriptRoot 'Winnow.iss'
-$iconFile = Join-Path $repositoryRoot 'src\Winnow.App\Assets\Icons\dragon.ico'
+$iconFile = if ($electronFrontend) { Join-Path $publishDirectory 'resources/icon.ico' } else { Join-Path $repositoryRoot 'src\Winnow.App\Assets\Icons\dragon.ico' }
 if (-not (Test-Path -LiteralPath $iconFile -PathType Leaf)) {
     throw "The installer icon is missing: $iconFile"
 }
@@ -139,7 +155,9 @@ foreach ($artifact in @($installerPath, $portableArchivePath)) {
     }
 }
 
-& $innoCompiler "/DSourceDir=$publishDirectory" "/DOutputDir=$outputDirectory" "/DAppVersion=$Version" "/DNumericVersion=$($release.Numeric)" "/DIconFile=$iconFile" $installerSource
+$compilerArguments = @("/DSourceDir=$publishDirectory", "/DOutputDir=$outputDirectory", "/DAppVersion=$Version", "/DNumericVersion=$($release.Numeric)", "/DIconFile=$iconFile")
+if ($electronFrontend) { $compilerArguments += '/DElectronFrontend=1' }
+& $innoCompiler @compilerArguments $installerSource
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit code $LASTEXITCODE."
 }

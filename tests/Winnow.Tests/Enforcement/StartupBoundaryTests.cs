@@ -17,26 +17,18 @@ namespace Winnow.Tests.Enforcement;
 public sealed class StartupBoundaryTests
 {
     [Fact]
-    public void Startup_workers_wait_for_native_platform_services()
+    public void Frontend_subscriptions_wait_for_native_platform_services_and_no_backend_workers_are_started()
     {
         var text = RepositoryTree.Read("src/Winnow.App/Program.cs");
         var platformReady = text.IndexOf(".AfterPlatformServicesSetup(", StringComparison.Ordinal);
         Assert.True(platformReady >= 0, "Startup workers need a native platform initialization boundary.");
-        var open = text.IndexOf('{', platformReady);
-        var depth = 1;
-        var end = open + 1;
-        for (; end < text.Length && depth > 0; end++)
-        {
-            if (text[end] == '{') depth++;
-            else if (text[end] == '}') depth--;
-        }
-
-        // These paths can publish immediately, before application construction has finished.
-        foreach (var marker in new[] { "host.Start();", "startup = Task.Run(", "var pluginStartup = Task.Run(" })
-        {
-            var worker = text.IndexOf(marker, StringComparison.Ordinal);
-            Assert.True(worker > open && worker < end, $"{marker} must wait for native platform services.");
-        }
+        var subscriptions = text.IndexOf("host.Start()", StringComparison.Ordinal);
+        var lifetime = text.IndexOf(".StartWithClassicDesktopLifetime(", platformReady, StringComparison.Ordinal);
+        Assert.True(subscriptions > platformReady && subscriptions < lifetime,
+            "Frontend subscriptions must start after platform setup and before the desktop lifetime.");
+        foreach (var marker in new[] { "startup = Task.Run(", "var pluginStartup = Task.Run(",
+            "GetRequiredService<DatabaseInitializer>", "AddSessionWatching(", "AddWinnowRuntime(" })
+            Assert.DoesNotContain(marker, text, StringComparison.Ordinal);
     }
 
     /// <summary>

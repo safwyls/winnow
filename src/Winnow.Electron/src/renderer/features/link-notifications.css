@@ -1,0 +1,28 @@
+.link-notification {
+  position: fixed;
+  z-index: 900;
+  right: 24px;
+  bottom: 24px;
+  left: auto;
+  top: auto;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: min(560px, calc(100vw - 48px));
+  padding: 16px 20px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px #0004;
+}
+.link-notification p {
+  margin: 0;
+  line-height: 1.5;
+}
+html[data-mode='fullscreen'] .link-notification {
+  bottom: max(40px, var(--fullscreen-safe-margin, 5%));
+  right: max(40px, var(--fullscreen-safe-margin, 5%));
+  font-size: calc(20px * var(--theme-text-scale, 1));
+}

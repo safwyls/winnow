@@ -1,0 +1,679 @@
+import { useLayoutEffect, useRef, useState } from 'react'
+import { useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { ArrowLeft, ArrowUpRight, Play, Download, RefreshCw } from 'lucide-react'
+import {
+  ApiError,
+  dateLabel,
+  hours,
+  launchMessage,
+  primaryAction,
+  request,
+  storeLabel,
+  openExternal,
+} from '../api/client'
+import { useApiQuery, useCommand, useDetails, useLibrary, useWorkspace } from '../api/hooks'
+import type { GameEntry, Metadata, Mode, Workspace } from '../api/types'
+import { DetailsJournal, JournalEditor, SessionRows, useJournalSending } from './Journal'
+import { Empty, Notice } from './shared'
+import { Artwork } from '../components/Artwork'
+import { useViewState } from '../viewState'
+import { gameLinks, type GameLink } from '../api/gameLinks'
+import { IgdbMatch, LibraryFacts, MetadataEditor, Screenshots, UpdateSignals } from './parity-details'
+import { SteamReportedActivity } from './activity-steam'
+import { ActivityTimeline } from './activity-timeline'
+import { ListMembershipChoice } from './parity-list-membership'
+import { ArtworkBrowser as ArtworkEditor } from './artwork-browser'
+import { AddToListButton, orderedLists } from './parity-list-prompt'
+import { DetailsRelationships } from './parity-details-identity'
+import { AvalonDetailsLayout } from './details-layout'
+import { detailPlaytime } from './details-facts'
+import { librarySourceSummary } from './library-source'
+import { ReleaseAchievements } from './detail-achievements'
+import { noActionSentence } from '../../shared/game-actions'
+import { createGameLink } from '../../shared/external-links'
+import { useLaunchFeedback } from './LaunchFeedback'
+import { usePrimaryActions } from './PrimaryActions'
+import type { IgdbState } from './igdb-match'
+import { primaryEntry } from '../../shared/game-actions'
+import { cachedGogPatchNotes, GogPatchNotes, GogPatchNotesText, GogPatchNotesHints } from './GogPatchNotes'
+
+const detailScrollPositions = new WeakMap<QueryClient, Map<string, number>>()
+const editorSections = new Set(['Metadata', 'Game match', 'Artwork'])
+
+export function GameLinks({ links }: { links: GameLink[] }) {
+  const [error, setError] = useState<unknown>(null)
+  const destinations = links.flatMap((link) => {
+    const validated = createGameLink(link.label, link.url, link.detail)
+    return validated ? [validated] : []
+  })
+  async function open(url: string) {
+    setError(null)
+    try {
+      await openExternal(url, { failure: 'inline' })
+    } catch {
+      setError(
+        new Error('Could not open this link. Check that a browser or Steam is available, then try again.'),
+      )
+    }
+  }
+  if (!destinations.length) return null
+  return (
+    <section className="feature-panel game-links">
+      <h2>Explore the game</h2>
+      <nav aria-label="Game links">
+        {destinations.map((link) => (
+          <button key={link.url} title={link.url} onClick={() => void open(link.url)}>
+            <span>
+              {link.label}
+              {link.detail && <small>{link.detail}</small>}
+            </span>
+            <ArrowUpRight size={16} aria-hidden="true" />
+          </button>
+        ))}
+      </nav>
+      <Notice error={error} />
+    </section>
+  )
+}
+
+export function EntryActions({
+  entry,
+  workspace,
+  primaryOnly = false,
+  managementOnly = false,
+  launchTitle,
+  compactPlaytime = false,
+}: {
+  entry: GameEntry
+  workspace?: Workspace
+  primaryOnly?: boolean
+  managementOnly?: boolean
+  launchTitle?: string
+  compactPlaytime?: boolean
+}) {
+  const feedback = useLaunchFeedback()
+  const primaryCommands = usePrimaryActions()
+  const [pending, setPending] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState<unknown>(null)
+  const [attempt, setAttempt] = useState<{ operationId: string; action: string } | null>(null)
+  const action = managementOnly ? null : primaryAction(entry, workspace)
+  const unavailable =
+    entry.store === 'manual'
+      ? 'Manual entries can be tracked here. Launch this game from its shortcut.'
+      : noActionSentence(entry, workspace)
+  async function dispatch(kind: string, reuse = false) {
+    const operation = reuse && attempt ? attempt : { operationId: crypto.randomUUID(), action: kind }
+    setAttempt(operation)
+    setPending(true)
+    setError(null)
+    setMessage('')
+    try {
+      const send = () => request<number>('actions.execute', { ownershipId: entry.ownershipId }, operation)
+      const result =
+        primaryCommands && (kind === 'Play' || kind === 'Install')
+          ? await primaryCommands.launch(entry.ownershipId)
+          : feedback
+            ? await feedback.track(
+                entry.ownershipId,
+                launchTitle ?? entry.title,
+                storeLabel(entry.store),
+                kind,
+                send,
+              )
+            : await send()
+      setMessage(feedback && kind === 'Play' ? '' : launchMessage(result))
+      setAttempt(null)
+    } catch (failure) {
+      setError(failure)
+      if (!(failure instanceof ApiError) || !failure.uncertain) setAttempt(null)
+    } finally {
+      setPending(false)
+    }
+  }
+  return (
+    <div className="entry-actions">
+      {!primaryOnly && !managementOnly && (
+        <div>
+          <strong>{storeLabel(entry.store)}</strong>
+          <span>
+            {typeof entry.installed === 'boolean' && `${entry.installed ? 'Installed' : 'Not installed'} · `}
+            {compactPlaytime ? detailPlaytime(entry.playtimeMinutes) : hours(entry.playtimeMinutes)}
+          </span>
+          {workspace?.pluginActions[String(entry.ownershipId)]?.sourceLabel && (
+            <span>{workspace.pluginActions[String(entry.ownershipId)].sourceLabel}</span>
+          )}
+        </div>
+      )}
+      {action ? (
+        <button
+          className="primary-button"
+          data-controller-play={primaryOnly || undefined}
+          disabled={pending || Boolean(attempt)}
+          aria-busy={pending || undefined}
+          onClick={() => void dispatch(action)}
+        >
+          {action === 'Play' ? <Play size={16} /> : <Download size={16} />}
+          {action}
+        </button>
+      ) : (
+        !managementOnly && unavailable && <p className="muted">{unavailable}</p>
+      )}
+      {!primaryOnly &&
+        entry.store === 'steam' &&
+        entry.installed &&
+        workspace?.externalIds.some(
+          (id) =>
+            id.releaseId === entry.releaseId && id.provider === 'steam' && /^\d{1,10}$/.test(id.providerId),
+        ) && (
+          <button disabled={pending || Boolean(attempt)} onClick={() => void dispatch('Uninstall')}>
+            Uninstall in Steam
+          </button>
+        )}
+      {!primaryOnly &&
+        (entry.store === 'epic' ||
+          (entry.store === 'gog' &&
+            workspace?.externalIds.some(
+              (id) =>
+                id.releaseId === entry.releaseId && id.provider === 'gog' && /^\d{1,12}$/.test(id.providerId),
+            ))) && (
+          <button disabled={pending || Boolean(attempt)} onClick={() => void dispatch('Manage')}>
+            Manage in launcher
+          </button>
+        )}
+      {!primaryOnly &&
+        entry.store.startsWith('plugin:') &&
+        workspace?.pluginActions[String(entry.ownershipId)]?.canOpenStore && (
+          <button disabled={pending || Boolean(attempt)} onClick={() => void dispatch('OpenStore')}>
+            Open store
+          </button>
+        )}
+      <Notice error={error} message={message} />
+      {attempt && !pending && (
+        <div className="conflict-panel">
+          <p>The response was interrupted. The launcher may already have received the action.</p>
+          <button onClick={() => void dispatch(attempt.action, true)}>Check the same action again</button>
+          <button
+            onClick={() => {
+              if (attempt.action === 'Play' || attempt.action === 'Install')
+                primaryCommands?.dismiss(entry.ownershipId)
+              setAttempt(null)
+              setError(null)
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function Details(props: {
+  workId: number
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
+  mode?: Mode
+  onClose?: () => void
+  onOpenGame?(workId: number): void
+  presentation?: 'shared' | 'avalon'
+}) {
+  return props.presentation === 'avalon' ? (
+    <AvalonDetailsLayout key={props.workId} {...props} />
+  ) : (
+    <SharedDetails key={props.workId} {...props} />
+  )
+}
+
+function SharedDetails({
+  workId,
+  mode = 'desktop',
+  onClose,
+  editText,
+  onOpenGame,
+}: {
+  workId: number
+  mode?: Mode
+  onClose?: () => void
+  editText?(input: HTMLInputElement | HTMLTextAreaElement): void
+  onOpenGame?(workId: number): void
+}) {
+  const library = useLibrary()
+  const workspace = useWorkspace()
+  const client = useQueryClient()
+  let detailPositions = detailScrollPositions.get(client)
+  if (!detailPositions) {
+    detailPositions = new Map()
+    detailScrollPositions.set(client, detailPositions)
+  }
+  const details = useDetails(workId)
+  const igdb = useApiQuery<IgdbState>('metadata.igdb', { workId })
+  const metadata = useApiQuery<Metadata>('metadata.get', { workId })
+  const journalPreferences = useApiQuery<{ promptAfterPlay: boolean }>('journal.preferences.get')
+  const game = library.data?.games.find((item) => item.workId === workId)
+  const sourceSummary = librarySourceSummary(game?.entries ?? [], workspace.data)
+  const gogNotes = cachedGogPatchNotes(
+    primaryEntry(game?.entries ?? [], workspace.data) ?? game?.entries[0],
+    workspace.data,
+  )
+  const [readingNotes, setReadingNotes] = useState(false)
+  const notesOrigin = useRef<HTMLButtonElement | null>(null)
+  const notesBack = useRef<HTMLButtonElement | null>(null)
+  const notesScroll = useRef<HTMLDivElement | null>(null)
+  useLayoutEffect(() => {
+    if (readingNotes) notesBack.current?.focus({ preventScroll: true })
+    else if (notesOrigin.current) {
+      page.current
+        ?.querySelector<HTMLButtonElement>('[data-details-reading="Patch notes"]')
+        ?.focus({ preventScroll: true })
+      notesOrigin.current = null
+    }
+  }, [readingNotes])
+  const unreadRows = (workspace.data?.buckets ?? []) as {
+    resolvedWorkId: number
+    releaseId: number
+    game: { unreadUpdateCount: number }
+  }[]
+  // Every ownership row repeats the resolved game's aggregate, including editions on other stores.
+  const unreadCount =
+    game && (game.playtimeMinutes > 0 || game.lastPlayedAt)
+      ? Math.max(
+          0,
+          ...unreadRows
+            .filter((row) => row.resolvedWorkId === workId)
+            .map((row) => row.game.unreadUpdateCount),
+        )
+      : 0
+  const [editing, setEditing] = useViewState<number | null>(`${mode}:details:${workId}:editing`, null)
+  const [editingSection, setEditingSection] = useViewState(
+    `${mode}:details:${workId}:editing-section`,
+    'Journal',
+  )
+  const [inlineEditing, setInlineEditing] = useViewState<{ id: number; deleting: boolean } | null>(
+    `${mode}:details:${workId}:journal-inline`,
+    null,
+  )
+  const inlineSending = useJournalSending(inlineEditing?.id)
+  const modalSending = useJournalSending(editing)
+  const journalSending = inlineSending || modalSending
+  // An unfinished editor resumes its originating section; an ordinary opening starts at Overview.
+  const [tab, setTab] = useState(() =>
+    inlineEditing ? 'Journal' : editing == null ? 'Overview' : editingSection,
+  )
+  const [matchNote, setMatchNote] = useState('')
+  const [previousSection, setPreviousSection] = useState('Overview')
+  const page = useRef<HTMLElement>(null),
+    tabs = useRef<HTMLElement>(null)
+  const viewport = useRef<HTMLElement | null>(null)
+  const focusAfterReturn = useRef(false)
+  const scrollKey = `${mode}:${workId}:${tab}`
+  useLayoutEffect(() => {
+    let node = page.current?.parentElement ?? null
+    while (node && !/auto|scroll/.test(getComputedStyle(node).overflowY || getComputedStyle(node).overflow))
+      node = node.parentElement
+    viewport.current = node
+    if (node) node.scrollTop = detailPositions!.get(scrollKey) ?? 0
+    const remember = () => {
+      if (node) detailPositions!.set(scrollKey, node.scrollTop)
+    }
+    node?.addEventListener('scroll', remember)
+    if (focusAfterReturn.current) {
+      tabs.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus({ preventScroll: true })
+      focusAfterReturn.current = false
+    }
+    return () => {
+      remember()
+      node?.removeEventListener('scroll', remember)
+    }
+  }, [scrollKey])
+  function changeTab(next: string) {
+    if (viewport.current) detailPositions!.set(scrollKey, viewport.current.scrollTop)
+    if (editorSections.has(next) && !editorSections.has(tab)) setPreviousSection(tab)
+    setTab(next)
+  }
+  function backToSection() {
+    focusAfterReturn.current = true
+    changeTab(previousSection)
+  }
+  useLayoutEffect(() => {
+    if (igdb.data?.available === false && tab === 'Game match') backToSection()
+  }, [igdb.data?.available, tab])
+  useLayoutEffect(() => {
+    if (metadata.data?.available === false && tab === 'Metadata') backToSection()
+  }, [metadata.data?.available, tab])
+  function editSession(sessionId: number) {
+    setEditingSection(tab)
+    setEditing(sessionId)
+  }
+  function closeDetails() {
+    if (journalSending) return
+    setInlineEditing(null)
+    setEditing(null)
+    onClose?.()
+  }
+  const command = useCommand()
+  const sessions = Object.values(details.data?.sessions ?? {})
+    .flat()
+    .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+  if (mode === 'fullscreen' && readingNotes)
+    return (
+      <section
+        className="feature-page details-page mode-fullscreen gog-patch-reading"
+        aria-label="Patch notes"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            event.stopPropagation()
+            setReadingNotes(false)
+          }
+          if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+            event.preventDefault()
+            event.stopPropagation()
+            notesScroll.current?.scrollBy({ top: event.key === 'ArrowUp' ? -160 : 160, behavior: 'instant' })
+          }
+        }}
+      >
+        <h1>Patch notes</h1>
+        <div ref={notesScroll} className="gog-patch-reading-scroll" data-controller-scroll-step="160">
+          <GogPatchNotesText notes={gogNotes} />
+        </div>
+        <button ref={notesBack} onClick={() => setReadingNotes(false)}>
+          Back to Updates
+        </button>
+        <GogPatchNotesHints />
+      </section>
+    )
+  return (
+    <section
+      ref={page}
+      className={`feature-page details-page mode-${mode}`}
+      onKeyDown={(event) => {
+        if (journalSending && event.key === 'Escape') {
+          event.preventDefault()
+          event.stopPropagation()
+          return
+        }
+        if (
+          event.key === 'Escape' &&
+          editorSections.has(tab) &&
+          !event.defaultPrevented &&
+          !(event.target as HTMLElement).closest('[role="dialog"], [role="alertdialog"]')
+        ) {
+          event.preventDefault()
+          event.stopPropagation()
+          backToSection()
+        }
+      }}
+    >
+      {onClose && (
+        <button className="back-button" disabled={journalSending} onClick={closeDetails}>
+          <ArrowLeft size={16} /> Back to your library
+        </button>
+      )}
+      <Artwork workId={workId} hero eager className="detail-hero" />
+      <header className="feature-heading">
+        <div>
+          <p className="eyebrow">{game?.bucket.replaceAll('_', ' ') ?? 'YOUR LIBRARY'}</p>
+          <h1>{game?.title ?? 'Game details'}</h1>
+          <p>{[game?.firstReleaseYear, game?.publisher].filter(Boolean).join(' · ')}</p>
+          {sourceSummary && <p data-library-source-summary>{sourceSummary}</p>}
+          {unreadCount > 0 && (
+            <button
+              onClick={() => {
+                focusAfterReturn.current = true
+                changeTab('Updates')
+              }}
+            >
+              {unreadCount} unread {unreadCount === 1 ? 'update' : 'updates'}
+            </button>
+          )}
+        </div>
+        <button
+          disabled={command.isPending}
+          onClick={() => command.mutate({ route: 'game.refetch', params: { workId } })}
+        >
+          <RefreshCw size={16} /> Refresh metadata
+        </button>
+      </header>
+      <Notice
+        error={details.error || library.error || workspace.error || command.error}
+        message={matchNote}
+      />
+      <nav
+        ref={tabs}
+        className="tabs"
+        aria-label="Game information"
+        onKeyDown={(event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+          const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'))
+          const index = buttons.indexOf(event.target as HTMLButtonElement)
+          if (index < 0) return
+          event.preventDefault()
+          const next =
+            event.key === 'Home'
+              ? 0
+              : event.key === 'End'
+                ? buttons.length - 1
+                : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length
+          buttons[next]?.focus()
+          buttons[next]?.click()
+        }}
+      >
+        {['Overview', 'History', 'Updates', 'Journal', 'Library', 'Metadata', 'Game match', 'Artwork']
+          .filter((name) => name !== 'Game match' || igdb.data?.available !== false)
+          .filter((name) => name !== 'Metadata' || metadata.data?.available !== false)
+          .map((name) => (
+            <button
+              key={name}
+              data-controller-tab
+              aria-pressed={name === tab}
+              onClick={() => changeTab(name)}
+            >
+              {name}
+            </button>
+          ))}
+      </nav>
+      {editorSections.has(tab) && (
+        <button className="back-button" onClick={backToSection}>
+          <ArrowLeft size={16} /> Back to {previousSection}
+        </button>
+      )}
+      <div className="detail-body">
+        <div className="detail-main">
+          {tab === 'Overview' && (
+            <>
+              <section className="feature-panel">
+                <h2>About the game</h2>
+                <p className="game-summary">
+                  {game?.summary ?? 'There is no description for this game yet.'}
+                </p>
+                <div className="stat-strip">
+                  <div className="stat">
+                    <strong>{game ? hours(game.playtimeMinutes) : '—'}</strong>
+                    <span>Store playtime</span>
+                  </div>
+                  <div className="stat">
+                    <strong>{game?.lastPlayedAt ? dateLabel(game.lastPlayedAt) : 'Not recorded'}</strong>
+                    <span>Last played</span>
+                  </div>
+                </div>
+              </section>
+              {!!details.data?.ratings.filter((rating) => rating.hasFigure).length && (
+                <section className="feature-panel">
+                  <h2>What players say</h2>
+                  {details.data.ratings
+                    .filter((rating) => rating.hasFigure)
+                    .map((rating) => (
+                      <p key={rating.source}>
+                        <strong>{rating.label ?? `${rating.score?.toFixed(0)} / 100`}</strong> ·{' '}
+                        {rating.source} · {rating.ratingCount?.toLocaleString()} ratings
+                      </p>
+                    ))}
+                </section>
+              )}
+              {!!details.data?.achievements.length && (
+                <section className="feature-panel">
+                  <h2>Achievements by edition</h2>
+                  <ReleaseAchievements game={game} details={details.data} />
+                </section>
+              )}
+              <Screenshots key={workId} details={details.data} />
+              <UpdateSignals details={details.data} game={game} />
+            </>
+          )}
+          {tab === 'History' && (
+            <>
+              {game && details.data && <ActivityTimeline game={game} details={details.data} mode={mode} />}
+              <section className="feature-panel">
+                <h2>Recorded sessions</h2>
+                <SessionRows sessions={sessions} onEdit={editSession} />
+              </section>
+              {game && <SteamReportedActivity games={[game]} mode={mode} entryPoint />}
+            </>
+          )}
+          {tab === 'Updates' && (
+            <>
+              <UpdateSignals details={details.data} game={game} hasCachedNotes={!!gogNotes} />
+              <GogPatchNotes
+                notes={gogNotes}
+                read={
+                  mode === 'fullscreen'
+                    ? (origin) => {
+                        notesOrigin.current = origin
+                        setReadingNotes(true)
+                      }
+                    : undefined
+                }
+              />
+            </>
+          )}
+          {tab === 'Journal' && (
+            <DetailsJournal
+              notes={details.data?.journalEntries ?? []}
+              promptAfterPlay={journalPreferences.data?.promptAfterPlay}
+              onEdit={editSession}
+              mode={mode}
+              scopeKey={`${mode}:details:${workId}`}
+            />
+          )}
+          {tab === 'Metadata' && metadata.data?.available !== false && (
+            <MetadataEditor
+              key={workId}
+              workId={workId}
+              coverWorkId={game?.headerWorkId ?? game?.workId}
+              mode={mode}
+            />
+          )}
+          {tab === 'Game match' && igdb.data?.available !== false && (
+            <IgdbMatch
+              key={workId}
+              workId={workId}
+              title={game?.title ?? ''}
+              onChanged={(note) => {
+                setMatchNote(note)
+                backToSection()
+              }}
+            />
+          )}
+          {tab === 'Library' && (
+            <>
+              <LibraryFacts game={game} details={details.data} />
+              {game && <DetailsRelationships game={game} mode={mode} onOpenGame={onOpenGame} />}
+            </>
+          )}
+          {tab === 'Artwork' && (
+            <ArtworkEditor
+              key={workId}
+              workId={workId}
+              coverWorkId={game?.headerWorkId ?? game?.workId}
+              mode={mode}
+              title={game?.title}
+            />
+          )}
+        </div>
+        <aside className="detail-sidebar">
+          <section className="feature-panel">
+            <p className="eyebrow">YOUR EDITIONS</p>
+            {game?.entries.map((entry) => (
+              <EntryActions key={entry.ownershipId} entry={entry} workspace={workspace.data} />
+            ))}
+          </section>
+          {game && workspace.data && (
+            <GameLinks
+              key={`links:${workId}`}
+              links={gameLinks(game, workspace.data, details.data?.events)}
+            />
+          )}
+          <ListMembership workId={workId} mode={mode} />
+          <HideGame key={`visibility:${workId}`} workId={workId} onHidden={closeDetails} />
+        </aside>
+      </div>
+      {editing != null && (
+        <JournalEditor sessionId={editing} onClose={() => setEditing(null)} mode={mode} editText={editText} />
+      )}
+    </section>
+  )
+}
+
+export function HideGame({
+  workId,
+  onHidden,
+  compact = false,
+}: {
+  workId: number
+  onHidden?: () => void
+  compact?: boolean
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const command = useCommand()
+  async function hide() {
+    try {
+      await command.mutateAsync({ route: 'hidden.put', body: { workIds: [workId], hidden: true } })
+      setConfirming(false)
+      onHidden?.()
+    } catch {
+      /* Keep the confirmation and render the returned error. */
+    }
+  }
+  return (
+    <section className={compact ? 'details-hide-action' : 'feature-panel'}>
+      {!compact && <h2>Keep your library yours</h2>}
+      {confirming ? (
+        <div className="conflict-panel">
+          <p>
+            Hide this game from your library? Its history stays saved. You can restore it from Library tools.
+          </p>
+          <div className="form-actions">
+            <button disabled={command.isPending} onClick={() => void hide()}>
+              Hide game
+            </button>
+            <button disabled={command.isPending} onClick={() => setConfirming(false)}>
+              Keep visible
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setConfirming(true)}>Hide game…</button>
+      )}
+      <Notice error={command.error} />
+    </section>
+  )
+}
+
+export function ListMembership({ workId, mode }: { workId: number; mode: Mode }) {
+  const library = useLibrary()
+  const game = library.data?.games.find((item) => item.workId === workId)
+  const lists = orderedLists(library.data?.lists ?? []).filter((list) => !list.isLive)
+  return (
+    <section className="feature-panel">
+      <h2>In your lists</h2>
+      {game && <AddToListButton games={[game]} mode={mode} origin="details" />}
+      {!lists.length ? (
+        <p className="muted">Create a list in Library tools.</p>
+      ) : (
+        game && lists.map((list) => <ListMembershipChoice key={list.id} list={list} game={game} />)
+      )}
+    </section>
+  )
+}
+
+export { ArtworkBrowser as ArtworkEditor } from './artwork-browser'

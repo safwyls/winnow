@@ -142,7 +142,7 @@ public sealed class DataDirectoryOverrideTests : IDisposable
 
         var services = new ServiceCollection();
         services.AddLogging(b => b.SetMinimumLevel(LogLevel.Warning));
-        Program.ConfigureServices(services, location);
+        Winnow.App.LegacyTestServices.ConfigureServices(services, location);
 
         using var provider = services.BuildServiceProvider();
 
@@ -267,5 +267,48 @@ public sealed class DataDirectoryOverrideTests : IDisposable
             () => WinnowDataLocation.ResolveFrom(["--data-dir", Scratch]));
 
         Assert.Contains(Scratch, refused.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void A_Windows_write_probe_released_after_the_observed_sharing_violation_retries_the_same_root()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        Directory.CreateDirectory(Scratch);
+        var probe = Path.Combine(Scratch, ".winnow-write-probe");
+        using var held = new FileStream(probe, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+        var logger = new ProbeLogger(held.Dispose);
+        var location = WinnowDataLocation.ResolveOverride(Scratch, logger);
+        Assert.Equal(1, logger.Retries);
+        Assert.Equal(Scratch, location.Root);
+        Assert.Equal(DataMigrationOutcome.Overridden, location.Outcome);
+        Assert.False(File.Exists(probe));
+    }
+
+    [Fact]
+    public void A_persistent_Windows_probe_lock_is_refused_after_eight_bounded_retries()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        Directory.CreateDirectory(Scratch);
+        using var held = new FileStream(Path.Combine(Scratch, ".winnow-write-probe"),
+            FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+        var logger = new ProbeLogger(() => { });
+        var error = Assert.Throws<DataDirectoryOverrideException>(() => WinnowDataLocation.ResolveOverride(Scratch, logger));
+        Assert.Equal(8, logger.Retries);
+        Assert.Equal(unchecked((int)0x80070020), Assert.IsType<IOException>(error.InnerException).HResult);
+        Assert.Contains(Scratch, error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class ProbeLogger(Action busy) : ILogger
+    {
+        public int Retries { get; private set; }
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel level, EventId id, TState state, Exception? error, Func<TState, Exception?, string> format)
+        {
+            if (level != LogLevel.Debug) return;
+            Assert.Equal("Data directory write probe is busy; retrying.", format(state, error));
+            Retries++;
+            busy();
+        }
     }
 }

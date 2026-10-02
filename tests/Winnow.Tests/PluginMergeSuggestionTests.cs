@@ -151,7 +151,7 @@ public sealed class PluginMergeSuggestionTests
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-            Program.ConfigureServices(services,
+            Winnow.App.LegacyTestServices.ConfigureServices(services,
                 new(_database.DatabasePath + "-plugin-data", _database.DatabasePath, DataMigrationOutcome.None));
             services.AddSingleton<ISqliteConnectionFactory>(_database.Factory);
             Provider = services.BuildServiceProvider();

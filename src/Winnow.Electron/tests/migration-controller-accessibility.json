@@ -1,0 +1,100 @@
+{
+  "FullscreenAccessibilityTests.Rendered_settings_and_filter_controls_expose_names_and_controller_routes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/controller-accessibility-settings.spec.ts",
+        "case": "${mode} ${name} exposes named enabled states and complete D-pad button routes at 1920x1080"
+      },
+      {
+        "file": "tests/parity-controller-dispatch.test.tsx",
+        "case": "reaches disclosure summaries while skipping closed content and pointer-only steppers"
+      }
+    ],
+    "reason": "All ten original fullscreen screens run at 1920x1080 with nonempty names and actual enabled states from Chromium's exposed AX nodes. A breadth-first graph of production D-pad moves reaches every initially enabled focusable button, including disclosure summaries and offscreen controls, preserving the full required target set across saves. Nine applicable desktop counterparts run independently; Controller is a fullscreen-only guide. Save-time focus retention and the aligned age-limit row fix failures revealed by the matrix. This contract establishes names and input routes, not complete filter visual parity or physical-device readability."
+  },
+  "FullscreenAccessibilityTests.A_combined_prompt_keeps_names_and_focus_routes_through_empty_busy_and_error_states": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/controller-modal-accessibility.spec.ts",
+        "case": "${mode} combined list prompt keeps accessible names and controller routes through empty busy and error states"
+      }
+    ],
+    "reason": "The real list prompt retains Existing list and an empty disabled New list action, enables creation after entering New list, then disables all fields/actions during a gated API save. Controller Back cannot close the busy prompt. A definite failed save exposes its problem in the accessibility tree and restores the original controls and complete D-pad routes. Both desktop and fullscreen run the full state matrix."
+  },
+  "FullscreenAccessibilityTests.Journal_editors_name_the_field_expose_validation_and_reach_the_keyboard_action": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/controller-modal-accessibility.spec.ts",
+        "case": "${mode} ${origin} journal editor exposes names validation keyboard action and origin focus"
+      }
+    ],
+    "reason": "Empty manual-session fixtures open the actual Activity and Details editors on both surfaces. Named fields and AX enabled states remain exposed, all actions are reachable by D-pad, fullscreen Edit note opens the real keyboard on the same field, and Back restores field focus. Saving an empty unrated draft exposes its validation text without closing; closing then restores the exact invoking control. Fullscreen fields use the source 28px text and 240px minimum height, with additional 1280x720/140% text reachability and visible-control bounds."
+  },
+  "FullscreenAccessibilityTests.Back_from_a_dynamic_modal_restores_the_invoking_control_in_the_real_shell": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/controller-modal-accessibility.spec.ts",
+        "case": "fullscreen Back from a dynamic action modal restores the invoking Controller settings control in the real shell"
+      },
+      {
+        "file": "tests/electron/controller-modal-accessibility.spec.ts",
+        "case": "${mode} ${origin} journal editor exposes names validation keyboard action and origin focus"
+      }
+    ],
+    "reason": "The production shell retains Controller settings while the production actions panel receives the original two-item fixture: disabled Unavailable and initially focused Cancel. Native AX states and controller routes pass; controller Back closes the dynamic panel and restores the exact pre-modal control without leaving settings. The test-owned fixture supplies action data only, while production owns rendering, focus isolation and controller dispatch. Actual journal modal openers independently verify desktop and fullscreen return focus."
+  },
+  "FullscreenAccessibilityTests.Controller_keyboard_exposes_its_keys_and_returns_focus_to_the_original_field": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/controller-keyboard.spec.ts",
+        "case": "standard keyboard keys fit five rows, expose native names and form an inverted T in ${label}"
+      },
+      {
+        "file": "tests/electron/controller-keyboard.spec.ts",
+        "case": "controller keyboard edits the original search field and Back restores its focus without leaving ${label}"
+      }
+    ],
+    "reason": "The real production shell opens its keyboard from Search, exposes every visible key as a named Chromium AX button, types into the original field with controller Accept, then returns exact focus on Back without leaving Search. Native simulated Gamepad API cases cover desktop 1200x640 and fullscreen 1280x720 and 1920x1080."
+  },
+  "FullscreenFilePickerTests.Saving_an_existing_file_requires_confirmation_and_picker_never_writes_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/fullscreen-file-picker.test.tsx",
+        "case": "saving an existing file requires Cancel-first confirmation and selecting never writes the file"
+      },
+      {
+        "file": "tests/electron/fullscreen-file-picker.spec.ts",
+        "case": "fullscreen acquisitions export keeps existing CSV untouched until Cancel-first replacement is explicitly accepted"
+      }
+    ],
+    "reason": "The shared main-owned picker and real component preserve the source report.csv bytes through an initially focused Cancel, reopening, and explicit Replace selection; choosing resolves only its path without writing. The actual native export caller writes only after confirmation. AX names, enabled states and D-pad reachability run on save and overwrite pages. Additional deferred-stat tests prevent late Replace completion after Back."
+  },
+  "FullscreenFilePickerTests.Controller_selects_only_allowed_files_and_back_completes_cancellation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/fullscreen-file-picker.test.tsx",
+        "case": "controller selects only allowed files case-insensitively and Back completes cancellation without changing bytes"
+      },
+      {
+        "file": "tests/electron/fullscreen-file-picker.spec.ts",
+        "case": "fullscreen artwork filters extensions and Back cancels all shared chooser routes while preserving selected files"
+      },
+      {
+        "file": "tests/electron/fullscreen-file-picker.spec.ts",
+        "case": "Back from the fullscreen artwork chooser restores its actual temporarily disabled Choose file opener"
+      },
+      {
+        "file": "tests/electron/fullscreen-file-picker.spec.ts",
+        "case": "desktop file routes retain native chooser filters and cancelling leaves fixture files unchanged"
+      }
+    ],
+    "reason": "Disposable real cover.PNG and unrelated.exe fixtures preserve case-insensitive inclusion, executable exclusion, controller selection and null completion on Back without changing bytes. Native production bridge routes cover artwork, profile import/export, executables, theme folders and CSV, with AX names and real D-pad traversal. The actual artwork opener restores focus after pending disablement. Desktop retains native chooser filters and cancellation; saved Steam HTML multi-file selection and developer-theme trust remain separate adapters."
+  }
+}

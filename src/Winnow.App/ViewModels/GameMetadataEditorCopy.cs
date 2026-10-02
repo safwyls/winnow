@@ -187,6 +187,8 @@ public static class GameMetadataEditorCopy
     /// outcome lands here with its own distinct sentence.</summary>
     public static string ProblemFor(WorkFieldEditOutcome outcome) => outcome switch
     {
+        WorkFieldEditOutcome.Conflict =>
+            "This game changed in another window. Your draft is still here. Reopen the editor to review the latest values before saving.",
         WorkFieldEditOutcome.UnknownField =>
             "That field is not editable. Nothing changed.",
         WorkFieldEditOutcome.WorkNotFound =>
@@ -200,6 +202,8 @@ public static class GameMetadataEditorCopy
     /// outcome lands here with its own distinct sentence.</summary>
     public static string ProblemFor(WorkArtEditOutcome outcome) => outcome switch
     {
+        WorkArtEditOutcome.Conflict =>
+            "This game changed in another window. Reopen the editor to review the latest artwork before saving.",
         WorkArtEditOutcome.UnknownField =>
             "That field does not hold art.",
         WorkArtEditOutcome.WorkNotFound =>

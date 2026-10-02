@@ -1,0 +1,1134 @@
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  protocol,
+  session,
+  shell,
+  Tray,
+  Notification,
+  nativeTheme,
+  nativeImage,
+  type IpcMainInvokeEvent,
+} from 'electron'
+import { mkdirSync } from 'node:fs'
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { dirname, extname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { release as osRelease } from 'node:os'
+import { WindowAppearanceController } from './window-appearance'
+import { WindowTrayController } from './window-tray'
+import { appearanceSession } from '../shared/appearance-session'
+import { epicConsoleRequested, runEpicConsole } from './epic-console'
+import { SessionAppearance } from './appearance-session'
+import { AvalonThemeStore } from './avalon-theme-store'
+import type { ArtworkState, LibraryResponse, Workspace } from '../renderer/api/types'
+import { recentGames, jumpListAppId, jumpListArguments, JumpListPublisher } from './jump-list'
+import { JumpListIcons } from './jump-list-icons'
+import { applicationBuildInfo } from './application-build-info'
+import { loginItemOptions } from './login-options'
+import { openDataFolder } from './data-folders'
+import { saveAcquisitions } from './acquisition-export'
+import { SavedSteamPages } from './saved-steam-pages'
+import { startActivationHost, resolveBackendDataDirectory, type ActivationHost } from './activation-host'
+import { SnapshotRefresh } from '../shared/snapshot-refresh'
+import { FontCatalogue } from './fonts'
+import { inspectExecutable } from './executable-facts'
+import { FullscreenFilePickerService, type FilePickerOptions } from './file-picker'
+import type { FilePickerSnapshot } from '../shared/file-picker'
+import { WindowsControllerProbe, matchingControllerBattery } from './controller-battery'
+import { validateControllerSample } from '../shared/controller-status'
+import { frontendDataLocation } from './frontend-data-location'
+import { createBackendServiceLifecycle } from './backend-service'
+import { ApplicationUpdater } from './application-updater'
+import { electronUpdateDriver } from './electron-update-driver'
+import { primaryDistribution } from './distribution-installation'
+import { distributionUpdateDriver } from './distribution-update-driver'
+import { distributionHelper, startDistributionLease, type DistributionLease } from './distribution-helper'
+import {
+  clearUpdateResume,
+  prepareUpdateResume,
+  restoreUpdateResume,
+  updateResumeFile,
+} from './update-resume'
+import type { ApplicationUpdateAction, ApplicationUpdateSnapshot } from '../shared/bridge'
+import type { ApiRequest, ApplicationActivation, BackendEvent, ConnectionState } from '../shared/bridge'
+import {
+  pluginInstallLink,
+  registersGlobalProtocol,
+  readActivation,
+  validateActivationArguments,
+  validatedActivation,
+} from './activation'
+import { ActivationQueue } from './activation-queue'
+import { BackendTransport } from './transport'
+import { importArtworkFile } from './artwork-import'
+import { cancelSteamWindow, captureSteamPages, signInToSteam } from './steam-auth'
+import { writeSteamDiagnostic } from './steam-diagnostics'
+import { EpicSignInController } from './epic-auth'
+import type { EpicSignInOptions } from '../shared/epic'
+import { RequestLifetimes } from './request-lifetimes'
+import { quitDrain } from './quit-drain'
+import { dataDirectoryRefusalCode, isStartupCancellation, reportStartupFailure } from './startup-failure'
+import {
+  BackendStartupFailure,
+  prepareBackendStartup,
+  StartupWindowGate,
+  waitForStartupOperation,
+} from './startup-backend'
+import { openLinkBrowser } from './link-browser'
+import { setPopoutTypography } from './popout-typography'
+import { routeLink } from './link-routing'
+import { openInstallFolder, type InstallationWorkspace } from './install-folder'
+import { canNotifyJournal, deliverNotification } from './notifications'
+import type { SteamSignInOptions } from '../shared/bridge'
+import {
+  backendProcessIsRunning,
+  backendResponds,
+  dataDirectoryArgument,
+  defaultDataRoot,
+  discoverBackend,
+  startBackend,
+} from './lifecycle'
+import {
+  assertTrustedRendererSender,
+  containedPath,
+  contentSecurityPolicy,
+  trustedRendererUrl,
+  validateExternalUrl,
+} from './security'
+import {
+  installThemeDirectory,
+  listThemePackages,
+  profileDirectory,
+  readManifest,
+  readProfile,
+  saveProfile,
+  themeFile,
+} from './storage'
+
+function startGui(): void {
+  const here = fileURLToPath(new URL('.', import.meta.url))
+  const rendererRoot = resolve(here, '../renderer')
+  let dataDirectory: string | undefined
+  let explicitDataDirectory: string | undefined
+  let activationHost: ActivationHost | undefined
+  let distribution: ReturnType<typeof primaryDistribution>
+  let distributionLease: DistributionLease | undefined
+  let updateBackendReady = false
+  let startupArgumentError: Error | undefined
+  let startupArgs = [...process.argv]
+  const resumeFile = updateResumeFile(app.getPath('appData'), app.getName())
+  try {
+    validateActivationArguments(process.argv.slice(app.isPackaged ? 1 : 2))
+    if (app.isPackaged)
+      startupArgs = restoreUpdateResume(resumeFile, {
+        version: app.getVersion(),
+        args: process.argv,
+        appImageUpdated: process.env.WINNOW_APPIMAGE_UPDATED === '1',
+      }).args
+    delete process.env.WINNOW_APPIMAGE_UPDATED
+    dataDirectory = dataDirectoryArgument(startupArgs)
+    explicitDataDirectory = dataDirectory
+    if (!app.isPackaged && !dataDirectory)
+      throw new Error('Pass --data-dir <throwaway directory> to run the frontend in development.')
+    if (dataDirectory) {
+      const isolatedUserData = join(dataDirectory, 'electron-userdata')
+      const isolatedSessionData = join(isolatedUserData, 'chromium')
+      mkdirSync(isolatedSessionData, { recursive: true })
+      // Chromium creates caches at readiness, so redirects must happen before app.whenReady().
+      app.setPath('userData', isolatedUserData)
+      app.setPath('sessionData', isolatedSessionData)
+    } else {
+      const current = app.getPath('userData')
+      const preserved = frontendDataLocation(app.getPath('appData'), current)
+      if (preserved !== current) {
+        app.setPath('userData', preserved)
+        app.setPath('sessionData', preserved)
+      }
+    }
+  } catch (error) {
+    startupArgumentError = error instanceof Error ? error : new Error('Invalid data directory')
+  }
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: 'winnow-app',
+      privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
+    },
+    {
+      scheme: 'winnow-theme',
+      privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
+    },
+  ])
+  app.enableSandbox()
+  let window: BrowserWindow | undefined
+  let presentationVisible = !process.argv.includes('--background')
+  let transport: BackendTransport | undefined
+  let updater: ApplicationUpdater | undefined
+  let safeTheme = process.argv.includes('--safe-theme')
+  const captureAppearance = appearanceSession(startupArgs, app.isPackaged)
+  const sessionAppearance = captureAppearance ? new SessionAppearance(captureAppearance) : null
+  let quitting = false
+  const startupLifetime = new AbortController()
+  let windowTray: WindowTrayController | undefined
+  let rendererAcceptsActivation = false
+  const pendingActivations = new ActivationQueue()
+  const initialActivation = readActivation(process.argv.slice(app.isPackaged ? 1 : 2))
+  if (initialActivation.kind !== 'show') pendingActivations.enqueue(initialActivation)
+  let showRequested = false
+  let showPrimary = () => {}
+  function activatePrimary(activation: ApplicationActivation | null) {
+    if (!activation) return
+    const deliver = rendererAcceptsActivation && window && !window.isDestroyed()
+    if (!deliver && !pendingActivations.enqueue(activation)) return
+    showRequested = true
+    showPrimary()
+    if (deliver) window!.webContents.send('winnow:activation', activation)
+  }
+  const ownsInstance =
+    startupArgumentError || process.platform === 'win32'
+      ? true
+      : app.requestSingleInstanceLock({
+          activation: readActivation(process.argv.slice(app.isPackaged ? 1 : 2)),
+        })
+  if (process.platform !== 'win32')
+    app.on('second-instance', (_event, argv, _cwd, additionalData) =>
+      activatePrimary(
+        additionalData && typeof additionalData === 'object' && 'activation' in additionalData
+          ? validatedActivation(additionalData.activation)
+          : readActivation(argv.slice(app.isPackaged ? 1 : 2)),
+      ),
+    )
+  if (process.platform !== 'win32')
+    app.on('open-url', (event, url) => {
+      event.preventDefault()
+      activatePrimary(pluginInstallLink(url))
+    })
+
+  function emit(
+    channel: string,
+    payload:
+      | BackendEvent
+      | ConnectionState
+      | ApplicationUpdateSnapshot
+      | FilePickerSnapshot
+      | boolean
+      | null
+      | undefined,
+  ): void {
+    if (window && !window.isDestroyed()) window.webContents.send(channel, payload)
+  }
+
+  async function initialize(): Promise<void> {
+    const profileRoot = profileDirectory(
+      app.getPath('userData'),
+      explicitDataDirectory ?? join(defaultDataRoot(), 'Winnow'),
+    )
+    const preferencesFile = join(profileRoot, 'preferences.json')
+    const themesRoot = join(profileRoot, 'themes')
+    const removedJumpListFile = join(profileRoot, 'jump-list-removed.json')
+    const excludedJumpItems = new Set<string>()
+    try {
+      for (const value of JSON.parse(await readFile(removedJumpListFile, 'utf8')))
+        if (typeof value === 'string') excludedJumpItems.add(value)
+    } catch {}
+    const argumentsFor = (action: string) =>
+      jumpListArguments(explicitDataDirectory, action, app.isPackaged ? undefined : process.argv[1])
+    const icons = new JumpListIcons(
+      dataDirectory!,
+      (key, signal) => transport!.artwork(key.provider, key.id, 128, signal),
+      nativeImage.createFromDataURL,
+    )
+    const jumpList = new JumpListPublisher({
+      publish(games) {
+        const items = games.flatMap((game) => {
+          const args = argumentsFor(`--jump-list-game ${game.ownershipId}`)
+          return excludedJumpItems.has(args)
+            ? []
+            : [
+                {
+                  type: 'task' as const,
+                  title: game.title,
+                  program: process.execPath,
+                  args,
+                  iconPath: game.iconPath ?? join(process.resourcesPath, 'icon.ico'),
+                  iconIndex: 0,
+                },
+              ]
+        })
+        app.setJumpList([
+          ...(items.length ? [{ type: 'custom' as const, name: 'Recently Played', items }] : []),
+          {
+            type: 'tasks',
+            items: [
+              {
+                type: 'task',
+                title: 'Switch to Fullscreen Mode',
+                program: process.execPath,
+                args: argumentsFor('--jump-list-fullscreen'),
+                iconPath: join(process.resourcesPath, 'icon.ico'),
+                iconIndex: 0,
+              },
+            ],
+          },
+        ])
+      },
+      async loadIcon(game, signal) {
+        for (const slot of ['Icon', 'Cover']) {
+          const response = await transport!.request<ArtworkState>(
+            { route: 'artwork.get', params: { workId: game.coverWorkId, slot } },
+            signal,
+          )
+          signal.throwIfAborted()
+          if (response.ok && response.data?.current) {
+            const path = await icons.get(response.data.current.previewKey, signal)
+            if (path) return path
+          }
+        }
+        return null
+      },
+    })
+    startupLifetime.signal.addEventListener('abort', () => jumpList.dispose(), { once: true })
+    const jumpListRefresh = new SnapshotRefresh(async () => {
+      if (!app.isPackaged || process.platform !== 'win32') return
+      try {
+        const [library, workspace] = await Promise.all([
+          transport!.request<LibraryResponse>({ route: 'library.get' }),
+          transport!.request<Workspace>({ route: 'library.workspace' }),
+        ])
+        if (!library.ok || !library.data || !workspace.ok || !workspace.data) return
+        for (const item of app.getJumpListSettings().removedItems)
+          if (item.args) excludedJumpItems.add(item.args)
+        await mkdir(profileRoot, { recursive: true })
+        await writeFile(removedJumpListFile, JSON.stringify([...excludedJumpItems]), 'utf8')
+        void jumpList.refresh(recentGames(library.data.games, workspace.data))
+      } catch {
+        /* Windows privacy settings can disallow custom destinations. */
+      }
+    })
+    if (app.isPackaged && process.platform === 'win32') {
+      app.setAppUserModelId(jumpListAppId(dataDirectory!, defaultDataRoot(), app.getPath('userData')))
+      if (registersGlobalProtocol(app.isPackaged, process.platform, explicitDataDirectory))
+        app.setAsDefaultProtocolClient('winnow', process.execPath, ['--uri'])
+    }
+    const developmentOrigin = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
+    if (developmentOrigin) {
+      const url = new URL(developmentOrigin)
+      if (
+        url.protocol !== 'http:' ||
+        !['localhost', '127.0.0.1'].includes(url.hostname) ||
+        url.username ||
+        url.password ||
+        url.pathname !== '/'
+      )
+        throw new Error('Invalid development renderer URL')
+    }
+    const rendererUrl = developmentOrigin ?? 'winnow-app://app/index.html'
+    const rendererOrigin = developmentOrigin ? new URL(developmentOrigin).origin : 'winnow-app://app'
+    const csp = contentSecurityPolicy(developmentOrigin)
+    const fonts = new FontCatalogue((url) => trustedRendererUrl(url, developmentOrigin))
+    const controllerProbe = new WindowsControllerProbe()
+    session.defaultSession.setPermissionRequestHandler((contents, permission, callback, details) =>
+      callback(
+        contents === window?.webContents &&
+          fonts.allows(contents, permission, details.requestingUrl ?? '', details.isMainFrame),
+      ),
+    )
+    session.defaultSession.setPermissionCheckHandler(
+      (contents, permission, requestingOrigin, details) =>
+        contents === window?.webContents &&
+        fonts.allows(contents, permission, requestingOrigin, details.isMainFrame),
+    )
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) =>
+      callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [csp] } }),
+    )
+    protocol.handle('winnow-app', async (request) => {
+      try {
+        const url = new URL(request.url)
+        if (url.host !== 'app' || url.username || url.password || request.method !== 'GET')
+          return new Response(null, { status: 403 })
+        const path = containedPath(rendererRoot, decodeURIComponent(url.pathname.slice(1)))
+        // The application bundle is read-only; this protocol never serves arbitrary local files.
+        if (!(await stat(path)).isFile()) return new Response(null, { status: 404 })
+        const types: Record<string, string> = {
+          '.html': 'text/html',
+          '.js': 'text/javascript',
+          '.css': 'text/css',
+          '.json': 'application/json',
+          '.svg': 'image/svg+xml',
+          '.png': 'image/png',
+          '.jpg': 'image/jpeg',
+          '.webp': 'image/webp',
+          '.woff': 'font/woff',
+          '.woff2': 'font/woff2',
+        }
+        const bytes = await readFile(path)
+        return new Response(new Uint8Array(bytes), {
+          headers: {
+            'Content-Type': types[extname(path)] ?? 'application/octet-stream',
+            'Content-Security-Policy': csp,
+            'X-Content-Type-Options': 'nosniff',
+          },
+        })
+      } catch {
+        return new Response(null, { status: 404 })
+      }
+    })
+    protocol.handle('winnow-theme', async (request) => {
+      try {
+        if (request.method !== 'GET') return new Response(null, { status: 405 })
+        const origin = request.headers.get('Origin')
+        if (origin && origin !== rendererOrigin && !origin.startsWith('winnow-theme://'))
+          return new Response(null, { status: 403 })
+        const file = await themeFile(themesRoot, request.url)
+        return new Response(new Uint8Array(file.bytes), {
+          headers: {
+            'Content-Type': file.type,
+            'Access-Control-Allow-Origin': origin ?? rendererOrigin,
+            'Cache-Control': 'no-store',
+            'X-Content-Type-Options': 'nosniff',
+          },
+        })
+      } catch {
+        return new Response(null, { status: 404 })
+      }
+    })
+    let preferences: Record<string, string | null> = {}
+    let preferencesLoaded = false
+    let preferencesRead: Promise<void> | undefined
+    const preferencesRefresh = new SnapshotRefresh(async () => {
+      const result = await transport!.request<Array<{ preference: string; value: string | null }>>({
+        route: 'preferences.presentation.get',
+      })
+      if (!result.ok || !Array.isArray(result.data)) return
+      preferences = Object.fromEntries(result.data.map((entry) => [entry.preference, entry.value]))
+      preferencesLoaded = true
+      windowTray?.preferences(preferences)
+      void updater?.refreshPreferences().catch(() => {})
+    })
+    const refreshPreferences = () => (preferencesRead = preferencesRefresh.request())
+    transport = new BackendTransport({
+      discover: () => discoverBackend(dataDirectory),
+      onEvent: (event) => {
+        emit('winnow:event', event)
+        if (event.kind === 'preferences.changed' || event.kind === 'resync-required')
+          void refreshPreferences()
+        if (event.kind === 'library.changed' || event.kind === 'resync-required')
+          void jumpListRefresh.request()
+      },
+      onConnection: (state) => {
+        emit('winnow:connection', state)
+        updateBackendReady = state.connected
+        if (state.connected) {
+          if (rendererAcceptsActivation) void distributionLease?.ready().catch(failStartup)
+          void refreshPreferences()
+          void jumpListRefresh.request()
+        }
+      },
+    })
+    const backendService = createBackendServiceLifecycle({
+      appPath: app.getAppPath(),
+      resourcesPath: process.resourcesPath,
+      packaged: app.isPackaged,
+      dataDirectory,
+      args: startupArgs,
+    })
+    updater = new ApplicationUpdater({
+      version: applicationBuildInfo(app.isPackaged, app.getVersion()).version,
+      packaged: app.isPackaged,
+      driver: distribution
+        ? {
+            ...distributionUpdateDriver({
+              ...distribution,
+              version: app.getVersion(),
+              dataDirectory: dataDirectory!,
+              args: startupArgs,
+              supported:
+                distribution.supported &&
+                (distribution.kind !== 'portable' || !!distributionLease?.canUpdate),
+              quit: () => {
+                quitting = true
+                app.quit()
+              },
+            }),
+            recoveryStatus: distributionLease?.recoveryStatus,
+          }
+        : electronUpdateDriver({
+            version: applicationBuildInfo(app.isPackaged, app.getVersion()).version,
+            packaged: app.isPackaged,
+            appName: app.getName(),
+            quit: () => {
+              quitting = true
+              app.quit()
+            },
+          }),
+      async preferences() {
+        const result = await transport!.request<Array<{ preference: string; value: string | null }>>({
+          route: 'preferences.presentation.get',
+        })
+        if (!result.ok || !Array.isArray(result.data))
+          throw new Error('Update preferences could not be read.')
+        const values = Object.fromEntries(
+          result.data.map((row) => [row.preference, row.value?.toLowerCase()]),
+        )
+        return {
+          automatic: values.AutomaticUpdates !== 'false',
+          includeBeta: values.IncludeBetaUpdates === 'true',
+        }
+      },
+      async savePreference(preference, value) {
+        const result = await transport!.request({
+          route: 'preferences.presentation.put',
+          params: { preference },
+          body: { value: String(value) },
+        })
+        if (!result.ok) throw new Error('The update preference could not be saved.')
+      },
+      stopBackend: () => backendService.stopForUpdate(),
+      recoverBackend: () => backendService.recover(),
+      async prepareRestart(version) {
+        if (distribution) return
+        prepareUpdateResume(resumeFile, {
+          version,
+          dataDirectory: explicitDataDirectory,
+          noSync: startupArgs.includes('--no-sync') || startupArgs.includes('--seed-sample'),
+        })
+      },
+      async clearRestart() {
+        clearUpdateResume(resumeFile)
+      },
+      openDownload: (url) => shell.openExternal(url),
+    })
+    updater.subscribe((snapshot) => emit('winnow:update:changed', snapshot))
+    function validateSender(event: IpcMainInvokeEvent): void {
+      assertTrustedRendererSender(event, window?.webContents, developmentOrigin)
+    }
+    function handle(channel: string, handler: (...args: any[]) => unknown): void {
+      ipcMain.handle(channel, (event, ...args) => {
+        validateSender(event)
+        return handler(...args)
+      })
+    }
+    const filePicker = new FullscreenFilePickerService((snapshot) =>
+      emit('winnow:file-picker:changed', snapshot),
+    )
+    handle('winnow:file-picker:snapshot', () => filePicker.snapshot)
+    handle('winnow:file-picker:action', (action: unknown) => filePicker.action(action))
+    const chooseFile = async (options: FilePickerOptions): Promise<string | null> => {
+      if (window!.isFullScreen())
+        return filePicker.choose({ initialDirectory: app.getPath('documents'), ...options })
+      const filters = options.extensions?.length
+        ? [{ name: options.filterName ?? 'Allowed files', extensions: options.extensions }]
+        : undefined
+      if (options.mode === 'save') {
+        const choice = await dialog.showSaveDialog(window!, {
+          title: options.title,
+          defaultPath: options.suggestedName,
+          filters,
+        })
+        return choice.canceled ? null : (choice.filePath ?? null)
+      }
+      const choice = await dialog.showOpenDialog(window!, {
+        title: options.title,
+        properties: [options.mode === 'directory' ? 'openDirectory' : 'openFile'],
+        filters,
+      })
+      return choice.canceled ? null : (choice.filePaths[0] ?? null)
+    }
+    const savedSteamPages = new SavedSteamPages(chooseFile, () => filePicker.cancel())
+    handle('winnow:steam:saved-pages:choose', () => savedSteamPages.choose())
+    handle('winnow:steam:saved-pages:read', (ids: unknown) => savedSteamPages.read(ids))
+    handle('winnow:steam:saved-pages:clear', () => savedSteamPages.clear())
+    const requestLifetimes = new RequestLifetimes()
+    const requestOwners = new WeakSet<object>()
+    const observeRequestOwner = (owner: Electron.WebContents) => {
+      if (!requestOwners.has(owner)) {
+        requestOwners.add(owner)
+        owner.once('destroyed', () => requestLifetimes.close(owner))
+        owner.on('render-process-gone', () => requestLifetimes.close(owner))
+      }
+    }
+    ipcMain.handle('winnow:request', (event, request: ApiRequest) => {
+      validateSender(event)
+      observeRequestOwner(event.sender)
+      return requestLifetimes.run(event.sender, request, async (signal) => {
+        const response = await (sessionAppearance
+          ? sessionAppearance.request(request, () => transport!.request(request, signal))
+          : transport!.request(request, signal))
+        // Native window actions must observe a confirmed setting before the renderer can act on it.
+        if (response.ok && request.route === 'preferences.presentation.put') await refreshPreferences()
+        return response
+      })
+    })
+    ipcMain.handle('winnow:request:cancel', (event, requestId: unknown) => {
+      validateSender(event)
+      return requestLifetimes.cancel(event.sender, requestId)
+    })
+    handle('winnow:connection', () => transport!.connection())
+    handle('winnow:fonts', () => fonts.read(window!.webContents))
+    handle('winnow:controller:battery', async (value: unknown) => {
+      if (value === null) {
+        controllerProbe.dispose()
+        return null
+      }
+      const sample = validateControllerSample(value)
+      if (!sample.id.includes('(XInput STANDARD GAMEPAD)')) return null
+      return matchingControllerBattery(sample, await controllerProbe.read())
+    })
+    handle('winnow:window:appearance', (value) =>
+      new WindowAppearanceController(window!, () => ({
+        platform: process.platform,
+        release: osRelease(),
+        highContrast: nativeTheme.shouldUseHighContrastColors || nativeTheme.inForcedColorsMode,
+        reducedTransparency: nativeTheme.prefersReducedTransparency,
+        remoteSession: process.env.SESSIONNAME?.toUpperCase().startsWith('RDP-') ?? false,
+      })).apply(value),
+    )
+    nativeTheme.on('updated', () => emit('winnow:window:appearance:invalidated', undefined))
+    handle('winnow:backend:restart', () => backendService.restart())
+    handle('winnow:update:snapshot', () => updater!.snapshot)
+    handle('winnow:update:action', (action: ApplicationUpdateAction, value?: boolean) =>
+      updater!.action(action, value),
+    )
+    handle('winnow:activation:pending', () => {
+      rendererAcceptsActivation = true
+      if (updateBackendReady) void distributionLease?.ready().catch(failStartup)
+      return pendingActivations.drain()
+    })
+    ipcMain.handle(
+      'winnow:artwork',
+      async (event, provider: string, id: string, width?: number, requestId?: string) => {
+        validateSender(event)
+        observeRequestOwner(event.sender)
+        const result = await requestLifetimes.run(
+          event.sender,
+          { route: 'artwork.image', requestId },
+          async (signal) => ({
+            ok: true,
+            status: 200,
+            data: await transport!.artwork(provider, id, width, signal),
+          }),
+        )
+        return result.ok ? (result.data ?? null) : null
+      },
+    )
+    handle('winnow:artwork:import', (input: unknown) =>
+      importArtworkFile(input, {
+        choose: async () => {
+          return chooseFile({
+            title: 'Choose artwork',
+            mode: 'open',
+            filterName: 'Images',
+            extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'],
+          })
+        },
+        upload: (target, bytes) => transport!.importArtwork(target, bytes),
+      }),
+    )
+    handle('winnow:preferences:load', async () => {
+      if (sessionAppearance) return sessionAppearance.loadProfile()
+      if (safeTheme) return null
+      try {
+        return await readProfile(preferencesFile)
+      } catch {
+        return null
+      }
+    })
+    handle('winnow:appearance:session', () => captureAppearance)
+    handle('winnow:typography:popouts', (value: unknown) => setPopoutTypography(window!.webContents, value))
+    handle('winnow:preferences:save', (value: unknown) =>
+      sessionAppearance ? sessionAppearance.saveProfile(value) : saveProfile(preferencesFile, value),
+    )
+    handle('winnow:profile:import', async () => {
+      const path = await chooseFile({
+        title: 'Import appearance profile',
+        mode: 'open',
+        filterName: 'Winnow appearance profile',
+        extensions: ['json'],
+      })
+      return path ? readProfile(path) : null
+    })
+    handle('winnow:profile:export', async (value: unknown) => {
+      const path = await chooseFile({
+        title: 'Export appearance profile',
+        mode: 'save',
+        suggestedName: 'winnow-appearance.json',
+        filterName: 'JSON',
+        extensions: ['json'],
+      })
+      if (!path) return false
+      await saveProfile(path, value)
+      return true
+    })
+    handle('winnow:themes:list', () => listThemePackages(themesRoot))
+    const avalonThemes = new AvalonThemeStore(
+      async () => {
+        const result = await transport!.request<{ directory: string }>({ route: 'plugins.directory' })
+        if (!result.ok || !result.data?.directory)
+          throw new Error('Connect to your library before reading its themes.')
+        return join(dirname(result.data.directory), 'themes')
+      },
+      () => emit('winnow:avalon-themes:changed', undefined),
+    )
+    handle('winnow:avalon-themes:list', async () => {
+      const preparation = await avalonThemes.prepare()
+      const catalogue = await avalonThemes.load()
+      return { ...catalogue, diagnostics: [...preparation, ...catalogue.diagnostics] }
+    })
+    handle('winnow:avalon-themes:export', (text: unknown) => avalonThemes.export(text))
+    app.once('will-quit', () => avalonThemes.dispose())
+    let installing = false
+    handle('winnow:themes:install', async () => {
+      if (installing) return null
+      installing = true
+      try {
+        const source = await chooseFile({ title: 'Choose a Winnow theme folder', mode: 'directory' })
+        if (!source) return null
+        const manifest = await readManifest(source)
+        const trust = await dialog.showMessageBox(window!, {
+          type: 'warning',
+          title: 'Install developer theme',
+          message: `Trust “${manifest.name}”?`,
+          detail:
+            'Developer themes run JavaScript inside this frontend. They can read your library and use its supported commands, including editing lists and launching games. Install only themes from authors you trust. Themes cannot access your backend token or arbitrary local files. Installing replaces an existing theme with the same ID.',
+          buttons: ['Cancel', 'Trust and install'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
+        })
+        if (trust.response !== 1) return null
+        return await installThemeDirectory(source, themesRoot)
+      } finally {
+        installing = false
+      }
+    })
+    handle('winnow:fullscreen', (value: boolean) => {
+      if (typeof value !== 'boolean') throw new Error('Invalid fullscreen setting')
+      window!.setFullScreen(value)
+    })
+    handle('winnow:fullscreen:get', () => window?.isFullScreen() ?? false)
+    handle('winnow:window:visible', () => presentationVisible)
+    handle('winnow:quit', () => {
+      quitting = true
+      app.quit()
+    })
+    handle('winnow:external', (url: string) => {
+      return routeLink(url, preferences.LinkDestination, {
+        inApp: (address) => openLinkBrowser(window!, address),
+        external: (address) => shell.openExternal(address),
+        hasSteam: () => Boolean(app.getApplicationNameForProtocol('steam://')),
+      })
+    })
+    handle('winnow:folder', (folder: string) =>
+      openDataFolder(folder, {
+        pluginDirectory: async () => {
+          const result = await transport!.request<{ directory: string }>({ route: 'plugins.directory' })
+          return result.ok ? result.data?.directory : undefined
+        },
+        createDirectory: (path) => mkdir(path, { recursive: true }),
+        openPath: (path) => shell.openPath(path),
+      }),
+    )
+    handle('winnow:install-folder', (ownershipId: unknown) =>
+      openInstallFolder(ownershipId, {
+        workspace: async () => {
+          const result = await transport!.request<InstallationWorkspace>({ route: 'library.workspace' })
+          if (!result.ok || !result.data)
+            throw new Error('Connect to your library before opening this folder.')
+          return result.data
+        },
+        isDirectory: async (path) => (await stat(path)).isDirectory(),
+        openPath: (path) => shell.openPath(path),
+      }),
+    )
+    const chooseManualExecutable = async () => {
+      return chooseFile({
+        title: 'Choose game executable',
+        mode: 'open',
+        ...(process.platform === 'win32' ? { filterName: 'Executable', extensions: ['exe'] } : {}),
+      })
+    }
+    handle('winnow:manual-executable', chooseManualExecutable)
+    handle('winnow:manual-executable-facts', async () => {
+      const path = await chooseManualExecutable()
+      return path ? inspectExecutable(path) : null
+    })
+    handle('winnow:acquisitions:export', async () => {
+      const result = await transport!.request<{ content: string; ownershipCount: number }>({
+        route: 'acquisitions.export',
+      })
+      if (!result.ok || !result.data) throw new Error('Acquisitions could not be exported. Try again.')
+      const saved = await saveAcquisitions(result.data.content, chooseFile)
+      return { saved, ownershipCount: result.data.ownershipCount }
+    })
+    handle('winnow:steam:signin', (options: SteamSignInOptions) =>
+      signInToSteam(window!, transport!, options, (message) => {
+        // Resolve the active backend location so legacy-directory fallback installs share their logs.
+        void transport!
+          .request<{ directory: string }>({ route: 'plugins.directory' })
+          .then((result) => {
+            if (result.ok && result.data?.directory)
+              writeSteamDiagnostic(dirname(result.data.directory), message)
+          })
+          .catch(() => {})
+      }),
+    )
+    const epicSignIn = new EpicSignInController(
+      transport!,
+      join(app.getPath('userData'), 'account-profiles'),
+      join(here, '../preload/epic.cjs'),
+    )
+    app.once('will-quit', () => epicSignIn.dispose())
+    handle('winnow:epic:prepare', () => epicSignIn.prepare(window!))
+    handle('winnow:epic:signin', (options: EpicSignInOptions) => epicSignIn.signIn(window!, options))
+    handle('winnow:epic:browser', (options: EpicSignInOptions) => epicSignIn.openManual(window!, options))
+    handle('winnow:epic:complete', (options: EpicSignInOptions & { callback: string }) =>
+      epicSignIn.completeManual(window!, options),
+    )
+    handle('winnow:epic:cancel', () => epicSignIn.cancel(window!))
+    handle('winnow:steam:cancel', () => cancelSteamWindow(window!))
+    handle('winnow:steam:capture', (options: { consentGranted: boolean }) =>
+      captureSteamPages(window!, options),
+    )
+    handle('winnow:application:info', () => ({
+      ...applicationBuildInfo(app.isPackaged, app.getVersion()),
+      platform: process.platform,
+      packaged: app.isPackaged,
+      steamStoreAvailable: Boolean(app.getApplicationNameForProtocol('steam://')),
+      autostartSupported: app.isPackaged && process.platform === 'win32',
+      openAtLogin:
+        process.platform === 'win32'
+          ? app.getLoginItemSettings(loginItemOptions(process.execPath, explicitDataDirectory)).openAtLogin
+          : false,
+    }))
+    handle('winnow:application:autostart', (enabled: boolean) => {
+      if (typeof enabled !== 'boolean' || !app.isPackaged || process.platform !== 'win32')
+        throw new Error('Start at sign-in is available in packaged Windows builds.')
+      app.setLoginItemSettings({
+        ...loginItemOptions(process.execPath, explicitDataDirectory),
+        openAtLogin: enabled,
+      })
+    })
+    const journalNotifications = new Map<number, Notification>()
+    handle('winnow:journal:notify', (value: { sessionId: number; title: string }) => {
+      if (
+        !value ||
+        !Number.isSafeInteger(value.sessionId) ||
+        value.sessionId <= 0 ||
+        typeof value.title !== 'string' ||
+        value.title.length > 1024
+      )
+        throw new Error('Invalid session notification')
+      if (!canNotifyJournal(window, () => Notification.isSupported())) return false
+      journalNotifications.get(value.sessionId)?.close()
+      const notification = new Notification({
+        title: 'Remember this session',
+        body: value.title,
+        silent: true,
+        icon: app.isPackaged
+          ? join(process.resourcesPath, 'icon.ico')
+          : join(app.getAppPath(), 'resources', 'icon.ico'),
+      })
+      journalNotifications.set(value.sessionId, notification)
+      notification.once('click', () => {
+        showPrimary()
+        window?.webContents.send('winnow:journal:activated', value.sessionId)
+        journalNotifications.delete(value.sessionId)
+      })
+      notification.once('close', () => journalNotifications.delete(value.sessionId))
+      return deliverNotification(notification)
+    })
+    handle('winnow:journal:clear', (sessionId: number) => {
+      journalNotifications.get(sessionId)?.close()
+      journalNotifications.delete(sessionId)
+    })
+    async function createWindow(): Promise<void> {
+      const windowLifetime = new AbortController()
+      rendererAcceptsActivation = false
+      presentationVisible = !process.argv.includes('--background')
+      window = new BrowserWindow({
+        width: 1440,
+        height: 980,
+        minWidth: 760,
+        minHeight: 560,
+        backgroundColor: '#18191b',
+        title: 'Winnow',
+        show: false,
+        autoHideMenuBar: true,
+        icon: app.isPackaged
+          ? join(process.resourcesPath, 'icon.ico')
+          : join(app.getAppPath(), 'resources', 'icon.ico'),
+        webPreferences: {
+          preload: join(here, '../preload/index.cjs'),
+          contextIsolation: true,
+          sandbox: true,
+          nodeIntegration: false,
+          nodeIntegrationInWorker: false,
+          webSecurity: true,
+          webviewTag: false,
+          spellcheck: false,
+        },
+      })
+      window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+      window.webContents.on('will-navigate', (event) => event.preventDefault())
+      window.webContents.on('will-attach-webview', (event) => event.preventDefault())
+      window.webContents.on('did-start-loading', () => {
+        rendererAcceptsActivation = false
+        savedSteamPages.clear()
+        filePicker.cancel()
+      })
+      window.webContents.on('render-process-gone', () => {
+        savedSteamPages.clear()
+        filePicker.cancel()
+      })
+      window.on('enter-full-screen', () => emit('winnow:fullscreen:changed', true))
+      window.on('leave-full-screen', () => {
+        savedSteamPages.clear()
+        filePicker.cancel()
+        controllerProbe.dispose()
+        emit('winnow:fullscreen:changed', false)
+      })
+      const visibility = (visible: boolean) => {
+        if (!visible) controllerProbe.dispose()
+        presentationVisible = visible
+        emit('winnow:window:visibility', visible)
+      }
+      window.on('show', () => {
+        windowTray?.shown()
+        visibility(true)
+      })
+      window.on('hide', () => visibility(false))
+      window.on('minimize', () => visibility(false))
+      window.on('restore', () => visibility(window?.isVisible() ?? false))
+      window.once('ready-to-show', () => {
+        windowTray?.ready()
+      })
+      window.on('minimize', () => {
+        windowTray?.minimized()
+      })
+      window.on('close', (event) => {
+        if (!quitting && windowTray?.closing()) event.preventDefault()
+        if (!event.defaultPrevented) windowLifetime.abort(new DOMException('Window closed', 'AbortError'))
+      })
+      window.on('closed', () => {
+        savedSteamPages.clear()
+        filePicker.cancel()
+        controllerProbe.dispose()
+        windowLifetime.abort(new DOMException('Window closed', 'AbortError'))
+        window = undefined
+      })
+      windowTray?.prepare()
+      if (preferencesLoaded) windowTray?.preferences(preferences)
+      const loadingWindow = window
+      await waitForStartupOperation(
+        () => loadingWindow.loadURL(rendererUrl),
+        AbortSignal.any([startupLifetime.signal, windowLifetime.signal]),
+      )
+    }
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate([
+        { label: 'Winnow', submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'quit' }] },
+        {
+          label: 'Edit',
+          submenu: [
+            { role: 'undo' },
+            { role: 'redo' },
+            { type: 'separator' },
+            { role: 'cut' },
+            { role: 'copy' },
+            { role: 'paste' },
+            { role: 'selectAll' },
+          ],
+        },
+        {
+          label: 'View',
+          submenu: [
+            { role: 'reload' },
+            { role: 'togglefullscreen' },
+            { role: 'resetZoom' },
+            { role: 'zoomIn' },
+            { role: 'zoomOut' },
+            { type: 'separator' },
+            {
+              label: 'Recover bundled appearance',
+              accelerator: 'CmdOrCtrl+Shift+R',
+              click: () => {
+                safeTheme = true
+                window?.webContents.reload()
+              },
+            },
+            ...(!app.isPackaged ? [{ role: 'toggleDevTools' as const }] : []),
+          ],
+        },
+      ]),
+    )
+    const startupWindow = new StartupWindowGate(() => {
+      if (quitting) return
+      if (!window) void createWindow().catch(failStartup)
+      windowTray?.restore()
+      showRequested = false
+    })
+    showPrimary = startupWindow.request
+    windowTray = new WindowTrayController({
+      background: process.argv.includes('--background'),
+      window: () => window,
+      createIcon: () => {
+        const icon = new Tray(
+          app.isPackaged
+            ? join(process.resourcesPath, 'icon.ico')
+            : join(app.getAppPath(), 'resources', 'icon.ico'),
+        )
+        try {
+          icon.setToolTip('Winnow')
+          icon.setContextMenu(
+            Menu.buildFromTemplate([
+              { label: 'Open Winnow', click: showPrimary },
+              { type: 'separator' },
+              { label: 'Exit', click: () => app.quit() },
+            ]),
+          )
+          icon.on('double-click', showPrimary)
+          return icon
+        } catch (error) {
+          icon.destroy()
+          throw error
+        }
+      },
+    })
+    const initialDeadline = Date.now() + 45_000
+    transport.start()
+    const problem = await prepareBackendStartup({
+      healthy: () =>
+        backendResponds(() => discoverBackend(dataDirectory, startupLifetime.signal), startupLifetime.signal),
+      running: () => backendProcessIsRunning(() => discoverBackend(dataDirectory)),
+      start: () =>
+        startBackend({
+          appPath: app.getAppPath(),
+          resourcesPath: process.resourcesPath,
+          packaged: app.isPackaged,
+          dataDirectory,
+          args: startupArgs,
+        }),
+      signal: startupLifetime.signal,
+    })
+    if (problem) transport.setStartupProblem(problem)
+    updateBackendReady ||= !problem
+    startupLifetime.signal.throwIfAborted()
+    if (!problem && !preferencesLoaded) {
+      const remaining = Math.max(0, initialDeadline - Date.now())
+      if (remaining > 0)
+        try {
+          await waitForStartupOperation(
+            () => preferencesRead ?? refreshPreferences(),
+            AbortSignal.any([startupLifetime.signal, AbortSignal.timeout(remaining)]),
+          )
+        } catch {
+          // A failed or timed-out preference read keeps the ordinary recoverable presentation.
+          startupLifetime.signal.throwIfAborted()
+        }
+    }
+    startupLifetime.signal.throwIfAborted()
+    await createWindow()
+    startupWindow.resolve()
+    app.on('activate', () => {
+      showPrimary()
+    })
+    if (showRequested) showPrimary()
+    void updater.initialize()
+  }
+
+  function failStartup(error: unknown): void {
+    if (isStartupCancellation(error)) return
+    transport?.stop()
+    windowTray?.dispose()
+    activationHost?.dispose()
+    distributionLease?.dispose()
+    startupLifetime.abort(new DOMException('Startup closed', 'AbortError'))
+    app.exit(
+      reportStartupFailure(error, {
+        directory: dataDirectory,
+        surface: dialog.showErrorBox,
+        exitCode: error instanceof BackendStartupFailure ? error.exitCode : undefined,
+      }),
+    )
+  }
+
+  if (!ownsInstance) app.quit()
+  else if (startupArgumentError) {
+    app.exit(
+      reportStartupFailure(startupArgumentError, {
+        exitCode: dataDirectoryRefusalCode,
+        surface: dialog.showErrorBox,
+      }),
+    )
+  } else
+    app
+      .whenReady()
+      .then(async () => {
+        const location = { appPath: app.getAppPath(), resourcesPath: process.resourcesPath }
+        if (process.platform === 'win32') {
+          activationHost = await startActivationHost({
+            ...location,
+            dataDirectory,
+            activation: initialActivation,
+            signal: startupLifetime.signal,
+            onActivation: activatePrimary,
+            onLost: failStartup,
+          })
+          if (!activationHost.primary) {
+            app.quit()
+            return
+          }
+          dataDirectory = activationHost.root!
+        } else if (!dataDirectory) {
+          dataDirectory = await resolveBackendDataDirectory({ ...location, signal: startupLifetime.signal })
+        }
+        startupLifetime.signal.throwIfAborted()
+        distribution = primaryDistribution({
+          packaged: app.isPackaged,
+          executable: process.execPath,
+          version: app.getVersion(),
+        })
+        if (distribution?.kind === 'portable') {
+          distributionLease = await startDistributionLease({
+            helper: distributionHelper(distribution.installation),
+            installation: distribution.installation,
+            dataDirectory: dataDirectory!,
+            signal: startupLifetime.signal,
+            onLost: failStartup,
+          })
+        }
+        await initialize()
+      })
+      .catch(failStartup)
+  app.on('will-quit', () => {
+    activationHost?.dispose()
+    distributionLease?.dispose()
+  })
+  const drainUpdates = quitDrain(
+    () => updater?.dispose() ?? Promise.resolve(),
+    () => app.quit(),
+  )
+  app.on('before-quit', (event) => {
+    quitting = true
+    startupLifetime.abort(new DOMException('Startup closed', 'AbortError'))
+    windowTray?.dispose()
+    if (updater && drainUpdates(event)) return
+    transport?.stop()
+  })
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit()
+  })
+}
+
+const entryArguments = process.argv.slice(app.isPackaged ? 1 : 2)
+if (epicConsoleRequested(entryArguments)) {
+  void runEpicConsole(entryArguments, { appPath: app.getAppPath(), resourcesPath: process.resourcesPath })
+    .then((code) => app.exit(code))
+    .catch(() => {
+      process.stderr.write('Winnow could not start terminal sign-in. Check the backend installation.\n')
+      app.exit(3)
+    })
+} else startGui()

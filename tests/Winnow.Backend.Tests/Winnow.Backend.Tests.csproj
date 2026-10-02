@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Winnow.Electron.Fixtures/UpdateAcknowledgementFixture.cs" Link="Fixtures/UpdateAcknowledgementFixture.cs" />
+    <Compile Include="../Winnow.Electron.Fixtures/SteamAccountReadingFixture.cs" Link="Fixtures/SteamAccountReadingFixture.cs" />
+    <Content Include="../fixtures/steam-account-pages/licenses-page1.html" Link="fixtures/steam-account-pages/licenses-page1.html" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../fixtures/steam-account-pages/purchase-history.html" Link="fixtures/steam-account-pages/purchase-history.html" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="../Winnow.Electron.Fixtures/PluginProvenanceFixture.cs" Link="Fixtures/PluginProvenanceFixture.cs" />
+    <Compile Include="../Winnow.Electron.Fixtures/PlatformContextFixture.cs" Link="Fixtures/PlatformContextFixture.cs" />
+    <Compile Include="../Winnow.Electron.Fixtures/OwnershipSnapshotFixture.cs" Link="Fixtures/OwnershipSnapshotFixture.cs" />
+    <Compile Include="../Winnow.Electron.Fixtures/StartupBoundaryFixture.cs" Link="Fixtures/StartupBoundaryFixture.cs" />
+    <Compile Include="../Winnow.Electron.Fixtures/ArtworkStateFixture.cs" Link="Fixtures/ArtworkStateFixture.cs" />
+    <Compile Include="../Winnow.Electron.Fixtures/CoverBehaviorFixture.cs" Link="Fixtures/CoverBehaviorFixture.cs" />
+    <Compile Include="../Winnow.Electron.Fixtures/RecommendationPreviewFixture.cs" Link="Fixtures/RecommendationPreviewFixture.cs" />
+    <Compile Include="../Winnow.Electron.Fixtures/RecommendationStateFixture.cs" Link="Fixtures/RecommendationStateFixture.cs" />
+    <Compile Include="../Winnow.Electron.Fixtures/GameplayStatsFixture.cs" Link="Fixtures/GameplayStatsFixture.cs" />
+    <Compile Include="../../src/Winnow.App/Design/PreviewLibrary.cs" Link="SourceFixtures/PreviewLibrary.cs" />
+    <Compile Include="../../src/Winnow.App/Design/PreviewGameplayStatsRepository.cs" Link="SourceFixtures/PreviewGameplayStatsRepository.cs" />
+    <Compile Include="../Winnow.Electron.Fixtures/ActivityRemainingFixture.cs" Link="Fixtures/ActivityRemainingFixture.cs" />
+    <Compile Include="../Winnow.Electron.Fixtures/JournalActivityFixture.cs" Link="Fixtures/JournalActivityFixture.cs" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
+    <ProjectReference Include="../../src/Winnow.Backend/Winnow.Backend.csproj" />
+    <ProjectReference Include="../../src/Winnow.Api.Client/Winnow.Api.Client.csproj" />
+    <ProjectReference Include="../Winnow.PluginFixture/Winnow.PluginFixture.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,99 @@
+{
+  "ArchitectureBoundaryTests.Winnow_Core_references_nothing_but_the_framework": {
+    "status": "retained-backend",
+    "reason": "Electron uses the independent backend. Its unchanged domain assembly remains BCL-only; the original compiled-assembly check passes against a fresh build.",
+    "implementation": [
+      "src/Winnow.Core/Winnow.Core.csproj",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ]
+  },
+  "ArchitectureBoundaryTests.Winnow_Recommend_references_only_Winnow_Core": {
+    "status": "retained-backend",
+    "reason": "Scoring remains in the shared backend module, whose only Winnow reference is Core. The original compiled reference guard still exercises the active implementation.",
+    "implementation": [
+      "src/Winnow.Recommend/Winnow.Recommend.csproj",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ]
+  },
+  "ArchitectureBoundaryTests.The_embedded_sign_in_host_references_only_Winnow_Core": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-architecture.test.ts",
+        "case": "embedded sign-in hosts compile against frontend contracts without backend repository or transport implementations"
+      }
+    ],
+    "reason": "Both Electron sign-in hosts are bundled independently and their complete dependency graphs exclude backend implementations, SQLite and the injected API transport implementation. They consume frontend types and callbacks; native browser and security helpers replace Avalonia browser hosting."
+  },
+  "ArchitectureBoundaryTests.An_ingest_module_references_no_repository_that_writes_identity": {
+    "status": "retained-backend",
+    "reason": "The backend still composes the same three read-only ingest assemblies. The original compiled-type guard checks that none references an identity-writing repository.",
+    "implementation": [
+      "src/Winnow.Ingest.Steam/Winnow.Ingest.Steam.csproj",
+      "src/Winnow.Ingest.Epic/Winnow.Ingest.Epic.csproj",
+      "src/Winnow.Ingest.Gog/Winnow.Ingest.Gog.csproj",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ]
+  },
+  "ArchitectureBoundaryTests.Every_ingest_module_emits_the_candidate_contract": {
+    "status": "retained-backend",
+    "reason": "The Steam, Epic and GOG sources remain registered in the backend and emit CandidateOwnership. The original assembly metadata assertion passes unchanged.",
+    "implementation": [
+      "src/Winnow.Ingest.Steam/SteamLibrarySource.cs",
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Ingest.Gog/GogLibrarySource.cs",
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs"
+    ]
+  },
+  "ArchitectureBoundaryTests.No_ingest_module_writes_to_a_store_owned_file": {
+    "status": "retained-backend",
+    "reason": "All launcher readers remain backend-owned. The original whole-source write guard passes; its reviewed GOG exception copies the database and WAL to a private temporary directory and cleans up only that private copy.",
+    "implementation": [
+      "src/Winnow.Ingest.Steam/SteamLibrarySource.cs",
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Ingest.Gog/GogLibrarySource.cs",
+      "src/Winnow.Ingest.Gog/GalaxyDatabaseSnapshot.cs"
+    ]
+  },
+  "ArchitectureBoundaryTests.Steam_ingest_parses_key_values_with_ValveKeyValue": {
+    "status": "retained-backend",
+    "reason": "Steam ingest still references ValveKeyValue and its KeyValues1 adapter uses the library parser. The original compiled assembly-reference check passes.",
+    "implementation": [
+      "src/Winnow.Ingest.Steam/Winnow.Ingest.Steam.csproj",
+      "src/Winnow.Ingest.Steam/KeyValues1.cs"
+    ]
+  },
+  "ArchitectureBoundaryTests.No_module_declares_a_hand_rolled_key_value_parser": {
+    "status": "retained-backend",
+    "reason": "Parsing remains in the shared backend; Electron calls snapshots and commands. The original scan of compiled Winnow assemblies still excludes hand-written VDF, ACF and KeyValues parsers.",
+    "implementation": [
+      "src/Winnow.Ingest.Steam/KeyValues1.cs",
+      "src/Winnow.Ingest.Steam/Winnow.Ingest.Steam.csproj"
+    ]
+  },
+  "ArchitectureBoundaryTests.No_view_or_view_model_names_an_ingest_or_enrichment_type": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-architecture.test.ts",
+        "case": "views and their shared types cannot import native or backend implementations"
+      },
+      { "file": "tests/parity-architecture.test.ts", "case": "rejects the forbidden dependency in" }
+    ],
+    "reason": "An AST scan includes imports, exports, type signatures, dynamic literal imports, require calls and escaped module names across every renderer/shared source. Adversarial fixtures verify rejection while comments and ordinary documentation strings are ignored."
+  },
+  "ArchitectureBoundaryTests.No_view_model_holds_an_ingest_or_enrichment_dependency": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-architecture.test.ts",
+        "case": "the compiled renderer and drawing worker dependency graphs stay in presentation and shared contracts"
+      },
+      {
+        "file": "tests/parity-architecture.test.ts",
+        "case": "views and their shared types cannot import native or backend implementations"
+      }
+    ],
+    "reason": "The actual renderer and worker are bundled in memory and their transitive dependency graphs exclude backend/native implementations. The accompanying AST scan includes erased TypeScript imports and signature types, so removing types during compilation cannot hide a forbidden dependency."
+  }
+}

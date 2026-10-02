@@ -12,18 +12,15 @@ public static class CoverCacheServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the cover pipeline: Steam's portrait capsule as the first
-    /// source, the <c>%LOCALAPPDATA%\Winnow\covers\</c> disk cache, the
-    /// bounded in-memory <see cref="ICoverCache"/>, and the
-    /// <see cref="CoverLeasePool"/> that reference-counts decoded art across
-    /// surfaces. Registering another <see cref="ICoverSource"/> afterwards
+    /// source, the <c>%LOCALAPPDATA%\Winnow\covers\</c> disk cache, the decoded image pipeline. Registering another <see cref="ICoverSource"/> afterwards
     /// makes it the gap-filler for keys Steam declines — that is where IGDB
     /// covers plug in, with no dependency here on IGDB or any credential.
     /// </summary>
-    public static IServiceCollection AddCoverCache(this IServiceCollection services)
-        => services.AddCoverCache(null);
+    public static IServiceCollection AddCoverPipeline(this IServiceCollection services)
+        => services.AddCoverPipeline(null);
 
-    /// <inheritdoc cref="AddCoverCache(IServiceCollection)"/>
-    public static IServiceCollection AddCoverCache(
+    /// <inheritdoc cref="AddCoverPipeline(IServiceCollection)"/>
+    public static IServiceCollection AddCoverPipeline(
         this IServiceCollection services,
         Action<CoverCacheOptions>? configure)
     {
@@ -52,19 +49,6 @@ public static class CoverCacheServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, SteamHeroSource>());
         services.TryAddSingleton<CoverDiskCache>();
         services.TryAddSingleton<CoverPipeline>();
-        // Constructed by hand so the cache keeps its own default for how a
-        // disposal reaches the UI thread, rather than being handed one by the
-        // container's constructor selection.
-        services.TryAddSingleton<ICoverCache>(sp => new CoverCache(
-            sp.GetRequiredService<CoverPipeline>(),
-            sp.GetRequiredService<CoverCacheOptions>(),
-            sp.GetService<ILogger<CoverCache>>()));
-
-        // One pool for the process: leases are the refcount over (cover, width
-        // bucket, layers), so a second instance would be a second, independent
-        // count — and the count is what decides when decoded pixels are freed.
-        services.TryAddSingleton<ICoverLeases, CoverLeasePool>();
-
         return services;
     }
 

@@ -1,0 +1,229 @@
+.account-statistics {
+  min-width: 0;
+  container-type: inline-size;
+}
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.account-statistics-embedded .account-spending-intro {
+  margin-block: 4px 8px;
+  color: var(--muted);
+}
+.account-statistics-embedded .account-spending-intro p {
+  margin-block: 4px;
+  max-width: none;
+}
+.account-statistics-embedded .account-spending-figures {
+  margin-block: 8px 24px;
+}
+.account-currency {
+  margin-block: 1.5rem;
+  max-width: 100%;
+}
+.account-currency select {
+  width: min(100%, 18rem);
+}
+.account-statistics > .feature-grid,
+.account-charts > .feature-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+@container (min-width: 850px) {
+  .account-statistics > .feature-grid,
+  .account-charts > .feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.account-statistics[data-mode='fullscreen'] .feature-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+@container (min-width: 1400px) {
+  .account-statistics[data-mode='fullscreen'] .feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.account-statistics .facts-grid dd {
+  font-size: calc(clamp(22px, 2.5vw, 32px) * var(--theme-text-scale, 1));
+}
+[data-mode='fullscreen'] .account-statistics .facts-grid dd {
+  font-size: calc(40px * var(--theme-text-scale, 1));
+}
+.account-chart {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.account-chart ul {
+  display: grid;
+  gap: 0.9rem;
+  padding: 0;
+  list-style: none;
+}
+.account-chart li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 0.75rem;
+  min-width: 0;
+}
+.account-chart li > span:first-child {
+  overflow-wrap: anywhere;
+}
+.account-chart strong {
+  grid-area: 1 / 2;
+  font: 500 0.85em var(--font-mono);
+}
+.account-chart-track {
+  grid-column: 1 / -1;
+  display: block;
+  position: relative;
+  height: 0.9rem;
+}
+.account-chart-zero {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  border-left: 1px solid var(--muted);
+}
+.account-chart-bar {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--cool);
+  border-radius: 2px;
+}
+.account-chart-bar.negative {
+  background: var(--muted);
+}
+.account-charts {
+  display: grid;
+  gap: 1.5rem;
+  margin-block: 1.5rem;
+}
+.account-statistics table,
+.account-reading table {
+  width: 100%;
+  table-layout: fixed;
+  overflow-wrap: anywhere;
+}
+.account-statistics .facts-grid .transaction-count {
+  font: 400 0.875rem var(--font-body);
+  color: var(--muted);
+}
+.capture-facts {
+  display: grid;
+  gap: 0.75rem 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+.capture-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.capture-facts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+}
+.capture-facts dt {
+  overflow-wrap: anywhere;
+}
+.account-donut-layout {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+.account-donut {
+  width: 10rem;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+.account-donut-layout ul {
+  flex: 1 1 15rem;
+  min-width: 0;
+}
+.account-composition li {
+  display: block;
+}
+.account-composition strong {
+  display: block;
+  margin-top: 0.3rem;
+  overflow-wrap: anywhere;
+}
+.account-composition i {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  margin-right: 0.5rem;
+  background: var(--chart-ink);
+}
+.account-ink-0 {
+  --chart-ink: var(--cool);
+}
+.account-ink-1 {
+  --chart-ink: var(--muted);
+}
+.account-ink-2 {
+  --chart-ink: var(--text);
+}
+.account-donut circle {
+  stroke: var(--chart-ink);
+}
+.account-breakdown {
+  margin-block: 1.5rem;
+}
+.account-breakdown > summary {
+  cursor: pointer;
+  padding-block: 0.5rem;
+}
+.account-reading {
+  width: min(70rem, calc(100vw - 4rem));
+  height: min(52rem, calc(100dvh - 4rem));
+  max-width: calc(100vw - 4rem);
+  max-height: calc(100dvh - 4rem);
+  display: flex;
+  flex-direction: column;
+  font-size: calc(28px * var(--theme-text-scale, 1));
+}
+.account-reading .feature-heading {
+  flex-shrink: 0;
+}
+.account-reading-body {
+  min-height: 0;
+  overflow: auto;
+  padding-inline: 0.25rem;
+}
+.account-statistics[data-mode='fullscreen'] .account-chart {
+  font-size: calc(24px * var(--theme-text-scale, 1));
+}
+.account-statistics[data-mode='fullscreen'] .account-donut {
+  width: 17rem;
+}
+.account-statistics[data-mode='fullscreen'] p,
+.account-statistics[data-mode='fullscreen'] .capture-facts {
+  font-size: calc(24px * var(--theme-text-scale, 1));
+}
+.account-statistics[data-mode='fullscreen'] h3 {
+  font-size: calc(28px * var(--theme-text-scale, 1));
+}
+.account-statistics[data-mode='fullscreen'] .facts-grid dt,
+.account-statistics[data-mode='fullscreen'] .facts-grid .transaction-count {
+  font-size: calc(20px * var(--theme-text-scale, 1));
+}
+.account-reading .muted {
+  font-size: calc(22px * var(--theme-text-scale, 1));
+}
+.account-reading th,
+.account-reading td {
+  padding: 0.5rem;
+  vertical-align: top;
+  text-align: right;
+}
+.account-reading th:first-child {
+  width: 45%;
+  text-align: left;
+}
+.account-reading th[scope='row'] {
+  font-weight: 400;
+}

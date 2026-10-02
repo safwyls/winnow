@@ -58,6 +58,7 @@ public static class SoftMatchServiceCollectionExtensions
         // offered. It writes nothing and auto-applies nothing.
         services.TryAddSingleton(ExpansionDetectorOptions.Default);
         services.TryAddSingleton<LibraryExpansionScan>();
+        services.TryAddSingleton<IExpansionReviewScan>(sp => sp.GetRequiredService<LibraryExpansionScan>());
 
         return services;
     }

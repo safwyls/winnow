@@ -1,0 +1,588 @@
+{
+  "ListPromptParityTests.Existing_choices_and_new_list_action_remain_available_after_a_failed_save": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "preserves existing choices and new-list text after failure from %s"
+      },
+      {
+        "file": "tests/electron/list-transactions.spec.ts",
+        "case": "${mode} ${origin} list prompt retains Second list and original choice after SQLite create failure"
+      }
+    ],
+    "reason": "All six desktop/fullscreen by Library/Details/Feed routes open the production prompt at 1920x1080 using Seed(2), the sole existing Try next [2,1], selected Game 1 and draft Second list. The feed fixture contains only Game 1 in Ready, matching the source single-card fixture. A real BEFORE INSERT lists abort preserves the prompt, draft and original choice and creates nothing; retry stores exactly one Second list with release 1, leaving Try next unchanged. Desktop accepts through Enter and fullscreen through a standard Gamepad API Accept event. Unlike an in-process SQLite exception, an HTTP 500 cannot prove whether the response was lost after commit: Electron therefore keeps choices disabled until Check saved lists and an explicit Create another anyway action confirm retry, then restores both original actions. The existing definite-error component rows additionally prove immediate re-enablement when the transport reports a definite rejected save."
+  },
+  "ListPromptParityTests.Pending_prompt_disables_conflicting_actions_and_disposed_pages_do_not_navigate": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "disables conflicting prompt actions while pending and avoids navigating disposed content"
+      },
+      {
+        "file": "tests/parity-list-transactions.test.tsx",
+        "case": "locks every pending prompt action, ignores duplicate submission, and closes only a live page (disposed=%s)"
+      },
+      {
+        "file": "tests/electron/controller-modal-accessibility.spec.ts",
+        "case": "${mode} combined list prompt keeps accessible names and controller routes through empty busy and error states"
+      }
+    ],
+    "reason": "Both source dispose-before-completion rows run in fullscreen and are also assessed in desktop. A gated save of Later disables every dialog button and the named input; Escape cannot navigate and an explicit duplicate form submission produces only one write. Resolving the save updates committed membership and closes a live owner once, while an unmounted owner receives no close/navigation callback. The existing native regression supplies the missing controller event path: standard-gamepad B cannot dismiss the busy dialog, every control is disabled in Chromium's AX tree, and the completed error state restores names/routes before B can dismiss. No physical-controller claim is made."
+  },
+  "ListWriteParityTests.A_failed_list_action_keeps_the_open_list_and_shows_a_retry_message": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "moves and removes handpicked games with boundary guards and keeps the list open after a failed write"
+      },
+      {
+        "file": "tests/electron/list-transactions.spec.ts",
+        "case": "${mode} failed removal leaves Try next open with both original members and a retry message"
+      }
+    ],
+    "reason": "The native desktop/fullscreen pair preserves Seed(3), opens Try next [3,1], selects its first visible Game 3, and aborts the actual DELETE list_items through the source-style injected SQLite trigger. Production removal exposes Couldn't save list changes. Try again., retains the same open list ID, both visible games and their order, and the saved API membership [3,1]. Existing focused workflows supplement this exact failure fixture with successful retry and boundary behavior."
+  },
+  "ListWriteParityTests.Pending_membership_preserves_latest_intent_and_reports_the_committed_result": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-membership.test.tsx",
+        "case": "preserves latest intent and reports the saved result after %s"
+      },
+      {
+        "file": "tests/parity-library-membership.test.tsx",
+        "case": "retains pending intent across a mode remount and continues the compensating write"
+      },
+      {
+        "file": "tests/parity-list-transactions.test.tsx",
+        "case": "holds Game 2 membership intent, refresh, committed row identity and retry after %s"
+      },
+      {
+        "file": "tests/electron/list-transactions.spec.ts",
+        "case": "${mode} Game 2 membership preserves queued intent and SQLite result after ${scenario}"
+      },
+      {
+        "file": "tests/parity-list-transactions.test.tsx",
+        "case": "waits for both independent membership writers before publishing a library refresh"
+      },
+      {
+        "file": "tests/parity-list-transactions.test.tsx",
+        "case": "cancels a queued refresh on disposal while the write completes and later reads still run"
+      },
+      {
+        "file": "tests/parity-list-transactions.test.tsx",
+        "case": "releases the refresh barrier when both a write and its saved-state recovery fail"
+      }
+    ],
+    "reason": "Both modes preserve all four source scenarios latest/failure/refresh/compensation_failure, Game 2, Seed(3), and Try next [3,1]. Native gates the append before the production HTTP request reaches SQLite, proves Game 2 is not yet stored, then exercises real insertion/deletion abort triggers and controller Accept or desktop Space. Component rows prove the refresh promise remains pending while writes are held, strict checkbox identity, response-revision use for compensation, and matching UI/cache/committed membership. Native rows independently prove the same checkbox survives and SQLite agrees, with explicit retry clearing failures and toggling membership. Additional tests bound the new QueryClient-scoped library-only barrier across multiple writers, disposal/abort and failed recovery, without blocking unrelated queries or deadlocking internal saved-state recovery."
+  },
+  "ListsViewModelTests.Feed_card_adds_only_its_game_to_an_existing_or_new_manual_list": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "adds only Hades from %s to existing and new lists while preserving Celeste selection and cancellation"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists the original manual list order, duplicate-add no-op, move and removal across fresh reads"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "starts a footer list empty, persists membership ticks and deletes only the list after rename"
+      }
+    ],
+    "reason": "Both modes target Hades while Celeste remains selected, exclude live destinations, commit existing/new membership, keep the feed card and Library context, and cancel without another write. Production HTTP cases verify durable membership and list creation."
+  },
+  "ListsViewModelTests.Details_add_to_list_targets_the_open_game_and_refreshes_membership": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "adds only Hades from %s to existing and new lists while preserving Celeste selection and cancellation"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "starts a footer list empty, persists membership ticks and deletes only the list after rename"
+      }
+    ],
+    "reason": "Both Details presentations target Hades independently of Celeste selection, retain Details through existing/new creation and cancellation, and immediately show checked new membership. The production HTTP roundtrip verifies stored membership."
+  },
+  "ListsViewModelTests.Footer_creates_an_empty_static_list_without_adding_the_current_selection": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "creates an empty handpicked list from the collections footer despite the current multi-selection"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "starts a footer list empty, persists membership ticks and deletes only the list after rename"
+      }
+    ],
+    "reason": "Both collection footers submit an empty manual list despite multi-selection. Production HTTP reload confirms its initial empty membership."
+  },
+  "ListsViewModelTests.Adding_to_lists_keeps_the_browsing_context_collection_and_multi_selection": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "keeps the source collection and both selected games after saving to a destination: create=%s"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists the original manual list order, duplicate-add no-op, move and removal across fresh reads"
+      }
+    ],
+    "reason": "Both modes and both existing/new destinations retain the open source collection, the same rendered cover elements and two selected identities while publishing exactly the two destination members; production API tests cover persistence."
+  },
+  "ListsViewModelTests.Opening_a_manual_list_leaves_the_predefined_bucket_behind": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens manual lists in member order, leaves predefined buckets, and restores the prior/default sort on exit"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists the original manual list order, duplicate-add no-op, move and removal across fresh reads"
+      }
+    ],
+    "reason": "Both modes drop the predefined bucket on opening manual membership, retain the list cut and show source member order; production API reload verifies persisted members."
+  },
+  "ListsViewModelTests.Leaving_a_list_puts_the_previous_order_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens manual lists in member order, leaves predefined buckets, and restores the prior/default sort on exit"
+      }
+    ],
+    "reason": "Both modes restore the prior explicit sort and remove the List order choice when the manual collection closes. This is presentation state, independent of repository persistence."
+  },
+  "ListsViewModelTests.Default_sort_change_preserves_manual_list_and_applies_on_exit": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens manual lists in member order, leaves predefined buckets, and restores the prior/default sort on exit"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "applies a saved default on return while retaining a manual list until it closes"
+      }
+    ],
+    "reason": "Both surfaces retain ListOrder after a default change, including an existing explicit temporary order and a Settings-style unmount/remount, then apply the changed default on exit. The source method exercises ApplyDefaultSort and list exit, not preference persistence."
+  },
+  "ListsViewModelTests.A_title_can_be_moved_and_removed_and_the_move_survives_a_reload": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens the original Hades Celeste Tunic order and disables each move only at its corresponding boundary"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists the original manual list order, duplicate-add no-op, move and removal across fresh reads"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "keeps original manual order and commits moves and removal through a renderer reload"
+      }
+    ],
+    "reason": "Native desktop/fullscreen move Tunic before Celeste, refuse the first/last boundary moves, remove Celeste only from the list and preserve Hades/Tunic after a renderer reload and fresh backend read."
+  },
+  "ListsViewModelTests.The_move_buttons_go_dead_at_the_ends_of_the_list": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens the original Hades Celeste Tunic order and disables each move only at its corresponding boundary"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "keeps original manual order and commits moves and removal through a renderer reload"
+      }
+    ],
+    "reason": "The exact three source titles exercise both movement buttons at first, middle and last positions; disabled boundary actions emit no reorder request."
+  },
+  "ListsViewModelTests.A_live_list_is_saved_from_the_cut_and_reopens_onto_the_same_rules": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "suggests the original Started RPG cut, opens its saved rules and restores them after leaving and reopening"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists live rules independently of a later matching title and accepts a revision-checked replacement cut"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "saves and opens a named live cut, discovers a new matching game and restores the rules after reload"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens live filters inline and toggles the same actual rail row off while leaving the panel open"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "fullscreen returns to its Browse results after selecting a live list without opening the filter page"
+      }
+    ],
+    "reason": "Both modes preserve the original Started · RPG suggestion and committed saved rules. The desktop row automatically opens the inline panel and keeps it open on exit; fullscreen follows its source Browse-return behavior. Native production API tests verify creation, automatic desktop panel opening, subsequent matching games and renderer reload, with 1200/1440 toolbar containment."
+  },
+  "ListsViewModelTests.Opening_a_live_list_without_a_bucket_leaves_the_predefined_bucket_behind": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "replaces prior buckets and list genres and leaves only the newly chosen bucket or All games"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists live rules independently of a later matching title and accepts a revision-checked replacement cut"
+      }
+    ],
+    "reason": "Opening Every RPG from the Started bucket shows Disco Elysium, removes Started and remains unedited in both modes. Production API reads retain saved rules."
+  },
+  "ListsViewModelTests.A_live_list_picks_up_a_title_the_library_gained": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "reverts and updates original genre rules by name and discovers a new Pillars of Eternity without writing list members"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists live rules independently of a later matching title and accepts a revision-checked replacement cut"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "saves and opens a named live cut, discovers a new matching game and restores the rules after reload"
+      }
+    ],
+    "reason": "The RPG fixture receives Pillars of Eternity without any member write; both native surfaces receive a newly matching title from the actual backend while the saved live releaseIds remain empty."
+  },
+  "ListsViewModelTests.Editing_an_open_live_list_offers_update_and_revert_by_name": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "reverts and updates original genre rules by name and discovers a new Pillars of Eternity without writing list members"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists live rules independently of a later matching title and accepts a revision-checked replacement cut"
+      }
+    ],
+    "reason": "Both modes add Action to Every RPG, expose named Update/Revert, revert to Disco Elysium, then save both genres and reopen unchanged. Production HTTP tests verify revision-checked filter replacement and fresh reads."
+  },
+  "ListsViewModelTests.Leaving_a_live_list_by_all_games_takes_its_rules_with_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "replaces prior buckets and list genres and leaves only the newly chosen bucket or All games"
+      }
+    ],
+    "reason": "Both modes clear contributed facets and search, remove all cut chips, show every game and select only All games."
+  },
+  "ListsViewModelTests.Leaving_a_live_list_by_a_bucket_leaves_only_that_bucket": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "replaces prior buckets and list genres and leaves only the newly chosen bucket or All games"
+      }
+    ],
+    "reason": "Both modes leave live genre/search context, clear the search input, retain only the chosen bucket chip and mark that bucket as selected rather than a live rule."
+  },
+  "ListsViewModelTests.Opening_a_second_live_list_does_not_inherit_the_first_ones_rules": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "replaces prior buckets and list genres and leaves only the newly chosen bucket or All games"
+      }
+    ],
+    "reason": "Switching Every RPG to Action replaces the genre, shows only Hades and removes the old RPG chip in both presentations."
+  },
+  "ListsViewModelTests.Clicking_the_open_live_list_again_leaves_it_and_its_rules": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "clicking the current live list again leaves its rules and preserves explicit unknown saved rules"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens live filters inline and toggles the same actual rail row off while leaving the panel open"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "saves and opens a named live cut, discovers a new matching game and restores the rules after reload"
+      }
+    ],
+    "reason": "The actual desktop live-list row toggles off on its second activation, removes the contributed search/store rules, restores all games and retains one active bucket marker. Both composed renderer and native tests assert this; the policy test additionally preserves explicit unavailable-store/facet rules until exit."
+  },
+  "ListsViewModelTests.Inside_a_live_list_the_bar_says_which_rules_are_the_lists": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "marks saved live-list rules neutrally and turns unsaved additions into saved rules after Update"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "reverts and updates original genre rules by name and discovers a new Pillars of Eternity without writing list members"
+      }
+    ],
+    "reason": "Both surfaces put LIVE LIST context first, expose exact source rule descriptions and origin markers, identify unsaved Action separately and mark every non-context rule as saved after Update."
+  },
+  "ListsViewModelTests.Leaving_a_manual_list_keeps_the_rules_the_user_set_inside_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "keeps user rules when leaving a manual context and clears search using its own chip"
+      }
+    ],
+    "reason": "Both modes preserve the user-owned RPG facet after leaving manual membership, expand from one member to both matching titles and retain explicit context/user provenance."
+  },
+  "ListsViewModelTests.Add_to_list_offers_the_lists_that_exist_and_a_new_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "preserves existing choices and new-list text after failure from %s"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "adds only Hades from %s to existing and new lists while preserving Celeste selection and cancellation"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists the original manual list order, duplicate-add no-op, move and removal across fresh reads"
+      }
+    ],
+    "reason": "Every origin on both modes offers existing manual destinations and New list, excludes live lists and commits only the requested game; real HTTP reads verify ordered membership."
+  },
+  "ListsViewModelTests.The_button_names_the_number_once_there_is_more_than_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "arms add-to-list through keyboard selection and names multiple selections exactly once"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "keeps the source collection and both selected games after saving to a destination: create=%s"
+      }
+    ],
+    "reason": "Both modes render exactly one Add 2 to list action for two selected games and preserve those two identities through destination creation or addition."
+  },
+  "ListsViewModelTests.A_live_list_is_not_offered_in_the_modal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "shows the original checked and unchecked memberships while excluding live lists in Details"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "explains empty Details membership when the only list is live"
+      }
+    ],
+    "reason": "Live destinations never render membership checkboxes. With only the original Unplayed live list, both Details surfaces show guidance and retain Add to list."
+  },
+  "ListsViewModelTests.With_no_lists_the_rail_says_how_to_make_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "explains the original empty collection and offers both static and live creation"
+      }
+    ],
+    "reason": "The original instruction appears in both collection surfaces and leads to working static/live creation controls."
+  },
+  "ListsViewModelTests.A_list_is_built_from_the_selection_and_opens_in_the_order_it_was_built": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "keeps the source collection and both selected games after saving to a destination: create=%s"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "opens the original Hades Celeste Tunic order and disables each move only at its corresponding boundary"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "keeps original manual order and commits moves and removal through a renderer reload"
+      }
+    ],
+    "reason": "Selection creates the Hades/Celeste destination, and both native surfaces restore manual member order with the List order option instead of alphabetical title order."
+  },
+  "ListsViewModelTests.Adding_the_same_title_twice_does_not_move_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists the original manual list order, duplicate-add no-op, move and removal across fresh reads"
+      }
+    ],
+    "reason": "The production backend receives Hades twice and fresh Library reads retain its original position before Celeste and Tunic."
+  },
+  "ListsViewModelTests.Walking_the_grid_with_the_arrows_arms_add_to_list": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "arms add-to-list through keyboard selection and names multiple selections exactly once"
+      }
+    ],
+    "reason": "Arrow navigation selects one game and enables Add to list in both surfaces. Desktop starts without selection; fullscreen retains its established initial controller focus."
+  },
+  "ListsViewModelTests.A_manual_list_does_not_change_when_the_library_does": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "retains a manual list when another game arrives and counts only its currently visible member games"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists the original manual list order, duplicate-add no-op, move and removal across fresh reads"
+      }
+    ],
+    "reason": "A newly published Dead Cells expands the Library while the manual cut and count remain unchanged. A production HTTP creation/read roundtrip preserves stored membership as the library grows."
+  },
+  "ListsViewModelTests.A_lists_count_drops_when_one_of_its_titles_leaves_the_library": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "retains a manual list when another game arrives and counts only its currently visible member games"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "excludes the original Hades Soundtrack from visible membership while retaining both stored list entries"
+      }
+    ],
+    "reason": "The original music app-type fixture leaves two persisted list IDs but only visible Hades; both renderers count projected member games, excluding absent/non-game entries."
+  },
+  "ListsViewModelTests.The_feed_and_an_open_live_list_are_never_both_selected": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "retains a live cut behind Home without marking both Home and its Library collection selected"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "saves and opens a named live cut, discovers a new matching game and restores the rules after reload"
+      }
+    ],
+    "reason": "Home owns the active navigation marker; a rendered desktop picker shows no active collection there. Returning to Library restores the live cut and selection, including native backend-backed navigation in both modes."
+  },
+  "ListsViewModelTests.Inside_a_live_list_the_rail_marks_the_list_and_not_the_bucket": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "marks saved live-list rules neutrally and turns unsaved additions into saved rules after Update"
+      }
+    ],
+    "reason": "Both collection presentations identify the live list, mark Started as a contributed rule and leave every bucket selection marker off."
+  },
+  "ListsViewModelTests.Renaming_survives_a_reload_and_keeps_the_rail_alphabetical": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "renames with the saved revision, reorders the picker and requires confirmation before deleting only the list"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "persists the original Aardvark and Zebra names after renaming Middle"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "restores alphabetical list names after a saved rename and renderer reload"
+      }
+    ],
+    "reason": "Renaming Middle to Aardvark persists with its observed revision. The renderer sorts an unsorted backend response and both native presentations retain alphabetical names after reload."
+  },
+  "ListsViewModelTests.Deleting_a_list_asks_first_and_keeps_the_titles": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "renames with the saved revision, reorders the picker and requires confirmation before deleting only the list"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "starts a footer list empty, persists membership ticks and deletes only the list after rename"
+      }
+    ],
+    "reason": "Both presentations require explicit confirmation, offer Keep list, explain retained games and clear deleted context. Production HTTP reload confirms the list is absent and its game remains."
+  },
+  "ListsViewModelTests.The_modal_ticks_the_lists_that_already_hold_this_game": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "shows the original checked and unchecked memberships while excluding live lists in Details"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "starts a footer list empty, persists membership ticks and deletes only the list after rename"
+      }
+    ],
+    "reason": "Both Details surfaces reproduce checked Finish these first and unchecked Couch co-op night for Hades; committed add/remove operations are also verified over production HTTP."
+  },
+  "ListsViewModelTests.Ticking_a_row_puts_the_game_in_the_list_and_unticking_takes_it_out": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "ticks and unticks the open game with committed revisions and refreshes the Library count"
+      },
+      {
+        "file": "tests/api-live.test.ts",
+        "case": "starts a footer list empty, persists membership ticks and deletes only the list after rename"
+      }
+    ],
+    "reason": "Both modes show saved membership, use the committed revision for the subsequent untick and refresh the manual list to zero games. Production HTTP reads verify both durable states."
+  },
+  "RailListControlsTests.Sections_collapse_independently_and_footer_creates_either_kind": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "collapses manual and live sections independently and retains their state across Home navigation"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "desktop independently collapses list sections with the keyboard and retains their state across Home"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "desktop rail footer stays reachable in a short window and its keyboard menu names either list with focus restoration"
+      },
+      {
+        "file": "tests/electron/lists.spec.ts",
+        "case": "desktop footer creates an empty static list and saves the current live rules through the real API"
+      },
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "saves the complete current cut from the footer, suggests its first two rules and opens the committed live list"
+      }
+    ],
+    "reason": "Independent vector-chevron sections, accessible expanded state, projected counts and session retention pass in renderer and native keyboard tests. Native short-window geometry verifies the fixed footer alignment and reachability; its Static list/Live list menu supplies explanatory tooltips, the original naming prompts, initial name focus and cancellation return focus. Production API cases verify empty static creation and current-cut live persistence."
+  }
+}

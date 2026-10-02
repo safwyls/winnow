@@ -1,11 +1,18 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Winnow.Activation/Winnow.Activation.csproj" />
+    <Project Path="src/Winnow.Api.Client/Winnow.Api.Client.csproj" />
+    <Project Path="src/Winnow.Api.Contracts/Winnow.Api.Contracts.csproj" />
     <Project Path="src/Winnow.App/Winnow.App.csproj" />
+    <Project Path="src/Winnow.Application/Winnow.Application.csproj" />
     <Project Path="src/Winnow.Auth.WebView/Winnow.Auth.WebView.csproj" />
+    <Project Path="src/Winnow.Backend/Winnow.Backend.csproj" />
     <Project Path="src/Winnow.Core/Winnow.Core.csproj" />
     <Project Path="src/Winnow.Covers/Winnow.Covers.csproj" />
+    <Project Path="src/Winnow.Covers.Avalonia/Winnow.Covers.Avalonia.csproj" />
     <Project Path="src/Winnow.Covers.Igdb/Winnow.Covers.Igdb.csproj" />
     <Project Path="src/Winnow.Data/Winnow.Data.csproj" />
+    <Project Path="src/Winnow.Diagnostics/Winnow.Diagnostics.csproj" />
     <Project Path="src/Winnow.Enrich.GamesDb/Winnow.Enrich.GamesDb.csproj" />
     <Project Path="src/Winnow.Enrich.Igdb/Winnow.Enrich.Igdb.csproj" />
     <Project Path="src/Winnow.Enrich.Steam/Winnow.Enrich.Steam.csproj" />
@@ -18,6 +25,7 @@
     <Project Path="src/Winnow.Ingest.Gog/Winnow.Ingest.Gog.csproj" />
     <Project Path="src/Winnow.Ingest.Steam/Winnow.Ingest.Steam.csproj" />
     <Project Path="src/Winnow.Monitor/Winnow.Monitor.csproj" />
+    <Project Path="src/Winnow.Presentation/Winnow.Presentation.csproj" />
     <Project Path="src/Winnow.Recommend/Winnow.Recommend.csproj" />
     <Project Path="src/Winnow.Resolve/Winnow.Resolve.csproj" />
     <Project Path="src/Winnow.Update.Helper/Winnow.Update.Helper.csproj" />
@@ -29,6 +37,9 @@
     <Project Path="tests/Winnow.Plugin.Psn.Tests/Winnow.Plugin.Psn.Tests.csproj" />
     <Project Path="tests/Winnow.Plugin.SteamGridDb.Tests/Winnow.Plugin.SteamGridDb.Tests.csproj" />
     <Project Path="tests/Winnow.Plugin.Xbox.Tests/Winnow.Plugin.Xbox.Tests.csproj" />
+    <Project Path="tests/Winnow.Api.Client.Tests/Winnow.Api.Client.Tests.csproj" />
+    <Project Path="tests/Winnow.Application.Tests/Winnow.Application.Tests.csproj" />
+    <Project Path="tests/Winnow.Backend.Tests/Winnow.Backend.Tests.csproj" />
     <Project Path="tests/Winnow.Covers.Tests/Winnow.Covers.Tests.csproj" />
     <Project Path="tests/Winnow.Monitor.Linux.Tests/Winnow.Monitor.Linux.Tests.csproj" />
     <Project Path="tests/Winnow.Recommend.Tests/Winnow.Recommend.Tests.csproj" />

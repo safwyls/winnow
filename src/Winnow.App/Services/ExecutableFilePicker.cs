@@ -66,7 +66,7 @@ public sealed class TopLevelExecutableFilePicker : IExecutableFilePicker
     }
 
     private static TopLevel? MainTopLevel()
-        => Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime
+        => Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime
             { MainWindow: { } window }
             ? window
             : null;

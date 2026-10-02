@@ -53,6 +53,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
     private readonly IManualEntryRepository? _manual;
     private readonly ILibraryQueryRepository? _libraryQueries;
     private readonly ISettingsRepository? _settings;
+    private readonly Winnow.Api.Client.WinnowApiClient? _api;
 
     /// <summary>
     /// The edit form reads back the IGDB id and Steam appid the entry already
@@ -95,9 +96,11 @@ public partial class LibrarySettingsViewModel : ObservableObject
         IExecutableInspector? inspector = null,
         IIgdbAssignmentService? igdb = null,
         ICoverLeases? covers = null,
-        AcquisitionExport? acquisitionExport = null,
-        IAcquisitionExportDestination? exportDestination = null)
+        IAcquisitionExport? acquisitionExport = null,
+        IAcquisitionExportDestination? exportDestination = null,
+        Winnow.Api.Client.WinnowApiClient? api = null)
     {
+        _api = api;
         _hidden = hidden;
         _manual = manual;
         _libraryQueries = libraryQueries;
@@ -110,7 +113,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
         _exportDestination = exportDestination;
     }
 
-    private readonly AcquisitionExport? _acquisitionExport;
+    private readonly IAcquisitionExport? _acquisitionExport;
     private readonly IAcquisitionExportDestination? _exportDestination;
 
     public bool CanExportAcquisitions => _acquisitionExport is not null && _exportDestination is not null;
@@ -455,7 +458,11 @@ public partial class LibrarySettingsViewModel : ObservableObject
             }
         }
 
-        if (_libraryQueries is not null)
+        if (_api is not null)
+        {
+            ExplicitHiddenCount = (await _api.GetAsync<Winnow.Api.Contracts.Details.VisibilityCountsResponse>("library/visibility-counts", ct)).ExplicitHidden;
+        }
+        else if (_libraryQueries is not null)
         {
             // The count states what turning the filter ON would remove, so it
             // is asked with the non-game preference in force and independently
@@ -472,7 +479,15 @@ public partial class LibrarySettingsViewModel : ObservableObject
     {
         HiddenGames.Clear();
 
-        if (_hidden is not null)
+        if (_api is not null)
+        {
+            foreach (var game in await _api.GetHiddenGamesAsync(ct))
+                HiddenGames.Add(new HiddenGameRowViewModel(new HiddenGame
+                {
+                    WorkId = game.WorkId, Title = game.Title, HiddenAt = game.HiddenAt, StoreEntryCount = game.StoreEntryCount
+                }));
+        }
+        else if (_hidden is not null)
         {
             foreach (var game in await Task.Run(() => _hidden.GetHiddenGamesAsync(ct), ct))
             {
@@ -483,11 +498,25 @@ public partial class LibrarySettingsViewModel : ObservableObject
         HasHiddenGames = HiddenGames.Count > 0;
     }
 
+    private static ManualEntry MapManual(Winnow.Api.Contracts.Library.ManualGameResponse entry) => new()
+    {
+        OwnershipId = entry.OwnershipId, ReleaseId = entry.ReleaseId, WorkId = entry.WorkId,
+        Title = entry.Title, IgdbId = entry.IgdbId, SteamAppId = entry.SteamAppId,
+        IgdbMappingRevision = entry.IgdbMappingRevision, FirstReleaseYear = entry.FirstReleaseYear,
+        PlatformLabel = entry.PlatformLabel, ExecutablePath = entry.ExecutablePath,
+        InstallPath = entry.InstallPath, AddedAt = entry.AddedAt, UpdatedAt = entry.UpdatedAt
+    };
+
     private async Task RefreshManualAsync(CancellationToken ct)
     {
         ManualEntries.Clear();
 
-        if (_manual is not null)
+        if (_api is not null)
+        {
+            foreach (var entry in await _api.GetManualGamesAsync(ct))
+                ManualEntries.Add(new ManualEntryRowViewModel(MapManual(entry)));
+        }
+        else if (_manual is not null)
         {
             foreach (var entry in await Task.Run(() => _manual.GetAllAsync(ct), ct))
             {
@@ -525,12 +554,13 @@ public partial class LibrarySettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task UnhideAsync(HiddenGameRowViewModel? row)
     {
-        if (_hidden is null || row is null)
+        if ((_hidden is null && _api is null) || row is null)
         {
             return;
         }
 
-        await _hidden.UnhideAsync(row.WorkId);
+        if (_api is not null) await _api.SetHiddenAsync(new([row.WorkId], false));
+        else await _hidden!.UnhideAsync(row.WorkId);
         await RefreshHiddenAsync(CancellationToken.None);
         await (ReloadLibrary?.Invoke() ?? Task.CompletedTask);
     }
@@ -718,6 +748,8 @@ public partial class LibrarySettingsViewModel : ObservableObject
         }
     }
 
+    private string? _editingManualRevision;
+
     [RelayCommand]
     private async Task BeginEditAsync(ManualEntryRowViewModel? row)
     {
@@ -726,7 +758,9 @@ public partial class LibrarySettingsViewModel : ObservableObject
             return;
         }
 
-        var entry = _manual is null ? row.Entry : await _manual.GetAsync(row.OwnershipId);
+        var remote = _api is not null ? await _api.GetManualGameAsync(row.OwnershipId) : null;
+        var entry = remote is not null ? MapManual(remote)
+            : _manual is null ? row.Entry : await _manual.GetAsync(row.OwnershipId);
         if (entry is null)
         {
             Problem = LibrarySettingsCopy.SaveProblem;
@@ -734,6 +768,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
         }
 
         ClearForm();
+        _editingManualRevision = remote?.Revision;
         Editing = new ManualEntryRowViewModel(entry);
         FormTitle = string.Format(
             CultureInfo.CurrentCulture, LibrarySettingsCopy.FormEditTitleFormat, entry.Title);
@@ -765,7 +800,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task SaveFormAsync()
     {
-        if (_manual is null)
+        if (_manual is null && _api is null)
         {
             return;
         }
@@ -832,9 +867,17 @@ public partial class LibrarySettingsViewModel : ObservableObject
 
         try
         {
-            if (Editing is { } editing)
+            if (_api is not null)
             {
-                if (!await _manual.UpdateAsync(editing.OwnershipId, draft))
+                var request = new Winnow.Api.Contracts.Library.ManualGameRequest(draft.Title,
+                    draft.FirstReleaseYear, draft.PlatformLabel, draft.ExecutablePath, draft.InstallPath,
+                    draft.IgdbId, draft.SteamAppId, draft.ExpectedIgdbMappingRevision, _editingManualRevision);
+                if (Editing is { } remoteEditing) await _api.UpdateManualGameAsync(remoteEditing.OwnershipId, request);
+                else await _api.CreateManualGameAsync(request);
+            }
+            else if (Editing is { } editing)
+            {
+                if (!await _manual!.UpdateAsync(editing.OwnershipId, draft))
                 {
                     Problem = LibrarySettingsCopy.SaveProblem;
                     return;
@@ -842,8 +885,34 @@ public partial class LibrarySettingsViewModel : ObservableObject
             }
             else
             {
-                await _manual.CreateAsync(draft);
+                await _manual!.CreateAsync(draft);
             }
+        }
+        catch (Winnow.Api.Client.BackendApiException exception)
+        {
+            try
+            {
+                using var error = System.Text.Json.JsonDocument.Parse(exception.ResponseBody);
+                var field = error.RootElement.TryGetProperty("field", out var fieldValue) ? fieldValue.GetString() : null;
+                var reason = error.RootElement.TryGetProperty("reason", out var reasonValue)
+                    && Enum.TryParse<ManualEntryConflictReason>(reasonValue.GetString(), out var parsedReason)
+                    ? parsedReason : ManualEntryConflictReason.ClaimedByAnotherGame;
+                if (field == nameof(ManualGameDraft.IgdbId))
+                {
+                    IgdbIdError = LibrarySettingsCopy.IdentifierConflict(reason);
+                    return;
+                }
+                if (field == nameof(ManualGameDraft.SteamAppId))
+                {
+                    SteamAppIdError = LibrarySettingsCopy.IdentifierConflict(reason);
+                    return;
+                }
+            }
+            catch (System.Text.Json.JsonException) { }
+            Problem = exception.StatusCode == System.Net.HttpStatusCode.Conflict
+                ? "This entry changed in another window. Your draft is still here. Reopen the editor to review the latest values before saving."
+                : LibrarySettingsCopy.SaveProblem;
+            return;
         }
         catch (ManualEntryConflictException conflict)
         {
@@ -910,7 +979,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task ConfirmDeleteAsync()
     {
-        if (_manual is null || PendingDelete is null)
+        if ((_manual is null && _api is null) || PendingDelete is null)
         {
             return;
         }
@@ -921,7 +990,13 @@ public partial class LibrarySettingsViewModel : ObservableObject
 
         try
         {
-            await _manual.DeleteAsync(ownershipId);
+            if (_api is not null) await _api.DeleteManualGameAsync(ownershipId);
+            else await _manual!.DeleteAsync(ownershipId);
+        }
+        catch (Winnow.Api.Client.BackendApiException)
+        {
+            Problem = LibrarySettingsCopy.DeleteProblem;
+            return;
         }
         catch (InvalidOperationException)
         {
@@ -941,6 +1016,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
 
     private void ClearForm()
     {
+        _editingManualRevision = null;
         DraftTitle = string.Empty;
         DraftYear = string.Empty;
         DraftPlatform = string.Empty;

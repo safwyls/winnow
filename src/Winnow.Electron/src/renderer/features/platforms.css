@@ -1,0 +1,57 @@
+.platform-settings {
+  min-width: 0;
+}
+.platform-tabs {
+  margin-bottom: 1.25rem;
+}
+.platform-attention {
+  margin-left: 0.5rem;
+  color: var(--warning, #e7b974);
+}
+.platform-title-count,
+.steam-accounts-summary {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.platform-title-count {
+  color: var(--muted);
+}
+.steam-information-dialog {
+  max-width: min(48rem, 94vw);
+}
+.steam-information-dialog > .steam-page-import,
+.steam-information-dialog > .steam-account-capture {
+  margin-block: 1.5rem;
+}
+.manual-editor .field-error {
+  color: var(--warning, #e7b974);
+  font-size: 0.875em;
+}
+.epic-consent {
+  white-space: pre-line;
+}
+.epic-platform-card.mode-fullscreen {
+  max-width: 1320px;
+}
+.epic-platform-card.mode-fullscreen h2 {
+  font-size: calc(64px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+  line-height: 1.2;
+}
+.epic-platform-card.mode-fullscreen :is(p, label, input, button) {
+  font-size: calc(28px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+  line-height: 1.5;
+}
+.epic-platform-card.mode-fullscreen button {
+  min-height: 64px;
+  padding: 12px 24px;
+}
+.epic-platform-card.mode-fullscreen input:not([type='checkbox']) {
+  min-height: 72px;
+}
+.epic-platform-card.mode-fullscreen input[type='checkbox'] {
+  min-width: 28px;
+  min-height: 28px;
+}
+.epic-platform-card.mode-fullscreen .check-field {
+  min-height: 64px;
+}

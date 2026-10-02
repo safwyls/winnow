@@ -1,0 +1,522 @@
+{
+  "SteamAccountPagePolicyTests.Only_the_store_origin_can_be_read": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "Only_the_store_origin_can_be_read"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.Valves_login_and_support_origins_are_navigable_but_never_read": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "Valves_login_and_support_origins_are_navigable_but_never_read"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.Anything_outside_the_flow_is_refused_and_a_popup_to_it_leaves_the_window": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "Anything_outside_the_flow_is_refused_and_a_popup_to_it_leaves_the_window"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.Plaintext_http_on_the_right_host_is_still_refused": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "Plaintext_http_on_the_right_host_is_still_refused"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.A_non_web_scheme_is_blocked_and_not_handed_anywhere": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "A_non_web_scheme_is_blocked_and_not_handed_anywhere"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.There_is_no_redirect_to_capture_in_this_flow": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "There_is_no_redirect_to_capture_in_this_flow"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.The_two_pages_are_recognised": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "The_two_pages_are_recognised"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.Nothing_else_is_ever_read": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "Nothing_else_is_ever_read"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.The_session_only_ever_navigates_to_those_two_pages": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "The_session_only_ever_navigates_to_those_two_pages"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.The_cap_is_clamped_into_range_whatever_the_request_asks_for": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "The_cap_is_clamped_into_range_whatever_the_request_asks_for"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.Clicking_continues_while_the_control_is_there_and_the_rows_grow": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "Clicking_continues_while_the_control_is_there_and_the_rows_grow"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.Clicking_stops_when_the_control_goes_away": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "Clicking_stops_when_the_control_goes_away"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.Clicking_stops_at_the_cap_even_with_more_to_load": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "Clicking_stops_at_the_cap_even_with_more_to_load"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.The_licences_cap_is_clamped_independently_of_the_load_more_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "The_licences_cap_is_clamped_independently_of_the_load_more_one"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.The_paginator_is_followed_while_there_is_a_next_page_and_the_rows_grow": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "The_paginator_is_followed_while_there_is_a_next_page_and_the_rows_grow"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.The_paginator_stops_when_there_is_no_next_page": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "The_paginator_stops_when_there_is_no_next_page"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.The_paginator_stops_at_the_cap_with_more_pages_to_go": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "The_paginator_stops_at_the_cap_with_more_pages_to_go"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.The_paginator_stops_when_a_page_adds_no_rows": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "The_paginator_stops_when_a_page_adds_no_rows"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.Both_pages_are_judged_by_one_rule": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "Both_pages_are_judged_by_one_rule"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagePolicyTests.Clicking_stops_when_a_click_stops_producing_rows": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "Clicking_stops_when_a_click_stops_producing_rows"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "counts further licence pages and stops when a followed document adds no rows"
+      },
+      {
+        "file": "tests/electron/steam-policy.spec.ts",
+        "case": "Steam provider popups remain isolated and normalized pagination captures only the two account pages"
+      }
+    ],
+    "reason": "The named source decision is exercised against the production Electron policy. The capture loops share that decision; real Electron desktop/fullscreen verifies normalized capture, private-browser popup routing and blocked application/launcher/loopback destinations with intercepted pages. The old WebView policy is not classified as retained backend."
+  },
+  "SteamAccountPagesContractTests.A_complete_capture_carries_both_documents_and_when_it_happened": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Ingest/SteamAccountPages.cs",
+      "src/Winnow.Application/Details/ImportApplication.cs"
+    ],
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+        "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+      }
+    ],
+    "reason": "The production /imports/steam/pages endpoint still deserializes the exact Core SteamAccountPages type; ImportApplication uses its IsEmpty/TotalByteCount behavior and the production saved-file loader uses its immutable With method. The original DTO tests passed unchanged. New real HTTP tests prove camelCase frontend JSON, additional documents, nullable history, source/account and capture time survive into persisted facts. This retention applies only to the page DTO, not the retired WebView harvester result or policy."
+  },
+  "SteamAccountPagesContractTests.The_embedded_session_and_the_saved_files_produce_the_same_shape": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Ingest/SteamAccountPages.cs",
+      "src/Winnow.Application/Details/ImportApplication.cs"
+    ],
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+        "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+      }
+    ],
+    "reason": "The production /imports/steam/pages endpoint still deserializes the exact Core SteamAccountPages type; ImportApplication uses its IsEmpty/TotalByteCount behavior and the production saved-file loader uses its immutable With method. The original DTO tests passed unchanged. New real HTTP tests prove camelCase frontend JSON, additional documents, nullable history, source/account and capture time survive into persisted facts. This retention applies only to the page DTO, not the retired WebView harvester result or policy."
+  },
+  "SteamAccountPagesContractTests.A_page_at_a_time_is_representable": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Ingest/SteamAccountPages.cs",
+      "src/Winnow.Application/Details/ImportApplication.cs"
+    ],
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+        "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+      }
+    ],
+    "reason": "The production /imports/steam/pages endpoint still deserializes the exact Core SteamAccountPages type; ImportApplication uses its IsEmpty/TotalByteCount behavior and the production saved-file loader uses its immutable With method. The original DTO tests passed unchanged. New real HTTP tests prove camelCase frontend JSON, additional documents, nullable history, source/account and capture time survive into persisted facts. This retention applies only to the page DTO, not the retired WebView harvester result or policy."
+  },
+  "SteamAccountPagesContractTests.Whitespace_is_not_a_page": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Ingest/SteamAccountPages.cs",
+      "src/Winnow.Application/Details/ImportApplication.cs"
+    ],
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+        "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+      }
+    ],
+    "reason": "The production /imports/steam/pages endpoint still deserializes the exact Core SteamAccountPages type; ImportApplication uses its IsEmpty/TotalByteCount behavior and the production saved-file loader uses its immutable With method. The original DTO tests passed unchanged. New real HTTP tests prove camelCase frontend JSON, additional documents, nullable history, source/account and capture time survive into persisted facts. This retention applies only to the page DTO, not the retired WebView harvester result or policy."
+  },
+  "SteamAccountPagesContractTests.Byte_counts_are_utf8_and_are_the_only_measure_of_a_document": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Ingest/SteamAccountPages.cs",
+      "src/Winnow.Application/Details/ImportApplication.cs"
+    ],
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+        "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+      }
+    ],
+    "reason": "The production /imports/steam/pages endpoint still deserializes the exact Core SteamAccountPages type; ImportApplication uses its IsEmpty/TotalByteCount behavior and the production saved-file loader uses its immutable With method. The original DTO tests passed unchanged. New real HTTP tests prove camelCase frontend JSON, additional documents, nullable history, source/account and capture time survive into persisted facts. This retention applies only to the page DTO, not the retired WebView harvester result or policy."
+  },
+  "SteamAccountPagesContractTests.Neither_the_pages_nor_the_result_render_their_contents": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "Neither_the_pages_nor_the_result_render_their_contents"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamPagesContractParityTests.cs",
+        "case": "Frontend_page_JSON_reaches_the_production_importer_with_documents_time_and_account_intact"
+      }
+    ],
+    "reason": "The production page DTO still redacts its string output. Electron result logging goes through the actual sign-in completion callback and an allowlist formatter; tests verify UTF-8 sizes and an explicit redacted marker while refusing game names, prices, HTML and credentials. Raw page transport is deliberately separate from diagnostic formatting."
+  },
+  "SteamAccountPagesContractTests.A_complete_run_reports_how_far_the_history_was_expanded": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "a complete run reports twelve history expansions and both captured documents with their timestamp"
+      }
+    ],
+    "reason": "The actual Electron reader captures both documents and reports twelve clicks with exhausted history and no error. Its captureDetail is the renderer readiness message; the outcome/stop fields replace the old factory outcome and nullable error detail."
+  },
+  "SteamAccountPagesContractTests.A_capped_run_says_so_so_the_parser_knows_the_page_is_truncated": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "caps both page walks and preserves incomplete markers for the import parser"
+      }
+    ],
+    "reason": "Actual zero-cap capture retains each initial page and explicit cap/truncation markers without silently claiming the whole account."
+  },
+  "SteamAccountPagesContractTests.The_licences_walk_is_reported_the_same_way_the_history_clicks_are": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "reports %s further licence pages with capped=%s after the real page walk"
+      }
+    ],
+    "reason": "Actual nine-further-page completion and fifty-further-page cap verify the source counter definition and stop reason, independently from history clicks."
+  },
+  "SteamAccountPagesContractTests.A_partial_run_still_hands_over_what_it_got": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "returns already captured pages when the private window is closed during a later read"
+      }
+    ],
+    "reason": "Closing during the second document returns the first document, a partial outcome and interrupted stop metadata for the renderer import path."
+  },
+  "SteamAccountPagesContractTests.Every_failure_carries_a_reason_and_no_pages": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "capture consent refusal and browser unavailability return reasons and zero counts without pages"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "keeps an unsigned-in timeout neutral and a recognizable-page failure actionable"
+      }
+    ],
+    "reason": "Actual consent/browser/session/recognition failure paths return cancelled, unavailable, no-session or failed with a readable reason, no page body and zero counts."
+  },
+  "SteamAccountPagesContractTests.A_request_will_not_run_without_consent_being_recorded": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-auth-integration.test.ts",
+        "case": "capture consent refusal and browser unavailability return reasons and zero counts without pages"
+      },
+      {
+        "file": "tests/parity-native-steam-capture.test.ts",
+        "case": "defaults to a fifteen minute account session before returning no-session without pages"
+      },
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "The_cap_is_clamped_into_range_whatever_the_request_asks_for"
+      },
+      {
+        "file": "tests/parity-steam-page-policy.test.ts",
+        "case": "The_licences_cap_is_clamped_independently_of_the_load_more_one"
+      }
+    ],
+    "reason": "The required boolean bridge option is checked before any session or browser exists. Native capture defaults to fifteen minutes and the original independent 100-click/50-further-page bounds, with 500/200 ceilings."
+  }
+}

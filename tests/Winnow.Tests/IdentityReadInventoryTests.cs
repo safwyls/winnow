@@ -57,15 +57,27 @@ public sealed class IdentityReadInventoryTests
     // deciding.
     private static readonly Entry[] Inventory =
     [
-        new("src/Winnow.App/Services/ArtworkBrowserService.cs", "GetCurrentAsync", Policy.Resolve,
+        new("src/Winnow.Application/Details/DetailsApplication.cs", "ReadVisibleAsync", Policy.Resolve,
+            "Details, activity and statistics derive visible game scope through the backend's resolved library snapshot."),
+        new("src/Winnow.Application/Details/DetailsApplication.cs", "ReadIgdbStateAsync", Policy.DoNotResolve,
+            "Concurrency evidence belongs to the exact work being matched; linked works retain independent provider mappings and pins."),
+        new("src/Winnow.Application/Library/LibraryApplication.cs", "GetLibraryAsync", Policy.Resolve,
+            "The API projects one game per resolved bucket group, keeping store ownership facts on each entry."),
+        new("src/Winnow.Application/Library/LibraryApplication.cs", "SetHiddenAsync", Policy.DoNotResolve,
+            "Validates the exact requested work before the hidden-game repository applies current group hiding rules."),
+        new("src/Winnow.Application/Services/GameActionApplication.cs", "DispatchAsync", Policy.DoNotResolve,
+            "An action selects an exact ownership and source; the resolved snapshot validates visibility without changing the launched store copy."),
+        new("src/Winnow.Application/Services/ArtworkBrowserService.cs", "GetCurrentAsync", Policy.Resolve,
             "Saved artwork and external IDs are read through the confirmed same-game group. The display adapter supplies the library-projected cover for preferred headers and pins."),
-        new("src/Winnow.App/Services/ArtworkBrowserService.cs", "IgdbAsync", Policy.Resolve,
+        new("src/Winnow.Application/Services/ArtworkBrowserService.cs", "GetBackdropAsync", Policy.Resolve,
+            "Keeps the requested work's fallback art while collecting saved choices, observed images and launcher IDs through its confirmed same-game group."),
+        new("src/Winnow.Application/Services/ArtworkBrowserService.cs", "IgdbAsync", Policy.Resolve,
             "Enumerates each original work within the confirmed group to offer its source artwork, without copying observations or changing identity."),
-        new("src/Winnow.App/Services/ArtworkBrowserService.cs", "GameAsync", Policy.Resolve,
+        new("src/Winnow.Application/Services/ArtworkBrowserService.cs", "GameAsync", Policy.Resolve,
             "The browser's game handle collects external identifiers from the current confirmed group for exact provider lookups."),
-        new("src/Winnow.App/Services/ArtworkBrowserService.cs", "CommitAsync", Policy.DoNotResolve,
+        new("src/Winnow.Application/Services/ArtworkBrowserService.cs", "CommitAsync", Policy.DoNotResolve,
             "Checks that the original target work still exists before saving its selection. Sharing occurs on read; writes never move the selection to another work."),
-        new("src/Winnow.App/Services/WorkMetadataEditService.cs", "ImportArtAsync", Policy.DoNotResolve,
+        new("src/Winnow.Application/Services/WorkMetadataEditService.cs", "ImportArtAsync", Policy.DoNotResolve,
             "Checks the original edited work exists before recording a manual artwork choice; the selection service shares it only through current confirmed links."),
         // ── RESOLVE ────────────────────────────────────────────────────────
         new("src/Winnow.Data/Repositories/GameplayStatsRepository.cs", "SessionCte", Policy.Resolve,
@@ -89,7 +101,7 @@ public sealed class IdentityReadInventoryTests
             + "offering the same game twice under two badges. The bought-twice signal is keyed the "
             + "same way, which is what the destructive merge used to give it."),
 
-        new("src/Winnow.App/Services/PluginFeedService.cs", "ReadAsync", Policy.Resolve,
+        new("src/Winnow.Application/Services/PluginFeedService.cs", "ReadAsync", Policy.Resolve,
             "Plugin feeds receive one eligible visible ownership per resolved game. Snapshot "
             + "bucket groups supply aggregate play facts and widen release verdicts to the "
             + "confirmed group before any candidates reach plugin code."),
@@ -106,20 +118,20 @@ public sealed class IdentityReadInventoryTests
             "Selects header metadata from a current member of the resolved group while retaining the group's canonical identity root."),
 
         // ── DO NOT RESOLVE ─────────────────────────────────────────────────
-        new("src/Winnow.App/Services/PluginGameActionService.cs", "ExecuteAsync", Policy.DoNotResolve,
+        new("src/Winnow.Application/Services/PluginGameActionService.cs", "ExecuteAsync", Policy.DoNotResolve,
             "Revalidates the exact ownership and provider source chosen for a game action. Resolving "
             + "to a grouped parent could launch another store copy and misattribute its session."),
         new("src/Winnow.Resolve/ExternalIdResolver.cs", "CaptureSteamObservationsAsync", Policy.DoNotResolve,
             "Steam counter observations belong to the original store ownership and account. Installation gating must read that copy, not a linked game's installation."),
         new("src/Winnow.Data/Repositories/ActivityRepository.cs", "GetPageAsync", Policy.DoNotResolve,
             "Sessions and notes retain their exact ownership. The caller supplies visible ownership ids from its resolved tile snapshot and renders each result through that same tile map; updates are deduplicated per release."),
-        new("src/Winnow.App/Services/EnrichmentSyncService.cs", "EnrichSliceAsync", Policy.DoNotResolve,
+        new("src/Winnow.Application/Services/EnrichmentSyncService.cs", "EnrichSliceAsync", Policy.DoNotResolve,
             "Rejects delayed metadata when the exact target work mapping changed; linked games keep independent provider identities."),
         new("src/Winnow.Data/Repositories/AchievementRepository.cs", "GetDueSteamAsync", Policy.DoNotResolve,
             "Fetches each Steam release for an explicitly confirmed owning account; linked games cannot share provider schemas or account unlocks."),
         new("src/Winnow.Data/Repositories/AccountAcquisitionRepository.cs", "GetSteamOwnershipIdsAsync", Policy.DoNotResolve,
             "Acquisition observations belong to the captured account's exact store ownership; links do not combine receipts or account membership."),
-        new("src/Winnow.App/Services/PluginSyncService.cs", "EnrichAsync", Policy.DoNotResolve,
+        new("src/Winnow.Application/Services/PluginSyncService.cs", "EnrichAsync", Policy.DoNotResolve,
             "Provider observations belong to original owned works; current confirmed groups share artwork on presentation reads."),
         new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "GetSnapshotAsync", Policy.DoNotResolve,
             "The additional work and ownership result sets preserve each row's own metadata and "
@@ -127,11 +139,11 @@ public sealed class IdentityReadInventoryTests
             + "BucketSql; library and Review presentation resolve over the snapshot without "
             + "replacing a child's stored artwork, identifiers or ownership facts."),
 
-        new("src/Winnow.App/Services/AcquisitionExport.cs", "ReadAsync", Policy.DoNotResolve,
+        new("src/Winnow.Application/Services/AcquisitionExport.cs", "ReadAsync", Policy.DoNotResolve,
             "The CSV exports one receipt per ownership, with that copy's stored title, date, "
             + "licence and price. Linking games must not fold purchases or replace their facts."),
 
-        new("src/Winnow.App/Services/StorefrontSyncService.cs", "SyncCoreAsync", Policy.DoNotResolve,
+        new("src/Winnow.Application/Services/StorefrontSyncService.cs", "SyncCoreAsync", Policy.DoNotResolve,
             "Storefront metadata targets each owned release's own store ids. A linked Steam "
             + "copy cannot supply an Epic store slug or a GOG changelog."),
 
@@ -243,26 +255,26 @@ public sealed class IdentityReadInventoryTests
             + "parent in place of the work the user actually answered about, and it runs while "
             + "the link table is being populated, so there is no resolution to read yet."),
 
-        new("src/Winnow.App/Services/EnrichmentSyncService.cs", "EnrichAsync", Policy.DoNotResolve,
+        new("src/Winnow.Application/Services/EnrichmentSyncService.cs", "EnrichAsync", Policy.DoNotResolve,
             "Enrichment targets the row's own ids. See GetFacetTargetsAsync."),
 
-        new("src/Winnow.App/Services/GameRefetchService.cs", "RunAsync", Policy.DoNotResolve,
+        new("src/Winnow.Application/Services/GameRefetchService.cs", "RunAsync", Policy.DoNotResolve,
             "Re-asks one work's own sources by its own ids. Resolving to a link partner first "
             + "would ask about the other storefront's copy and write the answer against this row."),
 
-        new("src/Winnow.App/Services/SampleDataSeeder.cs", "SeedLibraryAsync", Policy.DoNotResolve,
+        new("src/Winnow.Application/Services/SampleDataSeeder.cs", "SeedLibraryAsync", Policy.DoNotResolve,
             "Seeds demo rows. A seeder writes the rows resolution is later computed over."),
 
-        new("src/Winnow.App/Services/SteamAccountPageImportService.cs", "BuildIndexAsync",
+        new("src/Winnow.Application/Services/SteamAccountPageImportService.cs", "BuildIndexAsync",
             Policy.DoNotResolve,
             "Ingest, matching store entries to ownership rows one for one."),
 
-        new("src/Winnow.App/Services/SteamPlaytimeBackfillService.cs", "OwnershipAsync",
+        new("src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs", "OwnershipAsync",
             Policy.DoNotResolve,
             "Backfills play records against one ownership. Playtime is measured per store entry, "
             + "and the composite is derived on read."),
 
-        new("src/Winnow.App/Services/SteamPlaytimeBackfillService.cs", "SteamAccountsAsync",
+        new("src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs", "SteamAccountsAsync",
             Policy.DoNotResolve, "Account membership per ownership. See OwnershipAsync."),
 
         new("src/Winnow.Monitor/GameExecutableIndexBuilder.cs", "BuildAsync", Policy.DoNotResolve,
@@ -359,10 +371,10 @@ public sealed class IdentityReadInventoryTests
         new("src/Winnow.Data/Repositories/LifecycleRepository.cs", "ReadAsync", Policy.DoNotResolve,
             "Keeps only IGDB history for the release's own current mapping; presentation resolves groups afterward."),
 
-        new("src/Winnow.App/Services/GameRefetchService.cs", "FillMetadataAsync", Policy.DoNotResolve,
+        new("src/Winnow.Application/Services/GameRefetchService.cs", "FillMetadataAsync", Policy.DoNotResolve,
             "Rechecks the selected work's captured mapping and compares its persisted scalar values after the fill."),
 
-        new("src/Winnow.App/Services/IgdbAssignmentService.cs", "FindClaimingGameAsync",
+        new("src/Winnow.Application/Services/IgdbAssignmentService.cs", "FindClaimingGameAsync",
             Policy.DoNotResolve,
             "Asks which works row holds a given igdb_id so the wrong-game modal can name the "
             + "game that already claims the entry and offer to link the two. Resolving would "
@@ -370,7 +382,7 @@ public sealed class IdentityReadInventoryTests
             + "constraint refused against, naming the wrong game in the one place whose purpose "
             + "is to be judged as correct by the user."),
 
-        new("src/Winnow.App/Services/WorkMetadataEditService.cs", "GetAsync",
+        new("src/Winnow.Application/Services/WorkMetadataEditService.cs", "GetAsync",
             Policy.DoNotResolve,
             "The snapshot the editor renders: the work's name, its field state and its IGDB "
             + "pin, assembled from one row. The work id it is handed is the resolved game id "
@@ -659,7 +671,7 @@ public sealed class IdentityReadInventoryTests
 
         foreach (var name in names)
         {
-            if (Regex.IsMatch(line, @"(?<![\w.])" + Regex.Escape(name) + @"\s*\."))
+            if (Regex.IsMatch(line, @"(?<![\w.])" + Regex.Escape(name) + @"\s*!?\."))
             {
                 return "read through " + name;
             }
@@ -667,7 +679,7 @@ public sealed class IdentityReadInventoryTests
 
         foreach (var name in snapshotNames)
         {
-            if (Regex.IsMatch(line, @"(?<![\w.])" + Regex.Escape(name) + @"\s*\.\s*GetSnapshotAsync\s*\("))
+            if (Regex.IsMatch(line, @"(?<![\w.])" + Regex.Escape(name) + @"\s*!?\.\s*GetSnapshotAsync\s*\("))
                 return "bulk snapshot through " + name;
         }
 

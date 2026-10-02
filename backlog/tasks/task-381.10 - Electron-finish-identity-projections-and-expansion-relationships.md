@@ -1,0 +1,104 @@
+---
+id: TASK-381.10
+title: 'Electron: finish identity projections and expansion relationships'
+status: Done
+assignee:
+  - '@codex'
+created_date: '2026-09-30 18:45'
+updated_date: '2026-10-01 04:56'
+labels:
+  - electron
+  - parity
+  - review-checkpoint
+dependencies: []
+references:
+  - docs/spikes/2026-09-28-electron-parity/test-inventory.json
+documentation:
+  - src/Winnow.Electron/README.md
+  - design-system.md
+parent_task_id: TASK-381
+priority: high
+type: task
+ordinal: 428000
+---
+
+## Description
+
+<!-- SECTION:DESCRIPTION:BEGIN -->
+The displayed library depends on same-game, expansion and fuzzy-match rules that must survive moving composition out of Avalonia.
+
+Owns 19 unresolved source contracts at migration snapshot d4b14152 (frozen Avalonia source cf45d9f1127243a987d3cf6e664a32fc767ecb67). Pending/partial is an evidence gap, not proof that the feature is absent: inspect existing implementation and replacement assertions before rewriting working behavior. Preserve the full original fixtures and edge cases; a matching test name alone does not establish parity.
+
+tests/Winnow.Tests/ExpansionLinkTests.cs
+- ExpansionLinkTests.An_expansion_link_moves_no_number_anywhere [pending at split]
+- ExpansionLinkTests.An_expansion_never_enters_the_coverage_sum [pending at split]
+- ExpansionLinkTests.The_pack_says_what_it_extends_and_the_two_sections_stay_apart [pending at split]
+- ExpansionLinkTests.Re_parenting_a_base_game_keeps_its_expansions_expansions [pending at split]
+
+tests/Winnow.Tests/IdentityReadInventoryTests.cs
+- IdentityReadInventoryTests.Every_reader_of_works_or_ownerships_is_on_the_resolve_or_the_do_not_resolve_list [pending at split]
+- IdentityReadInventoryTests.The_inventory_names_no_reader_that_no_longer_exists [pending at split]
+- IdentityReadInventoryTests.A_new_reader_on_neither_list_is_caught_and_named [pending at split]
+- IdentityReadInventoryTests.A_new_repository_read_is_caught_as_well_as_a_new_query [pending at split]
+- IdentityReadInventoryTests.Shared_SQL_constants_and_bulk_snapshot_callers_are_caught_under_their_own_names [pending at split]
+
+tests/Winnow.Tests/IdentityReadModelTests.cs
+- IdentityReadModelTests.Linking_collapses_one_tile_and_leaves_the_store_counts_alone [pending at split]
+- IdentityReadModelTests.A_linked_pair_is_one_tile_under_the_primary_title_and_cover [pending at split]
+- IdentityReadModelTests.The_modal_lists_the_titles_this_game_covers_with_their_own_figures [pending at split]
+- IdentityReadModelTests.The_modal_shows_per_release_achievement_rows_and_never_a_blended_percentage [pending at split]
+- IdentityReadModelTests.An_unsupported_release_distinguishes_unknown_progress_from_zero [pending at split]
+- IdentityReadModelTests.A_game_that_covers_nothing_draws_no_coverage_section [pending at split]
+- IdentityReadModelTests.Separate_retracts_one_link_and_leaves_the_rest_of_the_act [pending at split]
+
+tests/Winnow.Tests/SoftMatchRegistrationTests.cs
+- SoftMatchRegistrationTests.The_sweep_resolves_from_the_container_and_runs [pending at split]
+- SoftMatchRegistrationTests.The_matcher_and_the_resolver_are_reachable_and_shared [pending at split]
+- SoftMatchRegistrationTests.Registrations_defer_to_anything_already_in_the_container [pending at split]
+
+Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [x] #1 Original read-model/inventory, expansion linking and soft-match registration rules hold at the shared backend boundary; ambiguous matches never auto-merge.
+- [x] #2 Both surfaces display the resulting groups and expansions with correct visibility, independent play totals and child/parent actions, including account-scoped or hidden counterparts.
+- [x] #3 All 19 source contracts listed in this task leave pending/partial only after executed equivalent Electron/API tests or a per-method justified retained-backend/framework-specific disposition. Preserve source assertion scope and record exact evidence in the migration inventory.
+- [x] #4 Relevant component/API and isolated native tests pass, with desktop and fullscreen assessed separately. Record visual evidence for presentation changes and distinguish simulated checks from unverified devices; update affected documentation in place.
+<!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+<!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Audit all nineteen frozen source methods, current identity/expansion projections and existing migration evidence. Keep backend-only inventory and composition contracts at their owning boundary.
+2. Close scoped backend or Electron presentation gaps, preserving separate same-game coverage and expansion relationships, per-release achievements, account/hidden visibility and child-specific actions on both surfaces.
+3. Execute exact-fixture backend/component equivalents and isolated native desktop/fullscreen flows, including visual and controller-hint review; update each migration disposition with its actual evidence.
+4. Run relevant regression gates, update current documentation, commit the reviewable milestone and stop for user review before another task.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Owned copies now retain titles and individual figures. Expansions and base-game rows use visible library scope, offer counterpart navigation and separate only the exact child link. Per-release achievements preserve unsupported, unfetched, unavailable, no-schema and known-zero states. No backend production changes were needed.
+
+Fixed nested Escape dismissal and restored focus. Fullscreen confirmation uses readable type and complete D-pad/A/B hints. Native screenshots verify figures, visible controls, primary prose ink, safe focus and glyph geometry.
+
+Verification passed: production build/typecheck; all 3,555 Electron component/live API tests across 178 files in 88.08 seconds; 32 original scoped .NET cases and 11 new HTTP/SQLite cases; 39 distinct native cases and six repeated immediate/settled cancellation checks. Native runs are serial and precede the full component/API suite. All interactive data is disposable.
+
+Checkpoint 65 records exact method mappings, visual evidence, fixture corrections and remaining physical-device, full .NET and packaging validation. Inventory: 1,383 ported, 636 retained backend, 32 framework-specific, 319 pending and 65 partial; 384 unresolved. Milestone commit: c9fcb75c. Paused for review; TASK-381.11 remains To Do until the user prompts continuation.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Completed desktop and fullscreen identity projections: independent copy titles, figures and achievements; visible-scope expansion/base-game actions; exact-child separation; safe cancellation and complete controller hints.
+
+Verified production build/typecheck, 3,555 Electron tests, 43 scoped .NET cases, 39 distinct native cases and six cancellation repetitions. All nineteen assigned source contracts are resolved; 384 contracts remain for later tasks. Evidence and limitations: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty-five.md. Milestone commit: c9fcb75c.
+
+Paused at the requested review boundary. TASK-381.11, names, editions and group-header preferences, remains unstarted.
+<!-- SECTION:FINAL_SUMMARY:END -->

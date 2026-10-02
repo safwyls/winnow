@@ -1,0 +1,326 @@
+{
+  "GameJournalViewModelTests.Journal_edits_and_deletes_the_saved_entry": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "edits and deletes saved session7 / ownership3 with the original note and rating in %s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Exact_source_journal_edits_and_deletes_keep_session_identity_and_rating_over_HTTP"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "source journal id7 saves the edited note and rating before deleting only its note"
+      }
+    ],
+    "reason": "Both surfaces preserve session 7, ownership 3, August 22, 2026 at 21:00 UTC, First route. and rating 2. Editing saves Found the shortcut. with rating 4 once, closes the editor and displays the saved entry. Confirmed deletion targets only note 7 and removes its row while retaining the sitting. Component interaction, revisioned HTTP operations and native SQLite state replace the original direct view-model repository assertions."
+  },
+  "GameJournalViewModelTests.Empty_journal_names_whether_the_prompt_is_off": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "names whether empty-journal prompts are off (enabled=%s)"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "empty Details journal distinguishes enabled prompts from prompts that are off"
+      }
+    ],
+    "reason": "Both surfaces distinguish No notes yet when prompts are enabled from Journal prompts are off when disabled. Native tests change the actual journal preference while the same empty Details journal remains open and verify that no note is created."
+  },
+  "ActivityPagingInteractionTests.Week_navigation_discards_an_older_response_even_when_its_reader_ignores_cancellation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "coalesces two obsolete weeks into one latest read even when the first reader ignores cancellation"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "fullscreen source week navigation serializes two rapid Left inputs and rejects an obsolete ignored read"
+      }
+    ],
+    "reason": "The held source-style repository reader ignores cancellation. Two Left inputs coalesce into exactly two total reads; the latest week begins fourteen local days before the initial request and spans seven days, and only session 2 becomes selected. The fixture captures request ordinal before waiting so stale session 1 cannot be confused with session 2. Electron retains the active physical request until settlement, rejects its obsolete generation and then issues the latest scope. Native Gamepad API input and a real save to session 2 establish the published selection; this does not claim a physical-controller test."
+  },
+  "ActivityPagingInteractionTests.Load_more_is_explicit_and_disposal_cancels_a_pending_page_without_late_publication": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "loads the next page only on request and aborts disposal without late cache publication in %s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Cancellation_reaches_the_held_backend_reader_even_when_it_returns_after_release"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "explicit load more cancels an ignored pending page on disposal without publishing it later"
+      }
+    ],
+    "reason": "Both surfaces retain the original one-row session 1 page and (from, 1) cursor without an eager append. Explicit Load more starts the second read; leaving aborts its actual HTTP token. Releasing a cancellation-ignoring reader cannot publish session 2 into the retained query or replace session 1 when Activity is reopened. Query-cache assertions replace the disposed Avalonia page's retained SelectedSessionId, while HTTP and native evidence verify cancellation reaches the production backend boundary. The source disposal assertions stop after two reads; supplemental native re-entry advances the whole-second query bound and reads a fresh first page, without admitting the canceled appended row."
+  },
+  "ActivityPagingInteractionTests.Slow_account_reads_leave_the_dispatcher_available_and_cancellation_does_not_publish": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-recovery.test.tsx",
+        "case": "cancels a held account read on %s and rejects an ignored late response"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Cancellation_reaches_the_held_backend_reader_even_when_it_returns_after_release"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "cancellation discards the late result"
+      }
+    ],
+    "reason": "Desktop and fullscreen retain the exact account result: Steam, one transaction, zero monetary facts and no currencies. Held backend reads allow renderer focus and animation-frame input; executed process IDs place the reader outside both Electron main and renderer processes. Cancellation and unmount abort transport, and a late ignored result cannot enter the query cache or mounted UI. The independent-process boundary replaces Avalonia's synchronous off-Dispatcher repository call; no JavaScript Dispatcher or synchronous-blocking claim is made."
+  },
+  "ActivityRecoveryInteractionTests.Failed_reads_show_a_retry_action_and_retry_the_same_page": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "retries the identical failed cursor and retains earlier selection (append=%s)"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Exact_single_row_pages_retry_the_same_cursor_and_edit_the_older_session_without_an_implicit_first_page_read"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "page failure retries the same cursor without discarding loaded rows"
+      }
+    ],
+    "reason": "The source three-game fixture keeps exactly one row per page: sessions 1 and 2 at from plus one day, durations 60 and 120 seconds, cursor (at, 1), and requested page size 50. First-page and append failures expose the retry action; retry repeats the complete failed cursor/request. Append failure retains session 1 and its selection, and success produces the expected one or two rows. The test-only repository reader mirrors the original injected reader while real HTTP and both native surfaces exercise recovery."
+  },
+  "ActivityRecoveryInteractionTests.Finishing_a_read_preserves_the_section_tab_chosen_while_waiting": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "retains the focused Updates tab when a pending read completes in %s"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "completing a held activity read retains the Updates tab keyboard focus"
+      }
+    ],
+    "reason": "Both surfaces focus the existing Updates tab during the held initial session read and retain that exact keyboard focus after publication. The component also verifies that Updates remains unselected: the original contract focuses the tab without changing the active section. Native tests exercise the real reader gate and mounted focus target."
+  },
+  "ActivityRecoveryInteractionTests.Saving_a_note_on_an_older_loaded_page_keeps_its_selection_and_does_not_refetch_page_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "saves the source older session2 without rereading page one or losing selection in %s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Exact_single_row_pages_retry_the_same_cursor_and_edit_the_older_session_without_an_implicit_first_page_read"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "saving the selected source older-page note keeps both pages and exactly two activity reads"
+      }
+    ],
+    "reason": "Both surfaces load the original one-row pages, select session 2, open its editor through X, and save Continue from the old session. The same selected row, both loaded pages and their cursors remain; the note and Journal entry badge update, and activity reads remain exactly two. Native checks actual SQLite note 2. Revisioned journal writes patch retained pages instead of refetching page one."
+  },
+  "ActivityRecoveryInteractionTests.Account_summary_reports_loading_and_retry_without_losing_focus_or_publishing_after_disposal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-account-recovery.test.tsx",
+        "case": "keeps Back focused through loading and failure then retries once with an enabled focused control"
+      },
+      {
+        "file": "tests/parity-account-recovery.test.tsx",
+        "case": "cancels a held account read on %s and rejects an ignored late response"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Account_retry_preserves_the_source_one_transaction_with_no_invented_money"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Cancellation_reaches_the_held_backend_reader_even_when_it_returns_after_release"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "source account"
+      }
+    ],
+    "reason": "The exact Steam account fixture contains one transaction and no money or currency; its computed single-currency flag remains true. Both surfaces show loading, retain the existing navigation focus through failure, retry exactly once and leave an enabled focused action after success. Cancellation prevents a late response from entering the retained cache or departed page. Desktop's native focus target is its existing Spending navigation control; fullscreen uses the child Back control, and component tests explicitly exercise Back. The source's disposed-content assertion is preserved as no cache or UI publication after unmount."
+  },
+  "FullscreenActivityTests.Empty_sections_explain_their_content_and_horizontal_navigation_changes_weeks_outside_tabs": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "separates empty Sessions and Journal and cycles local sections without changing the week"
+      },
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "changes Monday weeks outside section tabs, clamps the future and offers selected-note reading and editing"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "fullscreen source empty sections clamp week navigation and triggers cycle Journal and Sessions outside root pages"
+      }
+    ],
+    "reason": "The four-game empty fixture retains distinct No sessions this week and No journal entries this week states. Native Left moves back one week, two Rights clamp at the current week, and horizontal input inside section tabs leaves the week unchanged. RT moves Journal to Sessions and LT returns to Journal without changing root pages or week. Component tests preserve the same section behavior; native input uses simulated standard Gamepad API frames. React Activity has no local hint slots; the native check verifies no local LT/RT hint copy while retaining the separate global shell bumper hints, which replaces the original empty RightHints and no-LT local Hints assertions."
+  },
+  "FullscreenActivityTests.Library_reload_refreshes_notes_preserves_session_and_removes_hidden_games": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "refreshes the selected source session2 note and removes its hidden game in %s"
+      },
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "keeps unsaved text through a library refresh and removes hidden games from history"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "library reload preserves selected session2 and its new note before hiding Game2 removes them"
+      }
+    ],
+    "reason": "Both surfaces retain four Game N works and open sessions for ownerships 1 and 2 one minute apart. Selecting session 2, saving A newly saved note externally and publishing a real refresh keeps that selection and reveals the note. Hiding Game 2 removes its activity title and note and selects the remaining row while the persisted note remains in SQLite. The native fixture waits for the source session created now to enter the API's whole-second upper bound; it does not invent a duration or completion."
+  },
+  "FullscreenActivityTests.Session_editor_saves_to_the_same_journal_repository_and_keeps_existing_rating": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "keeps loaded pages and selection while editing an older note in %s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Exact_source_journal_edits_and_deletes_keep_session_identity_and_rating_over_HTTP"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "fullscreen source existing Activity note saves the other-route text while retaining rating4"
+      }
+    ],
+    "reason": "The exact four-game fixture has one manual sitting with Old note and rating 4. The real fullscreen Activity editor saves Try the other route next time., closes on success and persists rating 4 in the same SQLite journal repository. The source's direct success callback is represented by completed shared journal command and editor dismissal; HTTP evidence preserves the session identity and no end time or duration is invented."
+  },
+  "FullscreenToolsHierarchyTests.Journal_groups_keep_the_editor_and_rating_actions_reachable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "keeps the source fullscreen journal groups and Edit note to first rating to Save route independent of geometry"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "journal groups retain long session identity and controller access to note rating and Save"
+      }
+    ],
+    "reason": "Native 2560×1440 and 1280×720 runs preserve The Long Journey Home — Definitive Collector's Edition, 2h 10m and the original unsaved mountain-camp note. The prompt has exactly three groups and YOUR LAST SESSION, JOURNAL and RATING headings, no horizontal overflow, and the first Tab into the prompt selects Edit note before simulated D-pad Down moves Edit note to 1 out of 5 to Save, keeping Save in the scroll viewport. A real completed 7800-second sitting and session.ended publication replace direct constructor data; the original draft is typed through the actual prompt and no note is written. The first Tab replaces the source test's explicit FocusInitial call; the passive prompt preserves existing arrival focus until the user enters it."
+  },
+  "JournalDetailsInteractionTests.Details_modal_edits_then_deletes_a_journal_entry": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "edits the original Bluebird42 note inline through Library and back, then deletes only after confirmation"
+      },
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "edits, retains across navigation and explicitly deletes a details journal note in %s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Exact_source_journal_edits_and_deletes_keep_session_identity_and_rating_over_HTTP"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "source Bluebird journal id42 retains its draft then saves and confirms note deletion"
+      }
+    ],
+    "reason": "The exact Bluebird session 42, ownership 1, August 22, 2026 at noon UTC, Looking for the key. and rating 3 remain intact. At 1200×640 desktop, JOURNAL is visible and Edit/Delete retain 9px horizontal and 4px vertical padding. The inline draft Found the key behind the waterfall. survives Library then Journal without ending editing, saves with rating 3, and only confirmed deletion removes note 42. Fullscreen verifies the same data/write/confirmation behavior through its modal presentation; repository reads and writes remain real."
+  },
+  "JournalNotificationTests.A_headless_or_missing_native_window_reports_unavailable_without_an_application_error": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-notification-delivery.test.ts",
+        "case": "reports unavailable for missing and headless windows without reaching native delivery"
+      },
+      {
+        "file": "tests/parity-notification-delivery.test.ts",
+        "case": "keeps live background windows eligible while handling destruction races without an application error"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "actual notification IPC treats empty and zero native handles as unavailable without callbacks"
+      }
+    ],
+    "reason": "The actual main notification policy refuses absent, destroyed and handle-less windows without reaching native delivery or invoking callbacks. Native desktop and fullscreen IPC runs override the real BrowserWindow's handle to empty and all-zero values and verify unavailable, no notification creation, no activation callback and no application error. An unshown Avalonia Window has no native handle; a hidden Electron BrowserWindow can have one, so a valid background window remains eligible. This preserves the source availability boundary without rejecting all hidden windows."
+  },
+  "SessionNoteParityTests.Each_editor_rejects_empty_entries_and_trims_successful_notes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "rejects an empty note/rating then trims the source successful note (existing=%s)"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Both_original_editor_states_accept_the_validated_note_and_rating_without_changing_the_sitting_over_HTTP"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "id7 rejects whitespace without writing then trims the note and saves rating5"
+      }
+    ],
+    "reason": "All six original contexts run: desktop Details, fullscreen Details and fullscreen Activity, each with absent or existing Original note/rating 4. They retain session 7, ownership 3 and September 10, 2026 at noon UTC. Journal note has its accessible name; whitespace plus cleared rating shows the source validation error, writes nothing and keeps editing. A spaced Remember the other route. then saves once as trimmed text with rating 5 and dismisses the editor. The API receives the validated payload; validation and trimming remain renderer responsibilities. The empty Details case reaches the shared editor from its recorded session because there is no existing journal row."
+  },
+  "SessionNoteParityTests.Failed_saves_keep_the_draft_and_pending_retries_block_conflicting_edits": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "retains the original draft after failure and blocks every conflicting action during retry"
+      },
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "retains failed drafts and blocks uncertain retries until the saved note can be checked"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Refused_source_save_keeps_original_note_and_retry_commits_once_after_release_over_HTTP"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "editor keeps its failed draft and rating4 while a held retry blocks conflicting input"
+      }
+    ],
+    "reason": "Each of the three source editor contexts retains the raw spaced Keep my draft. and rating 4 after the first failed write, while Original note remains persisted. A held retry disables the field and all active editor actions; Back/Escape, rating changes and duplicate submission cannot close editing, change rating or create a third attempt. Releasing it persists exactly one trimmed Keep my draft. with rating 4 and closes once. The revisioned HTTP layer reads back an uncertain failure before a safe retry, preserving the existing concurrency guard."
+  },
+  "SessionRecoveryParityTests.Recovered_sitting_keeps_one_note_and_one_activity_record": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-recovery-contracts.test.tsx",
+        "case": "projects the same recovered sitting from unknown duration to exactly one sixth of an hour at eleven minutes"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/JournalActivityParityTests.cs",
+        "case": "Recovered_process_sitting_keeps_one_session_one_note_and_one_activity_record_over_HTTP"
+      },
+      {
+        "file": "tests/electron/journal-activity.spec.ts",
+        "case": "recovered source sitting keeps one session and note while an unfinished sitting becomes ten minutes"
+      }
+    ],
+    "reason": "The real monitored fixture retains two games, ownership 1, PID 100, creation-time identity, process name game and monitor key sitting. A fresh SessionRepository recovers the same checkpoint ID and Same sitting, same note with rating 4. Open duration remains unknown and desktop has no plotted bar. The production timeline projector asserts zero bars while open and exactly one tracked bar with hours equal to 1/6, the same ID and exact endpoints at the source's explicit eleven-minute as-of time. Completion retains one session and note with 600 seconds; desktop shows one one-sixth-hour bar, fullscreen one ten-minute activity row, and the HTTP history count remains one. Native starts the sitting eleven minutes before the real API clock and completes it ten minutes later, replacing the source desktop tracker's explicit as-of advancement without changing duration or identity."
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "FeedViewModelTests.Viewport_notifications_ignore_stale_cards_and_deduplicate_reloads": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "ignores callbacks queued by a removed card or disconnected observation generation",
+        "file": "tests/parity-feed-impressions.test.ts"
+      },
+      {
+        "case": "deduplicates the same release across shelves, reloads, and screen remounts for the UTC day",
+        "file": "tests/parity-feed-impressions.test.ts"
+      }
+    ],
+    "reason": "The observer lifecycle tests reject detached and old-generation callbacks; the adjacent daily-ledger test asserts one release across shelves, reloads and remounts."
+  },
+  "FeedImpressionTests.Reloads_and_history_return_do_not_duplicate_today_and_new_day_records_again": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "waits for a modal to close and records a new UTC day only when the feed is exposed again",
+        "file": "tests/parity-feed-impressions.test.ts"
+      }
+    ],
+    "reason": "The tests combine a retained document ledger across remounts with controlled UTC day rollover while an accessible modal covers the feed; closing it records exactly one new daily observation."
+  },
+  "FeedImpressionTests.Hidden_feed_and_inactive_or_minimized_window_do_not_record_cards": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "suppresses %s windows and records still-visible cards on return",
+        "file": "tests/parity-feed-impressions.test.ts"
+      }
+    ],
+    "reason": "Document visibility and active-window gates are tested independently, alongside hidden/display/opacity/aria-hidden ancestor cases; revealing or focusing the still-intersecting card records it once."
+  },
+  "FeedImpressionTests.Hidden_window_can_load_and_scroll_without_creating_impressions": {
+    "status": "ported",
+    "tests": [
+      {
+        "case": "loads a new pass and scrolls to unseen cards while hidden without recording until the window returns",
+        "file": "tests/parity-feed-impressions.test.ts"
+      }
+    ],
+    "reason": "Observer callbacks arriving while the document is hidden create no record; returning to a visible focused window exposes the card. The same component uses this single document observer for new and scrolled cards."
+  }
+}

@@ -1,0 +1,68 @@
+@layer themes {
+  .avalon-expansion-mark,
+  .avalon-store-initials > span {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    z-index: 3;
+    padding: 3px 5px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: calc(10px * var(--theme-text-scale, 1));
+    line-height: 1;
+    pointer-events: none;
+    transition: opacity 140ms;
+  }
+
+  .avalon-store-initials {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    z-index: 3;
+    display: flex;
+    gap: 3px;
+    pointer-events: none;
+    transition: opacity 140ms;
+  }
+  .avalon-store-initials > span {
+    position: static;
+    background: var(--avalon-tile-chip-ground, color-mix(in srgb, var(--bg) 82%, transparent));
+  }
+  .avalon-cover:has(.avalon-store-initials) .avalon-cover-fallback {
+    bottom: calc(24px + 10px * var(--theme-text-scale, 1));
+  }
+  .avalon-shell.desktop
+    .avalon-cover:is(:hover, :focus-visible, [data-selected='true'])
+    .avalon-store-initials {
+    opacity: 0;
+  }
+
+  .avalon-shell.desktop
+    .avalon-cover:is(:hover, :focus-visible, [data-selected='true'])
+    .avalon-expansion-mark {
+    opacity: 0;
+  }
+
+  .avalon-record-title {
+    min-width: 0;
+  }
+  .avalon-record-title small {
+    margin-inline-start: 6px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  .avalon-shell[data-reduced-motion='true']
+    :is(.avalon-expansion-mark, .avalon-store-initials, .avalon-store-initials > span) {
+    transition: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .avalon-expansion-mark,
+    .avalon-store-initials,
+    .avalon-store-initials > span {
+      transition: none;
+    }
+  }
+}
