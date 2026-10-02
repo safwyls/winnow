@@ -1,11 +1,11 @@
 ---
 id: TASK-381.40
 title: 'Electron: verify physical controller and fullscreen device behavior'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 04:13'
+updated_date: '2026-10-02 07:40'
 labels:
   - electron
   - parity
@@ -49,6 +49,12 @@ Review boundary: work on this task only after the user prompts continuation from
 <!-- DOD:BEGIN -->
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Use the fresh primary Windows package and only disposable data to exercise attached ultrawide and both portrait displays. Record actual OS/native display, fullscreen/window bounds, focus/cursor recovery, route/selection/keyboard and visible controller/keyboard hints. Verify real Windows material requests and capture own-window compositor evidence where technically available without changing user OS preferences or wallpaper. Keep fixed-layout/synthetic tests separate from physical evidence. Record accepted physical-controller exceptions; TV viewing/overscan, physical small device and native Linux compositor remain pending explicit user agreement. Do not equate CI Xvfb or renderer screenshots with unavailable physical checks.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

@@ -1,11 +1,11 @@
 ---
 id: TASK-381.39
 title: 'Electron: switch primary build, CI and release entry points to Electron'
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 07:37'
+updated_date: '2026-10-02 07:40'
 labels:
   - electron
   - parity
@@ -72,13 +72,13 @@ Review boundary: work on this task only after the user prompts continuation from
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 Default documented run/build/package/release entry points produce Electron with the independent backend; legacy Avalonia reference code/tests cannot be mistaken for the delivered frontend.
-- [ ] #2 Required Windows/Linux CI executes the appropriate Electron, backend, migration-integrity and packaging gates with accurate reusable-evidence provenance; missing evidence runs real checks.
+- [x] #2 Required Windows/Linux CI executes the appropriate Electron, backend, migration-integrity and packaging gates with accurate reusable-evidence provenance; missing evidence runs real checks.
 - [x] #3 Product, architecture, roadmap, agent/build and release documentation agree with the verified final composition and platform scope; no release is published as part of this task.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+- [x] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -105,4 +105,12 @@ Activated after38 milestoneb10d4d66. Root owns CI/release workflow integration, 
 Implemented primary Publish/npm package+dist, explicit reference publisher, root Build/Run and version alignment. Actual Build.ps1 succeeds; clean CI fixture/backend/helper build zero warnings/errors. Entry16Node+17PowerShell, affected components33, bundledprovider5, retainedCIpolicy53 and native/workflowaccounting37pass.15native fixtures now use common prebuilt apphosts; migrated link-action desktop/fullscreen2/2pass using fresh .39 companions. Actual Playwright collection1011tests/111files across8file-preserving shards [129,125,139,127,118,131,148,94], unioncomplete without duplicates; collection is not test execution. Epic terminal21.NET+7unit+4native pass, startup-race/cold-start checks still being completed. Required Windows aggregate now depends .NET, freshElectron+exactnativeaccounting, bothpackages andplugins; release tag/manual consumes sameartifacts. Full regression gate remains41.
 
 Final local39 checks: actual npm primary package verified697 files; fresh package desktop/fullscreen2/2 and bundled-provider5/5 passed. Terminal27backend+29data-root+7component+4native passed without skips, including simultaneous cold start, selected-root sharing retry and caller pipe closure. Native accounting/sanitization/workflow48/48 passed; current full inventory1011/111 unchanged. Checkpoint94 records measured scope and pending final-tree CI. User batch authorization supersedes earlier per-task stop language. Commit and push next to execute integrated CI; full-suite repairs remain41.
+
+Milestone4e09761a pushed to existing draftPR30. Integrated run36979618488 accepted and executed: Linux sessions and first-party plugin packages passed; .NET restore/audit, unit/live API, all8native fixture builds and both platform publishers are running on clean runners. Required gate wiring plus accounting/evidence53+48contracts verified; final all-green regression explicitly remains41. No release published.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Electron is the default Build/Run/Publish/npm package/dist and release composition, with independent backend/helper and explicit Avalonia reference entry. Actual package desktop/fullscreen2, provider5, routing33, components33, terminal27+29+7+4 and Linux launcher8 checks passed; CI evidence53 and accounting48 passed. Integrated clean CI36979618488 executes all required jobs. Milestone4e09761a and checkpoint94 record scope; complete final-suite passage remains41. Continuing batch per user authorization.
+<!-- SECTION:FINAL_SUMMARY:END -->

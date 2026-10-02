@@ -61,6 +61,12 @@ Release tags and build-only dispatch call the same CI workflow with the requeste
 version, then consume its validated package and plugin artifacts. Feature branches
 use the PR CI event; duplicate legacy package runs are removed. No release was created.
 
+Milestone `4e09761a` started integrated CI run `36979618488`. The Linux session and
+first-party plugin gates passed; the .NET, unit/live API, eight native shards and both
+package jobs started their real checks from clean runners. This confirms workflow wiring,
+not a passing final regression gate. TASK-381.41 owns resolving the known suite failures
+and requiring every result on the final tree.
+
 ## Terminal compatibility
 
 The primary composition now preserves `--epic-login`, separate/equal `--code` forms,
