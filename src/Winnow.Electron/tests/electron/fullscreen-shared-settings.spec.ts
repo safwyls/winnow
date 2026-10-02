@@ -113,6 +113,7 @@ for (const [width, height, scale] of [
           const outer = node.getBoundingClientRect()
           const headings = [...node.querySelectorAll('h2')]
           return {
+            zoom: Number(getComputedStyle(document.body).zoom),
             titles: headings.map((heading) => heading.textContent),
             rules: headings.map((heading) => parseFloat(getComputedStyle(heading, '::after').height)),
             ruleWidths: headings.map((heading) => parseFloat(getComputedStyle(heading, '::after').width)),
@@ -125,7 +126,9 @@ for (const [width, height, scale] of [
           }
         })
         expect(structure.titles).toContain(section === 'Library' ? 'Library preferences' : 'Startup & window')
-        expect(structure.rules.every((height) => height === 1)).toBe(true)
+        // Layout dimensions are quantized to 1/64 of a zoomed CSS pixel.
+        for (const height of structure.rules)
+          expect(Math.abs(height - 1)).toBeLessThanOrEqual(1 / (64 * structure.zoom))
         if (width === 2560) expect(Math.max(...structure.ruleWidths)).toBeGreaterThan(300)
         expect(structure.escaped).toEqual([])
         await page.screenshot({ path: info.outputPath(`${section}-${width}-${scale}.png`) })

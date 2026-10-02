@@ -1,9 +1,10 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import electronPath from 'electron'
 import { build } from 'esbuild'
-import { mkdir, mkdtemp, readFile } from 'node:fs/promises'
+import { mkdir, mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { closeFixture } from './fixture-cleanup'
+import { inlineFonts } from './inline-fonts'
 
 const output = resolve('../..', '.tmp/typography-popout')
 let app: ElectronApplication | undefined
@@ -16,21 +17,7 @@ test.beforeAll(async () => {
     platform: 'node',
     format: 'cjs',
     external: ['electron'],
-    plugins: [
-      {
-        name: 'real-inline-fonts',
-        setup(bundle) {
-          bundle.onResolve({ filter: /\.ttf\?inline$/ }, (args) => ({
-            path: resolve(args.resolveDir, args.path.replace(/\?inline$/, '')),
-            namespace: 'font',
-          }))
-          bundle.onLoad({ filter: /.*/, namespace: 'font' }, async (args) => ({
-            contents: await readFile(args.path),
-            loader: 'dataurl',
-          }))
-        },
-      },
-    ],
+    plugins: [inlineFonts()],
     logLevel: 'silent',
   })
 })

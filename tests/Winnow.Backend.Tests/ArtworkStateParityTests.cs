@@ -76,6 +76,22 @@ public sealed class ArtworkStateParityTests
     }
 
     [Fact]
+    public async Task Settings_plugin_catalog_and_real_persistence_agree_after_startup_and_client_reopen()
+    {
+        await using var host = await Host.StartAsync("settings");
+        var sources = await host.Api.GetAsync<JsonElement[]>("preferences/artwork-sources");
+        Assert.Equal(new[] { "steam", "plugin:steamgriddb", "igdb" }, sources.Select(source => source.GetProperty("id").GetString()));
+        const string order = "plugin:steamgriddb,steam,igdb";
+        await host.Api.SendAsync(HttpMethod.Put, "preferences/presentation/ArtworkSourceOrder", new SetPresentationPreference(order));
+        var state = (await host.Fixture.StateAsync()).AsJson();
+        Assert.Equal(order.Split(','), state.GetProperty("sourceOrder").EnumerateArray().Select(source => source.GetString()));
+        Assert.Equal(order, state.GetProperty("storedSourceOrder").GetString());
+        using var reopened = WinnowApiClient.Attach(host.Directory);
+        var values = await reopened.GetAsync<PresentationPreferenceValue[]>("preferences/presentation");
+        Assert.Equal(order, Assert.Single(values, value => value.Preference == PresentationPreference.ArtworkSourceOrder).Value);
+    }
+
+    [Fact]
     public async Task Unowned_group_root_background_precedes_child_Steam_and_grid_art_without_using_child_saved_background()
     {
         await using var host = await Host.StartAsync("root");

@@ -944,7 +944,7 @@
   },
   "AccountMembershipTests.Merge_unions_accounts_from_both_candidates": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -953,7 +953,7 @@
   },
   "AccountMembershipTests.Merge_takes_the_higher_figure_within_one_account": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -962,7 +962,7 @@
   },
   "AccountMembershipTests.Merge_never_combines_two_different_accounts": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -971,7 +971,7 @@
   },
   "AccountMembershipTests.Merge_keeps_a_null_figure_as_unknown_rather_than_zero": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -980,7 +980,7 @@
   },
   "AccountMembershipTests.The_resolver_writes_one_row_per_account": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -989,7 +989,7 @@
   },
   "AccountMembershipTests.The_resolver_falls_back_to_the_candidates_own_account": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -998,7 +998,7 @@
   },
   "AccountMembershipTests.A_candidate_naming_nobody_writes_nothing": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -1007,7 +1007,7 @@
   },
   "AccountMembershipTests.Re_resolving_keeps_the_first_sighting_and_the_higher_figure": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -1016,7 +1016,7 @@
   },
   "AccountMembershipTests.A_real_reader_retires_the_seed_marker": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -1025,7 +1025,7 @@
   },
   "AccountMembershipTests.Account_refs_are_listed_per_store": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -1034,7 +1034,7 @@
   },
   "AccountMembershipTests.A_within_band_disagreement_settles_at_the_lower_figure": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -1043,7 +1043,7 @@
   },
   "AccountMembershipTests.A_rise_beyond_the_band_is_recorded_as_play": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -1052,7 +1052,7 @@
   },
   "AccountMembershipTests.A_fall_from_a_reader_that_is_behind_is_ignored": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -1061,7 +1061,7 @@
   },
   "AccountMembershipTests.A_fall_a_current_reader_corroborates_is_a_correction": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -1070,7 +1070,7 @@
   },
   "AccountMembershipTests.A_fall_with_no_date_at_all_corroborates_nothing": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -1079,7 +1079,7 @@
   },
   "AccountMembershipTests.The_two_layers_share_one_tolerance_band": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+    "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
     "implementation": [
       "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
       "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -1088,7 +1088,7 @@
   },
   "LibrarySyncSchedulingTests.The_snapshot_scheduler_ticks_the_local_job_and_never_the_remote_one": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
     "implementation": [
       "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
       "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
@@ -1097,7 +1097,7 @@
   },
   "LibrarySyncSchedulingTests.Starting_the_remote_scheduler_awaits_no_backfill": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
     "implementation": [
       "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
       "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
@@ -1106,7 +1106,7 @@
   },
   "LibrarySyncSchedulingTests.A_disabled_remote_scheduler_never_backfills": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
     "implementation": [
       "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
       "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
@@ -1115,7 +1115,7 @@
   },
   "LibrarySyncSchedulingTests.Stopping_mid_backfill_unwinds_cleanly": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
     "implementation": [
       "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
       "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
@@ -1124,7 +1124,7 @@
   },
   "LibrarySyncSchedulingTests.The_sync_gate_admits_one_pass_at_a_time": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
     "implementation": [
       "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
       "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
@@ -1133,7 +1133,7 @@
   },
   "LibrarySyncSchedulingTests.A_cancelled_wait_on_the_gate_leaves_it_free": {
     "status": "retained-backend",
-    "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+    "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
     "implementation": [
       "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
       "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",

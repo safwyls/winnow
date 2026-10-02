@@ -103,33 +103,12 @@ public sealed class FrontendActivationParityTests
     {
         if (!OperatingSystem.IsWindows()) return;
         var root = Scratch();
-        var ready = root + ".parent.json";
         Process? parent = null;
         try
         {
-            static string Quote(string value) => "'" + value.Replace("'", "''") + "'";
-            var script = $$$"""
-                $p = New-Object System.Diagnostics.ProcessStartInfo
-                $p.FileName = 'dotnet'
-                $p.UseShellExecute = $false
-                $p.CreateNoWindow = $true
-                $p.RedirectStandardInput = $true
-                $p.RedirectStandardOutput = $true
-                $p.RedirectStandardError = $true
-                $p.Arguments = '"' + {{{Quote(typeof(BackendApplication).Assembly.Location)}}} + '" --frontend-activation-helper --parent-pid ' + $PID + ' --data-dir "' + {{{Quote(root)}}} + '"'
-                $child = [System.Diagnostics.Process]::Start($p)
-                $child.StandardInput.WriteLine('{"version":1,"activation":{"kind":"show"}}')
-                $child.StandardInput.Flush()
-                [System.IO.File]::WriteAllText({{{Quote(ready)}}}, $child.StandardOutput.ReadLine())
-                Start-Sleep -Seconds 60
-                """;
-            var info = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true };
-            foreach (var value in new[] { "-NoProfile", "-NonInteractive", "-EncodedCommand", Convert.ToBase64String(Encoding.Unicode.GetBytes(script)) }) info.ArgumentList.Add(value);
-            parent = Process.Start(info)!;
-            var deadline = DateTime.UtcNow.AddSeconds(10);
-            while (!File.Exists(ready) && DateTime.UtcNow < deadline) await Task.Delay(25);
-            Assert.True(File.Exists(ready));
-            using var frame = JsonDocument.Parse(await File.ReadAllTextAsync(ready));
+            parent = Winnow.TestFixtures.ProcessParent.Start("activation", "--target", typeof(BackendApplication).Assembly.Location, "--data-dir", root);
+            using var frame = JsonDocument.Parse(await Winnow.TestFixtures.ProcessParent.ReadLineAsync(parent, TimeSpan.FromSeconds(10)));
+            Assert.Equal("primary", frame.RootElement.GetProperty("kind").GetString());
             using var helper = Process.GetProcessById(frame.RootElement.GetProperty("processId").GetInt32());
             Assert.Equal(parent.Id, frame.RootElement.GetProperty("parentProcessId").GetInt32());
             parent.Kill();
@@ -144,7 +123,6 @@ public sealed class FrontendActivationParityTests
         {
             if (parent is { HasExited: false }) parent.Kill();
             parent?.Dispose();
-            File.Delete(ready);
             Directory.Delete(root, true);
         }
     }

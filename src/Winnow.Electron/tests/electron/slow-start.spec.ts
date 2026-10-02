@@ -3,6 +3,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
+import { prebuiltActivationHelper, prebuiltBackend } from './prebuilt-backend'
 
 for (const mode of ['desktop', 'fullscreen'] as const)
   test(`${mode} keeps a slow first connection in preparation and reveals the library after attachment`, async () => {
@@ -16,11 +17,15 @@ for (const mode of ['desktop', 'fullscreen'] as const)
         '--seed-sample',
         '--no-sync',
       ],
-      env: Object.fromEntries(
-        Object.entries(process.env).filter(
-          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-        ),
-      ) as Record<string, string>,
+      env: {
+        ...(Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+          ),
+        ) as Record<string, string>),
+        WINNOW_BACKEND_PATH: prebuiltBackend,
+        WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+      },
       chromiumSandbox: true,
     })
     try {

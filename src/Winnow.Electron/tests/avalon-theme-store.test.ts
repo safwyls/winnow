@@ -1,19 +1,24 @@
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import * as fs from 'node:fs'
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { AvalonThemeStore, EXAMPLE_AVALON_THEME } from '../src/main/avalon-theme-store'
 import { parseAvalonTheme } from '../src/shared/avalonThemeDocument'
 
+vi.mock('node:fs', { spy: true })
+
 let directory: string, store: AvalonThemeStore
 const text = (id = 'sample') =>
   JSON.stringify({ ...parseAvalonTheme('example.json', EXAMPLE_AVALON_THEME).document!, id })
 beforeEach(async () => {
+  vi.clearAllMocks()
   directory = await mkdtemp(join(tmpdir(), 'winnow-palette-test-'))
   store = new AvalonThemeStore(async () => directory)
 })
 afterEach(async () => {
   store.dispose()
+  vi.restoreAllMocks()
   await rm(directory, { recursive: true, force: true })
 })
 
@@ -114,4 +119,36 @@ it('debounces a settled theme save and stops notifications after disposal', asyn
   await writeFile(join(directory, 'edited.json'), text('after-disposal'))
   await new Promise((done) => setTimeout(done, 350))
   expect(changed).toHaveBeenCalledTimes(1)
+})
+
+it('watches the canonical trusted directory and still observes real saves through an alias', async () => {
+  const target = join(directory, 'themes')
+  const alias = join(directory, 'themes-alias')
+  await mkdir(target)
+  await symlink(target, alias, process.platform === 'win32' ? 'junction' : 'dir')
+  const watched = vi.mocked(fs.watch)
+  const changed = vi.fn()
+  store = new AvalonThemeStore(async () => alias, changed)
+  expect(await store.prepare()).toEqual([])
+  expect(watched).toHaveBeenCalledWith(await realpath(target), { persistent: false }, expect.any(Function))
+  await writeFile(join(alias, 'edited.json'), text())
+  await vi.waitFor(() => expect(changed).toHaveBeenCalledTimes(1), { timeout: 2500, interval: 25 })
+  store.dispose()
+  await writeFile(join(alias, 'edited.json'), text('after-disposal'))
+  await new Promise((done) => setTimeout(done, 350))
+  expect(changed).toHaveBeenCalledTimes(1)
+})
+
+it('does not attach a watcher when disposed during directory discovery', async () => {
+  let resolve!: (value: string) => void
+  const pending = new Promise<string>((done) => {
+    resolve = done
+  })
+  const watched = vi.mocked(fs.watch)
+  store = new AvalonThemeStore(() => pending)
+  const preparing = store.prepare()
+  store.dispose()
+  resolve(directory)
+  await preparing
+  expect(watched).not.toHaveBeenCalled()
 })

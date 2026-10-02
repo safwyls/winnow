@@ -231,7 +231,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await expect(field('Title')).toHaveValue('Celeste')
     await expect(editor().getByText('Guessed Celeste from the path.', { exact: true })).toBeVisible()
     expect(await searches()).toEqual(['Celeste'])
-    await expect(editor().locator('.igdb-candidates .metadata-row')).toHaveCount(1)
+    await expect(
+      editor().locator('.igdb-candidates').getByRole('article', { name: 'Celeste', exact: true }),
+    ).toHaveCount(1)
     await expect(editor().locator('.igdb-candidates')).toContainText('2018')
     await noWrites()
     await page.screenshot({
@@ -300,7 +302,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
 
   test(`${mode} correcting Prey to Prey 2017 searches the corrected user title`, async () => {
     await begin(files.Prey)
-    expect(await searches()).toEqual(['Prey'])
+    await expect.poll(searches).toEqual(['Prey'])
     await expect(editor().locator('.igdb-candidates')).toContainText('2006')
     await field('Title').fill('Prey 2017')
     await activate(button('Find IGDB matches'))

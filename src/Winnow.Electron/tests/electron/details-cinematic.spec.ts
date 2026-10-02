@@ -173,6 +173,7 @@ for (const [userBackground, longTitle, hasJournal, uiScale] of [
       const rect = (selector: string) => node.querySelector(selector)!.getBoundingClientRect().toJSON()
       const style = (selector: string) => getComputedStyle(node.querySelector(selector)!)
       return {
+        zoom: Number(getComputedStyle(document.body).zoom),
         backdrop: rect('.avalon-backdrop'),
         personal: rect('.avalon-personal-history'),
         about: rect('.avalon-about'),
@@ -190,7 +191,7 @@ for (const [userBackground, longTitle, hasJournal, uiScale] of [
     expect(geometry.backdrop.height).toBeCloseTo(1440, 0)
     expect(geometry.about.width).toBeGreaterThan(geometry.personal.width * 2)
     for (const rule of [geometry.tabsRule, geometry.columnRule, geometry.journalRule])
-      expect(parseFloat(rule) * uiScale).toBeGreaterThanOrEqual(0.99)
+      expect(parseFloat(rule) * geometry.zoom).toBeGreaterThanOrEqual(0.99)
     expect(geometry.journal.width / uiScale).toBeGreaterThan(250)
     expect(geometry.journal.y).toBeGreaterThan(geometry.history.y)
     expect(geometry.primary[0]).not.toBe('rgba(0, 0, 0, 0)')
@@ -238,7 +239,7 @@ for (const [userBackground, longTitle, hasJournal, uiScale] of [
           })),
         }
       })
-      expect(parseFloat(metrics.divider.width) * uiScale).toBeGreaterThanOrEqual(0.99)
+      expect(parseFloat(metrics.divider.width) * geometry.zoom).toBeGreaterThanOrEqual(0.99)
       expect(metrics.divider.height / uiScale).toBeGreaterThan(60)
       expect(metrics.values.map((value) => value.text)).toEqual(['2h', '5d'])
       for (const value of metrics.values) {
@@ -300,6 +301,19 @@ for (const [userBackground, longTitle, hasJournal, uiScale] of [
       await withinReading(preview, reading)
     }
     await page.screenshot({ path: info.outputPath('cinematic-720-scaled.png') })
+    await expect(backdrop.locator('img')).toHaveCount(1)
+    const ownedSources = await page.evaluate(() => ({
+      backdrop: [...document.querySelectorAll<HTMLImageElement>('.avalon-details .avalon-backdrop img')].map(
+        (image) => image.src,
+      ),
+      screenshots: [
+        ...document.querySelectorAll<HTMLImageElement>('.avalon-details .screenshot-previews img'),
+      ].map((image) => image.src),
+      live: [...(window as any).cinematicUrls] as string[],
+    }))
+    expect(ownedSources.backdrop).toHaveLength(1)
+    expect(ownedSources.screenshots).toHaveLength(2)
+    expect(ownedSources.live.sort()).toEqual([...ownedSources.backdrop, ...ownedSources.screenshots].sort())
     await details.getByRole('button', { name: 'Read more →', exact: true }).click()
     await expect(
       reading.getByText(Array(12).fill('Explore the mountain coast and find your way home.').join(' '), {
@@ -313,6 +327,28 @@ for (const [userBackground, longTitle, hasJournal, uiScale] of [
       .getByRole('navigation', { name: 'Main navigation' })
       .getByRole('button', { name: 'Activity', exact: true })
       .click()
+    await info.attach('details-resource-ownership', {
+      body: JSON.stringify(
+        { before: ownedSources, after: await page.evaluate(() => [...(window as any).cinematicUrls]) },
+        null,
+        2,
+      ),
+      contentType: 'application/json',
+    })
+    // Backdrops own their pixels until detach; screenshot pixels instead belong
+    // to the bounded artwork LRU. Only those exact two entries may survive.
+    await expect
+      .poll(() => page.evaluate(() => [...(window as any).cinematicUrls].sort()))
+      .toEqual([...ownedSources.screenshots].sort())
+    for (const source of ownedSources.backdrop)
+      expect(await page.evaluate((source) => (window as any).cinematicUrls.has(source), source)).toBe(false)
+    // Exercise the production cache invalidation path, including detached assets.
+    await application.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]!.webContents.send('winnow:event', {
+        kind: 'resync-required',
+        resource: null,
+      })
+    })
     await expect.poll(() => page.evaluate(() => (window as any).cinematicUrls.size)).toBe(0)
   })
 }

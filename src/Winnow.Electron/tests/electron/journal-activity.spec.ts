@@ -713,8 +713,11 @@ test('fullscreen source empty sections clamp week navigation and triggers cycle 
   await seed('empty')
   await enterHistory()
   await expect(activity().getByText('No sessions this week', { exact: true })).toBeVisible()
-  // React has no separate right-hint slot; the empty local page advertises no trigger actions.
-  await expect(activity()).not.toContainText(/\b(?:LT|RT)\b/)
+  for (const direction of ['previous', 'next']) {
+    const hint = activity().locator(`[data-section-trigger="${direction}"]`)
+    await expect(hint).toHaveAttribute('aria-hidden', 'true')
+    await expect(hint.locator('svg')).toBeVisible()
+  }
   await activity().focus()
   await tap(14)
   await expect(activity().getByRole('button', { name: 'Next week', exact: true })).toBeEnabled()

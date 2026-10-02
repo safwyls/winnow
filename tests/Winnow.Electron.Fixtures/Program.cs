@@ -8,6 +8,12 @@ using Winnow.Core.Repositories;
 using Winnow.Enrich.GamesDb;
 using Winnow.Enrich.Igdb;
 
+if (args.FirstOrDefault() == ProcessParentFixture.Argument)
+{
+    Environment.ExitCode = await ProcessParentFixture.RunAsync(args);
+    return;
+}
+
 if (args.Contains(Winnow.Activation.FrontendActivationHost.Argument))
 {
     Environment.ExitCode = await Winnow.Activation.FrontendActivationHost.RunAsync(

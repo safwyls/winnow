@@ -87,7 +87,8 @@ internal sealed class GameplayFixtureClock : TimeProvider
     public override DateTimeOffset GetUtcNow() => new(GameplayStatsFixture.Now);
 }
 
-internal sealed record GameplayFixtureMatch(string? Store, IReadOnlyList<GameplayOwnershipScope> Ownerships);
+internal sealed record GameplayFixtureMatch(string? Store, IReadOnlyList<GameplayOwnershipScope> Ownerships,
+    DateTime? FromUtc = null, DateTime? UntilUtc = null);
 internal sealed record GameplayFixtureArm(string Behavior = "hold", double? Seconds = null, string Target = "dashboard",
     bool Repeat = false, GameplayFixtureMatch? Match = null);
 internal sealed class GameplayFixtureControls
@@ -134,6 +135,8 @@ internal sealed class GameplayFixtureControls
     {
         if (input.Target != "any" && !IsDashboardRequest(request)) return false;
         if (input.Match is not { } expected) return true;
+        if (expected.FromUtc is { } from && request.FromUtc != from) return false;
+        if (expected.UntilUtc is { } until && request.UntilUtc != until) return false;
         return request.Store == expected.Store && request.Ownerships.OrderBy(item => item.OwnershipId)
             .SequenceEqual(expected.Ownerships.OrderBy(item => item.OwnershipId));
     }

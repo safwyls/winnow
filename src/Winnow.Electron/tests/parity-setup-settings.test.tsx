@@ -24,7 +24,12 @@ const themes: ThemeDefinition[] = [
   { apiVersion: 1, id: 'avalon', name: 'Avalon', Shell: () => null },
   { apiVersion: 1, id: 'afterglow', name: 'Afterglow', Shell: () => null },
 ]
-function fixture(initial: number, appearance = false, mode: Mode = 'fullscreen') {
+function fixture(
+  initial: number,
+  appearance = false,
+  mode: Mode = 'fullscreen',
+  initialSave?: Promise<void>,
+) {
   let cursor: number | null = initial
   let pending: Promise<unknown> | null = null
   let fail = false
@@ -51,6 +56,7 @@ function fixture(initial: number, appearance = false, mode: Mode = 'fullscreen')
     return { ok: true, status: 200, data }
   })
   const savePreferences = vi.fn(async (_profile: unknown) => {})
+  if (initialSave) savePreferences.mockImplementationOnce(async () => initialSave)
   Object.defineProperty(window, 'winnow', {
     configurable: true,
     value: {
@@ -137,9 +143,26 @@ it.each(['saved', 'failed'] as const)(
   },
 )
 async function openProvider(label: string) {
-  fireEvent.click(await screen.findByRole('button', { name: label }))
-  return screen.getByRole('button', { name: 'Back to setup' }) as HTMLButtonElement
+  const entry = (await screen.findByRole('button', { name: label })) as HTMLButtonElement
+  await waitFor(() => expect(entry.disabled).toBe(false))
+  fireEvent.click(entry)
+  return (await screen.findByRole('button', { name: 'Back to setup' })) as HTMLButtonElement
 }
+
+it('waits for the initial profile save before opening fullscreen appearance', async () => {
+  const gate = deferred<void>()
+  const f = fixture(5, true, 'fullscreen', gate.promise)
+  const entry = (await screen.findByRole('button', {
+    name: 'Choose theme and appearance',
+  })) as HTMLButtonElement
+  await waitFor(() => expect(f.savePreferences).toHaveBeenCalledTimes(1))
+  expect(entry.disabled).toBe(true)
+  fireEvent.click(entry)
+  expect(screen.queryByRole('button', { name: 'Back to setup' })).toBeNull()
+  await act(async () => gate.resolve())
+  expect(await openProvider('Choose theme and appearance')).toBeTruthy()
+  expect(f.cursor()).toBe(5)
+})
 
 it('desktop setup composes ordinary appearance controls and waits for palette, material and typography saves', async () => {
   const f = fixture(5, true, 'desktop')

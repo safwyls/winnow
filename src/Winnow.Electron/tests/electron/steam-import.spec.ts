@@ -90,9 +90,14 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     await imported
       .getByRole('button', { name: mode === 'fullscreen' ? 'Read selected pages' : 'Read', exact: true })
       .click()
-    await expect(imported.getByText('licenses-page1.html: Licence page ready')).toBeVisible()
-    await expect(imported.getByText('licenses-final-page.html: Licence page ready')).toBeVisible()
-    await expect(imported.getByText('purchase-history.html: Purchase history ready')).toBeVisible()
+    for (const [name, ready] of [
+      ['licenses-page1.html', 'Licence page ready'],
+      ['licenses-final-page.html', 'Licence page ready'],
+      ['purchase-history.html', 'Purchase history ready'],
+    ])
+      await expect(
+        imported.getByText(mode === 'fullscreen' ? `${name} · LOADED` : `${name}: ${ready}`),
+      ).toBeVisible()
     const result = imported.getByRole('status', { name: 'Steam import results' })
     await expect(result).toBeVisible()
     // The final-page fixture repeats three first-page facts; the retained parser unions them.

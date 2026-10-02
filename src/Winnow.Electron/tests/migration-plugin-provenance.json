@@ -41,7 +41,7 @@
         "case": "opens the system-browser fallback explicitly and submits the masked final address through named IPC only"
       }
     ],
-    "reason": "The original source executes ConsoleAuthPrompt.IsAvailableAsync inside xUnit redirected standard streams and requires true; it passes unchanged. This C# frontend console attachment/redirected-terminal availability check has no Electron GUI/Node console-prompt object. Electron keeps the useful alternate capture route as an explicit system-browser/manual callback form on both surfaces, with masked address input and named IPC. That is separately executed behavioral evidence, not a claim to preserve Avalonia ConsoleAuthPrompt or attach to a terminal."
+    "reason": "The unchanged original executes the Avalonia ConsoleAuthPrompt.IsAvailableAsync under xUnit redirected streams and requires true. That exact frontend type remains framework-specific. The primary package now also preserves --epic-login through main/epic-console.ts and the backend EpicConsoleCommand/TerminalConsole, without a GUI. EpicSignInParityTests.Terminal_executable_uses_selected_real_backend_without_GUI_and_preserves_code_forms_and_EOF (in EpicConsoleCommandTests.cs) and tests/electron/epic-console.spec.ts execute redirected handles, the selected real API, both --code forms, stdin and EOF cancellation. The separately mapped GUI manual fallback remains available on both surfaces; neither replacement instantiates the original Avalonia prompt."
   },
   "InteractiveAuthPromptTests.The_two_prompts_are_registered_in_fallback_order": {
     "status": "ported",
@@ -59,7 +59,7 @@
         "case": "withdraws repeated sign-in actions while pending and cancels without launching fallback"
       }
     ],
-    "reason": "The unchanged source requires exactly two DI descriptors: factory-created WebView prompt first and ConsoleAuthPrompt second. Electron replaces CLR registration order with its actual native-sign-in controller and explicit manual fallback. Unavailable initialization, empty capture and no-session rows all keep one owned attempt, return no captured code, make no completion request, and require explicit manual opening; cancel never starts a fallback. Both Settings presentations expose the masked manual form without preparing a second attempt. This preserves native-first/fallback-second behavior without inventing a console peer in Electron."
+    "reason": "The unchanged source requires exactly two DI descriptors: factory-created WebView prompt first and ConsoleAuthPrompt second. Electron replaces CLR registration order with its actual native-sign-in controller and explicit manual fallback. Unavailable initialization, empty capture and no-session rows all keep one owned attempt, return no captured code, make no completion request, and require explicit manual opening; cancel never starts a fallback. Both Settings presentations expose the masked manual form without preparing a second attempt. The separate --epic-login terminal command is implemented by the backend console client and covered by EpicSignInParityTests (in EpicConsoleCommandTests.cs) and tests/electron/epic-console.spec.ts; GUI failure or cancellation does not automatically launch it. This mapping preserves the GUI fallback behavior rather than the original CLR descriptor types."
   },
   "PluginSyncIntegrationTests.Shipped_steamgriddb_package_loads_through_the_public_sdk_without_an_app_reference": {
     "status": "retained-backend",

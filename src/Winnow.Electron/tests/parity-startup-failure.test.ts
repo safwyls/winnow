@@ -122,6 +122,8 @@ describe('startup failure boundary migrated from Avalonia', () => {
     ['https://example.test/?code=secret', 'example.test'],
     ['account=private-account', 'private-account'],
     ['private.person@example.test', 'private.person'],
+    ['Failure (private.person+tag@example.test), then another-person@example.org.', 'private.person+tag'],
+    ['name_with-dots.and+tags@sub-domain.example.test', 'name_with-dots'],
     ['Steam 76561198000000001', '76561198000000001'],
     ['STEAM_0:1:12345', '12345'],
   ])('scrubs sensitive startup diagnostics: %s', (input, secret) => {
@@ -131,6 +133,15 @@ describe('startup failure boundary migrated from Avalonia', () => {
   it('escapes username metacharacters and bounds diagnostic text', () => {
     expect(scrubStartupDiagnostic('user A.name+ says no', 'A.name+')).toBe('user [redacted-user] says no')
     expect(scrubStartupDiagnostic('x'.repeat(40000))).toHaveLength(32768)
+  })
+  it('redacts an email after a long non-email diagnostic word without discarding useful text', () => {
+    const prefix = 'x'.repeat(32000)
+    expect(scrubStartupDiagnostic(`${prefix} (person+tag@example.test) unavailable`)).toBe(
+      `${prefix} ([redacted-account]) unavailable`,
+    )
+    expect(scrubStartupDiagnostic('first@example.test;second@example.org')).toBe(
+      '[redacted-account];[redacted-account]',
+    )
   })
   it('writes bounded structured logs inside the selected throwaway directory', () => {
     const directory = temporaryDirectory()

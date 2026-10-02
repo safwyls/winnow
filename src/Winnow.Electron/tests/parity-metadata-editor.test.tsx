@@ -8,7 +8,8 @@ import { MetadataEditor } from '../src/renderer/features/parity-details'
 import { MetadataDialog } from '../src/renderer/features/metadata-dialog'
 import { clearViewState } from '../src/renderer/viewState'
 
-vi.mock('../src/renderer/components/Artwork', () => ({
+vi.mock('../src/renderer/components/Artwork', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/renderer/components/Artwork')>()),
   Artwork: ({ hero }: { hero?: boolean }) => (
     <span data-testid={hero ? 'background-preview' : 'cover-preview'} />
   ),
@@ -45,6 +46,12 @@ function mount(
   const request = vi.fn(async (input: ApiRequest) => {
     if (input.route === 'metadata.get')
       return options.pendingRead ?? { ok: true, status: 200, data: structuredClone(saved) }
+    if (input.route === 'artwork.sources') return { ok: true, status: 200, data: [] }
+    if (input.route === 'preferences.get') return { ok: true, status: 200, data: {} }
+    if (input.route === 'artwork.get')
+      return { ok: true, status: 200, data: { current: null, revision: 'art-1' } }
+    if (input.route === 'artwork.cover' || input.route === 'artworkState')
+      return { ok: true, status: 200, data: null }
     const body = input.body as { field: string; value?: string | null }
     await options.pendingWrite
     if (options.outcome && options.outcome !== 'Applied')
@@ -98,6 +105,30 @@ async function loaded() {
 }
 
 describe('fullscreen metadata field navigation', () => {
+  it('closes only the artwork layer and restores the metadata draft and invoking control on Escape', async () => {
+    const { close } = mount({ dialog: true })
+    const name = await screen.findByLabelText('Name')
+    fireEvent.change(name, { target: { value: 'Unfinished title' } })
+    const browse = screen.getByRole('button', { name: 'Browse cover artwork' })
+    browse.focus()
+    fireEvent.click(browse)
+    const artwork = await screen.findByRole('dialog', { name: 'Original title' })
+    await waitFor(() => expect(artwork.contains(document.activeElement)).toBe(true))
+    const laterCapture = vi.fn()
+    document.addEventListener('keydown', laterCapture, true)
+    try {
+      fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+      await waitFor(() => expect(document.querySelector('.artwork-browser-dialog')).toBeNull())
+      await waitFor(() => expect(document.activeElement).toBe(browse))
+      expect((name as HTMLInputElement).value).toBe('Unfinished title')
+      expect(close).not.toHaveBeenCalled()
+      expect(laterCapture).not.toHaveBeenCalled()
+    } finally {
+      document.removeEventListener('keydown', laterCapture, true)
+    }
+    fireEvent.keyDown(name, { key: 'Escape' })
+    expect(close).toHaveBeenCalledTimes(1)
+  })
   it.each([false, true])(
     'disables Back throughout a pending save and restores it after publication, fullscreen=%s',
     async (fullscreen) => {

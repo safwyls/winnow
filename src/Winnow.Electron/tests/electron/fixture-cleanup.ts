@@ -1,9 +1,17 @@
 import type { ElectronApplication } from '@playwright/test'
-import { execFile } from 'node:child_process'
+import { execFile, type ChildProcess } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { setTimeout as delay } from 'node:timers/promises'
+
+const fixtureChildren = new WeakMap<ElectronApplication, ChildProcess>()
+
+/** Capture the owned child before an early app exit disposes Playwright's process handle. */
+export function trackFixture(application: ElectronApplication) {
+  fixtureChildren.set(application, application.process())
+  return application
+}
 
 async function fixtureEndpoint(directory: string) {
   const deadline = Date.now() + 5000
@@ -49,7 +57,7 @@ export async function closeFixture(application: ElectronApplication | undefined,
     if (backendError) throw backendError
     return
   }
-  const child = application.process(),
+  const child = fixtureChildren.get(application) ?? application.process(),
     events: string[] = []
   let electronPid: number | undefined
   const record = (chunk: Buffer) => {
@@ -61,6 +69,11 @@ export async function closeFixture(application: ElectronApplication | undefined,
   try {
     await Promise.race([
       (async () => {
+        if (child.exitCode !== null || child.signalCode !== null) {
+          if (child.exitCode !== 0)
+            throw Error(`Electron fixture exited ${child.exitCode}, signal ${child.signalCode}`)
+          return
+        }
         electronPid = await application.evaluate(({ app, BrowserWindow }) => {
           app.on('before-quit', () => console.error('FIXTURE_SHUTDOWN:before-quit'))
           app.on('will-quit', () =>
@@ -116,6 +129,7 @@ export async function closeFixture(application: ElectronApplication | undefined,
   } finally {
     clearTimeout(timer)
     child.stderr?.off('data', record)
+    fixtureChildren.delete(application)
   }
   if (backendError) throw backendError
   await waitForBackendExit(stoppedBackend)

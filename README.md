@@ -267,8 +267,8 @@ setx Igdb__ClientSecret "your-client-secret"
 
 **Then open a new terminal** — environment variables are read at shell startup. The backend
 also reads `appsettings.local.json` from its installation root (the parent of the packaged
-`backend/` directory, or the backend output directory in development). This file must not
-enter a distributable package.
+`backend/` directory, or the backend output directory in development). Package verification
+rejects this local configuration file; see the [release guide](docs/releases.md).
 
 ### Optional: SteamGridDB
 

@@ -12,7 +12,7 @@
       "id": "AccountMembershipTests.Merge_unions_accounts_from_both_candidates",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -23,7 +23,7 @@
       "id": "AccountMembershipTests.Merge_takes_the_higher_figure_within_one_account",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -34,7 +34,7 @@
       "id": "AccountMembershipTests.Merge_never_combines_two_different_accounts",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -45,7 +45,7 @@
       "id": "AccountMembershipTests.Merge_keeps_a_null_figure_as_unknown_rather_than_zero",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -56,7 +56,7 @@
       "id": "AccountMembershipTests.The_resolver_writes_one_row_per_account",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -67,7 +67,7 @@
       "id": "AccountMembershipTests.The_resolver_falls_back_to_the_candidates_own_account",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -78,7 +78,7 @@
       "id": "AccountMembershipTests.A_candidate_naming_nobody_writes_nothing",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -89,7 +89,7 @@
       "id": "AccountMembershipTests.Re_resolving_keeps_the_first_sighting_and_the_higher_figure",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -100,7 +100,7 @@
       "id": "AccountMembershipTests.A_real_reader_retires_the_seed_marker",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -111,7 +111,7 @@
       "id": "AccountMembershipTests.Account_refs_are_listed_per_store",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -182,7 +182,7 @@
       "id": "AccountMembershipTests.A_within_band_disagreement_settles_at_the_lower_figure",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -193,7 +193,7 @@
       "id": "AccountMembershipTests.A_rise_beyond_the_band_is_recorded_as_play",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -204,7 +204,7 @@
       "id": "AccountMembershipTests.A_fall_from_a_reader_that_is_behind_is_ignored",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -215,7 +215,7 @@
       "id": "AccountMembershipTests.A_fall_a_current_reader_corroborates_is_a_correction",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -226,7 +226,7 @@
       "id": "AccountMembershipTests.A_fall_with_no_date_at_all_corroborates_nothing",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -237,7 +237,7 @@
       "id": "AccountMembershipTests.The_two_layers_share_one_tolerance_band",
       "source": "tests/Winnow.Tests/AccountMembershipTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained candidate merging, resolution and membership repositories. The separate StoresViewModel toggle tests still require frontend migration. These remain executed in the full .NET suite.",
+      "reason": "These methods retain candidate merging, resolution and membership repository behavior and remain executed in the full .NET suite. The separate confirmed-account, persisted-choice and count-label controls are ported under the three AccountMembershipTests.The_toggle_* entries in migration-ownership-snapshot.json, with HTTP, React and desktop/fullscreen native evidence.",
       "implementation": [
         "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
         "src/Winnow.Resolve/ExternalIdResolver.cs",
@@ -1765,7 +1765,7 @@
       "id": "ConsoleAuthPromptTests.A_null_WinExe_standard_handle_is_not_mistaken_for_redirection",
       "source": "tests/Winnow.Tests/ConsoleAuthPromptTests.cs",
       "status": "framework-specific",
-      "reason": "The unchanged executed source asserts that both IntPtr.Zero and INVALID_HANDLE_VALUE (-1) are unusable redirected standard-output handles in the Avalonia WinExe ConsoleAuthPrompt. Electron does not compose that C# console prompt. Its authentication runs through the native browser/manual flow and typed main/preload/API boundaries, so adding a C# console-handle test to JavaScript would not exercise the product. This narrow host-handle disposition does not waive working browser sign-in, cancellation, unavailable-host copy or credential privacy; those are separately ported platform contracts."
+      "reason": "The unchanged executed source asserts that IntPtr.Zero and INVALID_HANDLE_VALUE (-1) are unusable through the Avalonia ConsoleAuthPrompt.StandardHandleIsUsable method. That exact frontend method remains framework-specific. The primary --epic-login command now uses backend TerminalConsole, whose own guard rejects both values and preserves usable redirected handles. EpicSignInParityTests (in EpicConsoleCommandTests.cs) and tests/electron/epic-console.spec.ts execute the real terminal command, redirected streams, selected backend, code entry and EOF cancellation without a GUI; they do not directly invoke the original method or inject null Win32 handles. This disposition concerns the original type, not absence of terminal authentication. Browser sign-in, cancellation and privacy remain separately ported contracts."
     },
     {
       "id": "CoverArtPreferenceTests.Loads_mode_without_writing_back",
@@ -5811,7 +5811,7 @@
           "case": "opens the system-browser fallback explicitly and submits the masked final address through named IPC only"
         }
       ],
-      "reason": "The original source executes ConsoleAuthPrompt.IsAvailableAsync inside xUnit redirected standard streams and requires true; it passes unchanged. This C# frontend console attachment/redirected-terminal availability check has no Electron GUI/Node console-prompt object. Electron keeps the useful alternate capture route as an explicit system-browser/manual callback form on both surfaces, with masked address input and named IPC. That is separately executed behavioral evidence, not a claim to preserve Avalonia ConsoleAuthPrompt or attach to a terminal."
+      "reason": "The unchanged original executes the Avalonia ConsoleAuthPrompt.IsAvailableAsync under xUnit redirected streams and requires true. That exact frontend type remains framework-specific. The primary package now also preserves --epic-login through main/epic-console.ts and the backend EpicConsoleCommand/TerminalConsole, without a GUI. EpicSignInParityTests.Terminal_executable_uses_selected_real_backend_without_GUI_and_preserves_code_forms_and_EOF (in EpicConsoleCommandTests.cs) and tests/electron/epic-console.spec.ts execute redirected handles, the selected real API, both --code forms, stdin and EOF cancellation. The separately mapped GUI manual fallback remains available on both surfaces; neither replacement instantiates the original Avalonia prompt."
     },
     {
       "id": "InteractiveAuthPromptTests.The_two_prompts_are_registered_in_fallback_order",
@@ -5831,7 +5831,7 @@
           "case": "withdraws repeated sign-in actions while pending and cancels without launching fallback"
         }
       ],
-      "reason": "The unchanged source requires exactly two DI descriptors: factory-created WebView prompt first and ConsoleAuthPrompt second. Electron replaces CLR registration order with its actual native-sign-in controller and explicit manual fallback. Unavailable initialization, empty capture and no-session rows all keep one owned attempt, return no captured code, make no completion request, and require explicit manual opening; cancel never starts a fallback. Both Settings presentations expose the masked manual form without preparing a second attempt. This preserves native-first/fallback-second behavior without inventing a console peer in Electron."
+      "reason": "The unchanged source requires exactly two DI descriptors: factory-created WebView prompt first and ConsoleAuthPrompt second. Electron replaces CLR registration order with its actual native-sign-in controller and explicit manual fallback. Unavailable initialization, empty capture and no-session rows all keep one owned attempt, return no captured code, make no completion request, and require explicit manual opening; cancel never starts a fallback. Both Settings presentations expose the masked manual form without preparing a second attempt. The separate --epic-login terminal command is implemented by the backend console client and covered by EpicSignInParityTests (in EpicConsoleCommandTests.cs) and tests/electron/epic-console.spec.ts; GUI failure or cancellation does not automatically launch it. This mapping preserves the GUI fallback behavior rather than the original CLR descriptor types."
     },
     {
       "id": "EpicLibraryIsolationTests.Switching_accounts_after_restart_cannot_reuse_another_accounts_durable_library",
@@ -11913,7 +11913,7 @@
       "id": "LibrarySyncSchedulingTests.The_snapshot_scheduler_ticks_the_local_job_and_never_the_remote_one",
       "source": "tests/Winnow.Tests/LibrarySyncSchedulingTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+      "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
       "implementation": [
         "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
         "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
@@ -11924,7 +11924,7 @@
       "id": "LibrarySyncSchedulingTests.Starting_the_remote_scheduler_awaits_no_backfill",
       "source": "tests/Winnow.Tests/LibrarySyncSchedulingTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+      "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
       "implementation": [
         "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
         "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
@@ -11935,7 +11935,7 @@
       "id": "LibrarySyncSchedulingTests.A_disabled_remote_scheduler_never_backfills",
       "source": "tests/Winnow.Tests/LibrarySyncSchedulingTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+      "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
       "implementation": [
         "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
         "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
@@ -11946,7 +11946,7 @@
       "id": "LibrarySyncSchedulingTests.Stopping_mid_backfill_unwinds_cleanly",
       "source": "tests/Winnow.Tests/LibrarySyncSchedulingTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+      "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
       "implementation": [
         "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
         "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
@@ -11957,7 +11957,7 @@
       "id": "LibrarySyncSchedulingTests.The_sync_gate_admits_one_pass_at_a_time",
       "source": "tests/Winnow.Tests/LibrarySyncSchedulingTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+      "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
       "implementation": [
         "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
         "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
@@ -11968,7 +11968,7 @@
       "id": "LibrarySyncSchedulingTests.A_cancelled_wait_on_the_gate_leaves_it_free",
       "source": "tests/Winnow.Tests/LibrarySyncSchedulingTests.cs",
       "status": "retained-backend",
-      "reason": "These selected methods exercise retained background worker schedules and cancellation. The original frontend startup source guard is excluded and still requires Electron evidence. These remain executed in the full .NET suite.",
+      "reason": "These methods retain background-worker scheduling and cancellation and remain executed in the full .NET suite. The separate LibrarySyncSchedulingTests.Program_never_blocks_on_a_sync_job entry in migration-ownership-snapshot.json records the literal C# scanner's framework-specific disposition and its asynchronous startup and ownership-refresh evidence. These backend entries do not claim that the C# frontend source scan applies to Electron.",
       "implementation": [
         "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
         "src/Winnow.Application/Services/RemoteOwnershipSchedulerService.cs",
@@ -27637,7 +27637,7 @@
           "case": "fullscreen source empty sections clamp week navigation and triggers cycle Journal and Sessions outside root pages"
         }
       ],
-      "reason": "The four-game empty fixture retains distinct No sessions this week and No journal entries this week states. Native Left moves back one week, two Rights clamp at the current week, and horizontal input inside section tabs leaves the week unchanged. RT moves Journal to Sessions and LT returns to Journal without changing root pages or week. Component tests preserve the same section behavior; native input uses simulated standard Gamepad API frames. React Activity has no local hint slots; the native check verifies no local LT/RT hint copy while retaining the separate global shell bumper hints, which replaces the original empty RightHints and no-LT local Hints assertions."
+      "reason": "The four-game empty fixture retains distinct No sessions this week and No journal entries this week states. Native Left moves back one week, two Rights clamp at the current week, and horizontal input inside section tabs leaves the week unchanged. RT moves Journal to Sessions and LT returns to Journal without changing root pages or week. Component tests preserve the same section behavior; native input uses simulated standard Gamepad API frames. Activity displays the requested local LT/RT glyphs around its section navigation, with component and native assertions for both glyphs. This intentionally replaces the original empty RightHints and no-LT local Hints assertions; global shell bumper hints remain separate."
     },
     {
       "id": "FullscreenActivityTests.Library_reload_refreshes_notes_preserves_session_and_removes_hidden_games",

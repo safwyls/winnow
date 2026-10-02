@@ -1,5 +1,6 @@
 import { _electron as electron, expect, test } from '@playwright/test'
 import { build } from 'esbuild'
+import { inlineFonts } from './inline-fonts'
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
@@ -19,6 +20,7 @@ test.beforeAll(async () => {
       platform: 'node',
       format: 'cjs',
       external: ['electron'],
+      plugins: [inlineFonts()],
       logLevel: 'silent',
     })
 })

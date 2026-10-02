@@ -6,6 +6,7 @@ const root = resolve(process.argv[index + 1] ?? '')
 if (index < 0 || !basename(root).startsWith('winnow-electron-typography-runtime-'))
   throw Error('Typography probe requires its isolated data directory')
 app.setPath('userData', root)
+if (process.env.WINNOW_TYPOGRAPHY_SOFTWARE_RENDERING === '1') app.disableHardwareAcceleration()
 app.whenReady().then(async () => {
   const window = new BrowserWindow({
     width: 640,

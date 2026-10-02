@@ -3,8 +3,35 @@ import { mkdir, mkdtemp, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
+import { spawn } from 'node:child_process'
+import { once } from 'node:events'
+import type { ElectronApplication } from '@playwright/test'
 import { expect, it, vi } from 'vitest'
-import { closeFixture } from './electron/fixture-cleanup'
+import { closeFixture, trackFixture } from './electron/fixture-cleanup'
+
+it.each([0, 3])(
+  'retains the actual owned child after Playwright disposes its process handle (exit %s)',
+  async (code) => {
+    const child = spawn(process.execPath, ['-e', `process.exit(${code})`], { windowsHide: true })
+    const handle = vi.fn(() => child)
+    const application = {
+      process: handle,
+      evaluate: vi.fn(),
+      close: vi.fn(),
+    } as unknown as ElectronApplication
+    trackFixture(application)
+    const [exitCode] = await once(child, 'exit')
+    expect(exitCode).toBe(code)
+    handle.mockImplementation(() => {
+      throw new TypeError("Cannot read properties of undefined (reading '_object')")
+    })
+    if (code === 0) await expect(closeFixture(application)).resolves.toBeUndefined()
+    else await expect(closeFixture(application)).rejects.toThrow('Electron fixture exited 3')
+    expect(application.evaluate).not.toHaveBeenCalled()
+    expect(application.close).not.toHaveBeenCalled()
+    expect(handle).toHaveBeenCalledTimes(1)
+  },
+)
 
 it.each([200, 503])(
   'cleans up a backend published after an early fixture failure and preserves shutdown status %s',

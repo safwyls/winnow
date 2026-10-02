@@ -39,6 +39,7 @@ test.beforeAll(async () => {
     chromiumSandbox: true,
   })
   page = await application.firstWindow()
+  await expect.poll(() => page.evaluate(() => [innerWidth, innerHeight])).toEqual([1920, 1080])
   await expect(page.getByRole('button', { name: 'More actions', exact: true })).toBeVisible()
 })
 test.afterAll(async () => closeFixture(application))

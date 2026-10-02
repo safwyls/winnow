@@ -21,6 +21,7 @@ export function MetadataDialog({
   editText?(input: HTMLInputElement | HTMLTextAreaElement): void
 }) {
   const busy = useRef(false),
+    root = useRef<HTMLDivElement>(null),
     navigation = useRef<MetadataEditorNavigation>(null)
   const [isBusy, setIsBusy] = useState(false)
   const origin = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null)
@@ -38,12 +39,20 @@ export function MetadataDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay metadata-dialog-scrim" />
         <Dialog.Content
+          ref={root}
           className={`metadata-dialog mode-${mode}`}
           aria-describedby={undefined}
           onPointerDownOutside={(event) => event.preventDefault()}
           onEscapeKeyDown={(event) => {
             event.preventDefault()
-            event.stopPropagation()
+            const owner =
+              event.target instanceof Element
+                ? event.target.closest('[role="dialog"], [role="alertdialog"]')
+                : null
+            if (owner && owner !== root.current) return
+            // Radix listeners share document capture. Consume this layer before
+            // closing it, so another listener cannot dismiss the restored parent.
+            event.stopImmediatePropagation()
             back()
           }}
           onOpenAutoFocus={(event) => {

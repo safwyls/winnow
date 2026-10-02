@@ -382,6 +382,7 @@
   }
   .avalon-shell .avalon-details.fullscreen .avalon-details-reading {
     padding: 20px 20px 24px 0;
+    scroll-padding-block: 8px;
   }
   .avalon-shell .avalon-details.fullscreen .avalon-details-reading > :not(.avalon-details-overview) {
     max-width: 1320px;

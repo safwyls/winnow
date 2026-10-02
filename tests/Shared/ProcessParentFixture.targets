@@ -1,0 +1,17 @@
+<Project>
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj" ReferenceOutputAssembly="false" />
+    <Compile Include="$(MSBuildThisFileDirectory)ProcessParent.cs" Link="Fixtures/ProcessParent.cs" />
+  </ItemGroup>
+  <Target Name="LocateProcessParentFixture" BeforeTargets="GetAssemblyAttributes">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)../Winnow.Electron.Fixtures/Winnow.Electron.Fixtures.csproj" Targets="GetTargetPath" BuildInParallel="false">
+      <Output TaskParameter="TargetOutputs" ItemName="ProcessParentFixtureAssembly" />
+    </MSBuild>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>ProcessParentFixture</_Parameter1>
+        <_Parameter2>@(ProcessParentFixtureAssembly->'%(FullPath)')</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+</Project>

@@ -1,5 +1,5 @@
 import { Fragment, memo, useEffect, useId, useRef, useState } from 'react'
-import { SectionLabel } from '../components/SectionNavigation'
+import { SectionLabel, SectionNavigation } from '../components/SectionNavigation'
 import { FullscreenNoteReading } from './FullscreenNoteReading'
 import * as Dialog from '@radix-ui/react-dialog'
 import { BookOpen, X } from 'lucide-react'
@@ -675,7 +675,7 @@ export function Journal({
           </label>
         )}
       </header>
-      <>
+      <SectionNavigation fullscreen={mode === 'fullscreen'}>
         <nav className="tabs" aria-label="Activity pages">
           <button data-controller-tab aria-pressed={panel === 'history'} onClick={() => setPanel('history')}>
             {mode === 'fullscreen' ? <SectionLabel>History</SectionLabel> : 'History'}
@@ -693,7 +693,7 @@ export function Journal({
             </button>
           )}
         </nav>
-      </>
+      </SectionNavigation>
       {panel === 'summary' ? (
         <GameplayDashboard mode={mode} onOpenGame={onOpenGame} />
       ) : panel === 'steam' ? (

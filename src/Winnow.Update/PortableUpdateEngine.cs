@@ -277,7 +277,7 @@ public static class PortableUpdateEngine
         foreach (var file in Directory.GetFiles(source)) { NoLinks(file); var dest = Path.Combine(target, Path.GetFileName(file)); File.Copy(file, dest); if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(dest, File.GetUnixFileMode(file)); }
         foreach (var directory in Directory.GetDirectories(source)) CopyDirectory(directory, Path.Combine(target, Path.GetFileName(directory)));
     }
-    public static async Task ApplyAsync(string journalPath, int? parentPid = null, long? parentStartTicks = null, TimeSpan? readyTimeout = null, Func<string, long>? availableSpace = null, string? expectedTransactionId = null)
+    public static async Task ApplyAsync(string journalPath, int? parentPid = null, long? parentStartTicks = null, TimeSpan? readyTimeout = null, Func<string, long>? availableSpace = null, string? expectedTransactionId = null, ulong? parentStartClockTicks = null)
     {
         var initial = ReadJournal(journalPath); using var operation = OperationLease(initial.InstallationDirectory);
         initial = ReadJournal(journalPath); ValidateTransaction(initial, expectedTransactionId);
@@ -286,6 +286,7 @@ public static class PortableUpdateEngine
             try
             {
                 if (parentStartTicks is null or <= 0) throw new IOException("An exact parent process start time is required.");
+                if (pid <= 0 || parentStartClockTicks == 0) throw new IOException("The update parent process identity is invalid.");
                 File.WriteAllText(Path.Combine(Root(journalPath), "helper-ready"), initial.TransactionId);
                 var handshake = Stopwatch.StartNew();
                 while (!File.Exists(Path.Combine(Root(journalPath), "proceed")) || File.ReadAllText(Path.Combine(Root(journalPath), "proceed")) != initial.TransactionId)
@@ -293,12 +294,8 @@ public static class PortableUpdateEngine
                     if ((File.Exists(Path.Combine(Root(journalPath), "cancel")) && File.ReadAllText(Path.Combine(Root(journalPath), "cancel")) == initial.TransactionId) || handshake.Elapsed > TimeSpan.FromSeconds(20)) throw new IOException("Update handoff was cancelled.");
                     await Task.Delay(100);
                 }
-                try
-                {
-                    using var parent = Process.GetProcessById(pid);
-                    if (parent.StartTime.ToUniversalTime().Ticks == parentStartTicks) { using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2)); await parent.WaitForExitAsync(timeout.Token); }
-                }
-                catch (ArgumentException) { }
+                using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+                await UpdateParentProcess.WaitAsync(pid, parentStartTicks.Value, parentStartClockTicks, timeout.Token);
             }
             catch (Exception error)
             {

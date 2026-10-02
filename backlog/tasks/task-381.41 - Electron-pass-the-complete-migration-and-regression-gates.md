@@ -1,11 +1,11 @@
 ---
 id: TASK-381.41
 title: 'Electron: pass the complete migration and regression gates'
-status: To Do
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 06:29'
+updated_date: '2026-10-02 09:28'
 labels:
   - electron
   - parity
@@ -83,6 +83,12 @@ Review boundary: work on this task only after the user prompts continuation from
 - [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Preserve all integrated CI36979618488 diagnostics and account every native failure. Device implementation is complete; pending exception review is required for final acceptance, not independent regression fixes. 2. Fix bounded production faults and deterministic fixtures while preserving assertions: canonical theme roots, startup scrubber/window readiness, exact Linux parent identity, process/clock/startup fixtures, native input/layout synchronization. 3. Verify focused changes through a serialized local native/.NET lane and review all migration mapping scope. 4. Run every component/live API/native/.NET/Linux and package gate on the final combined commit and resolve every failure without unexplained skips. 5. Record agreed device limits and parent acceptance, update the draft PR and commit milestones without merging or releasing.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
@@ -101,4 +107,16 @@ Read-only process fixture follow-up: existing tests/Winnow.Electron.Fixtures can
 Linux package triage found .NET Process.StartTime UTC conversion uses a per-runtime cached boot-time estimate, so equality across helper/PowerShell runtimes is unsuitable for exact cleanup identity.38 smoke now being changed to witness exact kernel start ticks while the owned helper remains parent. Review production PortableUpdateEngine.cs parent wait (line299) and UpdateHelperCommands parent start-ticks handoff for the same Linux cross-process assumption; preserve old protocol compatibility and installation exclusion, and prove actual live parent shutdown behavior before final gate. Do not infer the smoke-only witness resolves production handoff.
 
 Actual Ubuntu evidence now confirms the cross-runtime timestamp mismatch for the same witnessed process: helperUtcTicks639265191429937710, PowerShell observed639265191429933442; kernel birth41641 and executable are identical. See fourth Linux package artifact external-data-child-cleanup/witness JSON. Fix production Linux parent handoff by exact kernel identity, not a UTC tolerance.
+
+First integrated CI36979618488 unitjob110750936748: 4423 passed,4 failed,1 crashed worker with5 incomplete cases out4432. Three known theme failures remain. Fourth executable-version fixture lacks electron.exe because primary workflow unintentionally omitted pinned Electron install in frontend job; restore that step (native has it). AvalonThemeStore real watcher crashed libuv fs-event.c72 !_wcsnicmp(filename,dir,dirlen), investigate lexical Windows TEMP alias before watch; preserve real watcher coverage. Source audit still zero pending/partial. Log .tmp/task38141-integrated-unit.log. No full-gate success inferred.
+
+Integrated39 CI final.NET confirms12 failures: prior six Derelict clock cases, reader inventory, BackendACL, frontend parent loss, copied-helper protocol; new README270 rule wording and ArtworkState source-order fixture race. All27new terminal/provider cases pass. README should describe package verification rejecting localconfig rather than state contributor rule. Artwork fixture configures fake SteamGridDB before asynchronous no-sync BackendStartupService DiscoverPlugins can overwrite its sources; await exact startup completion before fixture seed, preserving policy assertions. First native shards1 and8 retain sanitized reports/screenshots under .tmp/task38141-native-first;124+85 passed,13failed,1unrun. Missing real inlinefont esbuildloader, fixed viewport setup, CSSpixel/motion assertions, slowSSE/startup-window contract, fullscreen importlabel and async Steam navigation require diagnosis/fixes. Both real platform package jobs now pass at4e09761a PRmerge125dfb9b. No complete finalgate claimed.
+
+Complete native diagnostics retained from all eight shards of36979618488:923 passed,85 failed,3 unrun because setup failed. Both platform package jobs, plugins and Linux sessions passed. The final regression fixes now begin; no full passing gate is claimed.
+
+Combined frontend build and fresh isolated fixture build pass. Root native regression selection: 86/87 passed in 10.4m; reproduced the sole 4K Install focus race where the test moved focus before Radix restored the closed panel opener. The helper now verifies opener restoration; final seven-case follow-up passes, including both 1280 and 3840 fullscreen and diagnostics return readiness. Earlier three focused focus/menu cases pass. All four held-feed invalidation cases pass with independent feed refresh scheduling and real SSE delivery barriers. Source audit remains2435=1688ported+706retained+41framework, zero pending/partial;25 stale rationale entries corrected without reclassification. These focused results do not replace the outstanding complete combined CI run. Metadata/controller/software-rendering verification continues.
+
+First complete local component/live-API suite:4448passed/2failed of4450 across232files,209.69s, report .tmp/task38141-full-unit-results.json. Activity obsolete no-trigger assertion corrected to verify requested LT/RT glyphs; complete focused file37passed. Metadata failure exposed a delayed fullscreen parent focus callback after a child dialog opens, being corrected with hidden-parent guard. Independent production review found no other code defects; startup preference and updater readiness docs corrected. Available targeted controller/independent-client19passed, metadata/setup/artwork27distinct nativepassed, reference UI8passed and core inventory/docs6passed. No full final CI success claimed. Automatic approval review rejected external draft PR description update for missing explicit export authorization; prepared body retained locally.
+
+Final combined build/typecheck and complete component/live-API suite PASS:4451/4451 across232files, zero failures/skips,200.63s at2workers. JSON .tmp/task38141-final-unit-results.json. All10 originally selected visual failure causes now have passing evidence plus3 supplementary native cases; final8/8 batch includes both Details sizes, cinematic cache/backdrop disposal, Epic text1/1.4, Activity glyph/navigation and720p plugin focus outline. Initial Details focus now respects a parent hidden by a child dialog;114 focused cases passed. Complete CI on committed composition and explicit remaining device exceptions still required.
 <!-- SECTION:NOTES:END -->

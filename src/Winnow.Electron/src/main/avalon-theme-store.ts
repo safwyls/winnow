@@ -1,5 +1,5 @@
 import { watch, type FSWatcher } from 'node:fs'
-import { lstat, mkdir, open, readdir } from 'node:fs/promises'
+import { lstat, mkdir, open, readdir, realpath } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   MAX_AVALON_THEME_BYTES,
@@ -40,8 +40,11 @@ export class AvalonThemeStore {
   }
   private async seedAndWatch(): Promise<AvalonThemeDiagnostic[]> {
     try {
-      const directory = await this.directory()
-      await mkdir(directory, { recursive: true })
+      const requested = await this.directory()
+      await mkdir(requested, { recursive: true })
+      // Windows watcher events use long paths; an 8.3 alias here can abort libuv
+      // before its error callback runs. Keep the watched anchor canonical.
+      const directory = await realpath(requested)
       if (!(await readdir(directory)).some((name) => /\.json$/i.test(name))) {
         try {
           const file = await open(join(directory, 'example.json'), 'wx')

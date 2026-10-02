@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, QueryObserver } from '@tanstack/react-query'
 import { afterEach, expect, it, vi } from 'vitest'
 import { feedSchema, useFeed } from '../src/renderer/api/hooks'
 import { invalidateFeed } from '../src/renderer/api/feed-refresh'
-import { RefreshQueue, refreshSnapshots } from '../src/renderer/refresh'
+import { snapshotRefreshQueue } from '../src/renderer/refresh'
 
 const shelf = (id: string) => ({
   id,
@@ -157,7 +157,7 @@ it('replays a burst of library changes once with the final feed and never waits 
   })
   await screen.findByText('Primary')
   await waitFor(() => expect(completions).toHaveLength(1))
-  const queue = new RefreshQueue(() => refreshSnapshots(view.client))
+  const queue = snapshotRefreshQueue(view.client)
   await act(async () => {
     queue.request()
     queue.request()
@@ -236,7 +236,7 @@ it.each([1, 3])(
         },
       ],
     }
-    const queue = new RefreshQueue(() => refreshSnapshots(view.client))
+    const queue = snapshotRefreshQueue(view.client)
     await act(async () => {
       for (let index = 0; index < changes; index++) queue.request()
     })
@@ -254,6 +254,56 @@ it.each([1, 3])(
     view.client.clear()
   },
 )
+
+it('coalesces held scoring independently of a slower library snapshot queue', async () => {
+  let releaseFeed!: () => void,
+    reads = 0
+  const firstFeed = new Promise<void>((resolve) => {
+    releaseFeed = resolve
+  })
+  const view = probe(async (route) => {
+    if (route === 'feed.supplement') return { shelves: [], candidateCount: 0 }
+    if (++reads === 1) await firstFeed
+    return primary
+  })
+  let holdLibrary = true
+  const releases: (() => void)[] = []
+  const key = ['api', 'library.get']
+  view.client.setQueryData(key, 'before')
+  const library = new QueryObserver(view.client, {
+    queryKey: key,
+    staleTime: Infinity,
+    queryFn: async () => {
+      if (holdLibrary) await new Promise<void>((resolve) => releases.push(resolve))
+      return 'committed'
+    },
+  })
+  const unsubscribe = library.subscribe(() => {})
+  const queue = snapshotRefreshQueue(view.client)
+  await waitFor(() => expect(reads).toBe(1))
+  await act(async () => {
+    queue.request()
+    queue.request()
+    queue.request()
+  })
+  await waitFor(() => expect(releases).toHaveLength(1))
+  await act(async () => releaseFeed())
+  await screen.findByText('Primary')
+  await waitFor(() => expect(reads).toBe(2))
+  expect(view.client.isFetching({ queryKey: key })).toBe(1)
+  await act(async () => {
+    holdLibrary = false
+    releases.forEach((release) => release())
+  })
+  await waitFor(() => expect(view.client.isFetching()).toBe(0))
+  expect(view.client.getQueryData(key)).toBe('committed')
+  expect(reads).toBe(2)
+  queue.dispose()
+  queue.request()
+  unsubscribe()
+  view.unmount()
+  view.client.clear()
+})
 
 it('replays an invalidation after the original scoring pass fails and exposes a failed replay as a retryable query error', async () => {
   let reject!: (error: Error) => void

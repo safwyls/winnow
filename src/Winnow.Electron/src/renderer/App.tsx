@@ -36,7 +36,7 @@ import { GamePreview } from './components/GamePreview'
 import { ArtworkEffects, ArtworkEffectsProvider } from './components/artwork-effects'
 import { PortalSurface } from './components/portal-effects'
 import { normalizeArtworkEffects } from '../shared/artworkEffects'
-import { RefreshQueue, refreshJournalSnapshot, refreshSnapshots, shouldRefreshArtwork } from './refresh'
+import { RefreshQueue, refreshJournalSnapshot, snapshotRefreshQueue, shouldRefreshArtwork } from './refresh'
 import { navigatePosition, returnFromSearch, type NavigationPosition } from './search-navigation'
 import { Merges } from './features/Merges'
 import { StartupPresentation, useStartupPreparation } from './startup/StartupPresentation'
@@ -293,10 +293,10 @@ export function App() {
       if (active) setConnection(state)
     })
     let refreshArtwork = false
-    const queue = new RefreshQueue(() => {
+    const queue = snapshotRefreshQueue(client, () => {
       const artwork = refreshArtwork
       refreshArtwork = false
-      return refreshSnapshots(client, { artwork })
+      return { artwork }
     })
     const journalIds = new Set<number>()
     const journalQueue = new RefreshQueue(async () => {
@@ -399,8 +399,8 @@ export function App() {
     }
   }, [mode])
   useEffect(() => {
-    document.title = `Winnow · ${runtime.theme.name}`
-  }, [runtime.theme.name])
+    document.title = 'Winnow'
+  }, [])
   const lastNavigation = useRef<{ page: ThemePage; mode: string; themeId: string } | null>(null)
   useEffect(() => {
     const previous = lastNavigation.current

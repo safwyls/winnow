@@ -61,6 +61,8 @@ public sealed class IdentityReadInventoryTests
             "Details, activity and statistics derive visible game scope through the backend's resolved library snapshot."),
         new("src/Winnow.Application/Details/DetailsApplication.cs", "ReadIgdbStateAsync", Policy.DoNotResolve,
             "Concurrency evidence belongs to the exact work being matched; linked works retain independent provider mappings and pins."),
+        new("src/Winnow.Application/Details/DetailsApplication.cs", "GetMetadataAsync", Policy.DoNotResolve,
+            "The unavailable-editor fallback reads the exact editor target and its own IGDB pin, matching WorkMetadataEditService.GetAsync and the row Save would edit."),
         new("src/Winnow.Application/Library/LibraryApplication.cs", "GetLibraryAsync", Policy.Resolve,
             "The API projects one game per resolved bucket group, keeping store ownership facts on each entry."),
         new("src/Winnow.Application/Library/LibraryApplication.cs", "SetHiddenAsync", Policy.DoNotResolve,

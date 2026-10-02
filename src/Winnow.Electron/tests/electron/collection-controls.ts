@@ -63,7 +63,7 @@ export async function expectCollectionNames(page: Page, names: string[]) {
           .locator('[data-avalon-list]')
           .allTextContents()
           .then((values) =>
-            values.map((value) => value.replace(/ · \d+ games/, '').replace(' · Live list', ' · Live')),
+            values.map((value) => value.replace(/ · [\d,]+ games?\b/, '').replace(' · Live list', ' · Live')),
           ),
       )
       .toEqual(names)

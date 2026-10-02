@@ -171,6 +171,28 @@ afterEach(() => {
 })
 
 describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details composition', (mode) => {
+  if (mode === 'fullscreen')
+    it('gives the exposed initial page focus on its primary action', async () => {
+      setup(mode, undefined, 'avalon')
+      const play = await screen.findByRole('button', { name: /^Play$/ })
+      await waitFor(() => expect(document.activeElement).toBe(play))
+    })
+  it('consumes metadata Escape before restoring the parent Details origin', async () => {
+    const { close } = setup(mode, undefined, 'avalon')
+    await screen.findByRole('heading', { name: 'Original game', level: 1 })
+    const more = screen.getByRole('button', { name: 'More' })
+    fireEvent.click(more)
+    fireEvent.click(screen.getByRole('button', { name: /^Edit details$/ }))
+    const editor = await screen.findByRole('dialog', { name: 'Edit metadata · Original game' })
+    await waitFor(() =>
+      expect(editor.contains(document.activeElement), document.activeElement?.outerHTML).toBe(true),
+    )
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    await waitFor(() => expect(document.querySelector('.metadata-dialog')).toBeNull())
+    expect(close).not.toHaveBeenCalled()
+    expect(screen.getByRole('tab', { name: 'Overview' }).getAttribute('aria-selected')).toBe('true')
+    await waitFor(() => expect(document.activeElement).toBe(more))
+  })
   it('partitions expansions from linked editions while retaining each surface relationship actions', async () => {
     setup(
       mode,

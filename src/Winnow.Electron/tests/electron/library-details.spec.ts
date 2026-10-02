@@ -5,6 +5,7 @@ import { test, expect, _electron as electron, type ElectronApplication, type Pag
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
+import { DatabaseSync } from 'node:sqlite'
 import type { ApiRequest } from '../../src/shared/bridge'
 import type { LibraryResponse, ManualGame, Metadata } from '../../src/renderer/api/types'
 import { buildMergeCards, type MergeReview } from '../../src/renderer/features/parity-merge-model'
@@ -355,6 +356,18 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
   test(`${mode} keeps long merge members and independent actions inside the pane with correct focus hierarchy`, async ({}, testInfo) => {
     const review = await api<MergeReview>({ route: 'identity.get' })
     const proposal = buildMergeCards(review).find((card) => !card.actId && card.kind === 'same_game')!
+    // Sample merge candidates deliberately include unowned releases. This workflow
+    // exercises Details for owned copies, so give both entries real fixture ownerships.
+    const database = new DatabaseSync(join(directory, 'winnow.db'))
+    try {
+      database.exec('PRAGMA busy_timeout=5000')
+      const own = database.prepare(`INSERT INTO ownerships(release_id,store,installed)
+        SELECT id,'steam',0 FROM releases r WHERE work_id=?
+        AND NOT EXISTS(SELECT 1 FROM ownerships o WHERE o.release_id=r.id)`)
+      for (const row of proposal.rows) own.run(row.workId)
+    } finally {
+      database.close()
+    }
     const title = "Metal Gear Solid V: The Phantom Pain — The Definitive Experience Collector's Edition"
     for (const row of proposal.rows) {
       const metadata = await api<Metadata>({ route: 'metadata.get', params: { workId: row.workId } })

@@ -8,4 +8,5 @@
     <ProjectReference Include="../../src/Winnow.Update.Helper/Winnow.Update.Helper.csproj" />
   </ItemGroup>
   <ItemGroup><Compile Include="../../src/Winnow.Backend/BackendInstallationLease.cs" Link="BackendInstallationLease.cs" /></ItemGroup>
+  <Import Project="../Shared/ProcessParentFixture.targets" />
 </Project>

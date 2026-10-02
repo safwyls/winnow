@@ -8,6 +8,7 @@ import { applyThemeProfile } from '../../src/renderer/theming/runtime'
 import { ConfirmationDialog } from '../../src/renderer/features/ConfirmationDialog'
 import { AvalonAction, AvalonActions } from '../../src/renderer/themes/avalon-actions'
 import { LibraryCutBar } from '../../src/renderer/themes/avalon-library-chrome'
+import { SegmentedGroup } from '../../src/renderer/components/SegmentedGroup'
 
 type Kind = 'actions' | 'destructive' | 'selected' | 'inputs' | 'fullscreen'
 const params = new URLSearchParams(location.search)
@@ -93,9 +94,9 @@ function Probe() {
         )}
         {kind === 'selected' && (
           <>
-            <div className="segmented">
+            <SegmentedGroup label="Session source">
               <button aria-pressed="true">Tracked sessions</button>
-            </div>
+            </SegmentedGroup>
             <LibraryCutBar
               games={[]}
               visible={0}

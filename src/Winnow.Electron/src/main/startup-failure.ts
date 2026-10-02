@@ -31,7 +31,7 @@ export function scrubStartupDiagnostic(message: string, username?: string) {
       '[redacted-secret]',
     )
     .replace(/\b(?:account|username|user|steam3id|steamid)\s*[:=]\s*[^\r\n]*/gi, '[redacted-account]')
-    .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[redacted-account]')
+    .replace(/(?<![\w.+-])[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[redacted-account]')
   if (username)
     text = text.replace(new RegExp(username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '[redacted-user]')
   return text

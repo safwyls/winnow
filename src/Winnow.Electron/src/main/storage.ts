@@ -219,11 +219,18 @@ export async function themeFile(
   const url = new URL(urlValue)
   if (url.protocol !== 'winnow-theme:' || url.username || url.password || url.port)
     throw new Error('Invalid theme URL')
-  const root = containedPath(themesRoot, url.hostname)
+  // The trusted data directory may use a Windows short-name alias. Resolve that
+  // anchor before checking untrusted package descendants for links or escapes.
+  const root = containedPath(await realpath(themesRoot), url.hostname)
   const manifest = await readManifest(root)
   if (manifest.id !== url.hostname) throw new Error('Unknown theme')
   const decoded = decodeURIComponent(url.pathname.slice(1))
   const path = containedPath(root, decoded)
+  let component = root
+  for (const name of relative(root, path).split(/[\\/]/)) {
+    component = join(component, name)
+    if ((await lstat(component)).isSymbolicLink()) throw new Error('Invalid theme file')
+  }
   const canonical = await realpath(path)
   if (canonical !== path || (await lstat(path)).isSymbolicLink()) throw new Error('Invalid theme file')
   if ((await stat(path)).size > 32 * 1024 * 1024) throw new Error('Theme file is too large')

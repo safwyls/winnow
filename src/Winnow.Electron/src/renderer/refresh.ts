@@ -26,8 +26,6 @@ export async function refreshSnapshots(
   client: QueryClient,
   options: { artwork?: boolean } = {},
 ): Promise<void> {
-  // Scoring settles independently: repeated events share one replay behind its current pass.
-  invalidateFeed(client)
   // Optional feed providers must never hold up a primary library/feed refresh.
   // The completed primary pass gives its supplement a new query generation.
   await client.cancelQueries({
@@ -43,6 +41,23 @@ export async function refreshSnapshots(
     },
     { cancelRefetch: false },
   )
+}
+
+/** Scoring observes events immediately, even while unrelated snapshot reads are held. */
+export function snapshotRefreshQueue(client: QueryClient, options: () => { artwork?: boolean } = () => ({})) {
+  const queue = new RefreshQueue(() => refreshSnapshots(client, options()))
+  let active = true
+  return {
+    request() {
+      if (!active) return
+      invalidateFeed(client)
+      queue.request()
+    },
+    dispose() {
+      active = false
+      queue.dispose()
+    },
+  }
 }
 
 /** A change arriving during a snapshot read earns another refresh after that read settles. */

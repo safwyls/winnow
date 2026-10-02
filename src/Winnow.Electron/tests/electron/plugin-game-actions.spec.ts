@@ -323,9 +323,31 @@ test('fullscreen plugin inclusion and copy facts remain legible at 1080p and 720
     for (const container of [page.locator('.avalon-details'), page.locator('.avalon-details-reading'), copy])
       expect(await container.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
     const play = copy.getByRole('button', { name: 'Play', exact: true })
-    await play.focus()
+    // Re-enter through the production navigation path after resizing. Focusing
+    // an already-focused button does not dispatch focus or reveal it again.
+    await page.getByRole('tab', { name: 'Library', exact: true }).focus()
+    await page.keyboard.press('ArrowDown')
     await expect(play).toBeFocused()
+    const focusGeometry = await play.evaluate((element) => {
+      const style = getComputedStyle(element)
+      const zoom = Number(getComputedStyle(document.body).zoom)
+      return {
+        button: element.getBoundingClientRect().toJSON(),
+        viewport: element.closest('.avalon-details-reading')!.getBoundingClientRect().toJSON(),
+        outline: Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset)) * zoom,
+      }
+    })
+    await info.attach(`focused-copy-${size.width}`, {
+      body: JSON.stringify(focusGeometry, null, 2),
+      contentType: 'application/json',
+    })
     await expect(play).toBeInViewport({ ratio: 1 })
+    expect(focusGeometry.button.top - focusGeometry.outline).toBeGreaterThanOrEqual(
+      focusGeometry.viewport.top,
+    )
+    expect(focusGeometry.button.bottom + focusGeometry.outline).toBeLessThanOrEqual(
+      focusGeometry.viewport.bottom,
+    )
     expect(
       await play.evaluate((element) => {
         const box = element.getBoundingClientRect()

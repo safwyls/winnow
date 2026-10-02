@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using SkiaSharp;
 using Winnow.App.Services;
+using Winnow.Backend;
 using Winnow.Core.Domain;
 using Winnow.Core.Repositories;
 using Winnow.Covers;
@@ -22,7 +24,7 @@ internal sealed record ArtworkStateChange(string Stage);
 internal sealed class ArtworkStateFixture(ISqliteConnectionFactory database, IIdentityLinkRepository links,
     IGroupHeaderPreferenceRepository headers, IWorkIgdbPinRepository pins, IWorkImageRepository images,
     IArtworkChoiceRepository choices, ArtworkPreferences preferences, LibraryChangePublisher publisher,
-    PreviewResponseControls responses, ArtworkStateSource source, UserArtStore userArt)
+    PreviewResponseControls responses, ArtworkStateSource source, UserArtStore userArt, IServiceProvider services)
 {
     public const string GridUrl = "https://cdn2.steamgriddb.com/hero/61ba87bf4177f576150389d84d14bb01.png";
     public static readonly DateTime Now = new(2026, 9, 7, 0, 0, 0, DateTimeKind.Utc);
@@ -81,7 +83,14 @@ internal sealed class ArtworkStateFixture(ISqliteConnectionFactory database, IId
 
     public async Task<object> SeedAsync(ArtworkStateSeed input)
     {
-        if (input.Kind is not ("browser" or "live" or "root" or "grouped")) throw new ArgumentException("Unknown artwork state fixture.");
+        if (input.Kind is not ("browser" or "live" or "root" or "grouped" or "settings")) throw new ArgumentException("Unknown artwork state fixture.");
+        if (services.GetRequiredService<BackendRunOptions>().BackgroundEnabled)
+            throw new InvalidOperationException("Artwork fixtures require --no-sync.");
+        // The real no-sync startup still discovers plugins and configures artwork sources.
+        // Seed its fake source only after that finite initialization has finished.
+        var startup = services.GetServices<IHostedService>().OfType<BackendStartupService>().Single();
+        await (startup.ExecuteTask ?? throw new InvalidOperationException("Start the host before seeding artwork."))
+            .WaitAsync(TimeSpan.FromSeconds(10));
         using (var connection = database.Open())
         {
             if (Ready || connection.ExecuteScalar<int>("SELECT COUNT(*) FROM works") != 0) throw new InvalidOperationException("Seed a fresh fixture only.");
@@ -118,8 +127,9 @@ internal sealed class ArtworkStateFixture(ISqliteConnectionFactory database, IId
                     """);
             connection.Execute("INSERT OR REPLACE INTO settings(key,value) VALUES('fullscreen.reduced-motion','true')");
         }
-        // Keep the source fixture's legacy SteamGridDB block available; bytes remain local.
-        preferences.ConfigureSources([new(ArtworkPreferences.SteamGridDb, "SteamGridDB")]);
+        // Settings exercises the current plugin identity; the artwork cases retain
+        // the original legacy source identity. Both use the real preference catalog.
+        preferences.ConfigureSources([new(Kind == "settings" ? "plugin:steamgriddb" : ArtworkPreferences.SteamGridDb, "SteamGridDB")]);
         await preferences.LoadAsync();
         if (Kind is "browser" or "root")
             await links.LinkAsync(new() { ParentWorkId = 1, ChildWorkIds = [2] });

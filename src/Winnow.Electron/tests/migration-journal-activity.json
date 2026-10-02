@@ -173,7 +173,7 @@
         "case": "fullscreen source empty sections clamp week navigation and triggers cycle Journal and Sessions outside root pages"
       }
     ],
-    "reason": "The four-game empty fixture retains distinct No sessions this week and No journal entries this week states. Native Left moves back one week, two Rights clamp at the current week, and horizontal input inside section tabs leaves the week unchanged. RT moves Journal to Sessions and LT returns to Journal without changing root pages or week. Component tests preserve the same section behavior; native input uses simulated standard Gamepad API frames. React Activity has no local hint slots; the native check verifies no local LT/RT hint copy while retaining the separate global shell bumper hints, which replaces the original empty RightHints and no-LT local Hints assertions."
+    "reason": "The four-game empty fixture retains distinct No sessions this week and No journal entries this week states. Native Left moves back one week, two Rights clamp at the current week, and horizontal input inside section tabs leaves the week unchanged. RT moves Journal to Sessions and LT returns to Journal without changing root pages or week. Component tests preserve the same section behavior; native input uses simulated standard Gamepad API frames. Activity displays the requested local LT/RT glyphs around its section navigation, with component and native assertions for both glyphs. This intentionally replaces the original empty RightHints and no-LT local Hints assertions; global shell bumper hints remain separate."
   },
   "FullscreenActivityTests.Library_reload_refreshes_notes_preserves_session_and_removes_hidden_games": {
     "status": "ported",

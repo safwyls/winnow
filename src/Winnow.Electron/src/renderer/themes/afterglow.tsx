@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import type { ThemeContext, ThemeDefinition } from '../../shared/theme'
 import type { LibraryGame } from '../api/types'
+import { SegmentedGroup } from '../components/SegmentedGroup'
 import { useLibrary } from '../api/hooks'
 import { Artwork } from '../components/Artwork'
 import { Empty, GameCard, Impression, bucketLabel, hours } from '../components/primitives'
@@ -596,14 +597,14 @@ export function AfterglowLibrary({ quietCards = true, ...context }: ThemeContext
             <option value="time">Playtime</option>
           </select>
         </label>
-        <div className="segmented">
+        <SegmentedGroup label="Library view">
           <button aria-label="Grid view" aria-pressed={!listMode} onClick={() => setView('grid')}>
             <Grid2X2 size={17} />
           </button>
           <button aria-label="List view" aria-pressed={listMode} onClick={() => setView('list')}>
             <List size={17} />
           </button>
-        </div>
+        </SegmentedGroup>
       </div>
       <div className="library-body" hidden={tools}>
         <aside className="library-index">

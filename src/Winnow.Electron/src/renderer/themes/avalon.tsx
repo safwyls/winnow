@@ -34,6 +34,7 @@ import { request, storeLabel } from '../api/client'
 import { bucketLabel } from '../components/primitives'
 import { CreateListButton, LibraryTools, ListEditor } from '../features/LibraryTools'
 import { SortMenu } from '../components/SortMenu'
+import { SegmentedGroup } from '../components/SegmentedGroup'
 import { AddToListButton, orderedLists } from '../features/parity-list-prompt'
 import { LiveListActions } from '../features/parity-live-actions'
 import { ListOrderActions } from '../features/parity-list-actions'
@@ -1290,14 +1291,14 @@ export function AvalonLibrary(context: ThemeContext) {
       )}
       {!fullscreen && (
         <>
-          <div className="avalon-segmented" role="group" aria-label="Library view">
+          <SegmentedGroup className="avalon-segmented" label="Library view">
             <button aria-label="Grid view" aria-pressed={!listMode} onClick={() => setView('grid')}>
               <Grid2X2 size={17} />
             </button>
             <button aria-label="List view" aria-pressed={listMode} onClick={() => setView('list')}>
               <List size={17} />
             </button>
-          </div>
+          </SegmentedGroup>
           <label className="avalon-density">
             Density
             <input

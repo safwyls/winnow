@@ -40,7 +40,7 @@ internal static class InstalledUpdateHandoff
             var start = HandoffProcess.StartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), @"WindowsPowerShell\v1.0\powershell.exe"));
             foreach (var argument in new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script, "-ManifestPath", manifest })
                 start.ArgumentList.Add(argument);
-            using var child = Process.Start(start) ?? throw new IOException("The registered update helper could not start.");
+            using var child = BackgroundProcess.Start(start);
             HandoffProcess.Drain(child);
             var timer = Stopwatch.StartNew();
             while (!File.Exists(Path.Combine(root, "ready")))

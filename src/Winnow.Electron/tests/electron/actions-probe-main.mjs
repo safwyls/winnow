@@ -11,6 +11,8 @@ app.whenReady().then(async () => {
     useContentSize: true,
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
   })
+  // Constructor bounds can be constrained to the CI display's work area.
+  window.setContentSize(1920, 1080)
   await window.loadFile(resolve(process.argv[data + 2]))
   window.focus()
 })

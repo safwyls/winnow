@@ -45,7 +45,7 @@ public static class UpdateHelperCommands
                         await FrontendInstallationHost.RunAsync(Required("--installation"), Required("--data-dir"), parent, input, output);
                     break;
                 case "apply":
-                    await PortableUpdateEngine.ApplyAsync(Required("--journal"), Value("--pid") is { } pid ? int.Parse(pid, CultureInfo.InvariantCulture) : null, Value("--start-ticks") is { } ticks ? long.Parse(ticks, CultureInfo.InvariantCulture) : null, expectedTransactionId: Value("--transaction"));
+                    await PortableUpdateEngine.ApplyAsync(Required("--journal"), Value("--pid") is { } pid ? int.Parse(pid, CultureInfo.InvariantCulture) : null, Value("--start-ticks") is { } ticks ? long.Parse(ticks, CultureInfo.InvariantCulture) : null, expectedTransactionId: Value("--transaction"), parentStartClockTicks: Value("--start-clock-ticks") is { } birth ? ulong.Parse(birth, NumberStyles.None, CultureInfo.InvariantCulture) : null);
                     break;
                 case "recover":
                     PortableUpdateEngine.Recover(Required("--journal"), args.Contains("--restore-backup"));
@@ -75,7 +75,15 @@ public static class UpdateHelperCommands
             var start = HandoffProcess.StartInfo(helper);
             foreach (var argument in new[] { "apply", "--journal", Path.GetFullPath(journal), "--transaction", transaction, "--pid", parent.Id.ToString(CultureInfo.InvariantCulture), "--start-ticks", parent.StartTime.ToUniversalTime().Ticks.ToString(CultureInfo.InvariantCulture) })
                 start.ArgumentList.Add(argument);
-            using var process = Process.Start(start) ?? throw new IOException("Could not start the portable update helper.");
+            if (OperatingSystem.IsLinux())
+            {
+                var identity = UpdateParentProcess.ReadLinuxIdentity(parent.Id);
+                if (identity is null || identity.Value.Exited || parent.HasExited)
+                    throw new IOException("The update parent has exited.");
+                start.ArgumentList.Add("--start-clock-ticks");
+                start.ArgumentList.Add(identity.Value.StartClockTicks.ToString(CultureInfo.InvariantCulture));
+            }
+            using var process = BackgroundProcess.Start(start);
             HandoffProcess.Drain(process);
             var timer = Stopwatch.StartNew();
             var marker = Path.Combine(root, "helper-ready");

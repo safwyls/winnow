@@ -38,12 +38,6 @@ globalThis.fetch = async (input, init) => {
   }
   if (url.pathname === '/api/v1/operations')
     return Response.json([...fixture.operations.keys()].map(snapshot))
-  if (url.pathname === '/api/v1/preferences/artwork-sources')
-    return Response.json([
-      { id: 'steam', label: 'Steam' },
-      { id: 'plugin:steamgriddb', label: 'SteamGridDB' },
-      { id: 'igdb', label: 'IGDB' },
-    ])
   return backendFetch(input, init)
 }
 await import('../../out/main/index.js')

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -27,7 +27,7 @@ afterEach(async () => {
   vi.unstubAllGlobals()
   for (const directory of temporary.splice(0)) {
     // Every path was returned by mkdtemp directly beneath the system temporary directory.
-    if (!resolve(directory).startsWith(resolve(tmpdir())))
+    if (dirname(await realpath(directory)) !== (await realpath(tmpdir())))
       throw new Error('Refusing to remove a directory outside the temporary root.')
     await rm(directory, { recursive: true, force: true })
   }

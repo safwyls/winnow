@@ -108,7 +108,9 @@ for (const [width, height, scale] of [
         .toBe(true)
       const previewHeight = await page
         .locator('.fullscreen-settings-preview-cover')
-        .evaluate((node) => node.getBoundingClientRect().height)
+        .evaluate(
+          (node) => node.getBoundingClientRect().height / Number(getComputedStyle(document.body).zoom),
+        )
       expect(previewHeight).toBeCloseTo(320 * Math.min(1, width / 1920), 0)
       await page.screenshot({ path: info.outputPath(`appearance-initial-${width}-${scale}.png`) })
       await tap(14)
@@ -122,7 +124,9 @@ for (const [width, height, scale] of [
       expect(
         await toggle
           .locator('.fullscreen-switch-track')
-          .evaluate((node) => node.getBoundingClientRect().width),
+          .evaluate(
+            (node) => node.getBoundingClientRect().width / Number(getComputedStyle(document.body).zoom),
+          ),
       ).toBeCloseTo(80 * Math.min(1, width / 1920), 0)
       await toggle.focus()
       await tap(15)

@@ -2,7 +2,7 @@ import { test, expect, _electron as electron, type ElectronApplication, type Pag
 import electronPath from 'electron'
 import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { closeFixture } from './fixture-cleanup'
+import { closeFixture, trackFixture } from './fixture-cleanup'
 
 let application: ElectronApplication, page: Page, directory: string
 const errors: string[] = []
@@ -14,24 +14,31 @@ const surfaces = [
 
 test.beforeAll(async () => {
   directory = await mkdtemp(join(resolve('../..', '.tmp'), 'winnow-controller-keyboard-'))
-  application = await electron.launch({
-    executablePath: electronPath as unknown as string,
-    args: [
-      resolve('tests/electron/fullscreen-lifecycle-main.mjs'),
-      '--data-dir',
-      directory,
-      '--seed-sample',
-      '--no-sync',
-    ],
-    env: Object.fromEntries(
-      Object.entries(process.env).filter(
-        ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-      ),
-    ) as Record<string, string>,
-    chromiumSandbox: true,
-  })
+  application = trackFixture(
+    await electron.launch({
+      executablePath: electronPath as unknown as string,
+      args: [
+        resolve('tests/electron/fullscreen-lifecycle-main.mjs'),
+        '--data-dir',
+        directory,
+        '--seed-sample',
+        '--no-sync',
+      ],
+      env: Object.fromEntries(
+        Object.entries(process.env).filter(
+          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+        ),
+      ) as Record<string, string>,
+      chromiumSandbox: true,
+    }),
+  )
   page = await application.firstWindow()
   page.on('pageerror', (error) => errors.push(error.message))
+  // The native window exists before its initial loadURL has completed. Reload only
+  // after the real app is ready, or the fixture aborts the startup it is testing.
+  await expect(page.locator('.avalon-shell')).toBeVisible()
+  await expect(page.locator('.avalon-cover').first()).toBeVisible()
+  await expect(page.locator('.startup-presentation')).toHaveCount(0)
 })
 test.afterAll(async () => closeFixture(application, directory))
 test.afterEach(async ({}, info) => {

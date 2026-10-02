@@ -154,7 +154,15 @@ for (const [width, height] of [
           .map((item) => item.releaseId)
           .sort(),
       ).toEqual([3, 4])
-      await expect(page.locator('.avalon-footer').getByText('LT / RT  Shelf', { exact: true })).toBeVisible()
+      const footer = page.locator('.avalon-footer')
+      for (const [glyph, label] of [
+        ['LT', 'Previous shelf'],
+        ['RT', 'Next shelf'],
+      ]) {
+        const hint = footer.locator('.fullscreen-input-hint').filter({ hasText: label })
+        await expect(hint).toBeVisible()
+        await expect(hint.locator(`[data-input-glyph="${glyph}"] svg`)).toBeVisible()
+      }
       await expect(page.locator('.avalon-row-viewport[data-animating]')).toHaveCount(0)
       await page.screenshot({ path: info.outputPath('second-shelf.png') })
       await tap(6)

@@ -7,5 +7,6 @@
     <ProjectReference Include="../Winnow.Activation/Winnow.Activation.csproj" />
     <ProjectReference Include="../Winnow.Application/Winnow.Application.csproj" />
     <InternalsVisibleTo Include="Winnow.Backend.Tests" />
+    <InternalsVisibleTo Include="Winnow.Electron.Fixtures" />
   </ItemGroup>
 </Project>

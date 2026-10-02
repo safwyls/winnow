@@ -184,7 +184,10 @@ while their backup files remain available for manual inspection. Recovery comman
 the current workspace's journal. Retained workspaces are not automatically pruned.
 
 After explicit restart, the copied `Winnow.Update.Helper` waits for the exact original
-process to exit. Both the frontend and backend hold the installation lease; the explicit
+process to exit. Linux identifies that process by its kernel birth ticks. Legacy Linux
+callers provide only a runtime-derived UTC timestamp, so the helper conservatively waits
+for the observed live kernel identity instead of treating a UTC mismatch as an exit.
+Both the frontend and backend hold the installation lease; the explicit
 update action stops the backend before handing off. Installation and library guards exclude
 other Winnow instances during
 replacement. The helper makes and checks a SQLite backup, including committed WAL data,
@@ -193,8 +196,9 @@ location. It moves an internal selected data directory to the same relative loca
 The selected library and `--no-sync` survive restart; one-time seed and sign-in commands do not.
 
 The durable `journal.json` records replacement and possible migration before startup.
-The new app acknowledges readiness only after migrations, host startup and Avalonia
-framework initialization. A missing or failed handshake leaves recovery evidence; the
+Electron acknowledges readiness only after its backend is healthy and its renderer has
+mounted. The retained Avalonia frontend waits for migrations, host startup and framework
+initialization. A missing or failed handshake leaves recovery evidence; the
 helper never silently reopens older binaries against a potentially migrated database.
 Keep the workspace, selected data directory and `before.db` until recovery is complete.
 Other files placed beside the app remain with the retained previous directory; custom

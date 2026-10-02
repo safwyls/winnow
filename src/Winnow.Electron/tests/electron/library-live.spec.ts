@@ -1,9 +1,11 @@
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import electronPath from 'electron'
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
-import { closeFixture } from './fixture-cleanup'
+import { build } from 'esbuild'
+import { closeFixture, trackFixture } from './fixture-cleanup'
+import { inlineFonts } from './inline-fonts'
 import type { ApiRequest } from '../../src/shared/bridge'
 import type { ManualGame, LibraryResponse, JournalResponse } from '../../src/renderer/api/types'
 
@@ -15,32 +17,57 @@ async function api<T>(page: Page, input: ApiRequest): Promise<T> {
   }, input) as Promise<T>
 }
 async function launch(directory: string, client = 'one') {
-  const application = await electron.launch({
-    executablePath: electronPath as unknown as string,
-    args: [resolve('tests/electron/library-live-main.mjs'), '--data-dir', directory, '--no-sync'],
-    env: {
-      ...Object.fromEntries(
-        Object.entries(process.env).filter(
-          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+  let main = resolve('tests/electron/library-live-main.mjs')
+  if (client === 'fullscreen') {
+    main = join(directory, 'independent-api-client-main.cjs')
+    await build({
+      entryPoints: [resolve('tests/electron/library-api-client-main.ts')],
+      outfile: main,
+      bundle: true,
+      platform: 'node',
+      format: 'cjs',
+      external: ['electron'],
+      plugins: [inlineFonts()],
+    })
+  }
+  const application = trackFixture(
+    await electron.launch({
+      executablePath: electronPath as unknown as string,
+      args: [main, '--data-dir', directory, '--no-sync'],
+      env: {
+        ...Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+          ),
         ),
-      ),
-      WINNOW_FIXTURE_CLIENT: client,
-    } as Record<string, string>,
-    chromiumSandbox: true,
-    timeout: 60000,
-  })
-  const page = await application.firstWindow()
-  const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(error.message))
-  await expect(
-    page
-      .getByRole('button', { name: 'Skip setup', exact: true })
-      .or(page.getByRole('button', { name: 'Winnow home', exact: true })),
-  ).toBeVisible({ timeout: 45000 })
-  if (await page.getByRole('button', { name: 'Skip setup', exact: true }).isVisible())
-    await page.getByRole('button', { name: 'Skip setup', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible()
-  return { application, page, errors }
+        WINNOW_FIXTURE_CLIENT: client,
+        WINNOW_LIBRARY_CLIENT_OUTPUT: resolve('out'),
+      } as Record<string, string>,
+      chromiumSandbox: true,
+      timeout: 60000,
+    }),
+  )
+  try {
+    const page = await application.firstWindow()
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await expect(
+      page
+        .getByRole('button', { name: 'Skip setup', exact: true })
+        .or(page.getByRole('button', { name: 'Winnow home', exact: true })),
+    ).toBeVisible({ timeout: 45000 })
+    if (await page.getByRole('button', { name: 'Skip setup', exact: true }).isVisible())
+      await page.getByRole('button', { name: 'Skip setup', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible()
+    return { application, page, errors }
+  } catch (error) {
+    try {
+      await closeFixture(application, client === 'fullscreen' ? undefined : directory)
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], 'Library client startup and cleanup failed')
+    }
+    throw error
+  }
 }
 async function surface(application: ElectronApplication, page: Page, mode: 'desktop' | 'fullscreen') {
   await application.evaluate(({ BrowserWindow }, mode) => {
@@ -83,6 +110,12 @@ test('independent desktop and fullscreen API clients retain Alpha and Beta searc
   try {
     first = await launch(directory, 'desktop')
     second = await launch(directory, 'fullscreen')
+    const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8'))
+    const independent = await second.application.evaluate(() => (globalThis as any).__libraryClient)
+    expect(independent.kind).toBe('independent-api-client')
+    expect(independent.backendProcessId).toBe(endpoint.processId)
+    expect(independent.processId).not.toBe(await first.application.evaluate(() => process.pid))
+    expect(independent.profile).toBe(join(directory, 'independent-api-client'))
     await surface(first.application, first.page, 'desktop')
     await surface(second.application, second.page, 'fullscreen')
     const desktopSearch = first.page.locator('[data-library-search]')
@@ -131,6 +164,15 @@ test('independent desktop and fullscreen API clients retain Alpha and Beta searc
     }
     await first.page.screenshot({ path: info.outputPath('desktop-live-library.png') })
     await second.page.screenshot({ path: info.outputPath('fullscreen-live-search.png') })
+    const ledger = await second.application.evaluate(() => (globalThis as any).__libraryClient)
+    expect(ledger.requests).toEqual(expect.arrayContaining(['library.get', 'manual.create', 'hidden.put']))
+    expect(ledger.events).toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: 'library.changed' })]),
+    )
+    await info.attach('independent-api-client', {
+      body: JSON.stringify(ledger, null, 2),
+      contentType: 'application/json',
+    })
   } finally {
     if (second) await closeFixture(second.application)
     await closeFixture(first?.application, directory)

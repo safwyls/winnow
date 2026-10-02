@@ -398,10 +398,14 @@ function startGui(): void {
     let preferences: Record<string, string | null> = {}
     let preferencesLoaded = false
     let preferencesRead: Promise<void> | undefined
+    let initialPreferencesSignal: AbortSignal | undefined
     const preferencesRefresh = new SnapshotRefresh(async () => {
-      const result = await transport!.request<Array<{ preference: string; value: string | null }>>({
-        route: 'preferences.presentation.get',
-      })
+      const result =
+        !preferencesLoaded && initialPreferencesSignal && !initialPreferencesSignal.aborted
+          ? await transport!.initialPreferences(initialPreferencesSignal)
+          : await transport!.request<Array<{ preference: string; value: string | null }>>({
+              route: 'preferences.presentation.get',
+            })
       if (!result.ok || !Array.isArray(result.data)) return
       preferences = Object.fromEntries(result.data.map((entry) => [entry.preference, entry.value]))
       preferencesLoaded = true
@@ -998,6 +1002,7 @@ function startGui(): void {
       },
     })
     const initialDeadline = Date.now() + 45_000
+    initialPreferencesSignal = AbortSignal.any([startupLifetime.signal, AbortSignal.timeout(45_000)])
     transport.start()
     const problem = await prepareBackendStartup({
       healthy: () =>

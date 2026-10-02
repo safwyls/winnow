@@ -8,6 +8,7 @@ import { DEFAULT_PROFILE, typographyKey } from '../../src/shared/theme'
 import { DEFAULT_TYPOGRAPHY } from '../../src/shared/typography'
 import { applyThemeProfile } from '../../src/renderer/theming/runtime'
 import { AvalonAction } from '../../src/renderer/themes/avalon-actions'
+import { SegmentedGroup } from '../../src/renderer/components/SegmentedGroup'
 
 const parameters = new URLSearchParams(location.search)
 const kind = parameters.get('kind') ?? 'desktop'
@@ -80,20 +81,23 @@ function Probe() {
   if (kind === 'segments')
     return (
       <main className="avalon-shell desktop" style={{ display: 'block', background: 'var(--surface)' }}>
-        <div
-          className="segmented"
+        <SegmentedGroup
+          label="Source segments"
           data-source-segments
-          style={{
-            position: 'absolute',
-            left: 20,
-            top: 20,
-            width: 392,
-            height: 120,
-            borderWidth: 4,
-            borderRadius: 16,
-            gap: 0,
-            padding: 0,
-          }}
+          style={
+            {
+              position: 'absolute',
+              left: 20,
+              top: 20,
+              width: 392,
+              height: 120,
+              '--segment-border': '4px',
+              '--segment-radius': '16px',
+              background: 'var(--bg)',
+              gap: 0,
+              padding: 0,
+            } as React.CSSProperties
+          }
         >
           {['First', 'Middle', 'Last'].map((label, index) => (
             <button
@@ -104,7 +108,7 @@ function Probe() {
               {label}
             </button>
           ))}
-        </div>
+        </SegmentedGroup>
       </main>
     )
   return (

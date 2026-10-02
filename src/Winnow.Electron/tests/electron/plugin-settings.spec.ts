@@ -183,10 +183,11 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await expect(card).toBeVisible()
       const pane = await page.locator('.settings-page').boundingBox(),
         bounds = await card.boundingBox()
+      const zoom = await page.evaluate(() => Number(getComputedStyle(document.body).zoom))
       const widthCap = mode === 'desktop' ? 1100 : 1320
-      expect(bounds!.width).toBeLessThanOrEqual(widthCap)
-      expect(bounds!.width).toBeGreaterThanOrEqual(Math.min(widthCap, pane!.width - 60))
-      expect(bounds!.x - pane!.x).toBeCloseTo(24, 0)
+      expect(bounds!.width / zoom).toBeLessThanOrEqual(widthCap)
+      expect(bounds!.width / zoom).toBeGreaterThanOrEqual(Math.min(widthCap, pane!.width / zoom - 60))
+      expect((bounds!.x - pane!.x) / zoom).toBeCloseTo(24, 0)
       if (mode === 'desktop') {
         await application.evaluate(({ BrowserWindow }) =>
           BrowserWindow.getAllWindows()[0].setContentSize(3456, 900),

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -112,6 +112,44 @@ describe('shell security', () => {
 })
 
 describe('theme package installation', () => {
+  it('serves assets through a canonicalized trusted directory alias', async () => {
+    const f = await fixture()
+    const installed = await installThemeDirectory(f.source, f.themes)
+    const alias = join(f.path, 'themes-alias')
+    await symlink(f.themes, alias, process.platform === 'win32' ? 'junction' : 'dir')
+    expect((await themeFile(alias, installed.entry)).bytes.toString()).toBe('export default () => null')
+  })
+  it('rejects package and intermediate asset links even when their targets remain inside the package', async () => {
+    const f = await fixture()
+    await installThemeDirectory(f.source, f.themes)
+    const root = join(f.themes, 'reading-room')
+    const assets = join(root, 'assets')
+    await mkdir(assets)
+    await writeFile(join(assets, 'nested.js'), 'export default 1')
+    await symlink(assets, join(root, 'linked'), process.platform === 'win32' ? 'junction' : 'dir')
+    await expect(themeFile(f.themes, 'winnow-theme://reading-room/linked/nested.js')).rejects.toThrow(
+      /Invalid theme file/,
+    )
+    await mkdir(join(f.path, 'linked-packages'))
+    await symlink(
+      root,
+      join(f.path, 'linked-packages', 'reading-room'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    )
+    await expect(
+      themeFile(join(f.path, 'linked-packages'), 'winnow-theme://reading-room/index.js'),
+    ).rejects.toThrow()
+    const sibling = join(f.path, 'themes-outside')
+    await mkdir(sibling)
+    await writeFile(join(sibling, 'outside.js'), 'private')
+    await symlink(sibling, join(root, 'outside'), process.platform === 'win32' ? 'junction' : 'dir')
+    await expect(themeFile(f.themes, 'winnow-theme://reading-room/outside/outside.js')).rejects.toThrow(
+      /Invalid theme file/,
+    )
+    await expect(
+      themeFile(f.themes, 'winnow-theme://reading-room/%2e%2e%2f%2e%2e%2fthemes-outside/outside.js'),
+    ).rejects.toThrow()
+  })
   it('installs an independent copy, lists versioned URLs and serves bounded local assets', async () => {
     const f = await fixture()
     const installed = await installThemeDirectory(f.source, f.themes)

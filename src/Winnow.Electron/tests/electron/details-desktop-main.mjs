@@ -1,4 +1,4 @@
-const state = (globalThis.desktopDetailsFixture = { longTitle: false, game: null })
+const state = (globalThis.desktopDetailsFixture = { longTitle: false, game: null, expansions: [] })
 const originalFetch = globalThis.fetch
 const summary =
   'Set out from a quiet observatory to chart a sky that changes every night. Follow old signals, rebuild your ship, and find the people who left their stories among the stars.\n\n' +
@@ -13,6 +13,40 @@ const lists = () =>
     releaseIds: index === 0 && state.game ? [state.game.entries[0].releaseId] : [],
     revision: 'one',
   }))
+function populate(body) {
+  const game = body.games[0]
+  const title = state.longTitle
+    ? 'The Astral Cartographers: Echoes Beyond the Forgotten Constellations — Complete Collection'
+    : 'The Astral Cartographers'
+  const publisher = state.longTitle
+    ? 'The Independent Cartographic Society and the Interstellar Exploration Cooperative'
+    : 'Northstar Studio'
+  state.game = {
+    ...game,
+    title,
+    publisher,
+    summary,
+    firstReleaseYear: 2019,
+    bucket: 'stale_but_patched',
+    playtimeMinutes: 2220,
+    lastPlayedAt: played,
+    entries: ['steam', 'gog', 'epic'].map((store, index) => ({
+      ...body.games[index].entries[0],
+      workId: game.workId,
+      title,
+      store,
+      installed: true,
+      playtimeMinutes: 740,
+      lastPlayedAt: played,
+    })),
+  }
+  state.expansions = body.games.slice(3, 6).map((expansion, index) => {
+    const title = `The Astral Cartographers: Distant Shores ${index + 1}`
+    return { ...expansion, title, entries: expansion.entries.map((entry) => ({ ...entry, title })) }
+  })
+  return { ...body, games: [state.game, ...state.expansions], lists: lists() }
+}
+
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : input)
   if (url.hostname !== '127.0.0.1') return originalFetch(input, init)
@@ -21,59 +55,34 @@ globalThis.fetch = async (input, init) => {
   const response = await originalFetch(input, init)
   if (!response.ok || (init?.method && init.method !== 'GET')) return response
   if (url.pathname === '/api/v1/library') {
-    const body = await response.json(),
-      game = body.games[0]
-    const title = state.longTitle
-      ? 'The Astral Cartographers: Echoes Beyond the Forgotten Constellations — Complete Collection'
-      : 'The Astral Cartographers'
-    const publisher = state.longTitle
-      ? 'The Independent Cartographic Society and the Interstellar Exploration Cooperative'
-      : 'Northstar Studio'
-    state.game = {
-      ...game,
-      title,
-      publisher,
-      summary,
-      firstReleaseYear: 2019,
-      bucket: 'stale_but_patched',
-      playtimeMinutes: 2220,
-      lastPlayedAt: played,
-      entries: ['steam', 'gog', 'epic'].map((store, index) => ({
-        ...body.games[index].entries[0],
-        workId: game.workId,
-        title,
-        store,
-        installed: true,
-        playtimeMinutes: 740,
-        lastPlayedAt: played,
-      })),
-    }
-    return Response.json({ ...body, games: [state.game], lists: lists() })
+    return Response.json(populate(await response.json()))
   }
   if (url.pathname === '/api/v1/library/workspace') {
+    // Workspace and Library reads can start concurrently. Derive both projections
+    // from the same owned rows instead of depending on which request completes first.
+    const library = await originalFetch(new URL('/api/v1/library', url), init)
+    if (!library.ok) throw Error('Could not read owned expansion fixtures')
+    populate(await library.json())
     const body = await response.json(),
       game = state.game
-    if (!game) return Response.json(body)
+    const names = new Map([game, ...state.expansions].map((item) => [item.workId, item.title]))
     return Response.json({
       ...body,
-      works: [
-        ...body.works.filter((work) => ![game.workId, 120011, 120012, 120013].includes(work.id)),
-        {
-          ...body.works.find((work) => work.id === game.workId),
-          name: game.title,
-          summary,
-          publisher: game.publisher,
-          firstReleaseYear: 2019,
-        },
-        ...Array.from({ length: 3 }, (_, index) => ({
-          id: 120011 + index,
-          name: `The Astral Cartographers: Distant Shores ${index + 1}`,
-        })),
-      ],
-      identityLinks: Array.from({ length: 3 }, (_, index) => ({
+      works: body.works.map((work) =>
+        names.has(work.id)
+          ? {
+              ...work,
+              name: names.get(work.id),
+              ...(work.id === game.workId
+                ? { summary, publisher: game.publisher, firstReleaseYear: 2019 }
+                : {}),
+            }
+          : work,
+      ),
+      identityLinks: state.expansions.map((expansion, index) => ({
         id: 5001 + index,
         parentWorkId: game.workId,
-        childWorkId: 120011 + index,
+        childWorkId: expansion.workId,
         kind: 'expansion_of',
         retractedAt: null,
       })),

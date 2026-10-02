@@ -238,25 +238,11 @@ public sealed class HelperProtocolTests
             File.Copy(file, Path.Combine(helperRoot, Path.GetFileName(file)));
         var helper = Path.Combine(helperRoot, "Winnow.Update.Helper.exe");
         Assert.True(File.Exists(helper));
-        var options = Path.Combine(fixture.Root, "options.json");
-        File.WriteAllText(options, JsonSerializer.Serialize(new { helper, journal = fixture.JournalPath, transaction }));
-        var script = Path.Combine(fixture.Root, "parent.ps1");
-        File.WriteAllText(script, """
-            param([string]$Options)
-            $data = Get-Content -LiteralPath $Options -Raw | ConvertFrom-Json
-            & $data.helper handoff --journal $data.journal --transaction $data.transaction --pid $PID
-            [Console]::Out.WriteLine("handoff:$LASTEXITCODE")
-            [Console]::Out.Flush()
-            [void][Console]::ReadLine()
-            """);
-        var start = HandoffProcess.StartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
-            @"WindowsPowerShell\v1.0\powershell.exe"));
-        foreach (var argument in new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script, "-Options", options })
-            start.ArgumentList.Add(argument);
-        using var parent = Process.Start(start)!;
+        using var parent = Winnow.TestFixtures.ProcessParent.Start("handoff", "--target", helper,
+            "--journal", fixture.JournalPath, "--transaction", transaction);
         try
         {
-            Assert.Equal("handoff:0", await parent.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(25)));
+            Assert.Equal("handoff:0", await Winnow.TestFixtures.ProcessParent.ReadLineAsync(parent, TimeSpan.FromSeconds(25)));
             Assert.False(parent.HasExited);
             Assert.Equal(transaction, File.ReadAllText(Path.Combine(fixture.Workspace, "helper-ready")));
             Assert.Equal(transaction, File.ReadAllText(Path.Combine(fixture.Workspace, "proceed")));

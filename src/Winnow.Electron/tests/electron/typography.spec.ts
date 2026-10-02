@@ -259,9 +259,13 @@ test('fullscreen combines page and theme text scales without scaling the chrome 
       .getByRole('navigation', { name: 'Settings section' })
       .getByRole('button', { name: 'Platforms', exact: true })
       .click()
-    if (await page.getByRole('button', { name: 'Steam', exact: true }).count())
-      await page.getByRole('button', { name: 'Steam', exact: true }).click()
-    await page.getByRole('button', { name: 'Sign in to Steam', exact: true }).click()
+    await page
+      .locator('.fullscreen-platform-summary')
+      .getByRole('button', { name: 'Steam', exact: true })
+      .click()
+    const steam = page.getByRole('region', { name: 'Steam connection page', exact: true })
+    await expect(steam).toBeVisible()
+    await steam.getByRole('button', { name: 'Sign in to Steam', exact: true }).click()
     const consent = page.getByRole('dialog', { name: 'Before you sign in', exact: true })
     await expect(consent).toBeVisible()
     const consentMetrics = await consent.evaluate((node) => {

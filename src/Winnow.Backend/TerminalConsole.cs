@@ -5,30 +5,7 @@ namespace Winnow.Backend;
 
 internal static class TerminalConsole
 {
-    public static Process StartBackground(ProcessStartInfo start)
-    {
-        if (!OperatingSystem.IsWindows())
-            return Process.Start(start) ?? throw new IOException("The Winnow backend could not start.");
-        var inherited = new List<IntPtr>();
-        try
-        {
-            // Process.Start creates new redirected child pipes, but Win32 also inherits any other
-            // inheritable handles. The independent backend must not keep this terminal's caller
-            // waiting for EOF after the short-lived command exits. Never close/rebind those handles.
-            foreach (var handle in new[] { GetStdHandle(-10), GetStdHandle(-11), GetStdHandle(-12) }.Distinct())
-            {
-                if (!GetHandleInformation(handle, out var flags) || (flags & 1) == 0) continue;
-                if (!SetHandleInformation(handle, 1, 0)) throw new System.ComponentModel.Win32Exception();
-                inherited.Add(handle);
-            }
-            return Process.Start(start) ?? throw new IOException("The Winnow backend could not start.");
-        }
-        finally
-        {
-            foreach (var handle in inherited)
-                if (!SetHandleInformation(handle, 1, 1)) throw new System.ComponentModel.Win32Exception();
-        }
-    }
+    public static Process StartBackground(ProcessStartInfo start) => Winnow.Update.BackgroundProcess.Start(start);
 
     public static void Attach(int? terminalParent)
     {
@@ -62,8 +39,4 @@ internal static class TerminalConsole
     private static extern bool AttachConsole(int processId);
     [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetStdHandle(int value, IntPtr handle);
-    [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetHandleInformation(IntPtr handle, out uint flags);
-    [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetHandleInformation(IntPtr handle, uint mask, uint flags);
 }

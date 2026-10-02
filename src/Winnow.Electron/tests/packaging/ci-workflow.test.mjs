@@ -51,6 +51,17 @@ test('all native shards have isolated machines, one scheduling policy and mandat
   )
 })
 
+test('both frontend suites install the pinned runtime before testing executable metadata or launching Electron', () => {
+  for (const job of [electron.jobs.frontend, electron.jobs.native]) {
+    const install = job.steps.findIndex((step) => step.run === 'node node_modules/electron/install.js')
+    assert.ok(install > job.steps.findIndex((step) => step.run === 'npm ci'))
+    const execute = job.steps.findIndex((step) =>
+      /test-integration\.mjs|native-test-ci\.mjs run/.test(step.run ?? ''),
+    )
+    assert.ok(execute > install)
+  }
+})
+
 test('both platform package jobs exercise the bundled provider and old-release installation and recovery', () => {
   for (const job of [packages.jobs.windows, packages.jobs.linux]) {
     const commands = job.steps.map((step) => step.run ?? '').join('\n')

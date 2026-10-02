@@ -143,7 +143,7 @@ test('shared sort menu keyboard and outside dismissal restore the correct focus 
   await sorted.click()
   await page.keyboard.press('Tab')
   await expect(menu).toHaveCount(0)
-  await expect(page.getByRole('combobox', { name: 'Preferred main platform', exact: true })).toBeFocused()
+  await expect(page.getByRole('button', { name: /^Accept \d+ exact match/ })).toBeFocused()
   await sorted.click()
   await page.getByRole('button', { name: 'Outside the queue', exact: true }).click()
   await expect(menu).toHaveCount(0)

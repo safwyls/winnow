@@ -748,7 +748,27 @@ for (const surfaceName of ['desktop', 'fullscreen']) {
       // The shell has already settled its startup-empty snapshot. This first scenario read preserves that truth;
       // cold-query loading is covered separately, while the source replay contract is the two calls and final cards.
       if (invalidations === 3) await control('next', { kind: 'final' })
+      await page.evaluate(() => {
+        const observation = { count: 0, stop: () => {} }
+        observation.stop = window.winnow.onEvent((event) => {
+          if (event.kind === 'library.changed') observation.count++
+        })
+        Object.assign(window, { heldReadInvalidations: observation })
+      })
       await control('publish', { count: invalidations })
+      // Publication returns before SSE delivery. All changes must reach the renderer
+      // while the original read is held to exercise coalescing behind that read.
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              (window as unknown as { heldReadInvalidations: { count: number } }).heldReadInvalidations.count,
+          ),
+        )
+        .toBe(invalidations)
+      await page.evaluate(() => {
+        ;(window as unknown as { heldReadInvalidations: { stop(): void } }).heldReadInvalidations.stop()
+      })
       expect(await reads()).toHaveLength(1)
       await control('release', { gateId: held.gateId })
       await expect.poll(async () => (await reads()).filter((call) => call.completed).length).toBe(2)

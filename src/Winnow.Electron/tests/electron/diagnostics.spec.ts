@@ -237,6 +237,7 @@ test('desktop source 1200 by 688 fetch caption preserves exact 997 singular full
   await expect(caption.locator('.fetch-status-note')).toHaveText('title left')
   await progress(997, 0)
   await expect(caption).toHaveCount(0)
+  await expect(page.locator('.startup-presentation')).toHaveCount(0)
   await activate(page.getByRole('button', { name: 'New list', exact: true }))
   await activate(page.getByRole('menuitem', { name: 'Static list', exact: true }))
   const dialog = page.getByRole('dialog', { name: 'Name this list', exact: true })

@@ -1,11 +1,17 @@
 import { test, expect, _electron as electron, type Page } from '@playwright/test'
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
 import { closeFixture } from './fixture-cleanup'
+import { prebuiltActivationHelper, prebuiltBackend, prebuiltFixture } from './prebuilt-backend'
 
-async function launch(width = 1280, height = 720, scale = 1) {
-  const directory = await mkdtemp(join(resolve('../..', '.tmp'), 'winnow-metadata-settings-'))
+async function launch(width = 1280, height = 720, scale = 1, artworkCatalog = false) {
+  const directory = await mkdtemp(
+    join(
+      resolve('../..', '.tmp'),
+      artworkCatalog ? 'winnow-electron-artwork-state-' : 'winnow-metadata-settings-',
+    ),
+  )
   const application = await electron.launch({
     executablePath: electronPath as unknown as string,
     args: [
@@ -13,13 +19,17 @@ async function launch(width = 1280, height = 720, scale = 1) {
       '--data-dir',
       directory,
       '--no-sync',
-      '--seed-sample',
+      ...(artworkCatalog ? [] : ['--seed-sample']),
     ],
-    env: Object.fromEntries(
-      Object.entries(process.env).filter(
-        ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-      ),
-    ) as Record<string, string>,
+    env: {
+      ...(Object.fromEntries(
+        Object.entries(process.env).filter(
+          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+        ),
+      ) as Record<string, string>),
+      WINNOW_BACKEND_PATH: artworkCatalog ? prebuiltFixture : prebuiltBackend,
+      WINNOW_ACTIVATION_HELPER_PATH: prebuiltActivationHelper,
+    },
     chromiumSandbox: true,
   })
   try {
@@ -29,6 +39,27 @@ async function launch(width = 1280, height = 720, scale = 1) {
     await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible({
       timeout: 45000,
     })
+    if (artworkCatalog) {
+      const endpoint = JSON.parse(await readFile(join(directory, 'backend/endpoint.json'), 'utf8')) as {
+        address: string
+        token: string
+      }
+      const response = await fetch(new URL('/__fixture/artwork-state/seed', endpoint.address), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${endpoint.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'settings' }),
+      })
+      expect(response.status).toBe(200)
+      const catalog = await page.evaluate(() =>
+        window.winnow.request({ route: 'preferences.artworkSources' }),
+      )
+      expect(catalog.ok).toBe(true)
+      expect(catalog.data).toEqual([
+        { id: 'steam', label: 'High-resolution Steam heroes' },
+        { id: 'plugin:steamgriddb', label: 'SteamGridDB' },
+        { id: 'igdb', label: 'IGDB' },
+      ])
+    }
     await page.evaluate(async (scale) => {
       const result = await window.winnow.request({
         route: 'preferences.presentation.put',
@@ -239,7 +270,7 @@ for (const [width, height, scale] of [
   [2560, 1440, 1.4],
 ] as const)
   test(`metadata child pages retain hierarchy reading bounds controller return and saved order at ${width}x${height} text ${scale}`, async ({}, info) => {
-    const f = await launch(width, height, scale)
+    const f = await launch(width, height, scale, true)
     try {
       const { page, tap } = f
       await f.mode(true)
@@ -265,14 +296,17 @@ for (const [width, height, scale] of [
         await expect(page.getByRole('navigation', { name: 'Settings section' })).toHaveCount(0)
         await expect(
           reading.getByRole('button', {
-            name: title === 'IGDB metadata' ? 'Get IGDB credentials' : 'Move Steam down',
+            name:
+              title === 'IGDB metadata' ? 'Get IGDB credentials' : 'Move High-resolution Steam heroes down',
             exact: true,
           }),
         ).toBeFocused()
         const geometry = await reading.evaluate((node) => {
           const rect = node.getBoundingClientRect()
           const elements = [node, ...node.querySelectorAll('*')]
+          const zoom = Number(getComputedStyle(document.body).zoom)
           return {
+            zoom,
             buttonInsets: [...node.querySelectorAll('button')].map((button) => {
               const range = document.createRange()
               range.selectNodeContents(button)
@@ -290,6 +324,7 @@ for (const [width, height, scale] of [
             scrolls: elements.filter((element) => /auto|scroll/.test(getComputedStyle(element).overflowY))
               .length,
             rules: [...node.querySelectorAll('hr')].map((rule) => ({
+              logicalHeight: parseFloat(getComputedStyle(rule).height),
               height: rule.getBoundingClientRect().height,
               width: rule.getBoundingClientRect().width,
             })),
@@ -302,12 +337,19 @@ for (const [width, height, scale] of [
           }
         })
         expect(geometry.scrolls).toBe(1)
-        expect(geometry.rules.some((rule) => rule.height === 1 && rule.width > 300)).toBe(true)
+        expect(geometry.rules.length).toBeGreaterThan(0)
+        expect(geometry.rules.some((rule) => rule.width / geometry.zoom > 300)).toBe(true)
+        for (const rule of geometry.rules) {
+          expect(Math.abs(rule.logicalHeight - 1)).toBeLessThanOrEqual(1 / (64 * geometry.zoom))
+          expect(Math.abs(rule.height - geometry.zoom)).toBeLessThanOrEqual(1 / 64)
+        }
         expect(geometry.escaped).toEqual([])
         expect(geometry.labelsMatchText).toBe(true)
-        for (const inset of geometry.buttonInsets) expect(inset).toBeCloseTo(24)
-        for (const [index, border] of geometry.rowBorders.entries())
-          expect(border).toEqual({ top: index === 0 ? 0 : 1, bottom: 0 })
+        for (const inset of geometry.buttonInsets) expect(inset / geometry.zoom).toBeCloseTo(24, 1)
+        for (const [index, border] of geometry.rowBorders.entries()) {
+          expect(border.top * geometry.zoom).toBeCloseTo(index === 0 ? 0 : 1, 2)
+          expect(border.bottom).toBe(0)
+        }
         const controls = reading.locator('button:enabled,input:enabled')
         for (let i = 0; i < (await controls.count()); i++) {
           await controls.nth(i).focus()
@@ -318,7 +360,9 @@ for (const [width, height, scale] of [
           expect(control.y + control.height).toBeLessThanOrEqual(outer.y + outer.height + 1)
         }
         if (title === 'Artwork source order') {
-          await expect(reading.getByRole('button', { name: 'Move Steam up', exact: true })).toBeDisabled()
+          await expect(
+            reading.getByRole('button', { name: 'Move High-resolution Steam heroes up', exact: true }),
+          ).toBeDisabled()
           await expect(reading.getByRole('button', { name: 'Move IGDB down', exact: true })).toBeDisabled()
           await reading.getByRole('button', { name: 'Move SteamGridDB up', exact: true }).focus()
           await tap(0)

@@ -29,6 +29,8 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - run: npm ci
+      - name: Ensure pinned Electron is installed
+        run: node node_modules/electron/install.js
       - name: Verify native test accounting
         run: node --test tests/packaging/native-test-evidence.test.mjs tests/packaging/native-test-diagnostics.test.mjs tests/packaging/ci-workflow.test.mjs
       - name: Verify primary entry points

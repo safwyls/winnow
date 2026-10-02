@@ -491,8 +491,15 @@ public sealed class FullscreenBrowseTests
             Assert.True(window.IsActive);
             Assert.Equal(feed.Shelves[0].Cards.Count, service.Surfaced.Count);
             Assert.All(service.Surfaced, id => Assert.Contains(feed.Shelves[0].Cards, card => card.Tile.ReleaseId == id));
+            // Exposure follows committed row bounds, not the elapsed wall-clock
+            // time of the input helper or a slower CI render loop.
+            var viewport = page.GetVisualDescendants().OfType<FullscreenRowViewport>().Single();
+            var frames = new ManualRowAnimationFrames(viewport);
             page.Handle(GamepadButtons.PageNext);
             Dispatcher.UIThread.RunJobs();
+            frames.Tick(TimeSpan.FromSeconds(10));
+            frames.Tick(TimeSpan.FromSeconds(10) + TimeSpan.FromMilliseconds(220));
+            Assert.False(viewport.IsAnimating);
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             page.FocusInitial();
             await FlushFeedObservationAsync();

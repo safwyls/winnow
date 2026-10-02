@@ -119,13 +119,23 @@ test('fullscreen Search returns to the same column, pages from its header, and r
         const style = getComputedStyle(button)
         return {
           background: style.backgroundColor,
-          line: style.borderBottomWidth,
           focusedColor: style.borderBottomColor === style.color,
           outline: style.outlineStyle,
         }
       }),
     )
-    .toEqual({ background: 'rgba(0, 0, 0, 0)', line: '3px', focusedColor: true, outline: 'none' })
+    .toMatchObject({ background: 'rgba(0, 0, 0, 0)', focusedColor: true, outline: 'none' })
+  // Chromium snaps border widths to whole device pixels after interface zoom.
+  const underline = await page
+    .getByRole('button', { name: 'Enter search', exact: true })
+    .evaluate((button) => {
+      const scale = Number(getComputedStyle(document.body).zoom) * devicePixelRatio
+      return {
+        actual: Math.round(Number.parseFloat(getComputedStyle(button).borderBottomWidth) * scale),
+        expected: Math.max(1, Math.floor(3 * scale)),
+      }
+    })
+  expect(underline.actual).toBe(underline.expected)
   await page.evaluate(() => {
     const state = { observed: false, opaque: false, inactive: false }
     ;(window as unknown as { searchMotion: typeof state }).searchMotion = state

@@ -25,4 +25,5 @@
     <ProjectReference Include="../../src/Winnow.Api.Client/Winnow.Api.Client.csproj" />
     <ProjectReference Include="../Winnow.PluginFixture/Winnow.PluginFixture.csproj" />
   </ItemGroup>
+  <Import Project="../Shared/ProcessParentFixture.targets" />
 </Project>

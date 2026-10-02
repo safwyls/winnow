@@ -122,6 +122,9 @@ async function openMore() {
 async function closeMore() {
   await page.keyboard.press('Escape')
   await expect(more()).toHaveAttribute('aria-expanded', 'false')
+  // The dialog restores its opener after unmount; wait for that lifecycle before
+  // moving focus to another action, or the pending restoration can take it back.
+  await expect(more()).toBeFocused()
 }
 async function closeDetails(mode: Mode) {
   await page
@@ -272,7 +275,7 @@ async function traverseLastAction() {
     'Manage in launcher',
     'Refetch metadata',
     'Wrong game?Search IGDB for the right entry',
-    'Edit details',
+    'Edit detailsEdit each field by hand',
     'Artwork…',
     'Hide game…',
   ])

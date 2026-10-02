@@ -120,6 +120,12 @@ Subscribe to `GET /api/v1/events` before loading snapshots. The response is `tex
 each `change` event has `id: <epoch>:<sequence>` and JSON data containing `epoch`, `sequence`,
 `kind`, optional `resource`, and `occurredAt`. Comments are heartbeats, not events.
 
+Electron's main process can read presentation preferences before the subscription connects
+to restore the saved window mode during startup. This authenticated read shares the startup
+deadline and does not mark the renderer connected or enable its requests. The connection
+and initial resync refresh preferences again; a resync received during the initial read
+queues another read so a concurrent change is reconciled.
+
 The initial `resync-required` arrives after subscription registration: refetch all observed
 state. For subsequent invalidations such as `library.changed`, `preferences.changed`,
 `feed.changed`, `identity.changed` and operation progress, refetch the relevant snapshots.

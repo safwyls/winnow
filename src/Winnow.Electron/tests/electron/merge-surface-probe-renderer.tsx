@@ -27,7 +27,7 @@ document.addEventListener(
       probe.transitions.push({
         property: animation.transitionProperty,
         duration: Number(animation.effect!.getTiming().duration),
-        target: target.className,
+        target: target.matches('.merge-row') ? 'merge-row' : 'merge-reason',
       })
       if (probe.pauseTransitions) {
         animation.pause()

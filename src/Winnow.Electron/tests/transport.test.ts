@@ -94,6 +94,94 @@ describe('event reader', () => {
 })
 
 describe('main-owned transport', () => {
+  it('reads only main startup preferences while an event handshake holds renderer requests', async () => {
+    let release!: (response: Response) => void
+    let events!: ReadableStreamDefaultController<Uint8Array>
+    const handshake = new Promise<Response>((resolve) => {
+      release = resolve
+    })
+    const calls: string[] = []
+    const fetcher = vi.fn<typeof fetch>(async (input, init) => {
+      const path = new URL(String(input)).pathname
+      calls.push(path)
+      expect(init?.redirect).toBe('error')
+      expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer private-token')
+      if (path.endsWith('/events')) return handshake
+      if (path.endsWith('/preferences/presentation'))
+        return Response.json([{ preference: 'StartInFullscreen', value: 'true' }])
+      return Response.json({ games: [] })
+    })
+    const transport = new BackendTransport({ discover: async () => discovery, fetch: fetcher })
+    transports.push(transport)
+    const rendererRead = transport.request({ route: 'library.get' })
+    await vi.waitFor(() => expect(calls).toEqual(['/api/v1/events']))
+    const preferences = await transport.initialPreferences(AbortSignal.timeout(1000))
+    expect(preferences).toMatchObject({
+      ok: true,
+      data: [{ preference: 'StartInFullscreen', value: 'true' }],
+    })
+    expect(calls).toEqual(['/api/v1/events', '/api/v1/preferences/presentation'])
+    expect(transport.connection().connected).toBe(false)
+    release(
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            events = controller
+          },
+        }),
+        {
+          headers: { 'Content-Type': 'text/event-stream' },
+        },
+      ),
+    )
+    events.enqueue(encoder.encode(frame(0, 'resync-required')))
+    expect(await rendererRead).toMatchObject({ ok: true, data: { games: [] } })
+    expect(calls.at(-1)).toBe('/api/v1/library')
+    events.close()
+  })
+  it('rejects untrusted startup discovery and redacts failed initial preferences without connecting', async () => {
+    const fetcher = vi.fn<typeof fetch>(async () =>
+      Response.json({ detail: 'Rejected private-token' }, { status: 401 }),
+    )
+    const invalid = new BackendTransport({
+      discover: async () => ({ ...discovery, address: 'https://example.com/' }),
+      fetch: fetcher,
+    })
+    transports.push(invalid)
+    expect(await invalid.initialPreferences(AbortSignal.timeout(1000))).toMatchObject({
+      ok: false,
+      status: 503,
+    })
+    expect(fetcher).not.toHaveBeenCalled()
+    const valid = new BackendTransport({ discover: async () => discovery, fetch: fetcher })
+    transports.push(valid)
+    const result = await valid.initialPreferences(AbortSignal.timeout(1000))
+    expect(result).toMatchObject({ ok: false, status: 401, message: 'Rejected [redacted]' })
+    expect(JSON.stringify(result)).not.toContain('private-token')
+    expect(valid.connection().connected).toBe(false)
+  })
+  it.each(['discovery', 'fetch'] as const)(
+    'cancels a pending initial preferences %s at the startup deadline',
+    async (phase) => {
+      const abort = new AbortController()
+      const fetcher = vi.fn<typeof fetch>(
+        async (_input, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            init!.signal!.addEventListener('abort', () => reject(init!.signal!.reason), { once: true })
+          }),
+      )
+      const transport = new BackendTransport({
+        discover: () => (phase === 'discovery' ? new Promise(() => {}) : Promise.resolve(discovery)),
+        fetch: fetcher,
+      })
+      transports.push(transport)
+      const result = transport.initialPreferences(abort.signal)
+      if (phase === 'fetch') await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1))
+      abort.abort()
+      expect(await result).toMatchObject({ ok: false, status: 499 })
+      expect(transport.connection().connected).toBe(false)
+    },
+  )
   it('registers events before sending snapshots and never exposes the bearer', async () => {
     let stream!: ReadableStreamDefaultController<Uint8Array>
     const calls: string[] = []

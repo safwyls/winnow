@@ -588,9 +588,8 @@
   }
   .avalon-segmented {
     display: flex;
-    overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: 4px;
+    border: var(--segment-border, 1px) solid var(--line);
+    border-radius: var(--segment-radius, 4px);
     padding: 0;
   }
   .avalon-segmented button {
@@ -599,6 +598,9 @@
     padding: 7px;
     background: transparent;
     transform: none;
+  }
+  .avalon-shell .segmented-clip > button {
+    border-radius: 0;
   }
   .avalon-segmented button:hover {
     background: color-mix(in srgb, var(--raised) 50%, transparent);

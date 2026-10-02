@@ -5,6 +5,7 @@ import type { ApiRequest, ApiResult, BackendEvent, ConnectionState } from '../sh
 import { resolveRoute } from './routes'
 import { artworkFileLimit, validArtworkImport } from './artwork-import'
 import type { ArtworkImport, ArtworkSaveResult } from '../shared/bridge'
+import { waitForStartupOperation } from './startup-backend'
 
 export interface Discovery {
   address: string
@@ -286,6 +287,24 @@ export class BackendTransport {
       )
     }
   }
+  /** Main needs saved window preferences before its first window, independently of SSE readiness. */
+  async initialPreferences(
+    requestSignal: AbortSignal,
+  ): Promise<ApiResult<Array<{ preference: string; value: string | null }>>> {
+    const signal = AbortSignal.any([this.lifetime.signal, requestSignal])
+    try {
+      const connection = validateDiscovery(
+        await waitForStartupOperation(() => this.options.discover(), signal),
+      )
+      signal.throwIfAborted()
+      const request = { route: 'preferences.presentation.get' }
+      return this.send(request, resolveRoute(request), connection, signal)
+    } catch {
+      return signal.aborted
+        ? { ok: false, status: 499, message: 'Request cancelled.' }
+        : { ok: false, status: 503, message: 'The backend is unavailable. Reconnect before trying again.' }
+    }
+  }
   async request<T = unknown>(request: ApiRequest, requestSignal?: AbortSignal): Promise<ApiResult<T>> {
     const cancelled = (): ApiResult<T> => ({ ok: false, status: 499, message: 'Request cancelled.' })
     if (requestSignal?.aborted) return cancelled()
@@ -302,7 +321,17 @@ export class BackendTransport {
       if (requestSignal?.aborted) return cancelled()
       return { ok: false, status: 503, message: 'The backend is unavailable. Reconnect before trying again.' }
     }
+    return this.send<T>(request, route, connection, requestSignal)
+  }
+  private async send<T>(
+    request: ApiRequest,
+    route: ReturnType<typeof resolveRoute>,
+    connection: Discovery,
+    requestSignal?: AbortSignal,
+  ): Promise<ApiResult<T>> {
+    const cancelled = (): ApiResult<T> => ({ ok: false, status: 499, message: 'Request cancelled.' })
     try {
+      requestSignal?.throwIfAborted()
       const response = await this.fetcher(new URL(route.path, connection.address), {
         method: route.method,
         headers: {

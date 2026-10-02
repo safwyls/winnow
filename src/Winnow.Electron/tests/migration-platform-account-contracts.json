@@ -1,7 +1,7 @@
 {
   "ConsoleAuthPromptTests.A_null_WinExe_standard_handle_is_not_mistaken_for_redirection": {
     "status": "framework-specific",
-    "reason": "The unchanged executed source asserts that both IntPtr.Zero and INVALID_HANDLE_VALUE (-1) are unusable redirected standard-output handles in the Avalonia WinExe ConsoleAuthPrompt. Electron does not compose that C# console prompt. Its authentication runs through the native browser/manual flow and typed main/preload/API boundaries, so adding a C# console-handle test to JavaScript would not exercise the product. This narrow host-handle disposition does not waive working browser sign-in, cancellation, unavailable-host copy or credential privacy; those are separately ported platform contracts."
+    "reason": "The unchanged executed source asserts that IntPtr.Zero and INVALID_HANDLE_VALUE (-1) are unusable through the Avalonia ConsoleAuthPrompt.StandardHandleIsUsable method. That exact frontend method remains framework-specific. The primary --epic-login command now uses backend TerminalConsole, whose own guard rejects both values and preserves usable redirected handles. EpicSignInParityTests (in EpicConsoleCommandTests.cs) and tests/electron/epic-console.spec.ts execute the real terminal command, redirected streams, selected backend, code entry and EOF cancellation without a GUI; they do not directly invoke the original method or inject null Win32 handles. This disposition concerns the original type, not absence of terminal authentication. Browser sign-in, cancellation and privacy remain separately ported contracts."
   },
   "OwnedAccountConfirmationTests.The_remote_sync_asks_about_an_account_that_never_won_a_candidate": {
     "status": "retained-backend",

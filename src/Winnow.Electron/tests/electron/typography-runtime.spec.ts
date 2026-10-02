@@ -69,7 +69,7 @@ test.afterEach(async () => {
   }
   expect(errors).toEqual([])
 })
-async function start(kind: string, width: number, height: number, palette = 'winnow') {
+async function start(kind: string, width: number, height: number, palette = 'winnow', software = false) {
   const directory = await mkdtemp(join(resolve('../..', '.tmp'), 'winnow-electron-typography-runtime-'))
   app = await electron.launch({
     executablePath: electronPath as unknown as string,
@@ -82,11 +82,14 @@ async function start(kind: string, width: number, height: number, palette = 'win
       palette,
       '--force-color-profile=srgb',
     ],
-    env: Object.fromEntries(
-      Object.entries(process.env).filter(
-        ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-      ),
-    ) as Record<string, string>,
+    env: {
+      ...(Object.fromEntries(
+        Object.entries(process.env).filter(
+          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+        ),
+      ) as Record<string, string>),
+      WINNOW_TYPOGRAPHY_SOFTWARE_RENDERING: software ? '1' : '0',
+    },
     chromiumSandbox: true,
   })
   page = await app.firstWindow()
@@ -220,100 +223,102 @@ async function bounds() {
     }
     return {
       group: rect(node),
-      children: [...node.children].map(rect),
+      children: [...node.querySelectorAll('button')].map(rect),
       border: Number.parseFloat(getComputedStyle(node).borderLeftWidth),
       radius: Number.parseFloat(getComputedStyle(node).borderTopLeftRadius),
     }
   })
 }
-for (const palette of ['winnow', 'rose-pine-dawn'])
-  test(`${palette} actual segmented end states preserve all source rounded corner pixels and keep an inset focus ring`, async () => {
-    await start('segments', 440, 160, palette)
-    const group = page!.locator('[data-source-segments]')
-    const buttons = group.getByRole('button')
-    await page!.mouse.move(1, 1)
-    await page!.evaluate(() => (document.activeElement as HTMLElement)?.blur())
-    await frame()
-    const initialBounds = await bounds()
-    expect(initialBounds.group).toEqual({ x: 20, y: 20, width: 392, height: 120 })
-    expect(initialBounds.border).toBe(4)
-    expect(initialBounds.radius - initialBounds.border).toBe(12)
-    expect(initialBounds.children.map(({ width, height }) => ({ width, height }))).toEqual(
-      Array(3).fill({ width: 128, height: 112 }),
-    )
-    const baseline = await bitmap()
-    expect([baseline.width, baseline.height]).toEqual([440, 160])
-    const pixel = (image: typeof baseline, x: number, y: number) =>
-      image.pixels.subarray((y * image.width + x) * 4, (y * image.width + x) * 4 + 4).toString('hex')
-    await page!.screenshot({ path: test.info().outputPath(`${palette}-segments-baseline.png`) })
-    const origin = { x: 24, y: 24, width: 384, height: 112 }
-    for (const index of [0, 2]) {
-      const button = buttons.nth(index)
-      const check = async (state: string) => {
-        await frame()
-        expect(await bounds()).toEqual(initialBounds)
-        const actual = await bitmap()
-        const corners = []
-        if (state === 'focus') {
-          await expect(button).toBeFocused()
-          const focus = await metric(button)
-          expect(focus.outlineWidth).toBe(2)
-          expect(focus.outlineOffset).toBe(-4)
-          expect(focus.outlineColor).not.toBe('rgba(0, 0, 0, 0)')
-          expect(actual.pixels.equals(baseline.pixels)).toBe(false)
-        } else {
-          if (state === 'selected') {
-            const rect = initialBounds.children[index]!
-            expect(pixel(actual, rect.x + 20, rect.y + 20)).not.toBe(
-              pixel(baseline, rect.x + 20, rect.y + 20),
-            )
-          }
-          for (const right of [false, true])
-            for (const bottom of [false, true])
-              for (const dx of [0, 1])
-                for (const dy of [0, 1]) {
-                  const x = origin.x + (right ? origin.width - 1 - dx : dx),
-                    y = origin.y + (bottom ? origin.height - 1 - dy : dy)
-                  expect(pixel(actual, x, y), `${palette}/${index}/${state} at${x},${y}`).toBe(
-                    pixel(baseline, x, y),
-                  )
-                  corners.push({ x, y, pixel: pixel(actual, x, y) })
-                }
-        }
-        measurements.push({ palette, index, state, corners, bounds: initialBounds })
-        await page!.screenshot({ path: test.info().outputPath(`${palette}-segment-${index}-${state}.png`) })
-      }
-      await page!.evaluate((value) => (window as any).typographyRuntimeProbe.selected(value), index)
-      await check('selected')
-      if (index === 0) {
-        await group.evaluate((node) => {
-          ;(node as HTMLElement).style.overflow = 'visible'
-        })
-        await frame()
-        const unclipped = await bitmap()
-        expect(pixel(unclipped, origin.x + 1, origin.y + 1)).not.toBe(
-          pixel(baseline, origin.x + 1, origin.y + 1),
-        )
-        await group.evaluate((node) => {
-          ;(node as HTMLElement).style.removeProperty('overflow')
-        })
-        measurements.push({
-          palette,
-          negativeControl: 'overflow visible reveals square selected fill',
-          pixel: pixel(unclipped, origin.x + 1, origin.y + 1),
-        })
-      }
-      await page!.evaluate(() => (window as any).typographyRuntimeProbe.selected(null))
-      await button.hover()
-      await check('hover')
-      await page!.mouse.down()
-      await check('pressed')
+for (const software of [false, true])
+  for (const palette of ['winnow', 'rose-pine-dawn'])
+    test(`${palette} actual segmented end states preserve all source rounded corner pixels and keep an inset focus ring (${software ? 'software' : 'default'} renderer)`, async () => {
+      await start('segments', 440, 160, palette, software)
+      const group = page!.locator('[data-source-segments]')
+      const clip = group.locator('.segmented-clip')
+      const buttons = group.getByRole('button')
       await page!.mouse.move(1, 1)
-      await page!.mouse.up()
-      await button.focus()
-      await page!.keyboard.press('Shift+Tab')
-      await page!.keyboard.press('Tab')
-      await check('focus')
       await page!.evaluate(() => (document.activeElement as HTMLElement)?.blur())
-    }
-  })
+      await frame()
+      const initialBounds = await bounds()
+      expect(initialBounds.group).toEqual({ x: 20, y: 20, width: 392, height: 120 })
+      expect(initialBounds.border).toBe(4)
+      expect(initialBounds.radius - initialBounds.border).toBe(12)
+      expect(initialBounds.children.map(({ width, height }) => ({ width, height }))).toEqual(
+        Array(3).fill({ width: 128, height: 112 }),
+      )
+      const baseline = await bitmap()
+      expect([baseline.width, baseline.height]).toEqual([440, 160])
+      const pixel = (image: typeof baseline, x: number, y: number) =>
+        image.pixels.subarray((y * image.width + x) * 4, (y * image.width + x) * 4 + 4).toString('hex')
+      await page!.screenshot({ path: test.info().outputPath(`${palette}-segments-baseline.png`) })
+      const origin = { x: 24, y: 24, width: 384, height: 112 }
+      for (const index of [0, 2]) {
+        const button = buttons.nth(index)
+        const check = async (state: string) => {
+          await frame()
+          expect(await bounds()).toEqual(initialBounds)
+          const actual = await bitmap()
+          const corners = []
+          if (state === 'focus') {
+            await expect(button).toBeFocused()
+            const focus = await metric(button)
+            expect(focus.outlineWidth).toBe(2)
+            expect(focus.outlineOffset).toBe(-4)
+            expect(focus.outlineColor).not.toBe('rgba(0, 0, 0, 0)')
+            expect(actual.pixels.equals(baseline.pixels)).toBe(false)
+          } else {
+            if (state === 'selected') {
+              const rect = initialBounds.children[index]!
+              expect(pixel(actual, rect.x + 20, rect.y + 20)).not.toBe(
+                pixel(baseline, rect.x + 20, rect.y + 20),
+              )
+            }
+            for (const right of [false, true])
+              for (const bottom of [false, true])
+                for (const dx of [0, 1])
+                  for (const dy of [0, 1]) {
+                    const x = origin.x + (right ? origin.width - 1 - dx : dx),
+                      y = origin.y + (bottom ? origin.height - 1 - dy : dy)
+                    expect(pixel(actual, x, y), `${palette}/${index}/${state} at${x},${y}`).toBe(
+                      pixel(baseline, x, y),
+                    )
+                    corners.push({ x, y, pixel: pixel(actual, x, y) })
+                  }
+          }
+          measurements.push({ palette, index, state, corners, bounds: initialBounds })
+          await page!.screenshot({ path: test.info().outputPath(`${palette}-segment-${index}-${state}.png`) })
+        }
+        await page!.evaluate((value) => (window as any).typographyRuntimeProbe.selected(value), index)
+        await check('selected')
+        if (index === 0) {
+          await clip.evaluate((node) => {
+            ;(node as HTMLElement).style.clipPath = 'none'
+          })
+          await frame()
+          const unclipped = await bitmap()
+          expect(pixel(unclipped, origin.x + 1, origin.y + 1)).not.toBe(
+            pixel(baseline, origin.x + 1, origin.y + 1),
+          )
+          await clip.evaluate((node) => {
+            ;(node as HTMLElement).style.removeProperty('clip-path')
+          })
+          measurements.push({
+            palette,
+            negativeControl: 'removing the inner clip reveals square selected fill',
+            pixel: pixel(unclipped, origin.x + 1, origin.y + 1),
+          })
+        }
+        await page!.evaluate(() => (window as any).typographyRuntimeProbe.selected(null))
+        await button.hover()
+        await check('hover')
+        await page!.mouse.down()
+        await check('pressed')
+        await page!.mouse.move(1, 1)
+        await page!.mouse.up()
+        await button.focus()
+        await page!.keyboard.press('Shift+Tab')
+        await page!.keyboard.press('Tab')
+        await check('focus')
+        await page!.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+      }
+    })

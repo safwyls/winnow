@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-09-30 23:42'
+updated_date: '2026-10-02 08:54'
 labels: []
 dependencies: []
 priority: high
@@ -34,56 +34,7 @@ The remaining migration is split into the ordered child tasks below. Complete on
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Review workflow: execute exactly one child task after each user continuation prompt. Read and plan that child when starting it. Do not start another task automatically, including a prerequisite. Finish its checks, document the result, commit and pause for user review.
-
-The split at d4b14152 assigns all 516 unresolved source contracts exactly once (420 pending, 96 partial). Counts below are source-method evidence scopes, not estimates of effort or proof that features are absent. Inspect existing implementations before making changes. The 35 feature/test tasks are followed by five delivery/validation gates.
-
-TASK-381.1 completed the breakdown, TASK-381.2 completed fullscreen clock/controller status in 9b47da85, and TASK-381.3 completed fullscreen lifecycle/navigation in f9e22fc3. Paused for user review. Next implementation task after an explicit continuation prompt: TASK-381.4, fullscreen sizing and rendering behavior.
-
-| Order | Task | Scope | Unresolved contracts at split |
-| --- | --- | --- | --- |
-| 1 | TASK-381.2 | restore the fullscreen clock and controller status | 3 |
-| 2 | TASK-381.3 | finish fullscreen lifecycle and navigation | 17 |
-| 3 | TASK-381.4 | finish fullscreen sizing and rendering behavior | 19 |
-| 4 | TASK-381.5 | finish controller keyboard and accessible modal routes | 10 |
-| 5 | TASK-381.6 | finish library loading and live refresh behavior | 18 |
-| 6 | TASK-381.7 | finish library filters, selection and lists | 24 |
-| 7 | TASK-381.8 | finish tile actions and installed store links | 14 |
-| 8 | TASK-381.9 | finish adding manual games from executables | 8 |
-| 9 | TASK-381.10 | finish identity projections and expansion relationships | 19 |
-| 10 | TASK-381.11 | finish names, editions and group-header preferences | 19 |
-| 11 | TASK-381.12 | finish merge review and suggestion refresh | 18 |
-| 12 | TASK-381.13 | finish IGDB matching and candidate presentation | 18 |
-| 13 | TASK-381.14 | finish metadata editing and refresh composition | 15 |
-| 14 | TASK-381.15 | finish remaining Details and lightbox contracts | 11 |
-| 15 | TASK-381.16 | finish activity tracker and large-history behavior | 8 |
-| 16 | TASK-381.17 | finish activity paging, recovery and journal interactions | 18 |
-| 17 | TASK-381.18 | finish gameplay statistics views | 11 |
-| 18 | TASK-381.19 | finish recommendation state, reserve and impressions | 18 |
-| 19 | TASK-381.20 | finish recommendation previews and shelf presentation | 10 |
-| 20 | TASK-381.21 | finish cover selection, lifetime and conversion behavior | 20 |
-| 21 | TASK-381.22 | finish artwork browsing, selection and backdrops | 16 |
-| 22 | TASK-381.23 | finish startup boundaries and first-run setup | 17 |
-| 23 | TASK-381.24 | finish native activation, data migration and jump lists | 18 |
-| 24 | TASK-381.25 | finish fetch status and session diagnostics | 13 |
-| 25 | TASK-381.26 | finish ownership, install state and snapshot scheduling | 23 |
-| 26 | TASK-381.27 | finish platform accounts and confirmation flows | 25 |
-| 27 | TASK-381.28 | finish IGDB credentials and metadata refresh settings | 8 |
-| 28 | TASK-381.29 | finish Epic sign-in and plugin library integration | 14 |
-| 29 | TASK-381.30 | finish Steam account capture and reported history | 17 |
-| 30 | TASK-381.31 | finish update acknowledgement composition | 9 |
-| 31 | TASK-381.32 | finish theme colors, contrast and persistence | 14 |
-| 32 | TASK-381.33 | finish typography and floating layout behavior | 13 |
-| 33 | TASK-381.34 | finish accessibility and reduced-motion enforcement | 13 |
-| 34 | TASK-381.35 | finish repository boundaries and preview coverage | 12 |
-| 35 | TASK-381.36 | finish application update and recovery flows | 6 |
-| 36 | TASK-381.37 | verify the Windows Electron installer and portable build | 0 |
-| 37 | TASK-381.38 | verify the supported Linux Electron release packages | 0 |
-| 38 | TASK-381.39 | switch primary build, CI and release entry points to Electron | 0 |
-| 39 | TASK-381.40 | verify physical controller and fullscreen device behavior | 0 |
-| 40 | TASK-381.41 | pass the complete migration and regression gates | 0 |
-
-Dependencies express real prerequisites for package, release and final validation work; the table gives the serial review order. New findings inside a child remain its responsibility. If a task cannot stay reviewable, split its remaining scope through Backlog and update this queue before starting another child. The parent remains incomplete until the final regression task proves its acceptance criteria. No release publication is authorized by this plan.
+User-authorized delivery batch: finish TASK-381.36 through TASK-381.41 without the earlier per-task pauses. Update/recovery, Windows qualification, Linux qualification and primary entry-point cutover are complete. Finish available-device evidence and obtain explicit agreement on each unavailable matrix exception under TASK-381.40. Resolve integrated regression failures under TASK-381.41, then run complete component/live API/native/backend/reference/Linux/package gates on the combined committed tree. Reassess every parent criterion using retained evidence, update documentation and the existing draft PR, and report the final reviewable milestone without merging, tagging or publishing.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes

@@ -225,7 +225,8 @@ export function AvalonDetailsLayout({
     if (!fullscreen) return
     const frame = requestAnimationFrame(() => {
       const page = root.current
-      if (!page || page.closest('[inert]') || page.contains(document.activeElement)) return
+      if (!page || page.closest('[inert], [aria-hidden="true"]') || page.contains(document.activeElement))
+        return
       page.querySelector<HTMLElement>('[data-controller-play], .avalon-details-more > button')?.focus()
     })
     return () => cancelAnimationFrame(frame)
@@ -788,6 +789,7 @@ export function AvalonDetailsLayout({
           className="avalon-details desktop"
           aria-describedby={undefined}
           onEscapeKeyDown={(event) => {
+            if (event.defaultPrevented) return
             if (journalSending) {
               event.preventDefault()
               return

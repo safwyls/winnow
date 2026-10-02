@@ -46,7 +46,12 @@ async function arm(
   seconds?: number,
   options?: {
     repeat?: boolean
-    match?: { store: string | null; ownerships: { ownershipId: number; resolvedWorkId: number }[] }
+    match?: {
+      store: string | null
+      ownerships: { ownershipId: number; resolvedWorkId: number }[]
+      fromUtc?: string
+      untilUtc?: string
+    }
   },
 ) {
   return (await control<{ gateId: string }>('arm', { behavior, seconds, target: 'dashboard', ...options }))
@@ -715,7 +720,17 @@ for (const surfaceName of ['desktop', 'fullscreen']) {
       await openGameplay()
       await expect(recorded()).toHaveText('0 h')
       await choosePeriod('custom')
-      const exact = await arm('value', 0)
+      const exact = await arm('value', 0, {
+        match: {
+          store: null,
+          ownerships: [
+            { ownershipId: 1, resolvedWorkId: 1 },
+            { ownershipId: 2, resolvedWorkId: 2 },
+          ],
+          fromUtc: from,
+          untilUtc: until,
+        },
+      })
       await dates(date, date)
       const request = (await entered(exact)).request
       expect(Date.parse(request.fromUtc)).toBe(Date.parse(from))

@@ -43,9 +43,13 @@ for (const [mode, scale] of [
       )
       await application.evaluate(({ BrowserWindow }, mode) => {
         const owner = BrowserWindow.getAllWindows()[0]
-        owner.setFullScreen(mode === 'fullscreen')
-        if (mode === 'desktop') owner.setContentSize(1200, 900)
+        owner.setFullScreen(false)
+        owner.setContentSize(mode === 'fullscreen' ? 1920 : 1200, mode === 'fullscreen' ? 1080 : 900)
+        owner.webContents.send('winnow:fullscreen:changed', mode === 'fullscreen')
       }, mode)
+      await expect
+        .poll(() => page.evaluate(() => [innerWidth, innerHeight]))
+        .toEqual(mode === 'fullscreen' ? [1920, 1080] : [1200, 900])
       await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
       if (mode === 'fullscreen')
         await page.evaluate(async (scale) => {
@@ -63,10 +67,13 @@ for (const [mode, scale] of [
         .click()
       await page.getByRole('button', { name: mode === 'fullscreen' ? 'Epic' : 'EPIC', exact: true }).click()
       if (mode === 'fullscreen')
-        await expect(page.getByRole('heading', { name: 'Epic', exact: true })).toHaveCSS(
-          'font-size',
-          `${64 * scale}px`,
-        )
+        await expect
+          .poll(() =>
+            page
+              .getByRole('heading', { name: 'Epic', exact: true })
+              .evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
+          )
+          .toBeCloseTo(64 * scale, 2)
       const readState = () => application.evaluate(() => (globalThis as any).__epicWorkflow)
       for (const cancel of [true, false]) {
         await page.getByRole('button', { name: 'Connect Epic Games', exact: true }).click()
@@ -119,7 +126,10 @@ for (const [mode, scale] of [
         expect(inputBox!.y).toBeGreaterThanOrEqual(0)
         expect(inputBox!.y + inputBox!.height).toBeLessThanOrEqual(await page.evaluate(() => innerHeight))
         if (mode === 'fullscreen') {
-          expect(inputBox!.height).toBeGreaterThanOrEqual(72)
+          const zoom = await page.evaluate(() => Number(getComputedStyle(document.body).zoom))
+          await expect(input).toHaveCSS('min-height', '72px')
+          // Painted bounds are quantized to 1/64px after interface zoom.
+          expect(inputBox!.height).toBeGreaterThanOrEqual(72 * zoom - 1 / 64)
           await expect(input).toHaveCSS('font-size', `${Number((28 * scale).toFixed(1))}px`)
           await expect(page.getByRole('button', { name: 'Finish connecting', exact: true })).toHaveCSS(
             'min-height',

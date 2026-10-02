@@ -137,7 +137,12 @@ export function ArtworkBrowserDialog({
           aria-describedby={undefined}
           onEscapeKeyDown={(event) => {
             event.preventDefault()
-            event.stopPropagation()
+            const owner =
+              event.target instanceof Element
+                ? event.target.closest('[role="dialog"], [role="alertdialog"]')
+                : null
+            if (owner && owner !== root.current) return
+            event.stopImmediatePropagation()
             if (!busy.current) onClose()
           }}
           onOpenAutoFocus={(event) => {

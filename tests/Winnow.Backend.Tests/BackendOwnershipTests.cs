@@ -16,6 +16,12 @@ public sealed class BackendOwnershipTests
         {
             using var current = WindowsIdentity.GetCurrent();
             var sid = current.User!;
+            // Elevated runners can create directories owned by Administrators.
+            // This contract concerns a user-owned directory without WRITE_OWNER.
+            var owned = discovery.GetAccessControl();
+            owned.SetOwner(sid);
+            discovery.SetAccessControl(owned);
+            Assert.Equal(sid, discovery.GetAccessControl(AccessControlSections.Owner).GetOwner(typeof(SecurityIdentifier)));
             var permissions = new DirectorySecurity();
             permissions.SetAccessRuleProtection(true, false);
             permissions.AddAccessRule(new FileSystemAccessRule(sid, FileSystemRights.Modify,
@@ -24,6 +30,7 @@ public sealed class BackendOwnershipTests
             using (var ownership = new BackendOwnership(root))
             {
                 var secured = discovery.GetAccessControl();
+                Assert.Equal(sid, secured.GetOwner(typeof(SecurityIdentifier)));
                 Assert.True(secured.AreAccessRulesProtected);
                 var rule = Assert.Single(secured.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>());
                 Assert.Equal(sid, rule.IdentityReference);

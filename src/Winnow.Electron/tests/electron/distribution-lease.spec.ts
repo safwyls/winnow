@@ -3,7 +3,7 @@ import { build } from 'esbuild'
 import { access, mkdir, mkdtemp, open, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import electronPath from 'electron'
-import { closeFixture } from './fixture-cleanup'
+import { closeFixture, trackFixture } from './fixture-cleanup'
 
 test('actual Electron portable guard acknowledges readiness and releases its native installation lease', async ({}, info) => {
   test.skip(
@@ -20,6 +20,11 @@ test('actual Electron portable guard acknowledges readiness and releases its nat
   await access(helper)
   await mkdir(installation)
   await mkdir(dataDirectory)
+  // The real lease policy reads the portable installation manifest before locking.
+  await writeFile(
+    join(installation, 'release-info.json'),
+    JSON.stringify({ version: '0.2.0', runtime: 'win-x64', frontend: 'electron' }),
+  )
   const report = info.outputPath('distribution-lease-ledger.json'),
     module = join(directory, 'distribution-helper.mjs')
   await build({
@@ -30,28 +35,31 @@ test('actual Electron portable guard acknowledges readiness and releases its nat
     format: 'esm',
     packages: 'external',
   })
-  const application = await electron.launch({
-    executablePath: electronPath as unknown as string,
-    args: [resolve('tests/electron/distribution-lease-main.mjs'), '--data-dir', dataDirectory],
-    env: {
-      ...(Object.fromEntries(
-        Object.entries(process.env).filter(
-          ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
-        ),
-      ) as Record<string, string>),
-      WINNOW_UPDATE_HELPER_PATH: helper,
-      WINNOW_LEASE_REPORT: report,
-      WINNOW_LEASE_MODULE: module,
-      WINNOW_LEASE_INSTALLATION: installation,
-      WINNOW_LEASE_DATA: dataDirectory,
-    },
-    chromiumSandbox: true,
-  })
+  const application = trackFixture(
+    await electron.launch({
+      executablePath: electronPath as unknown as string,
+      args: [resolve('tests/electron/distribution-lease-main.mjs'), '--data-dir', dataDirectory],
+      env: {
+        ...(Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key !== 'ELECTRON_RUN_AS_NODE' && value !== undefined,
+          ),
+        ) as Record<string, string>),
+        WINNOW_UPDATE_HELPER_PATH: helper,
+        WINNOW_LEASE_REPORT: report,
+        WINNOW_LEASE_MODULE: module,
+        WINNOW_LEASE_INSTALLATION: installation,
+        WINNOW_LEASE_DATA: dataDirectory,
+      },
+      chromiumSandbox: true,
+    }),
+  )
   const lock = join(directory, '.portable.winnow-update.lock')
   const lockWritable = async () => {
     const file = await open(lock, 'r+')
     await file.close()
   }
+  let failure: unknown
   try {
     const page = await application.firstWindow()
     await expect(page.getByRole('heading', { name: 'Portable update guard' })).toBeVisible()
@@ -91,8 +99,20 @@ test('actual Electron portable guard acknowledges readiness and releases its nat
     await application.evaluate(() => (globalThis as any).__lease.ready())
     await expect(lockWritable()).rejects.toMatchObject({ code: expect.stringMatching(/EACCES|EPERM|EBUSY/) })
     expect((await state()).errors).toEqual([])
+  } catch (error) {
+    failure = error
+    throw error
   } finally {
-    await closeFixture(application)
+    try {
+      await closeFixture(application)
+    } catch (cleanupError) {
+      if (failure)
+        throw new AggregateError(
+          [failure, cleanupError],
+          'Portable guard assertion and owned process cleanup failed',
+        )
+      throw cleanupError
+    }
   }
   await expect
     .poll(async () => {

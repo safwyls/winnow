@@ -444,7 +444,11 @@ describe('original activity paging and recovery contracts', () => {
     fireEvent.keyDown(page, { key: 'ArrowRight' })
     await screen.findByText('No sessions this week')
     const tabs = screen.getByRole('navigation', { name: 'Activity type' })
-    expect(page.querySelector('[data-section-trigger]')).toBeNull()
+    for (const direction of ['previous', 'next']) {
+      const hint = page.querySelector(`[data-section-trigger="${direction}"]`)
+      expect(hint?.getAttribute('aria-hidden')).toBe('true')
+      expect(hint?.querySelector('svg')).not.toBeNull()
+    }
     ;(page as HTMLElement).focus()
     fireEvent.keyDown(page, { key: 'ArrowUp' })
     expect(document.activeElement).toBe(within(tabs).getByRole('button', { name: 'Sessions' }))

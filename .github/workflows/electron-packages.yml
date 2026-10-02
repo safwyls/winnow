@@ -166,8 +166,8 @@ jobs:
       - name: Verify Unix installation lease and recovery policy
         run: |
           # The real copied-parent fixture is covered by the complete regression gate.
-          # This focused package gate exercises replacement exclusion and Unix permissions.
-          dotnet test tests/Winnow.Update.Tests --configuration Release --filter "(FullyQualifiedName~InstallationStartupLeaseTests|FullyQualifiedName~InstallationBoundaryTests|FullyQualifiedName~PortableRecoveryTests|FullyQualifiedName~HelperProtocolTests)&FullyQualifiedName!~RealCopiedHelperAcknowledgesHandoffAndReleasesCommandPipesWhileItsParentLives" --logger trx --results-directory artifacts/linux-lease-results --blame-hang-timeout 2m --blame-hang-dump-type mini
+          # This gate also executes real Linux parent waits with exact kernel birth and legacy UTC callers.
+          dotnet test tests/Winnow.Update.Tests --configuration Release --filter "(FullyQualifiedName~InstallationStartupLeaseTests|FullyQualifiedName~InstallationBoundaryTests|FullyQualifiedName~PortableRecoveryTests|FullyQualifiedName~HelperProtocolTests|FullyQualifiedName~UpdateParentProcessTests)&FullyQualifiedName!~RealCopiedHelperAcknowledgesHandoffAndReleasesCommandPipesWhileItsParentLives" --logger trx --results-directory artifacts/linux-lease-results --blame-hang-timeout 2m --blame-hang-dump-type mini
       - name: Publish primary Electron distribution
         run: |
           ./packaging/Publish-Electron.ps1 -Runtime linux-x64 -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA -OutputDirectory artifacts/electron-publish

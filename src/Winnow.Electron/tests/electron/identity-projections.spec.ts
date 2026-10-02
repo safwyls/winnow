@@ -171,6 +171,11 @@ async function link(parentWorkId: number, childWorkIds: number[], kind = 'same_g
       refusedPairs: [],
     },
   })
+  if (kind === 'same_game') {
+    const committed = await library()
+    await expect(page.locator('.avalon-library [data-avalon-game]')).toHaveCount(committed.games.length)
+    await expect(page.locator('.avalon-row-viewport[data-animating]')).toHaveCount(0)
+  }
 }
 async function screenshot(name: string) {
   if (await page.locator('.relationship-confirmation').count()) {

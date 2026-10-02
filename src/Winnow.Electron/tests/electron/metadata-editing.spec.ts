@@ -393,7 +393,7 @@ for (const targetMode of ['desktop', 'fullscreen'] as const) {
       if (mode === 'fullscreen') {
         await activate(page.getByRole('button', { name: 'My lists', exact: true }))
         await expect(page.locator(`[data-avalon-list="${list.id}"]`)).toContainText(
-          `2006 only · ${count} games`,
+          `2006 only · ${count} ${count === 1 ? 'game' : 'games'}`,
         )
       } else
         await expect(page.locator(`[data-avalon-list="${list.id}"]`)).toHaveAttribute(
