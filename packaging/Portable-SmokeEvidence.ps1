@@ -13,12 +13,13 @@ function ConvertFrom-PortableProcStat([string]$Stat, [string]$Executable) {
     $match = [regex]::Match($Stat, '\A([1-9][0-9]*) \(.*\) (.+)\s*\z', [Text.RegularExpressions.RegexOptions]::Singleline)
     if (-not $match.Success) { throw 'Invalid Linux process stat.' }
     $fields = $match.Groups[2].Value.Trim() -split '\s+'
-    if ($fields.Count -lt 20 -or $fields[1] -notmatch '^[0-9]+$' -or $fields[19] -notmatch '^[0-9]+$') {
+    if ($fields.Count -lt 20 -or $fields[0] -cnotmatch '^[A-Za-z]$' -or
+        $fields[1] -notmatch '^[0-9]+$' -or $fields[19] -notmatch '^[0-9]+$') {
         throw 'Linux process stat has no exact parent/start identity.'
     }
     [pscustomobject]@{
         processId = [int]$match.Groups[1].Value; parentId = [int]$fields[1]
-        startTicks = [ulong]$fields[19]; executable = $Executable
+        startTicks = [ulong]$fields[19]; executable = $Executable; state = $fields[0]
     }
 }
 

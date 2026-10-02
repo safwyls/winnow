@@ -99,6 +99,22 @@ child-record bytes before stopping it. Windows retains its existing exact timest
 check. Compared identities are retained in the smoke evidence. Diagnostic collection
 keeps product and installer logs and excludes Chromium profile storage.
 
+The [fourth Ubuntu run 36972975741](https://github.com/safwyls/winnow/actions/runs/36972975741)
+at `075c61c9eaa76e60834c7bca0646d4710808e41e` passed all 28 package contracts and the
+actual Debian install, upgrade, both native presentations, library-preserving removal
+and purge. Dependency verification passed for all 692 managed files and reported only
+the two optional LTTng providers. Portable frontend cleanup passed with the exact kernel
+identity. Its retained comparison confirms a 4,268-tick difference between the helper's
+and PowerShell's UTC timestamps for the same process. The following backend shutdown
+request failed with connection refused after the frontend process-tree termination;
+dead-process handling must distinguish that case from a live backend refusing shutdown.
+Evidence is `.tmp/task38138-linux-fourth.log` and `.tmp/task38138-linux-fourth-evidence`.
+Linux backend shutdown now checks exact kernel birth and state. A missing or terminated
+process needs no HTTP request; a refused request succeeds only if the same process is
+observed to terminate within the existing shutdown bound. A live backend, reused PID or
+unreadable procfs remains a failure. The 55 focused shutdown contracts and all 33 portable
+identity contracts pass locally; actual Linux procfs checks run in the next Ubuntu job.
+
 ## Optional macOS audit
 
 The secondary Electron builder configuration declares a DMG target and its backend

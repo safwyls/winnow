@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 06:18'
+updated_date: '2026-10-02 06:37'
 labels:
   - electron
   - parity
@@ -38,9 +38,9 @@ Review boundary: work on this task only after the user prompts continuation from
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Supported Linux package/portable outputs contain the Electron UI and bundled backend/runtime with correct desktop integration and required native dependencies.
+- [x] #1 Supported Linux package/portable outputs contain the Electron UI and bundled backend/runtime with correct desktop integration and required native dependencies.
 - [ ] #2 Disposable Linux install/start/upgrade/uninstall and session-tracking checks pass, preserving data and package-manager update behavior; unsupported environments are explicitly distinguished.
-- [ ] #3 Existing optional macOS packaging is audited for build claims; any support expansion beyond current Winnow release scope remains explicitly out of scope.
+- [x] #3 Existing optional macOS packaging is audited for build claims; any support expansion beyond current Winnow release scope remains explicitly out of scope.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -82,4 +82,8 @@ Chromium title parser corrected with24 passing offline contracts; renderer/main 
 Third Ubuntu run36971220965 atb677ec93 passes both native desktop/fullscreen probes, all21Linux contracts,24commandline cases and Debian/tar package creation. Root reviewed both full rendered screenshots. Actual beta.3 managed install and upgrade succeed before dependency closure rejects optional-looking .NET libcoreclrtraceptprovider.so missing liblttng-ust.so.0; investigating exact upstream/runtime policy rather than skipping ELF checks. Portable external-data helper stage/apply succeeds with journalReady phase5 and noFailure, then smoke exact child identity comparison refuses cleanup; investigating recorded versus observed process identity without unrelated process termination. Logs .tmp/task38138-linux-third.log; evidence .tmp/task38138-linux-third-evidence. Managed/remove/recovery/session qualification still pending.
 
 Targeted corrections verified locally: optional LTTng classification has seven new negative/closure contracts; package suite25passWindows/3Linux-only (28total). Linux portable cleanup now witnesses exact helper-parent and child kernel birth/executable plus unchanged child-record bytes; Windows UTC comparison unchanged.33offline identity/diagnostic contracts and all7existing packaged helper/evidence groups pass; logs .tmp/task38138-portable-identity.log and .tmp/task38138-portable-existing-contracts.log. CI also runs actual own /proc identity check. Product/installer diagnostic retention excludes Chromium profile persistence and retains child comparison evidence. Third run companion Windows job fully passed again. No local installs or native launches; corrected Ubuntu rerun next.
+
+Fourth Ubuntu run36972975741 at075c61c9 passes all28Linux package contracts and actual managed Debian install/upgrade/native desktop+fullscreen/data-preserving remove+purge. Native provider verifier reports only the two exact optional LTTng absences; all692managed files and declared dependency closure pass. Portable first apply reachesReady and exact witnessed frontend cleanup passes. Compared UTC values639265191429937710 versus639265191429933442 prove the cross-runtime timestamp mismatch (4268ticks) while kernel birth/executable match. Next smoke failure is authenticated backend shutdown Connection refused after frontend tree kill; investigating dead/zombie process handling without ignoring live failures. Log .tmp/task38138-linux-fourth.log; evidence .tmp/task38138-linux-fourth-evidence. Remaining portable scenarios and package-job sessions still pending.
+
+Linux smoke shutdown now checks exact kernel process birth/state; absent or Z/X terminated processes need no HTTP request. After refusal, only observed death within the existing30s shutdown bound succeeds; still-live same identity rethrows the original HTTP exception, reused PID and unreadable procfs fail.55focused backend-stop contracts and33portable identity contracts pass; actual self-proc check is wired to Ubuntu. Windows path unchanged. Logs .tmp/task38138-backend-stop.log and .tmp/task38138-portable-identity-recheck.log. Fourth companion Windows package job fully passed. Rerunning portable qualification.
 <!-- SECTION:NOTES:END -->

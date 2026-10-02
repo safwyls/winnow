@@ -189,6 +189,7 @@ jobs:
           ./packaging/Test-ElectronPackage.ps1 -PublishDirectory artifacts/electron-publish
           ./packaging/Test-PortableSmokeEvidence.ps1
           ./packaging/Test-PreviousDebianPackage.ps1
+          ./packaging/Test-SmokeBackend.ps1
           bash packaging/linux/test-electron-package.sh artifacts/electron-publish
           if ($LASTEXITCODE -ne 0) { throw 'Linux package contracts failed.' }
       - name: Verify packaged frontend, sandbox and activation
