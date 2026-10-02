@@ -165,6 +165,7 @@ try {
     }
     $applicationProcess = $null
     Stop-SmokeBackend $dataDirectory
+    Initialize-InstalledSmokeLibrary $databasePath
     $libraryBefore = Read-InstalledLibraryEvidence $databasePath
     $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
     $libraryBefore | Set-Content -LiteralPath (Join-Path $diagnosticsDirectory 'library-before.json') -Encoding utf8

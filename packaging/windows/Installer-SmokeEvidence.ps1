@@ -58,3 +58,19 @@ with sqlite3.connect(Path(sys.argv[1]).resolve().as_uri() + '?mode=ro', uri=True
     if ($LASTEXITCODE -ne 0 -or -not $result) { throw 'Installed sample library integrity or identity check failed.' }
     return $result
 }
+
+function Initialize-InstalledSmokeLibrary([string]$Database) {
+    # Published Release builds omit --seed-sample. Seed only the isolated database
+    # after the old frontend and backend have stopped, using schema present in that release.
+    $code = @'
+import sqlite3, sys
+from pathlib import Path
+with sqlite3.connect(Path(sys.argv[1]).resolve().as_uri() + '?mode=rw', uri=True) as c:
+    c.execute('PRAGMA foreign_keys=ON')
+    c.execute('INSERT INTO works(id,name) VALUES (?,?)', (-159,'Installed upgrade fixture'))
+    c.execute('INSERT INTO releases(id,work_id,name) VALUES (?,?,?)', (-159,-159,'Installed upgrade edition'))
+    c.execute('INSERT INTO ownerships(id,release_id,store,account_ref,acquired_at,license_type,price_paid_cents) VALUES (?,?,?,?,?,?,?)', (-159,-159,'steam','11111','2020-01-02 00:00:00','retail',500))
+'@
+    & python -c $code $Database
+    if ($LASTEXITCODE -ne 0) { throw 'Could not seed the isolated previous-release library.' }
+}

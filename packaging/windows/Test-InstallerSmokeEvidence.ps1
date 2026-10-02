@@ -62,13 +62,16 @@ try {
 import sqlite3, sys
 with sqlite3.connect(sys.argv[1]) as c:
     c.executescript('CREATE TABLE works(id INTEGER,name TEXT); CREATE TABLE releases(id INTEGER,work_id INTEGER,name TEXT); CREATE TABLE ownerships(id INTEGER,release_id INTEGER,store TEXT,account_ref TEXT,acquired_at TEXT,license_type TEXT,price_paid_cents INTEGER);')
-    c.execute('INSERT INTO works VALUES (?,?)', (1,'Fixture'))
-    c.execute('INSERT INTO releases VALUES (?,?,?)', (2,1,'Fixture edition'))
-    c.execute('INSERT INTO ownerships VALUES (?,?,?,?,?,?,?)', (3,2,'steam','11111','2020-01-02','retail',500))
 '@
     & python -c $seed $database
     if ($LASTEXITCODE -ne 0) { throw 'Could not seed the isolated SQLite evidence fixture.' }
+    Initialize-InstalledSmokeLibrary $database
     $initial = Read-InstalledLibraryEvidence $database
+    $facts = $initial | ConvertFrom-Json
+    if ($facts.works[0][0] -ne -159 -or $facts.releases[0][1] -ne -159 -or
+        $facts.ownerships[0][1] -ne -159 -or $facts.ownerships[0][3] -cne '11111' -or $facts.ownerships[0][6] -ne 500) {
+        throw 'The explicit release-safe seed lost its linked work/release/ownership facts.'
+    }
     if ((Read-InstalledLibraryEvidence $database) -cne $initial) { throw 'Unchanged library evidence was not stable.' }
     & python -c 'import sqlite3,sys; c=sqlite3.connect(sys.argv[1]); c.execute("UPDATE ownerships SET price_paid_cents=600"); c.commit(); c.close()' $database
     if ($LASTEXITCODE -ne 0 -or (Read-InstalledLibraryEvidence $database) -ceq $initial) { throw 'Changed ownership fact escaped the library comparison.' }
