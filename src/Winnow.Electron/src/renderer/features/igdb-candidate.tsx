@@ -1,5 +1,6 @@
-import type { ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { ArtworkPlaceholder } from '../components/ArtworkPlaceholder'
 import './igdb-candidate.css'
 
 export interface IgdbCandidate {
@@ -44,6 +45,7 @@ export function IgdbCandidateRow({
 }
 
 export function IgdbCover({ url }: { url?: string | null }) {
+  const [failedImage, setFailedImage] = useState<string | null>(null)
   const id = url?.match(/\/([^/.]+)\.[a-z]+(?:\?.*)?$/i)?.[1]
   const art = useQuery({
     queryKey: ['artwork', 'igdb', id, 100],
@@ -54,7 +56,13 @@ export function IgdbCover({ url }: { url?: string | null }) {
   })
   return (
     <span className="igdb-candidate-cover" aria-hidden="true">
-      {art.data ? <img src={art.data} width={34} height={51} alt="" /> : '—'}
+      {art.data && art.data !== failedImage ? (
+        <img src={art.data} width={34} height={51} alt="" onError={() => setFailedImage(art.data ?? null)} />
+      ) : art.isFetching ? (
+        <span className="igdb-candidate-loading" />
+      ) : (
+        <ArtworkPlaceholder className="artwork-placeholder-inline artwork-placeholder-thumbnail" label="" />
+      )}
     </span>
   )
 }

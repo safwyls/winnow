@@ -254,6 +254,30 @@ it('measures on attachment and window resize when ResizeObserver is unavailable'
   expect(view.container.querySelector('[data-fitted]')).toBeNull()
 })
 
+it('reads hero metadata and a different preferred cover concurrently', async () => {
+  let finish!: () => void
+  vi.mocked(window.winnow.request).mockImplementation(async (input) => {
+    if (input.route === 'artwork.backdrop') {
+      await new Promise<void>((resolve) => {
+        finish = resolve
+      })
+      return { ok: true, status: 200, data: { candidates: [], coverKey: null } } as never
+    }
+    return {
+      ok: true,
+      status: 200,
+      data: { current: { previewKey: { provider: 'fixture', id: 'cover' } } },
+    } as never
+  })
+  const view = render(<AvalonBackdrop workId={1} coverWorkId={2} />)
+  await waitFor(() =>
+    expect(window.winnow.request).toHaveBeenCalledWith(expect.objectContaining({ route: 'artwork.get' })),
+  )
+  expect(loadBackdropImage).not.toHaveBeenCalled()
+  await act(async () => finish())
+  await waitFor(() => expect(view.container.querySelector('img')).not.toBeNull())
+})
+
 it.each([false, true])(
   'keeps canonical hero metadata while a saved header changes the cover fallback, fullscreen %s',
   async (fullscreen) => {

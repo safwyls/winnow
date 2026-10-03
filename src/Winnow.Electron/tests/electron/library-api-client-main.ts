@@ -16,6 +16,7 @@ import { AvalonThemeStore } from '../../src/main/avalon-theme-store'
 import { FontCatalogue } from '../../src/main/fonts'
 import { setPopoutTypography } from '../../src/main/popout-typography'
 import { WindowAppearanceController } from '../../src/main/window-appearance'
+import { applyWindowChrome, titlebarOptions } from '../../src/main/window-chrome'
 import { FullscreenFilePickerService } from '../../src/main/file-picker'
 import { ActivationQueue } from '../../src/main/activation-queue'
 import { initialUpdateSnapshot } from '../../src/main/application-updater'
@@ -62,6 +63,7 @@ async function initialize() {
   // Require an existing live endpoint; this client has no start/restart/shutdown capability.
   state.backendProcessId = (await readDiscovery(directory)).processId
   const window = new BrowserWindow({
+    ...titlebarOptions(process.platform),
     width: 1440,
     height: 960,
     show: false,
@@ -133,6 +135,7 @@ async function initialize() {
     }),
   )
   handle('winnow:fonts', () => fonts.read(owner))
+  handle('winnow:window:chrome', (value) => applyWindowChrome(window, process.platform, value))
   handle('winnow:typography:popouts', (value) => setPopoutTypography(owner, value))
   handle('winnow:preferences:load', () =>
     readProfile(join(profile, 'profile.json')).catch((error) => {

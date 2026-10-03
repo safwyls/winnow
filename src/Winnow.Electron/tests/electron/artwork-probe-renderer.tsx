@@ -36,6 +36,9 @@ const probe = {
   requests: [] as { width: number; requestId?: string }[],
   cancels: [] as string[],
   failNext: false,
+  failSelectionNext: false,
+  selectionReads: 0,
+  refresh: () => client.invalidateQueries({ queryKey: ['artwork'] }),
   hold: false,
   release: () => {},
   warmSource: '',
@@ -53,16 +56,25 @@ const probe = {
 }
 Object.assign(window, { artworkProbe: probe })
 window.winnow = {
-  request: async (input) => ({
-    ok: true,
-    status: 200,
-    data:
-      input.route === 'artworkState'
-        ? { revision: 'fixture', current: { previewKey: { provider: 'fixture', id: 'portrait' } } }
-        : input.route === 'preferences.presentation.get'
-          ? [{ preference: 'DimDormantCovers', value: String(probe.dimmed) }]
-          : [],
-  }),
+  request: async (input) => {
+    if (input.route === 'artworkState') {
+      probe.selectionReads++
+      if (probe.failSelectionNext) {
+        probe.failSelectionNext = false
+        return { ok: false, status: 429, message: 'Fixture is briefly busy' }
+      }
+    }
+    return {
+      ok: true,
+      status: 200,
+      data:
+        input.route === 'artworkState'
+          ? { revision: 'fixture', current: { previewKey: { provider: 'fixture', id: 'portrait' } } }
+          : input.route === 'preferences.presentation.get'
+            ? [{ preference: 'DimDormantCovers', value: String(probe.dimmed) }]
+            : [],
+    }
+  },
   artwork: async (_provider, _id, width = 600, requestId) => {
     probe.requests.push({ width, requestId })
     if (probe.hold)

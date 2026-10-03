@@ -45,6 +45,7 @@ import { LaunchFeedbackContext, LaunchFeedbackStrip, useLaunchFeedbackHost } fro
 import { PrimaryActionsContext, usePrimaryActionsHost } from './features/PrimaryActions'
 import { FetchStatusContext, useFetchStatusHost } from './features/FetchStatus'
 import { ThemeRecoveryProvider } from './theming/ThemeRecovery'
+import { WindowChrome } from './components/WindowChrome'
 
 installThemeSDK()
 const builtins = [avalon, afterglow, rift, catalogue]
@@ -620,6 +621,7 @@ export function App() {
       <LaunchFeedbackContext.Provider value={launchFeedback}>
         <PrimaryActionsContext.Provider value={primaryActions}>
           <MotionConfig reducedMotion={reducedMotion ? 'always' : 'user'}>
+            <WindowChrome fullscreen={mode === 'fullscreen'} />
             <ArtworkEffectsProvider
               options={normalizeArtworkEffects(runtime.profile.appearance.artwork)}
               reducedMotion={reducedMotion}

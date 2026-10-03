@@ -7,6 +7,7 @@ import type { ArtworkSaveResult } from '../../shared/bridge'
 import { updatePageUrl } from './details-facts'
 import { Empty, Notice } from './shared'
 import { useArtworkSelection } from '../components/Artwork'
+import { ArtworkPlaceholder } from '../components/ArtworkPlaceholder'
 import leftTrigger from './assets/xbox_lt_outline.svg?raw'
 import rightTrigger from './assets/xbox_rt_outline.svg?raw'
 import selectButton from './assets/xbox_button_a_outline.svg?raw'
@@ -66,6 +67,7 @@ export function ArtworkImage({
   preview?: boolean
   className?: string
 }) {
+  const [failedImage, setFailedImage] = useState<string | null>(null)
   const image = useQuery({
     queryKey: ['artwork-image', imageKey, preview ? 1200 : 400],
     enabled: Boolean(imageKey),
@@ -91,12 +93,17 @@ export function ArtworkImage({
       }
     },
   })
-  return image.data ? (
-    <img className={className} src={image.data} alt={preview ? 'Selected artwork preview' : ''} />
+  return image.data && image.data !== failedImage ? (
+    <img
+      className={className}
+      src={image.data}
+      alt={preview ? 'Selected artwork preview' : ''}
+      onError={() => setFailedImage(image.data ?? null)}
+    />
+  ) : image.isFetching ? (
+    <span className="artwork-browser-placeholder">Loading artwork…</span>
   ) : (
-    <span className="artwork-browser-placeholder">
-      {image.isFetching ? 'Loading artwork…' : 'Preview unavailable'}
-    </span>
+    <ArtworkPlaceholder className="artwork-placeholder-inline" label="Preview unavailable" />
   )
 }
 
@@ -205,6 +212,8 @@ export function ArtworkBrowser({
     [error, setError] = useState<unknown>(null)
   const [refreshFailed, setRefreshFailed] = useState(false)
   const busyRef = useRef(false),
+    previousBusy = useRef(false),
+    root = useRef<HTMLElement>(null),
     mounted = useRef(true),
     gallery = useRef<HTMLDivElement>(null),
     slotRow = useRef<HTMLDivElement>(null)
@@ -254,6 +263,28 @@ export function ArtworkBrowser({
       mounted.current = false
     }
   }, [])
+  useLayoutEffect(() => {
+    const wasBusy = previousBusy.current
+    previousBusy.current = busy
+    if (!wasBusy || busy) return
+    const panel = root.current,
+      dialog = panel?.closest('[role="dialog"], [role="alertdialog"]'),
+      active = document.activeElement,
+      activeDialog = active?.closest('[role="dialog"], [role="alertdialog"]')
+    if (!dialog || dialog.getAttribute('aria-hidden') === 'true') return
+    if (active && panel?.contains(active) && !active.matches(':disabled')) return
+    if (
+      active !== document.body &&
+      activeDialog !== dialog &&
+      activeDialog?.getAttribute('aria-hidden') !== 'true'
+    )
+      return
+    // Disabling the focused save button can return Chromium focus to the covered
+    // Details scope. Restore a stable control here, without taking a child dialog's focus.
+    slotRow.current
+      ?.querySelector<HTMLButtonElement>(`[data-artwork-slot="${slot}"]`)
+      ?.focus({ preventScroll: true })
+  }, [busy, slot])
   useLayoutEffect(() => {
     const node = gallery.current
     if (!node) return
@@ -353,7 +384,7 @@ export function ArtworkBrowser({
   const previewRatio =
     slot === 'Cover' ? 2 / 3 : crop === 'fullscreen' ? 16 / 9 : mode === 'fullscreen' ? 4 / 3 : desktopRatio
   return (
-    <section className={`artwork-browser mode-${mode}`} data-artwork-slot-active={slot}>
+    <section ref={root} className={`artwork-browser mode-${mode}`} data-artwork-slot-active={slot}>
       <header className="artwork-browser-heading">
         {onClose && (
           <button disabled={busy} onClick={onClose}>

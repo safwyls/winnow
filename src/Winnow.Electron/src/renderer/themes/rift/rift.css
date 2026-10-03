@@ -462,12 +462,6 @@
 .rift-cover:has(.artwork:is([data-state='missing'], [data-state='error'])) .rift-cover-fallback {
   display: -webkit-box;
 }
-.rift-cover .art-placeholder > svg {
-  position: absolute;
-  top: 18px;
-  left: 12px;
-  opacity: 0.6;
-}
 .rift-cover .art-placeholder > span {
   display: none;
 }

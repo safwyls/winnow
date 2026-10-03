@@ -122,4 +122,121 @@ test('fullscreen and disabled transparency restore solid surfaces while saved ma
   await expect(page.locator('html')).toHaveAttribute('data-avalon-material', 'none')
   expect(errors).toEqual([])
 })
+for (const fullscreen of [false, true])
+  test(`${fullscreen ? 'fullscreen' : 'desktop'} transparency follows a continuous pointer drag and persists the keyboard-adjusted value`, async () => {
+    await application.evaluate(({ BrowserWindow }, fullscreen) => {
+      const window = BrowserWindow.getAllWindows()[0]
+      window.setFullScreen(false)
+      window.setContentSize(1440, 1000)
+      window.webContents.send('winnow:fullscreen:changed', fullscreen)
+    }, fullscreen)
+    await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
+    const slider = page.getByRole('slider', { name: 'Transparency', exact: true })
+    await slider.fill('20')
+    await slider.scrollIntoViewIfNeeded()
+    const bounds = (await slider.boundingBox())!
+    const point = (percent: number) => bounds.x + 8 + ((bounds.width - 16) * percent) / 100
+    await page.mouse.move(point(20), bounds.y + bounds.height / 2)
+    await page.mouse.down()
+    try {
+      for (const percent of [35, 55, 80]) {
+        await page.mouse.move(point(percent), bounds.y + bounds.height / 2, { steps: 8 })
+        await expect(slider).toBeEnabled()
+        await expect.poll(async () => Number(await slider.inputValue())).toBeGreaterThan(percent - 5)
+      }
+    } finally {
+      await page.mouse.up()
+    }
+    await slider.focus()
+    await page.keyboard.press('Home')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await expect(slider).toHaveValue('2')
+    await expect
+      .poll(() =>
+        page.evaluate(async () => {
+          const response = await window.winnow.request({ route: 'preferences.presentation.get' })
+          if (!response.ok) throw Error('Preference read failed')
+          return (response.data as { preference: string; value: string }[]).find(
+            (row) => row.preference === 'Transparency',
+          )?.value
+        }),
+      )
+      .toBe('2')
+    await page.reload()
+    await expect(page.locator('.avalon-shell')).toBeVisible()
+    await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
+    await expect(slider).toHaveValue('2')
+  })
+
+test('the native caption follows every composition and an Avalon light palette without taking fullscreen space', async () => {
+  test.skip(process.platform !== 'win32' && process.platform !== 'linux')
+  await application.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    window.setFullScreen(false)
+    window.webContents.send('winnow:fullscreen:changed', false)
+    const original = window.setTitleBarOverlay.bind(window)
+    window.setTitleBarOverlay = (options) => {
+      ;(globalThis as typeof globalThis & { latestTitlebar?: unknown }).latestTitlebar = options
+      return original(options)
+    }
+  })
+  await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
+  for (const composition of ['Afterglow', 'Rift', 'Catalogue', 'Avalon']) {
+    await page
+      .locator('.studio-theme-option')
+      .filter({ has: page.locator('strong', { hasText: new RegExp(`^${composition}$`) }) })
+      .click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', composition.toLowerCase())
+    const caption = page.getByLabel('Window title bar', { exact: true })
+    await expect(caption).toBeVisible()
+    const colors = await caption.evaluate((element) => {
+      const root = getComputedStyle(document.documentElement)
+      const style = getComputedStyle(element)
+      return {
+        text: root.getPropertyValue('--text').trim(),
+        foreground: style.color,
+        background: style.backgroundColor,
+        drag: style.getPropertyValue('-webkit-app-region'),
+        height: element.getBoundingClientRect().height,
+      }
+    })
+    expect(colors.drag).toBe('drag')
+    expect(colors.height).toBeCloseTo(32, 0)
+    await expect
+      .poll(() =>
+        application.evaluate(
+          () => (globalThis as typeof globalThis & { latestTitlebar?: unknown }).latestTitlebar,
+        ),
+      )
+      .toEqual({ symbolColor: colors.text })
+    const overlay = await page.evaluate(() => {
+      const overlay = (
+        navigator as Navigator & {
+          windowControlsOverlay: { visible: boolean; getTitlebarAreaRect(): DOMRect }
+        }
+      ).windowControlsOverlay
+      return { visible: overlay.visible, width: overlay.getTitlebarAreaRect().width, viewport: innerWidth }
+    })
+    expect(overlay.visible).toBe(true)
+    expect(overlay.width).toBeGreaterThan(0)
+    expect(overlay.width).toBeLessThan(overlay.viewport)
+  }
+  await page.getByRole('combobox', { name: /^Avalon palette/ }).selectOption('rose-pine-dawn')
+  await expect
+    .poll(() =>
+      application.evaluate(
+        () => (globalThis as typeof globalThis & { latestTitlebar?: unknown }).latestTitlebar,
+      ),
+    )
+    .toEqual({ symbolColor: '#464261' })
+  await page.screenshot({ path: test.info().outputPath('themed-light-caption.png') })
+  await application.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0].webContents.send('winnow:fullscreen:changed', true),
+  )
+  await expect(page.getByLabel('Window title bar', { exact: true })).toHaveCount(0)
+  await expect(page.locator('#root')).toHaveCSS('padding-top', '0px')
+  expect(errors).toEqual([])
+})
+
 test.afterAll(async () => closeFixture(application, directory))

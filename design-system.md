@@ -758,6 +758,13 @@ The last one matters: store metadata backfill takes hours, so the interface prom
 browsable library immediately and art later. **Render placeholder tiles with the title set in
 Bricolage on a `Surface` field — never a spinner, never an empty grid.**
 
+Electron's unavailable-artwork surfaces add a static illustration from the active composition:
+Avalon's misted landscape, Afterglow's warm halo, Rift's starfield, or Catalogue's printed index
+cards. Covers retain the game title, and unavailable screenshot or artwork previews retain
+their explanatory labels. The same local illustration appears on desktop, fullscreen and
+portal surfaces, inherits the palette, and needs no download or motion. Loading remains a
+distinct state; a game with no screenshots still has no invented gallery entries.
+
 Connection and credential consent copy names the provider, the information Winnow reads,
 where credentials are stored and the action that grants access. Preserve that disclosure
 when changing a sign-in surface.
@@ -1324,7 +1331,12 @@ sorting, measured text sizes, data provenance or supported device behavior.
 
 ## 9. Window chrome
 
-The app draws its own title bar. Avalonia's `ExtendClientAreaToDecorationsHint` with
+Electron paints a 32px caption in the active composition's palette on Windows and Linux,
+with native window buttons and a native drag region. Avalon uses the caption and ground
+inks below; other compositions use their surface and text inks. The caption disappears in
+fullscreen. Other platforms retain their system frame.
+
+The reference Avalonia frontend draws its own title bar. `ExtendClientAreaToDecorationsHint` with
 `ExtendClientAreaChromeHints="NoChrome"` puts the client area over the decorations; the caption
 and its three buttons are ordinary controls in the window's own tree.
 
@@ -2579,7 +2591,10 @@ critic scores and Steam's published review label, and an optional four-line summ
 actions. Ratings occupy one subdued `TextDim` line with middle-dot separators; counts and
 Steam's percentage remain in accessible text. Review tooltips appear only in desktop details,
 not on feed tiles or previews. Ratings use shared reception formatting and are
-loaded from local storage while the preview is open; absent sources occupy no space.
+loaded from local storage while the preview is open. Electron reserves the same single-line
+height for **Loading reviews…**, loaded ratings, **No reviews available**, and **Reviews
+unavailable**. Loading does not reshape or reposition the bubble or its summary. Long ratings
+truncate visually while accessible text retains the complete values.
 The recommendation reason stays below the cover rather than
 repeating in the preview.
 
@@ -2784,6 +2799,10 @@ nothing; and it grows to 10% as the pane opens up and there is more under it to 
 **The slider is 0 to 100, stored as a whole percent under `appearance.transparency`.** A stored
 `true` migrates to 25; a stored `false` to 0.
 
+Electron previews pointer and keyboard changes immediately while saving the latest position
+in order. Saving never disables the slider. A failed save restores the last confirmed value
+and exposes the error; an older save cannot overwrite a newer drag or palette default.
+
 **Zero is a real position, not an off state dressed as one.** It is
 bit-for-bit the opaque palette with nothing carrying alpha, and it is the answer for anyone who
 wants §8's floor with no argument — which is why the label under that end of the track is a
@@ -2878,8 +2897,8 @@ Avalon's Electron path keeps the same palette and two-tier surface arithmetic. I
 the selected native material only on Windows 11 22H2 or later, with solid fallback for
 high contrast, reduced transparency, remote sessions and failed requests. Fullscreen is
 solid. Electron exposes no actual-material getter: the bridge reports a supported request,
-not proof of the compositor's visible effect. The normal native window frame stays in place,
-and the renderer never lowers whole-window opacity. The material's visible result needs
+not proof of the compositor's visible effect. Native window controls sit over the themed
+caption (§9), and the renderer never lowers whole-window opacity. The material's visible result needs
 native Windows inspection in addition to renderer alpha and layout tests.
 
 ### 14.4 The dormancy ramp over a translucent window

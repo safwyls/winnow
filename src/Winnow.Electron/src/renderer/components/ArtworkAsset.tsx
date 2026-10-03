@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import type { ArtworkLease, OwnedArtwork } from './artwork-cache'
 import { artworkImages, loadArtworkImage, type ArtworkKey } from './artwork-images'
+import { ArtworkPlaceholder } from './ArtworkPlaceholder'
 
 /** A selected asset has the same visible lease lifetime as a work's selected cover. */
 export function ArtworkAsset({
@@ -22,6 +23,7 @@ export function ArtworkAsset({
   const leases = useRef(new Set<ArtworkLease<OwnedArtwork>>())
   const queryKey = useRef('')
   const [revision, setRevision] = useState(0)
+  const [failedImage, setFailedImage] = useState<OwnedArtwork | null>(null)
   const [snapshot, setSnapshot] = useState<{
     identity: string
     pixels: OwnedArtwork | null
@@ -118,9 +120,17 @@ export function ArtworkAsset({
     [snapshot],
   )
   const current = snapshot?.identity === identity ? snapshot : null
-  return current?.pixels ? (
-    <img key={identity} ref={attach} src={current.pixels.source} alt={alt} />
+  return current?.pixels && current.pixels !== failedImage ? (
+    <img
+      key={identity}
+      ref={attach}
+      src={current.pixels.source}
+      alt={alt}
+      onError={() => setFailedImage(current.pixels)}
+    />
+  ) : current ? (
+    <ArtworkPlaceholder label="Screenshot unavailable" />
   ) : (
-    <span className="art-placeholder">{current ? 'Screenshot unavailable' : 'Loading screenshot…'}</span>
+    <span className="art-placeholder">Loading screenshot…</span>
   )
 }

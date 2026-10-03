@@ -5,11 +5,14 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { Artwork } from '../src/renderer/components/Artwork'
 import { artworkImages, closeArtworkImages } from '../src/renderer/components/artwork-images'
 import { AvalonBackdrop } from '../src/renderer/themes/avalon-backdrop'
-import { loadBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
+import { loadBackdropImage, loadCachedBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
 import type { BackdropPixels } from '../src/renderer/themes/avalon-backdrop-model'
 import type { WinnowBridge } from '../src/shared/bridge'
 
-vi.mock('../src/renderer/themes/avalon-backdrop-image', () => ({ loadBackdropImage: vi.fn() }))
+vi.mock('../src/renderer/themes/avalon-backdrop-image', () => ({
+  loadBackdropImage: vi.fn(),
+  loadCachedBackdropImage: vi.fn(),
+}))
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
@@ -75,8 +78,8 @@ it('desktop ranked backdrop and portrait keep independent ownership through fail
     onEvent: () => () => {},
   } as unknown as WinnowBridge
   const pending: { signal: AbortSignal; finish: (value: BackdropPixels | null) => void }[] = []
-  vi.mocked(loadBackdropImage).mockImplementation(
-    (_key, _width, signal) => new Promise((finish) => pending.push({ signal, finish })),
+  vi.mocked(loadCachedBackdropImage).mockImplementation(
+    (_client, _key, _width, signal) => new Promise((finish) => pending.push({ signal, finish })),
   )
   const view = render(
     <QueryClientProvider client={client}>
@@ -86,17 +89,19 @@ it('desktop ranked backdrop and portrait keep independent ownership through fail
   )
   await waitFor(() => expect(artwork).toHaveBeenCalledOnce())
   await waitFor(() => expect(pending).toHaveLength(1))
-  expect(vi.mocked(loadBackdropImage).mock.calls[0].slice(0, 2)).toEqual([
+  expect(loadBackdropImage).not.toHaveBeenCalled()
+  expect(vi.mocked(loadCachedBackdropImage).mock.calls[0][0]).toBe(client)
+  expect(vi.mocked(loadCachedBackdropImage).mock.calls[0].slice(1, 3)).toEqual([
     { provider: 'user', id: 'override' },
     1920,
   ])
   await act(async () => pending[0].finish(null))
-  expect(vi.mocked(loadBackdropImage).mock.calls[1].slice(0, 2)).toEqual([
+  expect(vi.mocked(loadCachedBackdropImage).mock.calls[1].slice(1, 3)).toEqual([
     { provider: 'igdb-backdrop', id: 'art' },
     1920,
   ])
   await act(async () => pending[1].finish(null))
-  expect(vi.mocked(loadBackdropImage).mock.calls[2].slice(0, 2)).toEqual([
+  expect(vi.mocked(loadCachedBackdropImage).mock.calls[2].slice(1, 3)).toEqual([
     { provider: 'igdb-backdrop', id: 'shot' },
     1920,
   ])
@@ -110,7 +115,7 @@ it('desktop ranked backdrop and portrait keep independent ownership through fail
     resize()
   })
   await waitFor(() => expect(pending).toHaveLength(4))
-  expect(vi.mocked(loadBackdropImage).mock.calls[3][1]).toBe(3840)
+  expect(vi.mocked(loadCachedBackdropImage).mock.calls[3][2]).toBe(3840)
   view.unmount()
   expect(pending[3].signal.aborted).toBe(true)
   expect(shot.dispose).toHaveBeenCalledOnce()

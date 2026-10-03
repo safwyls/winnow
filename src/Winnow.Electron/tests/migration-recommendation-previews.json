@@ -78,7 +78,7 @@
     "tests": [
       {
         "file": "tests/avalon-preview.test.tsx",
-        "case": "missing ratings leave the pending Hades preview content unchanged and reserve no rating row"
+        "case": "missing ratings retain the same preview review row with an accurate empty state"
       },
       {
         "file": "../../tests/Winnow.Backend.Tests/RecommendationPreviewParityTests.cs",
@@ -86,10 +86,10 @@
       },
       {
         "file": "tests/electron/preview-shelves.spec.ts",
-        "case": "desktop source missing ratings reserve no preview space"
+        "case": "desktop missing ratings retain preview geometry with a truthful empty review line"
       }
     ],
-    "reason": "Pending and empty Hades ratings both omit the rating row. Component evidence preserves identical content after[] and native compares actual bubble width/height before and after the held real empty response; there is no reserved rating space."
+    "reason": "TASK-383's user-requested stable hover geometry replaces the source rule that absent reviews reserve no row. The production review line stays one line tall while loading and when empty, with truthful Loading reviews and No reviews available labels. Component evidence retains the same DOM line; native compares position, width and height before and after the held real empty response. Missing source populations still produce no fabricated scores."
   },
   "FeedPreviewRatingsTests.Closed_or_disposed_preview_cancels_pending_ratings_and_ignores_late_result": {
     "status": "ported",
@@ -118,10 +118,10 @@
       },
       {
         "file": "tests/electron/preview-shelves.spec.ts",
-        "case": "desktop source ratings growth near the bottom reclamps the measured preview within the window"
+        "case": "desktop ${library ? 'library' : 'feed'} delayed ratings near the bottom keep preview geometry inside the window"
       }
     ],
-    "reason": "The source 900 x 400 window and card atY340 receive the complete Hades rating populations after the initial bubble is measured. Native requires a strictly taller bubble, an upward reposition and all final bounds inside the viewport, exercising production ResizeObserver placement rather than mocked dimensions."
+    "reason": "TASK-383's user-requested stable hover geometry replaces growth after late reviews. The 900 x 400 feed window with card at Y340 and the 900 x 500 library window with its card partly clipped at the scroll viewport bottom receive complete Hades review populations after initial measurement. Native compares exact bubble bounds, visible text-row positions and SVG outline before and after delivery and still requires all bounds inside the viewport."
   },
   "FeedShelfVisualTests.Capture_cover_shelves_and_quick_details": {
     "status": "ported",

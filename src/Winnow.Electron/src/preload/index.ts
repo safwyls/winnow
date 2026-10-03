@@ -50,6 +50,7 @@ const bridge: WinnowBridge = {
   listFonts: () => ipcRenderer.invoke('winnow:fonts'),
   setPopoutTypography: (value) => ipcRenderer.invoke('winnow:typography:popouts', value),
   windowAppearance: (value) => ipcRenderer.invoke('winnow:window:appearance', value),
+  windowChrome: (value) => ipcRenderer.invoke('winnow:window:chrome', value),
   onWindowAppearanceInvalidated: (callback) => subscribe('winnow:window:appearance:invalidated', callback),
   installTheme: () => ipcRenderer.invoke('winnow:themes:install'),
   setFullscreen: (value) => ipcRenderer.invoke('winnow:fullscreen', value),

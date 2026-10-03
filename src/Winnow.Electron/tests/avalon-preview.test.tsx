@@ -49,6 +49,8 @@ it('opens an immediate noninteractive preview with compact attributed ratings', 
   fireEvent.mouseEnter(screen.getByRole('button', { name: 'View Hades' }))
   const preview = screen.getByRole('tooltip')
   expect(within(preview).getByText('Hades')).toBeDefined()
+  const reviewLine = within(preview).getByRole('group', { name: 'Loading reviews…' })
+  expect(reviewLine.getAttribute('aria-busy')).toBe('true')
   await waitFor(() =>
     expect(preview.textContent).toContain('IGDB: 81 · IGDB critics: 88 · Steam: Very Positive'),
   )
@@ -61,6 +63,8 @@ it('opens an immediate noninteractive preview with compact attributed ratings', 
     name: 'IGDB user rating: 81 out of 100, from 100 ratings. Critic score aggregated by IGDB: 88 out of 100, from 12 critic scores. Very Positive on Steam: 93% positive, from 1,500 reviews.',
   })
   expect(accessible.textContent).toBe('IGDB: 81 · IGDB critics: 88 · Steam: Very Positive')
+  expect(accessible).toBe(reviewLine)
+  expect(accessible.hasAttribute('aria-busy')).toBe(false)
   expect(preview.querySelector('[title]')).toBeNull()
   expect(within(preview).queryAllByRole('button')).toHaveLength(0)
   expect(screen.getByRole('button', { name: 'View Hades' }).getAttribute('aria-describedby')).toBe(preview.id)
@@ -124,7 +128,7 @@ it('omits absent reception figures and never blends separate rating populations'
   expect(compactAvalonRatings([{ ...ratings[0], label: '' }])).toBe('Steam: Unclassified')
 })
 
-it('missing ratings leave the pending Hades preview content unchanged and reserve no rating row', async () => {
+it('missing ratings retain the same preview review row with an accurate empty state', async () => {
   let complete!: (value: ApiResult<unknown>) => void
   vi.mocked(window.winnow.request).mockReturnValue(
     new Promise((resolve) => {
@@ -135,11 +139,29 @@ it('missing ratings leave the pending Hades preview content unchanged and reserv
   expect(window.winnow.request).not.toHaveBeenCalled()
   fireEvent.mouseEnter(screen.getByRole('button', { name: 'View Hades' }))
   const preview = screen.getByRole('tooltip')
-  const content = preview.querySelector('.avalon-preview-copy')!.innerHTML
-  expect(preview.querySelector('.avalon-preview-ratings')).toBeNull()
+  const reviewLine = within(preview).getByRole('group', { name: 'Loading reviews…' })
   await act(async () => complete({ ok: true, status: 200, data: { ratings: [] } }))
-  expect(preview.querySelector('.avalon-preview-ratings')).toBeNull()
-  expect(preview.querySelector('.avalon-preview-copy')!.innerHTML).toBe(content)
+  expect(within(preview).getByRole('group', { name: 'No reviews available' })).toBe(reviewLine)
+  expect(reviewLine.hasAttribute('aria-busy')).toBe(false)
+  expect(within(preview).getByText('A world worth revisiting.')).toBeDefined()
+})
+
+it('failed reviews retain the review row without claiming that ratings are absent', async () => {
+  let fail!: (reason: Error) => void
+  vi.mocked(window.winnow.request).mockReturnValue(
+    new Promise((_, reject) => {
+      fail = reject
+    }),
+  )
+  render(<AvalonCover context={context} game={{ ...game(), title: 'Hades' }} />)
+  fireEvent.mouseEnter(screen.getByRole('button', { name: 'View Hades' }))
+  const preview = screen.getByRole('tooltip')
+  const reviewLine = within(preview).getByRole('group', { name: 'Loading reviews…' })
+  await act(async () => fail(new Error('Temporary read failure')))
+  expect(within(preview).getByRole('group', { name: 'Reviews unavailable' })).toBe(reviewLine)
+  expect(reviewLine.hasAttribute('aria-busy')).toBe(false)
+  fireEvent.keyDown(document, { key: 'Escape' })
+  expect(screen.queryByRole('tooltip')).toBeNull()
 })
 
 it.each([

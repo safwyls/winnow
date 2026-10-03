@@ -1,0 +1,28 @@
+:root[data-window-chrome='themed'] #root {
+  padding-top: calc(32px / var(--effective-interface-scale, 1));
+}
+.window-chrome {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 2147483000;
+  height: calc(32px / var(--effective-interface-scale, 1));
+  display: flex;
+  align-items: center;
+  color: var(--text);
+  background: var(--surface);
+  font: calc(12px / var(--effective-interface-scale, 1)) var(--font-body);
+  user-select: none;
+  -webkit-app-region: drag;
+}
+:root[data-theme='avalon'] .window-chrome {
+  background:
+    linear-gradient(var(--window-caption-fill, var(--surface)), var(--window-caption-fill, var(--surface))),
+    var(--window-caption-ground, var(--bg));
+}
+.window-chrome span {
+  margin-left: calc((env(titlebar-area-x, 0px) + 12px) / var(--effective-interface-scale, 1));
+  max-width: calc((env(titlebar-area-width, 100vw) - 24px) / var(--effective-interface-scale, 1));
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

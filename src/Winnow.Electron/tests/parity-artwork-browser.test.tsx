@@ -113,6 +113,40 @@ const choose = async (source = 'steam', slot = 'Hero', suffix = 'first') => {
   return button
 }
 describe.each<Mode>(['desktop', 'fullscreen'])('%s artwork browser source contracts', (mode) => {
+  it.each([false, true])(
+    'restores focus after a disabled save button loses it, without taking a child dialog focus: child %s',
+    async (child) => {
+      let finish!: () => void
+      const test = mount(mode, (input) =>
+        input.route === 'artwork.put'
+          ? new Promise((resolve) => {
+              finish = () => resolve(undefined)
+            })
+          : undefined,
+      )
+      test.container.setAttribute('role', 'dialog')
+      await choose()
+      const save = screen.getByRole<HTMLButtonElement>('button', { name: 'Use artwork' })
+      save.focus()
+      fireEvent.click(save)
+      await waitFor(() => expect(save.disabled).toBe(true))
+      const other = document.createElement('div')
+      other.setAttribute('role', 'dialog')
+      other.setAttribute('tabindex', '-1')
+      if (child) test.container.setAttribute('aria-hidden', 'true')
+      else other.setAttribute('aria-hidden', 'true')
+      document.body.append(other)
+      try {
+        other.focus()
+        await act(async () => finish())
+        const slot = test.container.querySelector<HTMLButtonElement>('[data-artwork-slot="Hero"]')!
+        await waitFor(() => expect(slot.disabled).toBe(false))
+        expect(document.activeElement).toBe(child ? other : slot)
+      } finally {
+        other.remove()
+      }
+    },
+  )
   it('ignores a cancelled provider result after immediate reopen and refreshes external current art', async () => {
     let finish!: (value: unknown) => void,
       reads = 0

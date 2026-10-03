@@ -207,9 +207,21 @@ original two-tier alpha ramp paints the shell once and each pane once; covers an
 surfaces stay opaque, and whole-window opacity is unchanged. The slider reports the original
 4.5:1 metadata contrast limit against a light desktop. Stored values win on load; selecting
 a palette applies any explicit opening defaults authored by that palette.
+Pointer and keyboard changes preview immediately while writes are serialized and coalesced
+to the latest position. The slider stays enabled during saving; failures restore the last
+confirmed value and show the error. Palette defaults use the same writer.
 Electron reports whether a material request was supported and issued, but exposes no getter
 for the compositor's actual material. A successful request is not proof of the visible OS
-effect. Winnow keeps its normal native window frame.
+effect. On Windows and Linux, all compositions paint a 32px caption in their active palette
+with native window controls and dragging. Avalon uses its caption and shell-ground inks;
+other compositions use their surface and text inks. Fullscreen removes the caption, and
+other platforms retain their system frame.
+
+Unavailable artwork uses static local illustrations: Avalon's misted landscape, Afterglow's
+warm halo, Rift's starfield, and Catalogue's printed index cards. Shared cover, backdrop,
+screenshot and artwork-preview surfaces inherit the active composition and palette, including
+portals and fullscreen. Titles and explanatory labels remain readable. Loading is distinct,
+and a game without screenshots does not gain placeholder gallery entries.
 
 Rift's Discover arrows, neighboring covers and left/right keys shuffle the deck in the
 chosen direction. This movement respects the shared reduced-motion preference. Its

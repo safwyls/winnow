@@ -1,7 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { QueryClientContext } from '@tanstack/react-query'
 import { request } from '../api/client'
+import { ArtworkPlaceholder } from '../components/ArtworkPlaceholder'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
-import { loadBackdropImage } from './avalon-backdrop-image'
+import { loadBackdropImage, loadCachedBackdropImage } from './avalon-backdrop-image'
+import { shouldRefreshArtwork } from '../refresh'
 import {
   AvalonBackdropController,
   backdropGeometry,
@@ -41,6 +44,7 @@ export function AvalonBackdrop({
   reducedMotion?: boolean
   className?: string
 }) {
+  const client = useContext(QueryClientContext)
   const element = useRef<HTMLDivElement>(null)
   const controller = useRef<AvalonBackdropController | null>(null)
   const [frame, setFrame] = useState(emptyFrame)
@@ -89,47 +93,78 @@ export function AvalonBackdrop({
     const value = new AvalonBackdropController({
       resolve: async (id, ratio, signal) => {
         const coverId = current.current.coverWorkId
-        const selection = await request<BackdropSelection>(
+        const selectionRead = request<BackdropSelection>(
           'artwork.backdrop',
           { workId: id, aspectRatio: ratio },
           undefined,
           signal,
         )
-        if (coverId === undefined || coverId === id) return selection
+        if (coverId === undefined || coverId === id) return selectionRead
         // Header preferences change the cover fallback; hero metadata belongs to the canonical work.
         try {
-          const cover = await request<{ current: { previewKey: BackdropSelection['coverKey'] } | null }>(
-            'artwork.get',
-            { workId: coverId, slot: 'Cover' },
-            undefined,
-            signal,
-          )
+          const [selection, cover] = await Promise.all([
+            selectionRead,
+            request<{ current: { previewKey: BackdropSelection['coverKey'] } | null }>(
+              'artwork.get',
+              { workId: coverId, slot: 'Cover' },
+              undefined,
+              signal,
+            ),
+          ])
           return { ...selection, coverKey: cover.current?.previewKey ?? null }
         } catch {
           signal.throwIfAborted()
-          return selection
+          return selectionRead
         }
       },
-      image: loadBackdropImage,
+      image: client
+        ? (key, width, signal) => loadCachedBackdropImage(client, key, width, signal)
+        : loadBackdropImage,
       publish: setFrame,
       requestFrame: (callback) => requestAnimationFrame(callback),
       cancelFrame: (id) => cancelAnimationFrame(id),
     })
     controller.current = value
+    let active = true,
+      refreshQueued = false
+    const refresh = () => {
+      if (!active || refreshQueued) return
+      refreshQueued = true
+      // One cache invalidation can publish hundreds of query events. Revalidate once
+      // after their leases retire, including invalidations arriving after the SSE event.
+      queueMicrotask(() => {
+        refreshQueued = false
+        if (active) value.select(current.current.workId, current.current.size, true)
+      })
+    }
+    const stopCache = client?.getQueryCache().subscribe((event) => {
+      if (
+        event.type === 'updated' &&
+        event.action.type === 'invalidate' &&
+        event.query.queryKey[0] === 'artwork-image' &&
+        event.query.queryKey[4] === 'asset'
+      )
+        refresh()
+    })
     const unsubscribe = window.winnow?.onEvent?.((event) => {
       if (
         event.kind === 'resync-required' ||
         event.kind === 'library.changed' ||
         event.kind === 'preferences.changed'
-      )
-        value.select(current.current.workId, current.current.size, true)
+      ) {
+        if (client && shouldRefreshArtwork(event))
+          void client.invalidateQueries({ queryKey: ['artwork-image'], refetchType: 'none' })
+        refresh()
+      }
     })
     return () => {
+      active = false
+      stopCache?.()
       unsubscribe?.()
       value.dispose()
       controller.current = null
     }
-  }, [])
+  }, [client])
   useEffect(() => {
     controller.current?.setReducedMotion(reducedMotion || systemReduced || appReduced || !fullscreen)
   }, [reducedMotion, systemReduced, appReduced, fullscreen])
@@ -175,6 +210,7 @@ export function AvalonBackdrop({
       data-crossfading={Boolean(frame.outgoing) || undefined}
       data-state={frame.current ? 'ready' : frame.loading ? 'loading' : 'missing'}
     >
+      {!frame.current && !frame.loading && <ArtworkPlaceholder label="" />}
       {layer(frame.outgoing, true)}
       {layer(frame.current, false)}
       <div className="avalon-backdrop-reading-veil" />

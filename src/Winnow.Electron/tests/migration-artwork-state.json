@@ -185,7 +185,7 @@
         "case": "source live order retains the 32 by 10 backdrop until the held 32 by 18 replacement and detaches its subscription"
       }
     ],
-    "reason": "The production desktop backdrop preserves the exact Steam42 32×10 resource while IGDB art is pending after saving igdb,steam,steamgriddb. Only 32×18 completion replaces it and releases the old owner; detach releases the new owner and a later preference change makes no new backdrop read. Component lease identity replaces Avalonia bitmap ownership; native uses real encoded dimensions, the actual HTTP preference route/SSE and an immutable serialized-image hold. The shared preference fix makes the changed order visible before refresh publication."
+    "reason": "The production desktop backdrop preserves the exact Steam42 32×10 resource while IGDB art is pending after saving igdb,steam,steamgriddb. Only 32×18 completion replaces it and releases the old owner; detach releases the new owner and a later preference change makes no new backdrop read. Component lease identity replaces Avalonia bitmap ownership; TASK-383 retains unleased pixels in the bounded 32 MiB shared cache for reopening instead of requiring immediate URL revocation; native uses real encoded dimensions, the actual HTTP preference route/SSE and an immutable serialized-image hold. The shared preference fix makes the changed order visible before refresh publication."
   },
   "ArtworkPreferenceBackdropTests.Fullscreen_live_order_retains_pixels_and_detach_releases_subscriptions": {
     "status": "ported",
@@ -203,6 +203,6 @@
         "case": "source live order retains the 32 by 10 backdrop until the held 32 by 18 replacement and detaches its subscription"
       }
     ],
-    "reason": "At the original 1920×1080 with reduced motion, fullscreen preserves the exact old 32×10 Steam42 pixels while the 32×18 IGDB replacement is held, using this source method’s distinct igdb,steamgriddb,steam order. Completion replaces and releases the old resource; detach clears the new image, releases its owner and subscription, and the later steam,igdb,steamgriddb event triggers no read. Actual API/pipeline/native evidence complements the exact component ownership assertions; immutable response gating does not rewrite candidate or image data."
+    "reason": "At the original 1920×1080 with reduced motion, fullscreen preserves the exact old 32×10 Steam42 pixels while the 32×18 IGDB replacement is held, using this source method’s distinct igdb,steamgriddb,steam order. Completion replaces the displayed resource and releases its view lease; TASK-383 allows unused decoded pixels to remain in the bounded shared cache for reopening; detach clears the new image, releases its owner and subscription, and the later steam,igdb,steamgriddb event triggers no read. Actual API/pipeline/native evidence complements the exact component ownership assertions; immutable response gating does not rewrite candidate or image data."
   }
 }

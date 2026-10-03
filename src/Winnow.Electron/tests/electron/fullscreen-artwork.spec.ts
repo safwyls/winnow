@@ -195,6 +195,12 @@ async function step(time: number) {
     time,
   )
 }
+const heroRequests = () =>
+  page.evaluate(() =>
+    (window as unknown as { fullscreenArtwork: Probe }).fullscreenArtwork.requests.filter(
+      (request) => request.id === 'hero',
+    ),
+  )
 async function renderedPixel(x: number, y: number) {
   const png = await page.screenshot({
     omitBackground: true,
@@ -217,11 +223,9 @@ for (const cinematic of [false, true])
       let layer = (await layers())[0]
       expect(layer).toMatchObject({ width, left: 0, top: 0, fitted: width === 2520 })
       await expect(image).toHaveCSS('object-fit', 'cover')
-      expect(
-        await page.evaluate(() =>
-          (window as unknown as { fullscreenArtwork: Probe }).fullscreenArtwork.requests.at(-1),
-        ),
-      ).toEqual({ id: 'hero', width: width === 2520 ? 2560 : 3840 })
+      const originalSource = (await image.getAttribute('src'))!
+      const originalRequests = [{ id: 'hero', width: width === 2520 ? 2560 : 3840 }]
+      expect(await heroRequests()).toEqual(originalRequests)
       expect(layer.veil).toContain(width === 2520 ? '98%' : cinematic ? '55%' : '85%')
       await page.screenshot({ path: info.outputPath(`hero-${cinematic}-${width}.png`) })
       if (width === 2520) {
@@ -279,6 +283,9 @@ for (const cinematic of [false, true])
         { height: 1080, outgoing: true },
         { height: width === 2520 ? 813.75 : 1080, outgoing: false },
       ])
+      const incomingHero = page.locator('.avalon-backdrop-art').last().locator('img')
+      await expect(incomingHero).toHaveAttribute('src', originalSource)
+      expect(await heroRequests()).toEqual(originalRequests)
       await size(3840)
       await expect.poll(async () => (await layers()).at(-1)?.height).toBe(1080)
       layer = (await layers()).at(-1)!
@@ -286,19 +293,21 @@ for (const cinematic of [false, true])
       expect(layer.left).toBeCloseTo(247.741935, 1)
       expect(layer.veil).toContain('65%')
       expect(layer.veil).toContain('98%')
-      await expect
-        .poll(() =>
-          page.evaluate(
-            () =>
-              (window as unknown as { fullscreenArtwork: Probe }).fullscreenArtwork.requests.at(-1)?.width,
-          ),
-        )
-        .toBe(3840)
+      // The 1920 viewport already needed a 3840 hero for its cover crop. Resizing
+      // reuses those pixels; only the fitted 2560 rendition needs a larger read.
+      const resizedRequests =
+        width === 2520 ? [...originalRequests, { id: 'hero', width: 3840 }] : originalRequests
+      await expect.poll(heroRequests).toEqual(resizedRequests)
+      // A sharper rendition waits behind the frozen in-progress crossfade.
+      await step(2180)
+      if (width === 1920) await expect(incomingHero).toHaveAttribute('src', originalSource)
+      else await expect(incomingHero).not.toHaveAttribute('src', originalSource)
       await size(1920)
       await expect.poll(async () => (await layers()).at(-1)?.width).toBe(1920)
       for (const row of await layers())
         expect(row).toMatchObject({ width: 1920, height: 1080, left: 0, top: 0, mask: 'none' })
       expect((await layers()).at(-1)!.veil).toContain(cinematic ? '55%' : '85%')
+      expect(await heroRequests()).toEqual(resizedRequests)
       await configure({ view: 'empty' })
       await expect(page.locator('.avalon-backdrop')).toHaveCount(0)
       expect(

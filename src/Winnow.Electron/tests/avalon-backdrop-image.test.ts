@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { loadBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
+import { loadBackdropImage, loadCachedBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
+import { QueryClient } from '@tanstack/react-query'
+import { closeArtworkImages } from '../src/renderer/components/artwork-images'
 import type { WinnowBridge } from '../src/shared/bridge'
 
 const key = { provider: 'fixture', id: 'wide' }
@@ -85,3 +87,55 @@ it.each(['decode', 'dimensions', 'missing'])(
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(failure === 'missing' ? 0 : 1)
   },
 )
+
+it('reopening Details reuses cached backdrop pixels and invalidation preserves visible leases', async () => {
+  image.naturalWidth = 1280
+  image.naturalHeight = 720
+  const client = new QueryClient()
+  try {
+    const first = await loadCachedBackdropImage(client, key, 1280, new AbortController().signal)
+    const second = await loadCachedBackdropImage(client, key, 1280, new AbortController().signal)
+    expect(first?.source).toBe(second?.source)
+    expect(window.winnow.artwork).toHaveBeenCalledOnce()
+    first!.dispose()
+    second!.dispose()
+    const reopened = await loadCachedBackdropImage(client, key, 1280, new AbortController().signal)
+    expect(window.winnow.artwork).toHaveBeenCalledOnce()
+    await client.invalidateQueries({ queryKey: ['artwork-image'] })
+    const refreshed = await loadCachedBackdropImage(client, key, 1280, new AbortController().signal)
+    expect(window.winnow.artwork).toHaveBeenCalledTimes(2)
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled()
+    reopened!.dispose()
+    expect(URL.revokeObjectURL).toHaveBeenCalledOnce()
+    refreshed!.dispose()
+  } finally {
+    await closeArtworkImages(client)
+    client.clear()
+  }
+})
+
+it('one canceled backdrop does not cancel another visible consumer of its pending image', async () => {
+  image.naturalWidth = 1280
+  image.naturalHeight = 720
+  const client = new QueryClient()
+  let finish!: (value: string) => void
+  vi.mocked(window.winnow.artwork).mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve
+    }),
+  )
+  const controller = new AbortController()
+  const first = loadCachedBackdropImage(client, key, 1280, controller.signal)
+  const canceled = expect(first).rejects.toMatchObject({ name: 'AbortError' })
+  const second = loadCachedBackdropImage(client, key, 1280, new AbortController().signal)
+  controller.abort()
+  expect(window.winnow.cancelRequest).not.toHaveBeenCalled()
+  finish(encoded)
+  await canceled
+  const pixels = await second
+  expect(pixels).not.toBeNull()
+  expect(window.winnow.artwork).toHaveBeenCalledOnce()
+  pixels!.dispose()
+  await closeArtworkImages(client)
+  client.clear()
+})

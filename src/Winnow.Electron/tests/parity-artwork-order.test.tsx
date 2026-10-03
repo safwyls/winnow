@@ -3,14 +3,17 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { AvalonBackdrop } from '../src/renderer/themes/avalon-backdrop'
-import { loadBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
+import { loadBackdropImage, loadCachedBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
 import { Details } from '../src/renderer/features/Details'
 import { primaryEntry } from '../src/shared/game-actions'
 import type { LibraryGame, Mode, Workspace } from '../src/renderer/api/types'
 import type { BackdropPixels, BackdropSelection } from '../src/renderer/themes/avalon-backdrop-model'
 import type { ApiRequest, BackendEvent, WinnowBridge } from '../src/shared/bridge'
 
-vi.mock('../src/renderer/themes/avalon-backdrop-image', () => ({ loadBackdropImage: vi.fn() }))
+vi.mock('../src/renderer/themes/avalon-backdrop-image', () => ({
+  loadBackdropImage: vi.fn(),
+  loadCachedBackdropImage: vi.fn(),
+}))
 const listeners = new Set<(event: BackendEvent) => void>()
 const clients: QueryClient[] = []
 const steam = { provider: 'steam-hero', id: '42' }
@@ -27,6 +30,7 @@ beforeEach(() => {
   listeners.clear()
   order = ['steam', 'steamgriddb', 'igdb']
   vi.mocked(loadBackdropImage).mockReset()
+  vi.mocked(loadCachedBackdropImage).mockReset()
   vi.stubGlobal('devicePixelRatio', 1)
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }))
   vi.stubGlobal(
@@ -155,7 +159,7 @@ it.each<Mode>(['desktop', 'fullscreen'])(
       if (input.route === 'actions.execute') data = 0
       return { ok: true, status: 200, data }
     })
-    vi.mocked(loadBackdropImage).mockResolvedValue(hero)
+    vi.mocked(loadCachedBackdropImage).mockResolvedValue(hero)
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     })
@@ -168,7 +172,7 @@ it.each<Mode>(['desktop', 'fullscreen'])(
     await waitFor(() =>
       expect(document.querySelector('.avalon-backdrop img')?.getAttribute('src')).toBe(hero.source),
     )
-    expect(vi.mocked(loadBackdropImage).mock.calls.map(([key]) => key)).toEqual([steam])
+    expect(vi.mocked(loadCachedBackdropImage).mock.calls.map(([, key]) => key)).toEqual([steam])
     const backdropReads = request.mock.calls
       .map(([input]) => input as ApiRequest)
       .filter((input) => input.route === 'artwork.backdrop')
@@ -182,7 +186,7 @@ it.each<Mode>(['desktop', 'fullscreen'])(
         ),
       ).toBe(true),
     )
-    expect(vi.mocked(loadBackdropImage).mock.calls.map(([key]) => key)).toEqual([steam])
+    expect(vi.mocked(loadCachedBackdropImage).mock.calls.map(([, key]) => key)).toEqual([steam])
     view.unmount()
     expect(hero.dispose).toHaveBeenCalledOnce()
   },

@@ -121,6 +121,26 @@ async function hover(target: Locator) {
   await target.hover({ position: { x: 40, y: 20 } })
   await expect(bubble()).toBeVisible()
 }
+async function hoverVisibleCorner(target: Locator) {
+  const point = await target.evaluate((node) => {
+    const bounds = node.getBoundingClientRect()
+    const x = bounds.left + 40,
+      y = bounds.top + 20
+    const hit = document.elementFromPoint(x, y)
+    return {
+      x,
+      y,
+      reachable: hit === node || (hit !== null && node.contains(hit)),
+      hit: hit?.className,
+      bounds: bounds.toJSON(),
+      viewport: node.closest('.avalon-library-scroll')?.getBoundingClientRect().toJSON(),
+    }
+  })
+  expect(point.reachable, JSON.stringify(point)).toBe(true)
+  // Keep a partially visible card at the edge; locator.hover would scroll it to the center.
+  await page.mouse.move(point.x, point.y)
+  await expect(bubble()).toBeVisible()
+}
 async function arm(operation: string, extra: Record<string, unknown> = {}) {
   return await control<{ gateId: string }>('arm', {
     operation,
@@ -325,17 +345,39 @@ async function sourceSlot(top = 20, library = false) {
   // Equivalent to the original test's Canvas.SetLeft/SetTop and Width inputs.
   // The mounted production card, preview portal and authenticated bridge remain intact.
   await host.evaluate(
-    (node, top) =>
+    (node, { top, library }) => {
       Object.assign((node as HTMLElement).style, {
         position: 'fixed',
-        left: '20px',
-        top: `${top}px`,
+        left: library ? '0' : '20px',
+        top: library ? '0' : `${top}px`,
         width: '220px',
+        ...(library ? { height: '330px' } : {}),
         zIndex: '80',
-      }),
-    top,
+      })
+      if (library) {
+        const viewport = node.closest('.avalon-library-scroll')!.getBoundingClientRect()
+        const origin = node.getBoundingClientRect()
+        Object.assign((node as HTMLElement).style, {
+          // Virtual rows transform their children, so fixed coordinates are relative to that row.
+          left: `${viewport.left + 20 - origin.left}px`,
+          top: `${viewport.bottom - 32 - origin.top}px`,
+        })
+      }
+    },
+    { top, library },
   )
   return library ? libraryCover() : host.locator('[data-avalon-game]')
+}
+async function previewGeometry() {
+  return bubble().evaluate((node) => ({
+    bounds: node.getBoundingClientRect().toJSON(),
+    outline: node.querySelector('.avalon-preview-outline')!.getAttribute('d'),
+    // Some fixtures intentionally have no synopsis; measure every actual text row.
+    rows: [...node.querySelector('.avalon-preview-copy')!.children].map((child) => ({
+      className: child.className,
+      bounds: child.getBoundingClientRect().toJSON(),
+    })),
+  }))
 }
 async function previewTypography() {
   const value = await bubble().evaluate((node) => {
@@ -380,7 +422,8 @@ test('desktop source hover loads compact populations lazily with accessible coun
   await hover(target)
   await entered(held.gateId)
   expect((await state()).calls.filter((call) => call.operation === 'details')).toHaveLength(before + 1)
-  await expect(bubble().locator('.avalon-preview-ratings')).toHaveCount(0)
+  await expect(bubble().locator('.avalon-preview-ratings')).toHaveText('Loading reviews…')
+  const pendingGeometry = await previewGeometry()
   await released(held.gateId)
   const ratings = bubble().locator('.avalon-preview-ratings')
   await expect(ratings).toHaveText(compactRatings)
@@ -392,25 +435,25 @@ test('desktop source hover loads compact populations lazily with accessible coun
   await expect(bubble().locator('.avalon-preview-reason')).toHaveCount(0)
   await expect(bubble()).not.toContainText('Reason')
   await previewTypography()
+  expect(await previewGeometry()).toEqual(pendingGeometry)
   await withinWindow()
   await expect(bubble().locator('.artwork img')).toBeVisible()
   await capture('source-compact-ratings')
   await page.mouse.move(880, 380)
   await expect(bubble()).toHaveCount(0)
 })
-test('desktop source missing ratings reserve no preview space', async () => {
+test('desktop missing ratings retain preview geometry with a truthful empty review line', async () => {
   await seed('missing')
   const target = await sourceSlot()
   const held = await arm('details')
   await hover(target)
   await entered(held.gateId)
   const before = await bubble().boundingBox()
-  await expect(bubble().locator('.avalon-preview-ratings')).toHaveCount(0)
+  await expect(bubble().locator('.avalon-preview-ratings')).toHaveText('Loading reviews…')
   await released(held.gateId)
-  await expect(bubble().locator('.avalon-preview-ratings')).toHaveCount(0)
+  await expect(bubble().locator('.avalon-preview-ratings')).toHaveText('No reviews available')
   const after = await bubble().boundingBox()
-  expect(after?.width).toBe(before?.width)
-  expect(after?.height).toBe(before?.height)
+  expect(after).toEqual(before)
   await capture('source-missing-ratings')
 })
 for (const disposed of [false, true])
@@ -428,20 +471,22 @@ for (const disposed of [false, true])
     await expect(bubble()).toHaveCount(0)
     await expect(page.locator('.avalon-preview-ratings')).toHaveCount(0)
   })
-test('desktop source ratings growth near the bottom reclamps the measured preview within the window', async () => {
-  await seed('ratings')
-  const target = await sourceSlot(340)
-  const held = await arm('details')
-  await hover(target)
-  await entered(held.gateId)
-  const before = (await bubble().boundingBox())!
-  await released(held.gateId)
-  await expect(bubble().locator('.avalon-preview-ratings')).toHaveText(compactRatings)
-  await expect.poll(async () => (await bubble().boundingBox())!.height).toBeGreaterThan(before.height)
-  const after = await withinWindow()
-  expect(after.y).toBeLessThan(before.y)
-  await capture('source-bottom-ratings-growth')
-})
+for (const library of [false, true])
+  test(`desktop ${library ? 'library' : 'feed'} delayed ratings near the bottom keep preview geometry inside the window`, async () => {
+    await seed('ratings', !library)
+    const target = await sourceSlot(library ? 440 : 340, library)
+    const held = await arm('details')
+    if (library) await hoverVisibleCorner(target)
+    else await hover(target)
+    await entered(held.gateId)
+    const before = await previewGeometry()
+    expect(before.bounds.y).toBeLessThan((await target.boundingBox())!.y)
+    await released(held.gateId)
+    await expect(bubble().locator('.avalon-preview-ratings')).toHaveText(compactRatings)
+    await withinWindow()
+    expect(await previewGeometry()).toEqual(before)
+    await capture('stable-bottom-ratings')
+  })
 for (const recycle of [false, true])
   test(`desktop source library ${recycle ? 'same ID Replacement recycle' : 'pointer exit'} closes preview and cancels pending metadata`, async () => {
     await seed('library', false)

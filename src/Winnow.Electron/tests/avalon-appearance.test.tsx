@@ -386,3 +386,119 @@ it('keeps the prior saved appearance and reports a failed write', async () => {
   expect((select as HTMLSelectElement).value).toBe('floating')
   expect(writes).toEqual([])
 })
+
+it.each(['desktop', 'fullscreen'])(
+  'keeps %s transparency dragging live while older saves finish, persisting only the latest queued position',
+  async (mode) => {
+    const original = window.winnow.request
+    const saves: { value: string; finish(ok: boolean): void }[] = []
+    window.winnow.request = vi.fn((input) => {
+      if (input.route !== 'preferences.presentation.put') return original(input)
+      return new Promise((resolve) => {
+        const value = (input.body as { value: string }).value
+        saves.push({
+          value,
+          finish: (ok) => {
+            if (ok) values.Transparency = value
+            resolve(
+              ok
+                ? { ok: true, status: 200, data: null }
+                : { ok: false, status: 500, problem: { detail: 'Unavailable' } },
+            )
+          },
+        })
+      })
+    }) as WinnowBridge['request']
+    render(
+      <div className={mode}>
+        <AvalonAppearanceControls profile={profile()} />
+      </div>,
+      { wrapper },
+    )
+    const slider = screen.getByRole<HTMLInputElement>('slider', { name: 'Transparency' })
+    await waitFor(() => expect(slider.disabled).toBe(false))
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    fireEvent.pointerDown(slider)
+    fireEvent.change(slider, { target: { value: '20' } })
+    fireEvent.change(slider, { target: { value: '40' } })
+    fireEvent.change(slider, { target: { value: '80' } })
+    expect(slider.disabled).toBe(false)
+    await waitFor(() => expect(slider.value).toBe('80'))
+    expect(saves.map((save) => save.value)).toEqual(['20'])
+    await act(async () => saves[0].finish(true))
+    expect(slider.value).toBe('80')
+    expect(saves.map((save) => save.value)).toEqual(['20', '80'])
+    // A preference event may read the confirmed first write while the newest
+    // position is still queued or saving. That snapshot must not move the thumb.
+    await act(async () =>
+      client.setQueryData(
+        ['api', 'preferences.presentation.get', undefined],
+        Object.entries({ ...values, Transparency: '20' }).map(([preference, value]) => ({
+          preference,
+          value,
+        })),
+      ),
+    )
+    expect(slider.value).toBe('80')
+    fireEvent.pointerUp(slider)
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' })
+    fireEvent.change(slider, { target: { value: '79' } })
+    await act(async () => saves[1].finish(false))
+    expect(slider.value).toBe('79')
+    await act(async () => saves[2].finish(true))
+    expect(slider.value).toBe('79')
+    expect(values.Transparency).toBe('79')
+    expect(invalidate).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alert')).toBeNull()
+  },
+)
+
+it('restores the last confirmed transparency only when the final save fails', async () => {
+  refuseSave = true
+  render(<AvalonAppearanceControls profile={profile()} />, { wrapper })
+  const slider = screen.getByRole<HTMLInputElement>('slider', { name: 'Transparency' })
+  await waitFor(() => expect(slider.disabled).toBe(false))
+  fireEvent.change(slider, { target: { value: '90' } })
+  await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
+  expect(slider.value).toBe('60')
+  expect(slider.disabled).toBe(false)
+  refuseSave = false
+  fireEvent.change(slider, { target: { value: '80' } })
+  await waitFor(() => expect(values.Transparency).toBe('80'))
+  expect(screen.queryByRole('alert')).toBeNull()
+})
+
+it('serializes a new palette default after an older transparency drag that is still saving', async () => {
+  const original = window.winnow.request
+  const saves: { value: string; finish(): void }[] = []
+  window.winnow.request = vi.fn((input) => {
+    if (input.route !== 'preferences.presentation.put') return original(input)
+    return new Promise((resolve) => {
+      const value = (input.body as { value: string }).value
+      saves.push({
+        value,
+        finish: () => {
+          values.Transparency = value
+          resolve({ ok: true, status: 200, data: null })
+        },
+      })
+    })
+  }) as WinnowBridge['request']
+  const shell = renderHook(({ palette }) => useAvalonAppearance(profile(palette), false), {
+    wrapper,
+    initialProps: { palette: 'winnow' },
+  })
+  render(<AvalonAppearanceControls profile={profile()} />, { wrapper })
+  const slider = screen.getByRole<HTMLInputElement>('slider', { name: 'Transparency' })
+  await waitFor(() => expect(slider.disabled).toBe(false))
+  fireEvent.change(slider, { target: { value: '90' } })
+  shell.rerender({ palette: 'rose-pine-dawn' })
+  expect(shell.result.current.appearance.transparency).toBe(0)
+  expect(saves.map((save) => save.value)).toEqual(['90'])
+  await act(async () => saves[0].finish())
+  expect(saves.map((save) => save.value)).toEqual(['90', '0'])
+  expect(shell.result.current.appearance.transparency).toBe(0)
+  await act(async () => saves[1].finish())
+  expect(values.Transparency).toBe('0')
+  expect(slider.value).toBe('0')
+})

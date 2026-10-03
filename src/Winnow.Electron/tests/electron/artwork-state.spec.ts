@@ -143,6 +143,8 @@ async function openBrowser(slot = 'Cover') {
   await activate(browser().getByRole('button', { name: `${slot} artwork`, exact: true }))
 }
 async function closeBrowser() {
+  await expect(browser().getByRole('button', { name: 'Back', exact: true })).toBeEnabled()
+  await expect.poll(() => browser().evaluate((node) => node.contains(document.activeElement))).toBe(true)
   if (mode === 'fullscreen') await tap(1)
   else await page.keyboard.press('Escape')
   await expect(browser()).toHaveCount(0)
@@ -367,15 +369,27 @@ for (const presentation of ['desktop', 'fullscreen'] as const) {
     expect(replacementSource).not.toBe(oldSource)
     // The source keeps one Image control and replaces its bitmap; React likewise reuses its img.
     expect(await retainedState(oldNode)).toEqual({ connected: true, source: replacementSource })
-    await expect.poll(() => revoked(oldSource)).toBe(true)
+    // The outgoing view releases its lease; the bounded scrollback cache keeps reusable pixels.
+    expect(await revoked(oldSource)).toBe(false)
     expect(await pixel(root, 'replacement-igdb32x18')).not.toEqual(before)
     const nextNode = await retained(next),
       nextSource = (await next.getAttribute('src'))!
     await closeDetails()
+    const imageReads = (await state()).calls.filter(
+      (call) => call.operation === 'image' && call.provider === 'igdb-backdrop' && call.id === 'art',
+    ).length
+    await openDetails(seeded.workId)
+    await expect(details().locator('[data-key="igdb-backdrop:art"] img')).toHaveAttribute('src', nextSource)
+    expect(
+      (await state()).calls.filter(
+        (call) => call.operation === 'image' && call.provider === 'igdb-backdrop' && call.id === 'art',
+      ),
+    ).toHaveLength(imageReads)
+    await closeDetails()
     await navigate('Activity')
     await expect(page.locator('.avalon-backdrop')).toHaveCount(0)
     await released(nextNode)
-    await expect.poll(() => revoked(nextSource)).toBe(true)
+    expect(await revoked(nextSource)).toBe(false)
     const count = (await state()).calls.filter((call) => call.operation === 'backdrop').length
     await setOrder(['steam', 'igdb', 'steamgriddb'])
     expect((await state()).sourceOrder).toEqual(['steam', 'igdb', 'steamgriddb'])
@@ -409,7 +423,7 @@ test('fullscreen unowned group root tries rootsaved then Steam42 then the origin
   await navigate('Activity')
   await expect(root).toHaveCount(0)
   await released(retainedImage)
-  await expect.poll(() => revoked(source)).toBe(true)
+  expect(await revoked(source)).toBe(false)
 })
 
 for (const presentation of ['desktop', 'fullscreen'] as const) {

@@ -23,8 +23,8 @@ Desktop recommendations keep feedback in a 48px strip inside the portrait cover,
 the title and reason below it. A saved verdict preserves the card's size and offers Undo
 in place. Hover previews stay inside the window and close when their tile is rebound;
 Escape keeps them closed until the pointer leaves the card. Their artwork, outline
-and pointer share one shape, and delayed ratings reposition the measured bubble
-inside the window. Compact ratings identify each population; accessible text retains
+and pointer share one shape. A reserved review line keeps the bubble and summary in place
+while ratings load, including empty and failed reads. Compact ratings identify each population; accessible text retains
 counts and Steam's percentage. Closing a preview cancels its unfinished metadata and
 releases its artwork consumer. Fullscreen keeps this information in its selected-game
 hero without opening a pointer-hover bubble.
@@ -45,6 +45,12 @@ cannot publish after their generation or feedback state changes.
 Cover images remain visible while a larger size loads. Shrinking a realized tile keeps its
 best decoded image, and recycling one tile leaves other surfaces showing that game intact.
 Dormancy changes reuse the same pixels on desktop, fullscreen and desktop merge thumbnails.
+
+Unavailable artwork uses local illustrations from the active composition: Avalon's misted
+landscape, Afterglow's warm halo, Rift's starfield, and Catalogue's printed index cards.
+Covers retain the title, and unavailable screenshot and artwork previews retain their labels.
+Desktop, fullscreen and portal surfaces share these static, palette-aware illustrations.
+Loading remains distinct, and games without screenshots have no invented gallery entries.
 
 Library responses validate in batches of 128 games or lists so input and cancellation can
 run before a large response finishes. The query cache receives one complete snapshot;
@@ -394,11 +400,17 @@ previews show compact, attributed ratings without game actions.
 
 **Window appearance** shares the existing backend transparency, Acrylic/Mica, pane reach
 and floating/flush preferences. Supported Windows desktops request a native material;
-fullscreen and unsupported environments stay solid. Covers remain opaque. See
+fullscreen and unsupported environments stay solid. Covers remain opaque. The transparency
+slider previews continuously while serialized saves retain the newest position. Windows and
+Linux use a theme-painted caption with native buttons and dragging; fullscreen removes it.
+Other platforms retain their system frame. See
 [Electron themes](../../docs/electron-themes.md) for platform limits and contrast behavior.
 
 Artwork selection still refreshes with library events. Unchanged images reuse encoded bytes
 for up to two minutes, with explicit artwork changes and reconnects forcing revalidation.
+An unchanged selection refresh leaves its unfinished image request running. Visible covers
+display their decoded image immediately without a second browser lazy-loading gate.
+Transient selection failures retry after 2, 10 and 30 seconds; permanent client refusals do not.
 Cover and screenshot images share decoded pixels through leases, including thumbnails and
 the lightbox. A desktop lightbox immediately borrows its screenshot's decoded thumbnail
 while the larger image loads, without another thumbnail request. Fullscreen previews
@@ -413,6 +425,10 @@ been removed, that bounded retry can wait for a download while holding its permi
 Completed encoded entries retain their existing
 five-minute expiry. A 32 MiB decoded scrollback cache keeps recent pixels; visible images
 remain valid after eviction. The last departing consumer cancels its pending request.
+Details and fullscreen backdrops use the same bounded image cache, so reopening can reuse
+recent decoded pixels. Canonical hero selection and a preferred store cover are read in
+parallel. Cache invalidation revalidates pending and displayed backdrops while retaining
+existing pixels until replacement, and coalesces bursts of invalidations into one refresh.
 Detached images clear their sources. A mounted cover retries a failed image load after
 2, 10 and 30 seconds, retaining any existing pixels during a failed refresh. Retries stop
 after three attempts or when the cover detaches.

@@ -139,6 +139,7 @@ export interface WinnowBridge {
   windowAppearance?(
     value: import('./windowAppearance').WindowAppearanceRequest,
   ): Promise<import('./windowAppearance').WindowAppearanceResult>
+  windowChrome?(value: { text: string }): Promise<boolean>
   onWindowAppearanceInvalidated?(callback: () => void): () => void
   installTheme(): Promise<ThemePackage | null>
   setFullscreen(value: boolean): Promise<void>

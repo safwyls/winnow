@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
-import { ImageOff } from 'lucide-react'
+import { ArtworkPlaceholder } from './ArtworkPlaceholder'
 import { CoverPadding } from './CoverPadding'
 import { artworkWidth, type ArtworkLease, type OwnedArtwork } from './artwork-cache'
+import { ApiError } from '../api/client'
 import {
   artworkFreshness,
   artworkImages,
@@ -24,7 +25,10 @@ export function useArtworkSelection(workId: number, hero = false, enabled = true
     enabled,
     staleTime: artworkFreshness,
     gcTime: artworkLifetime,
-    retry: false,
+    retry: (failures, error) =>
+      failures < imageRetryDelays.length &&
+      (!(error instanceof ApiError) || error.status === 0 || error.status === 429 || error.status >= 500),
+    retryDelay: (attempt) => imageRetryDelays[attempt] ?? imageRetryDelays.at(-1)!,
     queryFn: async ({ signal }) => {
       const requestId = crypto.randomUUID().replaceAll('-', '')
       const cancel = () => {
@@ -38,7 +42,7 @@ export function useArtworkSelection(workId: number, hero = false, enabled = true
           requestId,
         })
         signal.throwIfAborted()
-        if (!result.ok) throw new Error('Artwork state could not be loaded.')
+        if (!result.ok) throw new ApiError(result.status, 'Artwork state could not be loaded.')
         return { selection: result.data ?? null, read: ++selectionRead }
       } finally {
         signal.removeEventListener('abort', cancel)
@@ -51,7 +55,6 @@ export function Artwork({
   workId,
   hero = false,
   className = '',
-  eager = false,
 }: {
   workId: number
   hero?: boolean
@@ -75,6 +78,8 @@ export function Artwork({
   } | null>(null)
   const [loaded, setLoaded] = useState<{ view: string; source: string } | null>(null)
   const [failure, setFailure] = useState<OwnedArtwork | null>(null)
+  const imageRead = useRef({ signature: '', pending: false, completedAt: 0 })
+  const invalidatedImage = useRef(false)
   const attachImage = useCallback((node: HTMLImageElement | null) => {
     if (!node) image.current?.removeAttribute('src')
     image.current = node
@@ -119,6 +124,36 @@ export function Artwork({
       : null
   const signature = imageKey ? JSON.stringify(imageKey) : ''
   useLayoutEffect(() => {
+    // A metadata refresh must not restart an unchanged download. Once pixels age out,
+    // a successful selection read can revalidate them without requiring another resize.
+    if (
+      !invalidatedImage.current &&
+      signature &&
+      imageRead.current.signature === signature &&
+      !imageRead.current.pending &&
+      (!snapshot?.asset ||
+        snapshot.asset === failure ||
+        upgradeFailed ||
+        Date.now() - imageRead.current.completedAt >= artworkFreshness)
+    )
+      setMeasureRetry((value) => value + 1)
+  }, [state.data?.read])
+  useLayoutEffect(
+    () =>
+      client.getQueryCache().subscribe((event) => {
+        if (
+          event.type === 'updated' &&
+          event.action.type === 'invalidate' &&
+          JSON.stringify(event.query.queryKey) === signature
+        ) {
+          invalidatedImage.current = true
+          setMeasureRetry((value) => value + 1)
+        }
+      }),
+    [client, signature],
+  )
+  useLayoutEffect(() => {
+    invalidatedImage.current = false
     setUpgradeFailed(false)
     setSnapshot((previous) => (previous?.identity === identity ? previous : null))
     if (!imageKey) {
@@ -130,11 +165,13 @@ export function Artwork({
     let retry: ReturnType<typeof setTimeout> | undefined
     const retained = snapshot?.identity === identity && snapshot.asset !== failure ? snapshot.asset : null
     const load = (attempt: number) => {
+      imageRead.current = { ...imageRead.current, signature, pending: true }
       lease = cache.acquire(signature, (signal) => loadArtworkImage(client, imageKey, signal))
       leases.current.add(lease)
       published = false
       const publish = (asset: OwnedArtwork | null) => {
         if (!active) return
+        imageRead.current = { signature, pending: false, completedAt: Date.now() }
         published = true
         if (!asset && retained) {
           lease.release()
@@ -156,13 +193,14 @@ export function Artwork({
     load(0)
     return () => {
       active = false
+      imageRead.current.pending = false
       clearTimeout(retry)
       if (!published) {
         lease.release()
         leases.current.delete(lease)
       }
     }
-  }, [cache, client, signature, state.data?.read, identity, view, measureRetry])
+  }, [cache, client, signature, identity, view, measureRetry])
   useLayoutEffect(
     () => () => {
       if (snapshot) {
@@ -177,7 +215,9 @@ export function Artwork({
   const failed = Boolean(asset && failure === asset)
   const ready = Boolean(asset && loaded?.view === view && loaded.source === asset.source)
   const loading =
-    state.isPending || Boolean(key && (!width || !current)) || Boolean(asset && !ready && !failed)
+    (state.isPending && state.failureCount === 0) ||
+    Boolean(key && (!width || !current)) ||
+    Boolean(asset && !ready && !failed)
   return (
     <div
       ref={root}
@@ -188,7 +228,7 @@ export function Artwork({
       data-state={
         loading
           ? 'loading'
-          : failed || (!asset && (state.isError || Boolean(key)))
+          : failed || (!asset && (state.isError || state.failureCount > 0 || Boolean(key)))
             ? 'error'
             : asset
               ? 'ready'
@@ -199,11 +239,13 @@ export function Artwork({
         <CoverPadding image={ready && !failed ? image.current : null} owner={asset} />
       )}
       {asset && !failed && (
+        // Bytes are already decoded and the virtualized surface owns visibility.
+        // A second browser lazy-load gate can strand an image inside transformed covers.
         <img
           ref={attachImage}
           src={asset.source}
           alt=""
-          loading={eager ? 'eager' : 'lazy'}
+          loading="eager"
           className={ready ? 'art-ready' : ''}
           onLoad={() => setLoaded({ view, source: asset.source })}
           onError={() => {
@@ -218,12 +260,7 @@ export function Artwork({
           {hero && <span className="art-loading-orbit" />}
         </div>
       ) : (
-        (!asset || failed) && (
-          <div className="art-placeholder">
-            <ImageOff size={24} strokeWidth={1} />
-            <span>Artwork unavailable</span>
-          </div>
-        )
+        (!asset || failed) && <ArtworkPlaceholder />
       )}
     </div>
   )

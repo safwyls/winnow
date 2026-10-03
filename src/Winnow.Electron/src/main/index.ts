@@ -19,6 +19,7 @@ import { dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { release as osRelease } from 'node:os'
 import { WindowAppearanceController } from './window-appearance'
+import { applyWindowChrome, titlebarOptions } from './window-chrome'
 import { WindowTrayController } from './window-tray'
 import { appearanceSession } from '../shared/appearance-session'
 import { epicConsoleRequested, runEpicConsole } from './epic-console'
@@ -590,6 +591,7 @@ function startGui(): void {
         remoteSession: process.env.SESSIONNAME?.toUpperCase().startsWith('RDP-') ?? false,
       })).apply(value),
     )
+    handle('winnow:window:chrome', (value) => applyWindowChrome(window!, process.platform, value))
     nativeTheme.on('updated', () => emit('winnow:window:appearance:invalidated', undefined))
     handle('winnow:backend:restart', () => backendService.restart())
     handle('winnow:update:snapshot', () => updater!.snapshot)
@@ -856,6 +858,7 @@ function startGui(): void {
       rendererAcceptsActivation = false
       presentationVisible = !process.argv.includes('--background')
       window = new BrowserWindow({
+        ...titlebarOptions(process.platform),
         width: 1440,
         height: 980,
         minWidth: 760,

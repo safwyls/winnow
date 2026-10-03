@@ -17,6 +17,7 @@ import { detailIdle, detailPlaytime, receptionFigures } from '../features/detail
 
 const openedEvent = 'winnow:avalon-preview-opened'
 type Rating = GameDetails['ratings'][number]
+type PreviewReception = { status: 'loading' } | { status: 'ready'; ratings: Rating[] } | { status: 'error' }
 
 export function compactAvalonRatings(ratings: Rating[]): string {
   return receptionFigures(ratings)
@@ -158,7 +159,7 @@ function AvalonPreview({
   close(): void
 }) {
   const id = useId(),
-    [ratings, setRatings] = useState<Rating[]>([])
+    [reception, setReception] = useState<PreviewReception>({ status: 'loading' })
   const closeRef = useRef(close)
   closeRef.current = close
   useEffect(() => {
@@ -166,9 +167,11 @@ function AvalonPreview({
     const controller = new AbortController()
     void request<GameDetails>('game.details', { workId: game.workId }, undefined, controller.signal).then(
       (detail) => {
-        if (active) setRatings(detail.ratings ?? [])
+        if (active) setReception({ status: 'ready', ratings: detail.ratings ?? [] })
       },
-      () => {},
+      () => {
+        if (active) setReception({ status: 'error' })
+      },
     )
     return () => {
       active = false
@@ -241,7 +244,15 @@ function AvalonPreview({
     return () => observer.disconnect()
   }, [target, zoom, width])
   const { left, top, onLeft, arrow } = placement
+  const ratings = reception.status === 'ready' ? reception.ratings : []
   const compact = compactAvalonRatings(ratings)
+  const reviewText =
+    compact ||
+    (reception.status === 'loading'
+      ? 'Loading reviews…'
+      : reception.status === 'error'
+        ? 'Reviews unavailable'
+        : 'No reviews available')
   const { Artwork } = context.components
   return createPortal(
     <AvalonPreviewBubble
@@ -266,17 +277,20 @@ function AvalonPreview({
           ? 'never opened'
           : `${detailPlaytime(game.playtimeMinutes)}${game.lastPlayedAt ? ` · idle ${detailIdle(game.lastPlayedAt)}` : ''}`}
       </p>
-      {compact && (
-        <p
-          className="avalon-preview-ratings"
-          role="group"
-          aria-label={receptionFigures(ratings)
-            .map((figure) => figure.automationName)
-            .join(' ')}
-        >
-          {compact}
-        </p>
-      )}
+      <p
+        className="avalon-preview-ratings"
+        role="group"
+        aria-busy={reception.status === 'loading' || undefined}
+        aria-label={
+          compact
+            ? receptionFigures(ratings)
+                .map((figure) => figure.automationName)
+                .join(' ')
+            : reviewText
+        }
+      >
+        {reviewText}
+      </p>
       {game.summary && <p className="avalon-preview-summary">{game.summary}</p>}
     </AvalonPreviewBubble>,
     document.body,

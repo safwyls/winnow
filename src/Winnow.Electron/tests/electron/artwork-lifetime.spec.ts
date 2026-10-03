@@ -9,6 +9,9 @@ type Probe = {
   requests: { width: number; requestId: string }[]
   cancels: string[]
   failNext: boolean
+  failSelectionNext: boolean
+  selectionReads: number
+  refresh(): Promise<void>
   hold: boolean
   warmSource: string
   release(): void
@@ -80,6 +83,40 @@ const read = () =>
     return { ...probe.state(), requests: probe.requests, cancels: probe.cancels, source: probe.warmSource }
   })
 for (const mode of ['desktop', 'fullscreen'] as const) {
+  test(`${mode} a transient selection failure recovers in place without scroll or Details`, async () => {
+    await surface(mode)
+    await page.evaluate(() => {
+      ;(window as unknown as { artworkProbe: Probe }).artworkProbe.failSelectionNext = true
+    })
+    await page.getByRole('button', { name: 'Attach cover', exact: true }).click()
+    const cover = page.locator('[data-wall] .artwork')
+    await expect(cover).toHaveAttribute('data-state', 'error')
+    await page.clock.runFor(2100)
+    await expect(cover).toHaveAttribute('data-state', 'ready')
+    expect(
+      await page.evaluate(() => (window as unknown as { artworkProbe: Probe }).artworkProbe.selectionReads),
+    ).toBe(2)
+  })
+  test(`${mode} metadata refresh leaves an unchanged image download running`, async () => {
+    await surface(mode)
+    await page.evaluate(() => {
+      ;(window as unknown as { artworkProbe: Probe }).artworkProbe.hold = true
+    })
+    await page.getByRole('button', { name: 'Attach cover', exact: true }).click()
+    await expect.poll(async () => (await read()).requests.length).toBe(1)
+    await page.evaluate(async () => {
+      const probe = (window as unknown as { artworkProbe: Probe }).artworkProbe
+      await probe.refresh()
+      await probe.refresh()
+      await probe.refresh()
+    })
+    expect((await read()).cancels).toEqual([])
+    expect((await read()).requests).toHaveLength(1)
+    await page.evaluate(() => {
+      ;(window as unknown as { artworkProbe: Probe }).artworkProbe.release()
+    })
+    await expect(page.locator('[data-wall] .artwork')).toHaveAttribute('data-state', 'ready')
+  })
   test(`${mode} wall keeps its ready pixels during an upgrade while the feed retains its own image`, async ({}, info) => {
     await surface(mode)
     await page.evaluate(() =>

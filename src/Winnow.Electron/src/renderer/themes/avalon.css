@@ -1377,6 +1377,8 @@
   }
   .avalon-preview-copy .avalon-preview-ratings {
     font-size: calc(12px * var(--theme-text-scale, 1));
+    height: 1.5em;
+    flex-shrink: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

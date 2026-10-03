@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { avalonPaletteId, resolvedThemeColors, type ThemeProfile } from '../../shared/theme'
 import type { WindowAppearanceResult } from '../../shared/windowAppearance'
 import { usePresentationPreferences } from '../features/SettingsPreferences'
+import { useContinuousPresentationPreference } from '../features/continuous-preference'
 import { useSetupBusy, useSetupPreferenceError } from '../features/settingsState'
 import { avalonPalette, type AvalonPalette } from './avalon-palettes'
 import {
   aaCeiling,
   avalonAppearance,
   avalonSurfaceTokens,
+  parseTransparency,
   worstMetadataContrast,
   type AvalonAppearance,
 } from './avalon-translucency'
@@ -36,6 +38,7 @@ const noMaterial: WindowAppearanceResult = { requested: 'none', supported: false
 /** A response to an older request must never reopen transparency after fullscreen or a theme switch. */
 export function useAvalonAppearance(profile: ThemeProfile, fullscreen: boolean, profileHydrated = true) {
   const preferences = usePresentationPreferences()
+  const transparency = useContinuousPresentationPreference('Transparency')
   const palette = paletteForProfile(profile)
   const [material, setMaterial] = useState(noMaterial)
   const [nativeRevision, setNativeRevision] = useState(0)
@@ -53,12 +56,13 @@ export function useAvalonAppearance(profile: ThemeProfile, fullscreen: boolean, 
     if (!changed || !profileHydrated || !wasHydrated) return
     if (!preferences.loaded || !palette.defaults) return
     const defaults = palette.defaults
-    if (defaults.transparency != null) preferences.set('Transparency', String(defaults.transparency))
+    if (defaults.transparency != null) transparency.set(String(defaults.transparency))
     if (defaults.backdrop != null) preferences.set('Backdrop', defaults.backdrop)
     if (defaults.wallTranslucent != null) preferences.set('TranslucentWall', String(defaults.wallTranslucent))
     if (defaults.layout != null) preferences.set('Layout', defaults.layout)
   }, [palette.id, preferences.loaded, profileHydrated])
   const appearance = avalonAppearance(preferences.values, palette, material.platform === 'win32')
+  if (transparency.value != null) appearance.transparency = parseTransparency(transparency.value)
   const enabled = !fullscreen && preferences.loaded && appearance.transparency > 0
   const background = palette.colors['--bg']
   useEffect(() => {
@@ -99,6 +103,15 @@ export function useAvalonAppearance(profile: ThemeProfile, fullscreen: boolean, 
     appearance.wallTranslucent,
     appearance.layout,
   )
+  useEffect(() => {
+    const root = document.documentElement
+    root.style.setProperty('--window-caption-fill', tokens.CaptionFill)
+    root.style.setProperty('--window-caption-ground', tokens.ShellGround)
+    return () => {
+      root.style.removeProperty('--window-caption-fill')
+      root.style.removeProperty('--window-caption-ground')
+    }
+  }, [tokens.CaptionFill, tokens.ShellGround])
   const style = {
     '--avalon-shell-ground': tokens.ShellGround,
     '--avalon-caption-fill': tokens.CaptionFill,
@@ -117,8 +130,10 @@ export function useAvalonAppearance(profile: ThemeProfile, fullscreen: boolean, 
 export function AvalonAppearanceControls({ profile }: { profile: ThemeProfile }) {
   const preferences = usePresentationPreferences(),
     palette = paletteForProfile(profile)
-  useSetupBusy(preferences.pending)
-  useSetupPreferenceError(preferences.error)
+  const transparency = useContinuousPresentationPreference('Transparency')
+  const error = transparency.error || preferences.error
+  useSetupBusy(preferences.pending || transparency.pending)
+  useSetupPreferenceError(error)
   const [material, setMaterial] = useState(noMaterial)
   useEffect(() => {
     // The shell owns material changes. Read its last capability result through the
@@ -136,6 +151,7 @@ export function AvalonAppearanceControls({ profile }: { profile: ThemeProfile })
   }, [])
   const appearance = avalonAppearance(preferences.values, palette, material.platform === 'win32')
   const disabled = !preferences.loaded || preferences.pending
+  if (transparency.value != null) appearance.transparency = parseTransparency(transparency.value)
   const ceiling = useMemo(() => aaCeiling(palette), [palette])
   const belowAa = appearance.transparency > 0 && worstMetadataContrast(palette, appearance.transparency) < 4.5
   const choose = (key: keyof AvalonAppearance, value: string) => {
@@ -165,8 +181,8 @@ export function AvalonAppearanceControls({ profile }: { profile: ThemeProfile })
             max={100}
             step={1}
             value={appearance.transparency}
-            disabled={disabled}
-            onChange={(event) => choose('transparency', event.target.value)}
+            disabled={!preferences.loaded}
+            onChange={(event) => transparency.set(event.target.value)}
           />
         </label>
         <label className="studio-field">
@@ -216,7 +232,7 @@ export function AvalonAppearanceControls({ profile }: { profile: ThemeProfile })
         Windows 11 22H2 or later supports these materials. If the platform declines the request, Winnow uses
         solid surfaces and keeps your choices.
       </p>
-      {preferences.error && <p role="alert">Window appearance could not be saved.</p>}
+      {error && <p role="alert">Window appearance could not be saved.</p>}
     </section>
   )
 }
