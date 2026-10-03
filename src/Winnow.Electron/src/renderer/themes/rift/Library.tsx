@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { useVisibleBackgroundPreload } from '../../components/useVisibleBackgroundPreload'
 import { ListFilter, Search, Settings2, X } from 'lucide-react'
 import type { ThemeContext } from '../../../shared/theme'
 import type { LibraryGame } from '../../api/types'
@@ -37,6 +38,13 @@ export function RiftLibrary(context: ThemeContext) {
     [context.games, library.data?.lists, query, bucket, store, listId, sort],
   )
   const gap = 20
+  useVisibleBackgroundPreload(
+    scroll,
+    games,
+    'rift',
+    context.mode === 'fullscreen',
+    !tools && !context.loading,
+  )
   const minimum =
     journey.coverSize === 'compact'
       ? 95

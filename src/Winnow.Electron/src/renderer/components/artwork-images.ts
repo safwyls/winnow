@@ -1,6 +1,7 @@
 import { QueryObserver, type QueryClient } from '@tanstack/react-query'
 import { ArtworkCache, type OwnedArtwork } from './artwork-cache'
 import { ArtworkDecoder, type ArtworkSource } from './artwork-decode'
+import { consumeArtworkSource, readArtworkSource } from './artwork-source'
 export { decodeArtworkImage } from './artwork-decode'
 
 export const artworkFreshness = 120_000
@@ -60,22 +61,8 @@ export async function loadArtworkImage(client: QueryClient, key: ArtworkKey, sig
   const unsubscribe = observer.subscribe(() => {})
   try {
     const query = observer.getCurrentQuery()
-    const fetchSource = async () => {
-      const requestId = crypto.randomUUID().replaceAll('-', '')
-      const cancel = () => {
-        void window.winnow.cancelRequest?.(requestId).catch(() => undefined)
-      }
-      signal.addEventListener('abort', cancel, { once: true })
-      try {
-        const source = window.winnow.artworkBytes
-          ? await window.winnow.artworkBytes(key[1], key[2], key[3], requestId)
-          : await window.winnow.artwork(key[1], key[2], key[3], requestId)
-        signal.throwIfAborted()
-        return source ?? undefined
-      } finally {
-        signal.removeEventListener('abort', cancel)
-      }
-    }
+    consumeArtworkSource(client, key)
+    const fetchSource = () => readArtworkSource(client, key, signal)
     let source = query.state.data?.source
     if (!source || query.state.isInvalidated || Date.now() - query.state.dataUpdatedAt >= artworkFreshness)
       source = await fetchSource()

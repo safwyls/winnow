@@ -100,6 +100,7 @@ import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { Details } from '../features/Details'
 import { AvalonSearch } from './avalon-search'
 import { AvalonBackdrop } from './avalon-backdrop'
+import { useVisibleBackgroundPreload } from '../components/useVisibleBackgroundPreload'
 import { AvalonAmbientBackdrop } from './avalon-ambient-backdrop'
 import { AvalonLibraryPanel } from './avalon-library-panel'
 import { UpdateCaption } from '../features/Updates'
@@ -1080,6 +1081,7 @@ export function AvalonLibrary(context: ThemeContext) {
   }, [fullscreen, games.length, prefix, collection])
   const grid = coverGrid(size.width, size.height, density, fullscreen),
     listMode = !fullscreen && view === 'list'
+  useVisibleBackgroundPreload(scroll, games, 'avalon', fullscreen, !tools && !context.loading)
   const columns = listMode ? 1 : grid.columns,
     rowHeight = listMode ? 44 : grid.rowHeight
   const virtual = useVirtualizer({

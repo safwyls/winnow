@@ -1,6 +1,6 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { QueryClientContext } from '@tanstack/react-query'
-import { request } from '../api/client'
+import { resolveBackdropSelection } from './avalon-backdrop-selection'
 import { ArtworkPlaceholder } from '../components/ArtworkPlaceholder'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { loadBackdropImage, loadCachedBackdropImage } from './avalon-backdrop-image'
@@ -11,7 +11,6 @@ import {
   backdropKey,
   type BackdropFrame,
   type BackdropLayer,
-  type BackdropSelection,
   type BackdropSize,
 } from './avalon-backdrop-model'
 import './avalon-backdrop.css'
@@ -91,32 +90,8 @@ export function AvalonBackdrop({
   }, [fullscreen])
   useEffect(() => {
     const value = new AvalonBackdropController({
-      resolve: async (id, ratio, signal) => {
-        const coverId = current.current.coverWorkId
-        const selectionRead = request<BackdropSelection>(
-          'artwork.backdrop',
-          { workId: id, aspectRatio: ratio },
-          undefined,
-          signal,
-        )
-        if (coverId === undefined || coverId === id) return selectionRead
-        // Header preferences change the cover fallback; hero metadata belongs to the canonical work.
-        try {
-          const [selection, cover] = await Promise.all([
-            selectionRead,
-            request<{ current: { previewKey: BackdropSelection['coverKey'] } | null }>(
-              'artwork.get',
-              { workId: coverId, slot: 'Cover' },
-              undefined,
-              signal,
-            ),
-          ])
-          return { ...selection, coverKey: cover.current?.previewKey ?? null }
-        } catch {
-          signal.throwIfAborted()
-          return selectionRead
-        }
-      },
+      resolve: (id, ratio, signal) =>
+        resolveBackdropSelection(id, ratio, current.current.coverWorkId, signal),
       image: client
         ? (key, width, signal) => loadCachedBackdropImage(client, key, width, signal)
         : loadBackdropImage,

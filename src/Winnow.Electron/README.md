@@ -46,6 +46,13 @@ Cover images remain visible while a larger size loads. Shrinking a realized tile
 best decoded image, and recycling one tile leaves other surfaces showing that game intact.
 Dormancy changes reuse the same pixels on desktop, fullscreen and desktop merge thumbnails.
 
+Library grids and lists warm the backgrounds of visible games after browsing pauses for
+400 ms. Scrolling, filtering or resizing cancels obsolete work; offscreen buffered rows and
+hidden panes do not preload. Desktop and fullscreen share a two-job queue that yields to
+requested artwork. Preloading retains up to 32 MiB across 128 images rather than decoded
+full-size backgrounds, so it does not displace cover pixels. Details reuses a matching warm image;
+opening before preloading finishes still follows the normal loading path.
+
 Unavailable artwork uses local illustrations from the active composition: Avalon's misted
 landscape, Afterglow's warm halo, Rift's starfield, and Catalogue's printed index cards.
 Covers retain the title, and unavailable screenshot and artwork previews retain their labels.

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { useVisibleBackgroundPreload } from '../components/useVisibleBackgroundPreload'
 import { motion, useReducedMotion } from 'motion/react'
 import {
   ArrowRight,
@@ -501,6 +502,13 @@ export function AfterglowLibrary({ quietCards = true, ...context }: ThemeContext
     [context.games, query, bucket, store, listId, sort, library.data],
   )
   const listMode = view === 'list' || context.profile.layout.cardStyle === 'record'
+  useVisibleBackgroundPreload(
+    scrollRef,
+    games,
+    context.profile.themeId,
+    context.mode === 'fullscreen',
+    !tools && !context.loading,
+  )
   const [gridWidth, setGridWidth] = useState(1000)
   const [gridHeight, setGridHeight] = useState(800)
   const columns = Math.max(
@@ -693,6 +701,7 @@ export function AfterglowLibrary({ quietCards = true, ...context }: ThemeContext
                       listMode ? (
                         <button
                           className="game-record"
+                          data-work-id={game.workId}
                           key={game.workId}
                           onClick={() => context.openGame(game.workId)}
                         >

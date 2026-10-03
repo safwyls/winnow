@@ -19,17 +19,16 @@ interface ArtState {
 let selectionRead = 0
 const imageRetryDelays = [2_000, 10_000, 30_000]
 
-export function useArtworkSelection(workId: number, hero = false, enabled = true) {
-  return useQuery({
+export function artworkSelectionOptions(workId: number, hero = false) {
+  return {
     queryKey: ['artwork', workId, hero],
-    enabled,
     staleTime: artworkFreshness,
     gcTime: artworkLifetime,
-    retry: (failures, error) =>
+    retry: (failures: number, error: unknown) =>
       failures < imageRetryDelays.length &&
       (!(error instanceof ApiError) || error.status === 0 || error.status === 429 || error.status >= 500),
-    retryDelay: (attempt) => imageRetryDelays[attempt] ?? imageRetryDelays.at(-1)!,
-    queryFn: async ({ signal }) => {
+    retryDelay: (attempt: number) => imageRetryDelays[attempt] ?? imageRetryDelays.at(-1)!,
+    queryFn: async ({ signal }: { signal: AbortSignal }) => {
       const requestId = crypto.randomUUID().replaceAll('-', '')
       const cancel = () => {
         void window.winnow.cancelRequest?.(requestId).catch(() => undefined)
@@ -48,7 +47,11 @@ export function useArtworkSelection(workId: number, hero = false, enabled = true
         signal.removeEventListener('abort', cancel)
       }
     },
-  })
+  }
+}
+
+export function useArtworkSelection(workId: number, hero = false, enabled = true) {
+  return useQuery({ ...artworkSelectionOptions(workId, hero), enabled })
 }
 
 export function Artwork({

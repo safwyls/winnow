@@ -1096,6 +1096,16 @@ and the documented `t_1080p_2x` rendition, separate from screenshot gallery asse
 Resizing requests the appropriate display-sized lease. Compact desktop covers and screenshot
 gallery renditions remain unchanged; both presentations share lease and eviction behavior.
 
+Electron Library preloads backgrounds for the actual clipped visible games after 400 ms
+without browsing changes. All bundled compositions use the same observer and a two-job
+speculative queue on desktop and fullscreen. Scroll, filter and layout changes cancel stale
+work, and foreground image work goes first. Warm requests use the same selected hero or
+ranked backdrop candidates and rendition widths as Details, retaining at most 32 MiB across
+128 encoded images rather than pinned decoded backgrounds. Cache hits refresh retention order
+so returning to a visible title protects it from older offscreen entries. Offscreen virtual rows
+and hidden retained panes do not contribute requests. Normal selection, fallback and invalidation
+rules still apply.
+
 Backdrop selection is shared application behavior. A saved user background leads the
 candidate list. The persisted `enrichment.artwork_source_order` orders automatic source groups:
 high-resolution Steam heroes, SteamGridDB and IGDB, in that default order. Standard Steam
