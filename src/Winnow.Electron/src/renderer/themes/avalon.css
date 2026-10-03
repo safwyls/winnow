@@ -619,6 +619,16 @@
     padding-left: 10px;
     background: var(--surface);
   }
+  .avalon-search:focus-within {
+    outline: 2px solid var(--accent-foreground, var(--accent));
+    outline-offset: 3px;
+  }
+  .avalon-actions-body .avalon-search:focus-within {
+    outline-offset: 0;
+  }
+  .avalon-search input:focus-visible {
+    outline: none;
+  }
   .avalon-search input {
     width: 100%;
     min-width: 0;
@@ -630,6 +640,9 @@
   .avalon-search button {
     border: 0;
     padding: 6px;
+  }
+  .avalon-actions-panel .avalon-actions-body .avalon-search button {
+    width: auto;
   }
   .avalon-segmented {
     display: flex;

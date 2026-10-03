@@ -197,7 +197,9 @@ controls as well as the results. Reserving that strip keeps all 27 labels readab
 a short window has list controls open; those controls and the artwork end before the wave.
 The desktop toolbar groups Display with the grid/list switch on the left, gives Search
 the flexible space, and places Filters on the right beside its panel. Store and Sort stay
-together. Store uses the same themed single-choice popup as Sort, with the selected store
+together. Search focus outlines the whole field, including its icon and clear action, on
+desktop and in fullscreen More; the clear button retains its own keyboard focus indicator.
+Store uses the same themed single-choice popup as Sort, with the selected store
 marked and keyboard focus returned to its trigger after a choice. The fullscreen More
 panel reuses this menu within its dialog. Narrower panes move that group onto a second row,
 and Search takes its own row when the filter panel leaves too little width. The filter panel reserves an inner gutter
