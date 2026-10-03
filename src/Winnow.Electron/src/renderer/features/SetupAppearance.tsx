@@ -15,7 +15,13 @@ export function SetupAppearance({ runtime, mode }: { runtime: ThemeRuntime; mode
   useSetupBusy(mode === 'desktop' && (runtime.profileSaving || runtime.loading))
   useSetupPreferenceError(mode === 'desktop' ? runtime.profileSaveError : null)
   if (mode === 'fullscreen')
-    return <FullscreenAppearance setup themeControls={<FullscreenThemeSettings runtime={runtime} setup />} />
+    return (
+      <FullscreenAppearance
+        setup
+        compositionId={runtime.profile.themeId}
+        themeControls={<FullscreenThemeSettings runtime={runtime} setup />}
+      />
+    )
   const { profile, setProfile } = runtime
   return (
     <div className="setup-appearance">

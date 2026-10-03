@@ -480,6 +480,7 @@ export function App() {
       return (
         <Settings
           mode={mode}
+          compositionId={runtime.profile.themeId}
           onOpenGame={openGame}
           ratingCapInDisplayPreferences={mode === 'desktop' && runtime.profile.themeId === 'avalon'}
           fullscreenThemeControls={

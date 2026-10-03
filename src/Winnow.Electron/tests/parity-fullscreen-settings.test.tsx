@@ -59,6 +59,73 @@ async function direction(control: HTMLElement, key: 'ArrowLeft' | 'ArrowRight', 
 }
 
 describe('fullscreen source setting rows', () => {
+  it.each(
+    (['desktop', 'fullscreen'] as const).flatMap((mode) =>
+      ['avalon', 'afterglow', 'rift', 'catalogue'].map((compositionId) => ({ mode, compositionId })),
+    ),
+  )(
+    'shows and resets only supported fullscreen preferences in $compositionId $mode Settings',
+    async ({ mode, compositionId }) => {
+      const f = fixture({
+        FullscreenTextScale: '1.3',
+        FullscreenInterfaceScale: '1.1',
+        FullscreenSafeMargin: '8',
+        FullscreenReducedMotion: 'true',
+        FullscreenFitUltrawide: 'true',
+        DimDormantCovers: 'false',
+        CoverArtMode: 'fill',
+      })
+      const view = render(<Settings mode={mode} compositionId={compositionId} />, { wrapper: f.wrapper })
+      fireEvent.click(
+        within(screen.getByRole('navigation', { name: 'Settings section' })).getByRole('button', {
+          name: 'Appearance',
+        }),
+      )
+      const reset = await ready('Reset fullscreen appearance…')
+      const role = mode === 'fullscreen' ? 'switch' : 'checkbox'
+      const toggle = screen.queryByRole(role, { name: 'Fit ultrawide displays' })
+      expect(toggle !== null).toBe(compositionId === 'avalon')
+      expect(screen.getByRole(role, { name: 'Reduce motion' })).toBeTruthy()
+      if (mode === 'fullscreen') {
+        for (const name of ['Text size', 'Interface scale', 'Screen margins', 'Cover art'])
+          expect(screen.getByRole('button', { name })).toBeTruthy()
+        expect(screen.getByRole('switch', { name: 'Dim dormant covers' })).toBeTruthy()
+      } else {
+        for (const name of [/Text size/, /Interface scale/, /Screen edge margin/])
+          expect(screen.getByRole('slider', { name })).toBeTruthy()
+      }
+      fireEvent.click(reset)
+      const confirmation = screen.getByRole('alertdialog')
+      expect(confirmation.textContent?.includes('ultrawide')).toBe(compositionId === 'avalon')
+      fireEvent.click(within(confirmation).getByRole('button', { name: 'Reset fullscreen appearance' }))
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+      expect(f.values).toEqual({
+        FullscreenTextScale: '1',
+        FullscreenInterfaceScale: '1',
+        FullscreenSafeMargin: '5',
+        FullscreenReducedMotion: 'false',
+        FullscreenFitUltrawide: compositionId === 'avalon' ? 'false' : 'true',
+        DimDormantCovers: 'false',
+        CoverArtMode: 'fill',
+      })
+      expect(
+        f.request.mock.calls.filter(
+          ([input]) =>
+            input.route === 'preferences.presentation.put' &&
+            input.params?.preference === 'FullscreenFitUltrawide',
+        ),
+      ).toHaveLength(compositionId === 'avalon' ? 1 : 0)
+      view.rerender(<Settings mode={mode} compositionId="avalon" />)
+      const restored = await screen.findByRole(role, { name: 'Fit ultrawide displays' })
+      await waitFor(() => expect((restored as HTMLButtonElement).disabled).toBe(false))
+      expect(
+        mode === 'fullscreen'
+          ? restored.getAttribute('aria-checked') === 'true'
+          : (restored as HTMLInputElement).checked,
+      ).toBe(compositionId !== 'avalon')
+    },
+  )
+
   it('returns from additional settings pages to their parent action without losing focus', async () => {
     const f = fixture()
     render(<Settings mode="fullscreen" />, { wrapper: f.wrapper })

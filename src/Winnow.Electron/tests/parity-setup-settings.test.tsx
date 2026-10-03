@@ -24,6 +24,8 @@ function deferred<T>() {
 const themes: ThemeDefinition[] = [
   { apiVersion: 1, id: 'avalon', name: 'Avalon', Shell: () => null },
   { apiVersion: 1, id: 'afterglow', name: 'Afterglow', Shell: () => null },
+  { apiVersion: 1, id: 'rift', name: 'Rift', Shell: () => null },
+  { apiVersion: 1, id: 'catalogue', name: 'Catalogue', Shell: () => null },
 ]
 function fixture(
   initial: number,
@@ -149,6 +151,60 @@ async function openProvider(label: string) {
   fireEvent.click(entry)
   return (await screen.findByRole('button', { name: 'Back to setup' })) as HTMLButtonElement
 }
+
+it.each(['desktop', 'fullscreen'] as const)(
+  'setup follows composition applicability and restores saved palette in %s',
+  async (mode) => {
+    const f = fixture(5, true, mode)
+    if (mode === 'fullscreen') await openProvider('Choose theme and appearance')
+    else
+      await waitFor(() =>
+        expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(false),
+      )
+    if (mode === 'desktop') chooseOption(screen.getByRole('button', { name: 'Theme' }), 'nightshift')
+    else {
+      fireEvent.click(screen.getByRole('button', { name: 'Theme' }))
+      fireEvent.click(
+        within(screen.getByRole('dialog', { name: 'Theme' })).getByRole('button', { name: 'Nightshift' }),
+      )
+    }
+    for (const { id, name } of [...themes.slice(1), themes[0]]) {
+      const design = screen.getByRole('button', { name: 'Winnow design' })
+      await waitFor(() => expect((design as HTMLButtonElement).disabled).toBe(false))
+      if (mode === 'desktop') chooseOption(design, id)
+      else {
+        fireEvent.click(design)
+        fireEvent.click(
+          within(screen.getByRole('dialog', { name: 'Winnow design' })).getByRole('button', { name }),
+        )
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Winnow design' })).toBeNull())
+      }
+      expect(screen.queryByRole('button', { name: 'Theme' }) !== null).toBe(id === 'avalon')
+      expect(
+        screen.queryByRole(mode === 'desktop' ? 'slider' : 'button', { name: 'Theme text size' }) !== null,
+      ).toBe(id === 'avalon')
+      if (mode === 'fullscreen') {
+        expect(screen.queryByRole('heading', { name: 'Typography' }) !== null).toBe(id === 'avalon')
+        expect(screen.queryByRole('switch', { name: 'Fit ultrawide displays' }) !== null).toBe(
+          id === 'avalon',
+        )
+        for (const shared of ['Text size', 'Interface scale', 'Screen margins', 'Cover art'])
+          expect(screen.getByRole('button', { name: shared })).toBeTruthy()
+        for (const shared of ['Dim dormant covers', 'Reduce motion'])
+          expect(screen.getByRole('switch', { name: shared })).toBeTruthy()
+      }
+      await waitFor(() =>
+        expect(f.savePreferences).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            themeId: id,
+            settings: expect.objectContaining({ avalon: expect.objectContaining({ palette: 'nightshift' }) }),
+          }),
+        ),
+      )
+    }
+    expect(screen.getByRole('button', { name: 'Theme' }).textContent).toContain('Nightshift')
+  },
+)
 
 it('waits for the initial profile save before opening fullscreen appearance', async () => {
   const gate = deferred<void>()

@@ -5,6 +5,9 @@ dark by default with optional light themes, and the retained Avalonia reference 
 
 Electron also offers Afterglow, Rift and Catalogue as alternative compositions. Its appearance
 controls and replaceable-screen contract are in [Electron themes](docs/electron-themes.md).
+Appearance menus show only controls used by the selected composition, without empty group
+headings. Switching compositions retains hidden choices; Avalon-only role typography and
+ultrawide fit are hidden in the other compositions on desktop, fullscreen and during setup.
 Framework-specific XAML, bitmap and automation details below describe the Avalonia reference;
 Electron preserves their user-visible contracts through its renderer and native bridge.
 

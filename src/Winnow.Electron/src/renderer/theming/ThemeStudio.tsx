@@ -12,6 +12,7 @@ import {
 import { useEffect, useId, useState } from 'react'
 import {
   PALETTES,
+  avalonPaletteId,
   contrastRatio,
   resolvedThemeColors,
   themeSettingValues,
@@ -20,6 +21,7 @@ import {
   type ThemeSettingValue,
 } from '../../shared/theme'
 import type { ThemeRuntime } from './runtime'
+import { appearanceCapabilities } from './appearance-capabilities'
 import { normalizeArtworkEffects, type ArtworkEffectOptions } from '../../shared/artworkEffects'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { useLibrary } from '../api/hooks'
@@ -125,6 +127,13 @@ function ColorControl({
 export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
   const { profile, setProfile, theme } = runtime
   const { appearance, layout } = profile
+  const capabilities = appearanceCapabilities(theme.id)
+  const studioColors = theme.id !== 'avalon' || avalonPaletteId(profile) === 'profile'
+  const hasLayout =
+    capabilities.navigation ||
+    capabilities.libraryCards ||
+    capabilities.gameDetails ||
+    capabilities.discoverSections
   const palette = PALETTES[appearance.palette]
   const colors = resolvedThemeColors(profile)
   const artwork = normalizeArtworkEffects(appearance.artwork)
@@ -267,41 +276,47 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               <Palette size={18} />
               <h2 id="studio-appearance">Atmosphere</h2>
             </div>
-            <fieldset className="studio-fieldset">
-              <legend>Palette</legend>
-              <div className="studio-palettes">
-                {Object.entries(PALETTES).map(([id, colors]) => (
-                  <button
-                    type="button"
-                    key={id}
-                    aria-pressed={appearance.palette === id}
-                    onClick={() =>
-                      appearanceChange({
-                        palette: id as ThemeProfile['appearance']['palette'],
-                        accent: colors.accent,
-                        colors: undefined,
-                      })
-                    }
-                  >
-                    <span className="studio-swatches" aria-hidden="true">
-                      {[colors.background, colors.surface, colors.text, colors.accent].map((color, index) => (
-                        <i key={index} style={{ background: color }} />
-                      ))}
-                    </span>
-                    <span>{colors.name}</span>
-                    {appearance.palette === id && <Check size={14} />}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
+            {studioColors && (
+              <fieldset className="studio-fieldset">
+                <legend>Palette</legend>
+                <div className="studio-palettes">
+                  {Object.entries(PALETTES).map(([id, colors]) => (
+                    <button
+                      type="button"
+                      key={id}
+                      aria-pressed={appearance.palette === id}
+                      onClick={() =>
+                        appearanceChange({
+                          palette: id as ThemeProfile['appearance']['palette'],
+                          accent: colors.accent,
+                          colors: undefined,
+                        })
+                      }
+                    >
+                      <span className="studio-swatches" aria-hidden="true">
+                        {[colors.background, colors.surface, colors.text, colors.accent].map(
+                          (color, index) => (
+                            <i key={index} style={{ background: color }} />
+                          ),
+                        )}
+                      </span>
+                      <span>{colors.name}</span>
+                      {appearance.palette === id && <Check size={14} />}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
             <div className="studio-field-grid">
-              <ColorControl
-                label="Accent color"
-                value={appearance.accent}
-                onChange={(accent) => appearanceChange({ accent })}
-                onReset={() => appearanceChange({ accent: palette.accent })}
-              />
-              {theme.id !== 'avalon' && (
+              {studioColors && (
+                <ColorControl
+                  label="Accent color"
+                  value={appearance.accent}
+                  onChange={(accent) => appearanceChange({ accent })}
+                  onReset={() => appearanceChange({ accent: palette.accent })}
+                />
+              )}
+              {capabilities.fontPreset && (
                 <label className="studio-field">
                   Typography
                   <ChoiceMenu
@@ -319,22 +334,25 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                   />
                 </label>
               )}
-              <label className="studio-field">
-                Spacing
-                <ChoiceMenu
-                  label="Spacing"
-                  aria-label="Spacing"
-                  value={appearance.density}
-                  onChange={(value) =>
-                    appearanceChange({ density: value as ThemeProfile['appearance']['density'] })
-                  }
-                  options={[
-                    { value: 'compact', label: 'Compact' },
-                    { value: 'comfortable', label: 'Comfortable' },
-                    { value: 'spacious', label: 'Spacious' },
-                  ]}
-                />
-              </label>
+              {capabilities.spacing && (
+                <label className="studio-field">
+                  Spacing
+                  <ChoiceMenu
+                    label="Spacing"
+                    aria-label="Spacing"
+                    value={appearance.density}
+                    onChange={(value) =>
+                      appearanceChange({ density: value as ThemeProfile['appearance']['density'] })
+                    }
+                    options={[
+                      { value: 'compact', label: 'Compact' },
+                      { value: 'comfortable', label: 'Comfortable' },
+                      { value: 'spacious', label: 'Spacious' },
+                    ]}
+                  />
+                  <small>Adjusts desktop page spacing.</small>
+                </label>
+              )}
               <label className="studio-field">
                 Interface size <span className="studio-value">{appearance.scale ?? 100}%</span>
                 <input
@@ -357,18 +375,20 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                   onChange={(event) => appearanceChange({ radius: Number(event.target.value) })}
                 />
               </label>
-              <label className="studio-field">
-                Artwork shade <span className="studio-value">{appearance.scrim}%</span>
-                <input
-                  type="range"
-                  min="20"
-                  max="90"
-                  step="1"
-                  value={appearance.scrim}
-                  onChange={(event) => appearanceChange({ scrim: Number(event.target.value) })}
-                />
-                <small>A stronger shade makes text over artwork easier to read.</small>
-              </label>
+              {capabilities.artworkShade && (
+                <label className="studio-field">
+                  Artwork shade <span className="studio-value">{appearance.scrim}%</span>
+                  <input
+                    type="range"
+                    min="20"
+                    max="90"
+                    step="1"
+                    value={appearance.scrim}
+                    onChange={(event) => appearanceChange({ scrim: Number(event.target.value) })}
+                  />
+                  <small>A stronger shade makes text over artwork easier to read.</small>
+                </label>
+              )}
               <label className="studio-toggle">
                 <input
                   type="checkbox"
@@ -381,27 +401,31 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                 </span>
               </label>
             </div>
-            <details className="studio-custom-colors">
-              <summary>
-                Customize every color
-                {appearance.colors && Object.keys(appearance.colors).length ? <span>Modified</span> : null}
-              </summary>
-              <p className="studio-help">
-                Start with a preset, then set each color. Choosing a preset clears these overrides.
-              </p>
-              <div className="studio-field-grid">
-                {colorLabels.map(({ key, label }) => (
-                  <ColorControl
-                    key={key}
-                    label={label}
-                    value={colors[key]}
-                    onChange={(value) => appearanceChange({ colors: { ...appearance.colors, [key]: value } })}
-                    onReset={() => resetColor(key)}
-                  />
-                ))}
-              </div>
-            </details>
-            {!!contrastIssues.length && (
+            {studioColors && (
+              <details className="studio-custom-colors">
+                <summary>
+                  Customize every color
+                  {appearance.colors && Object.keys(appearance.colors).length ? <span>Modified</span> : null}
+                </summary>
+                <p className="studio-help">
+                  Start with a preset, then set each color. Choosing a preset clears these overrides.
+                </p>
+                <div className="studio-field-grid">
+                  {colorLabels.map(({ key, label }) => (
+                    <ColorControl
+                      key={key}
+                      label={label}
+                      value={colors[key]}
+                      onChange={(value) =>
+                        appearanceChange({ colors: { ...appearance.colors, [key]: value } })
+                      }
+                      onReset={() => resetColor(key)}
+                    />
+                  ))}
+                </div>
+              </details>
+            )}
+            {studioColors && !!contrastIssues.length && (
               <div className="studio-warning" role="status">
                 <strong>Some colors may be hard to read.</strong>
                 <p>Use at least 4.5:1 contrast for small text.</p>
@@ -415,268 +439,273 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               </div>
             )}
           </section>
-          <section className="studio-panel" aria-labelledby="studio-artwork">
-            <div className="studio-section-title">
-              <Sparkles size={18} />
-              <h2 id="studio-artwork">Artwork materials</h2>
-            </div>
-            <p>
-              These choices apply to themes and components that use artwork effects. Afterglow keeps its
-              covers still and unlit; your choices stay saved for other themes.
-            </p>
-            <fieldset className="studio-fieldset">
-              <legend>Surface finish</legend>
-              <div className="studio-field-grid">
-                <label className="studio-field">
-                  Cover finish
-                  <ChoiceMenu
-                    label="Cover finish"
-                    aria-label="Cover finish"
-                    value={artwork.finish}
-                    onChange={(value) => artworkChange({ finish: value as ArtworkEffectOptions['finish'] })}
-                    options={[
-                      { value: 'off', label: 'Off' },
-                      { value: 'matte', label: 'Matte' },
-                      { value: 'satin', label: 'Satin' },
-                      { value: 'foil', label: 'Foil' },
-                    ]}
-                  />
-                </label>
-                <label className="studio-field">
-                  Finish intensity <span className="studio-value">{artwork.intensity}%</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={artwork.intensity}
-                    disabled={artwork.finish === 'off'}
-                    onChange={(event) => artworkChange({ intensity: Number(event.target.value) })}
-                  />
-                </label>
+          {capabilities.artworkMaterials && (
+            <section className="studio-panel" aria-labelledby="studio-artwork">
+              <div className="studio-section-title">
+                <Sparkles size={18} />
+                <h2 id="studio-artwork">Artwork materials</h2>
               </div>
-            </fieldset>
-            <fieldset className="studio-fieldset">
-              <legend>Highlight foil</legend>
-              <div className="studio-field-grid">
-                <label className="studio-toggle">
-                  <input
-                    type="checkbox"
-                    checked={artwork.highlightFoil}
-                    onChange={(event) => artworkChange({ highlightFoil: event.target.checked })}
-                  />
-                  <span>
-                    <strong>Foil on light areas</strong>
-                    <small>Catch white lettering and bright details in the artwork.</small>
-                  </span>
-                </label>
-                <label className="studio-field">
-                  Highlight material
-                  <ChoiceMenu
-                    label="Highlight material"
-                    aria-label="Highlight material"
-                    value={artwork.foilMetal}
-                    disabled={!artwork.highlightFoil}
-                    onChange={(value) =>
-                      artworkChange({ foilMetal: value as ArtworkEffectOptions['foilMetal'] })
-                    }
-                    options={[
-                      { value: 'silver', label: 'Silver' },
-                      { value: 'gold', label: 'Gold' },
-                      { value: 'holographic', label: 'Holographic' },
-                    ]}
-                  />
-                </label>
-                <label className="studio-field">
-                  Foil strength <span className="studio-value">{artwork.foilStrength}%</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={artwork.foilStrength}
-                    disabled={!artwork.highlightFoil}
-                    onChange={(event) => artworkChange({ foilStrength: Number(event.target.value) })}
-                  />
-                </label>
-                <label className="studio-field">
-                  Brightness cutoff <span className="studio-value">{artwork.foilThreshold}%</span>
-                  <input
-                    type="range"
-                    min="40"
-                    max="95"
-                    step="1"
-                    value={artwork.foilThreshold}
-                    disabled={!artwork.highlightFoil}
-                    onChange={(event) => artworkChange({ foilThreshold: Number(event.target.value) })}
-                  />
-                  <small>A higher cutoff limits foil to the brightest areas.</small>
-                </label>
-              </div>
-            </fieldset>
-            <fieldset className="studio-fieldset">
-              <legend>Movement and depth</legend>
-              {reducedMotion && (
-                <div className="studio-notice studio-motion-status">
-                  <span id={motionStatusId} role="status">
-                    {systemReducedMotion ? 'Your system requests reduced motion.' : 'Reduce motion is on.'}{' '}
-                    Tilt and cursor-following light are paused. Floating artwork can still lift.
-                  </span>
-                  {!systemReducedMotion && (
-                    <button type="button" onClick={() => appearanceChange({ reducedMotion: false })}>
-                      Turn off reduced motion
-                    </button>
-                  )}
+              <p>Adjust the finish, light, and depth of your library artwork.</p>
+              <fieldset className="studio-fieldset">
+                <legend>Surface finish</legend>
+                <div className="studio-field-grid">
+                  <label className="studio-field">
+                    Cover finish
+                    <ChoiceMenu
+                      label="Cover finish"
+                      aria-label="Cover finish"
+                      value={artwork.finish}
+                      onChange={(value) => artworkChange({ finish: value as ArtworkEffectOptions['finish'] })}
+                      options={[
+                        { value: 'off', label: 'Off' },
+                        { value: 'matte', label: 'Matte' },
+                        { value: 'satin', label: 'Satin' },
+                        { value: 'foil', label: 'Foil' },
+                      ]}
+                    />
+                  </label>
+                  <label className="studio-field">
+                    Finish intensity <span className="studio-value">{artwork.intensity}%</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={artwork.intensity}
+                      disabled={artwork.finish === 'off'}
+                      onChange={(event) => artworkChange({ intensity: Number(event.target.value) })}
+                    />
+                  </label>
                 </div>
-              )}
-              <div className="studio-field-grid">
-                <label className="studio-toggle">
-                  <input
-                    type="checkbox"
-                    checked={artwork.followPointer}
-                    disabled={reducedMotion}
-                    aria-describedby={reducedMotion ? motionStatusId : undefined}
-                    onChange={(event) => artworkChange({ followPointer: event.target.checked })}
-                  />
-                  <span>
-                    <strong>Follow the pointer</strong>
-                    <small>Move the light and card angle with your cursor.</small>
-                  </span>
-                </label>
-                <label className="studio-toggle">
-                  <input
-                    type="checkbox"
-                    checked={artwork.floating}
-                    onChange={(event) => artworkChange({ floating: event.target.checked })}
-                  />
-                  <span>
-                    <strong>Floating artwork</strong>
-                    <small>Lift covers above the page with a soft shadow.</small>
-                  </span>
-                </label>
-                <label className="studio-field">
-                  Maximum tilt <span className="studio-value">{artwork.tilt}°</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="12"
-                    step="1"
-                    value={artwork.tilt}
-                    disabled={reducedMotion || !artwork.followPointer || !artwork.floating}
-                    aria-describedby={reducedMotion ? motionStatusId : undefined}
-                    onChange={(event) => artworkChange({ tilt: Number(event.target.value) })}
-                  />
-                  <small>Set to zero for lift alone.</small>
-                </label>
-              </div>
-              <p className="studio-help">Keyboard focus and reduced motion keep the card and light steady.</p>
-            </fieldset>
-          </section>
-          {theme.id !== 'rift' && (
+              </fieldset>
+              <fieldset className="studio-fieldset">
+                <legend>Highlight foil</legend>
+                <div className="studio-field-grid">
+                  <label className="studio-toggle">
+                    <input
+                      type="checkbox"
+                      checked={artwork.highlightFoil}
+                      onChange={(event) => artworkChange({ highlightFoil: event.target.checked })}
+                    />
+                    <span>
+                      <strong>Foil on light areas</strong>
+                      <small>Catch white lettering and bright details in the artwork.</small>
+                    </span>
+                  </label>
+                  <label className="studio-field">
+                    Highlight material
+                    <ChoiceMenu
+                      label="Highlight material"
+                      aria-label="Highlight material"
+                      value={artwork.foilMetal}
+                      disabled={!artwork.highlightFoil}
+                      onChange={(value) =>
+                        artworkChange({ foilMetal: value as ArtworkEffectOptions['foilMetal'] })
+                      }
+                      options={[
+                        { value: 'silver', label: 'Silver' },
+                        { value: 'gold', label: 'Gold' },
+                        { value: 'holographic', label: 'Holographic' },
+                      ]}
+                    />
+                  </label>
+                  <label className="studio-field">
+                    Foil strength <span className="studio-value">{artwork.foilStrength}%</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={artwork.foilStrength}
+                      disabled={!artwork.highlightFoil}
+                      onChange={(event) => artworkChange({ foilStrength: Number(event.target.value) })}
+                    />
+                  </label>
+                  <label className="studio-field">
+                    Brightness cutoff <span className="studio-value">{artwork.foilThreshold}%</span>
+                    <input
+                      type="range"
+                      min="40"
+                      max="95"
+                      step="1"
+                      value={artwork.foilThreshold}
+                      disabled={!artwork.highlightFoil}
+                      onChange={(event) => artworkChange({ foilThreshold: Number(event.target.value) })}
+                    />
+                    <small>A higher cutoff limits foil to the brightest areas.</small>
+                  </label>
+                </div>
+              </fieldset>
+              <fieldset className="studio-fieldset">
+                <legend>Movement and depth</legend>
+                {reducedMotion && (
+                  <div className="studio-notice studio-motion-status">
+                    <span id={motionStatusId} role="status">
+                      {systemReducedMotion ? 'Your system requests reduced motion.' : 'Reduce motion is on.'}{' '}
+                      Tilt and cursor-following light are paused. Floating artwork can still lift.
+                    </span>
+                    {!systemReducedMotion && (
+                      <button type="button" onClick={() => appearanceChange({ reducedMotion: false })}>
+                        Turn off reduced motion
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div className="studio-field-grid">
+                  <label className="studio-toggle">
+                    <input
+                      type="checkbox"
+                      checked={artwork.followPointer}
+                      disabled={reducedMotion}
+                      aria-describedby={reducedMotion ? motionStatusId : undefined}
+                      onChange={(event) => artworkChange({ followPointer: event.target.checked })}
+                    />
+                    <span>
+                      <strong>Follow the pointer</strong>
+                      <small>Move the light and card angle with your cursor.</small>
+                    </span>
+                  </label>
+                  <label className="studio-toggle">
+                    <input
+                      type="checkbox"
+                      checked={artwork.floating}
+                      onChange={(event) => artworkChange({ floating: event.target.checked })}
+                    />
+                    <span>
+                      <strong>Floating artwork</strong>
+                      <small>Lift covers above the page with a soft shadow.</small>
+                    </span>
+                  </label>
+                  <label className="studio-field">
+                    Maximum tilt <span className="studio-value">{artwork.tilt}°</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="12"
+                      step="1"
+                      value={artwork.tilt}
+                      disabled={reducedMotion || !artwork.followPointer || !artwork.floating}
+                      aria-describedby={reducedMotion ? motionStatusId : undefined}
+                      onChange={(event) => artworkChange({ tilt: Number(event.target.value) })}
+                    />
+                    <small>Set to zero for lift alone.</small>
+                  </label>
+                </div>
+                <p className="studio-help">
+                  Keyboard focus and reduced motion keep the card and light steady.
+                </p>
+              </fieldset>
+            </section>
+          )}
+          {hasLayout && (
             <section className="studio-panel" aria-labelledby="studio-layout">
               <div className="studio-section-title">
                 <LayoutTemplate size={18} />
                 <h2 id="studio-layout">Arrange your space</h2>
               </div>
-              <p>
-                These preferences arrange Afterglow and shared screens. Other designs can provide their own
-                controls below.
-              </p>
               <div className="studio-field-grid">
-                <label className="studio-field">
-                  Navigation
-                  <ChoiceMenu
-                    label="Navigation"
-                    aria-label="Navigation"
-                    value={layout.navigation}
-                    onChange={(value) =>
-                      layoutChange({ navigation: value as ThemeProfile['layout']['navigation'] })
-                    }
-                    options={[
-                      { value: 'top', label: 'Across the top' },
-                      { value: 'left', label: 'Along the left' },
-                    ]}
-                  />
-                </label>
-                <label className="studio-field">
-                  Library cards
-                  <ChoiceMenu
-                    label="Library cards"
-                    aria-label="Library cards"
-                    value={layout.cardStyle}
-                    onChange={(value) =>
-                      layoutChange({ cardStyle: value as ThemeProfile['layout']['cardStyle'] })
-                    }
-                    options={[
-                      { value: 'landscape', label: 'Landscape artwork' },
-                      { value: 'poster', label: 'Portrait covers' },
-                      { value: 'record', label: 'Compact records' },
-                    ]}
-                  />
-                </label>
-                <label className="studio-field">
-                  Game details
-                  <ChoiceMenu
-                    label="Game details"
-                    aria-label="Game details"
-                    value={layout.detailArrangement}
-                    onChange={(value) =>
-                      layoutChange({
-                        detailArrangement: value as ThemeProfile['layout']['detailArrangement'],
-                      })
-                    }
-                    options={[
-                      { value: 'aside', label: 'Actions beside the story' },
-                      { value: 'stacked', label: 'One reading column' },
-                    ]}
-                  />
-                </label>
+                {capabilities.navigation && (
+                  <label className="studio-field">
+                    Navigation
+                    <ChoiceMenu
+                      label="Navigation"
+                      aria-label="Navigation"
+                      value={layout.navigation}
+                      onChange={(value) =>
+                        layoutChange({ navigation: value as ThemeProfile['layout']['navigation'] })
+                      }
+                      options={[
+                        { value: 'top', label: 'Across the top' },
+                        { value: 'left', label: 'Along the left' },
+                      ]}
+                    />
+                  </label>
+                )}
+                {capabilities.libraryCards && (
+                  <label className="studio-field">
+                    Library cards
+                    <ChoiceMenu
+                      label="Library cards"
+                      aria-label="Library cards"
+                      value={layout.cardStyle}
+                      onChange={(value) =>
+                        layoutChange({ cardStyle: value as ThemeProfile['layout']['cardStyle'] })
+                      }
+                      options={[
+                        { value: 'landscape', label: 'Landscape artwork' },
+                        { value: 'poster', label: 'Portrait covers' },
+                        { value: 'record', label: 'Compact records' },
+                      ]}
+                    />
+                  </label>
+                )}
+                {capabilities.gameDetails && (
+                  <label className="studio-field">
+                    Game details
+                    <ChoiceMenu
+                      label="Game details"
+                      aria-label="Game details"
+                      value={layout.detailArrangement}
+                      onChange={(value) =>
+                        layoutChange({
+                          detailArrangement: value as ThemeProfile['layout']['detailArrangement'],
+                        })
+                      }
+                      options={[
+                        { value: 'aside', label: 'Actions beside the story' },
+                        { value: 'stacked', label: 'One reading column' },
+                      ]}
+                    />
+                  </label>
+                )}
               </div>
-              <fieldset className="studio-fieldset">
-                <legend>Discover sections</legend>
-                <p className="studio-help">Move sections or hide them. Keep at least one visible.</p>
-                <ol className="studio-section-order">
-                  {layout.discoverSections.map((section, index) => (
-                    <li key={section}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={!layout.hiddenSections.includes(section)}
-                          disabled={
-                            !layout.hiddenSections.includes(section) && layout.hiddenSections.length === 2
-                          }
-                          onChange={(event) =>
-                            layoutChange({
-                              hiddenSections: event.target.checked
-                                ? layout.hiddenSections.filter((item) => item !== section)
-                                : [...layout.hiddenSections, section],
-                            })
-                          }
-                        />
-                        <span>{sectionLabels[section]}</span>
-                      </label>
-                      <div>
-                        <button
-                          type="button"
-                          disabled={index === 0}
-                          onClick={() => moveSection(index, -1)}
-                          aria-label={`Move ${sectionLabels[section].toLowerCase()} up`}
-                        >
-                          <ArrowUp size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={index === layout.discoverSections.length - 1}
-                          onClick={() => moveSection(index, 1)}
-                          aria-label={`Move ${sectionLabels[section].toLowerCase()} down`}
-                        >
-                          <ArrowDown size={16} />
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </fieldset>
+              {capabilities.discoverSections && (
+                <fieldset className="studio-fieldset">
+                  <legend>Discover sections</legend>
+                  <p className="studio-help">Move sections or hide them. Keep at least one visible.</p>
+                  <ol className="studio-section-order">
+                    {layout.discoverSections.map((section, index) => (
+                      <li key={section}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={!layout.hiddenSections.includes(section)}
+                            disabled={
+                              !layout.hiddenSections.includes(section) && layout.hiddenSections.length === 2
+                            }
+                            onChange={(event) =>
+                              layoutChange({
+                                hiddenSections: event.target.checked
+                                  ? layout.hiddenSections.filter((item) => item !== section)
+                                  : [...layout.hiddenSections, section],
+                              })
+                            }
+                          />
+                          <span>{sectionLabels[section]}</span>
+                        </label>
+                        <div>
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => moveSection(index, -1)}
+                            aria-label={`Move ${sectionLabels[section].toLowerCase()} up`}
+                          >
+                            <ArrowUp size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === layout.discoverSections.length - 1}
+                            onClick={() => moveSection(index, 1)}
+                            aria-label={`Move ${sectionLabels[section].toLowerCase()} down`}
+                          >
+                            <ArrowDown size={16} />
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </fieldset>
+              )}
             </section>
           )}
           {theme.id === 'avalon' && window.winnow.windowAppearance && (

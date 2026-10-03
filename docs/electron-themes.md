@@ -15,18 +15,21 @@ themes folder; developer themes and backend provider plugins remain separate.
 
 ## Change the appearance
 
-Open **Theme Studio** from the palette button. Choose a composition, then adjust:
+Open **Theme Studio** from the palette button. Choose a composition; its controls update
+to show only the options that it uses. Hidden choices stay saved. Available controls include:
 
 - Winnow, Afterglow, Moonstone, Paper trail, or Blue hour colors, plus a custom accent. Expand **Customize every
   color** to set background, panels, raised surfaces, text, secondary text, borders, and the
   secondary accent individually, using a picker or a hex value.
 - Editorial, sans serif, or monospace typography using bundled fonts.
-- Interface size from 85% to 130%, spacing, corner radius, artwork shading, and reduced motion.
-- Navigation position, library card style, and game-detail arrangement for compositions
-  that use those shared layout controls. Rift provides its own cover-size control.
+- Interface size from 85% to 130%, corner radius, and reduced motion in every composition.
+  Afterglow also offers desktop page spacing and featured-artwork shading.
+- Navigation position in Afterglow; library card style in Afterglow and Catalogue;
+  game-detail arrangement in Afterglow, Rift and Catalogue. Rift has its own cover-size control.
 - Artwork materials: Matte, Satin, Foil, or no surface finish; finish intensity; selective
   foil on bright areas in silver, gold, or holographic colors; brightness cutoff and foil
-  strength; pointer tracking, floating depth, and maximum tilt from 0° to 12°.
+  strength; pointer tracking, floating depth, and maximum tilt from 0° to 12°. These controls
+  appear in Rift and Catalogue, whose library covers use the effects.
 - Afterglow Discover section order and visibility. At least one section remains visible.
 - Additional controls declared by the selected developer theme.
 
@@ -56,11 +59,16 @@ green, SilkCircuit, SilkCircuit Dawn, Rosé Pine or Rosé Pine Dawn. These are t
 bundled palettes, including the light variants and their derived colors. Fresh profiles and
 missing palette IDs select the complete Winnow palette. Earlier Studio profiles with custom
 colors or a different shared palette retain those choices. **Studio colors**
-uses the shared color controls instead; an original palette takes precedence over those
-controls until Studio colors is selected. The selected palette applies to the document
+reveals and uses the shared color controls; selecting an original palette hides them.
+The selected palette applies to the document
 root, so portaled dialogs and native form controls follow it. Avalon keeps the original
 Bricolage Grotesque, Plus Jakarta Sans and IBM Plex Mono typography. **Dim dormant covers**
 controls its gradual desaturation; hover and focus restore the cover's color.
+
+Avalon uses per-role fonts and theme text size; the other compositions show the shared
+typography preset instead. Fullscreen Settings and setup also hide Avalon-only typography
+and **Fit ultrawide** outside Avalon. Resetting fullscreen preferences preserves the hidden
+ultrawide choice. Shared text/interface scale, safe margins and reduced motion remain available.
 
 Avalon's desktop recommendation shelves keep one row of five readable covers, from 180px
 to 240px wide. Narrow windows scroll that row; arrow keys reveal the selected cover and

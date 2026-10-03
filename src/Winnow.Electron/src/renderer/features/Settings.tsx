@@ -46,11 +46,13 @@ import { PlatformConfirmation, PlatformHints, platformVerticalFocus } from './Pl
 
 export function Settings({
   mode = 'desktop',
+  compositionId = 'avalon',
   ratingCapInDisplayPreferences = false,
   fullscreenThemeControls,
   onOpenGame,
 }: {
   mode?: Mode
+  compositionId?: string
   ratingCapInDisplayPreferences?: boolean
   fullscreenThemeControls?: ReactNode
   onOpenGame?(workId: number): void
@@ -272,9 +274,9 @@ export function Settings({
       {tab === 'Appearance' && (
         <>
           {mode === 'fullscreen' ? (
-            <FullscreenAppearance themeControls={fullscreenThemeControls} />
+            <FullscreenAppearance compositionId={compositionId} themeControls={fullscreenThemeControls} />
           ) : (
-            <FullscreenPreferences mode={mode} />
+            <FullscreenPreferences mode={mode} compositionId={compositionId} />
           )}
         </>
       )}

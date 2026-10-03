@@ -8,6 +8,7 @@ import { Notice } from './shared'
 import { useLibrary } from '../api/hooks'
 import { Artwork } from '../components/Artwork'
 import { dormancy } from '../themes/avalon-data'
+import { appearanceCapabilities } from '../theming/appearance-capabilities'
 import { useSetupBusy, useSetupPreferenceError } from './settingsState'
 
 export function boundedSetting(value: string | null | undefined, fallback: number, min: number, max: number) {
@@ -26,12 +27,15 @@ const resetValues = {
 export function FullscreenAppearance({
   themeControls,
   setup = false,
+  compositionId = 'avalon',
 }: {
   themeControls?: ReactNode
   setup?: boolean
+  compositionId?: string
 }) {
   const preferences = usePresentationPreferences(),
     client = useQueryClient()
+  const capabilities = appearanceCapabilities(compositionId)
   const [confirm, setConfirm] = useState(false),
     [resetting, setResetting] = useState(false),
     [failure, setFailure] = useState<unknown>(null)
@@ -60,7 +64,9 @@ export function FullscreenAppearance({
     setResetting(true)
     setFailure(null)
     try {
-      for (const [preference, value] of Object.entries(resetValues))
+      for (const [preference, value] of Object.entries(resetValues).filter(
+        ([key]) => key !== 'FullscreenFitUltrawide' || capabilities.fitUltrawide,
+      ))
         await request('preferences.presentation.put', { preference }, { value })
       setConfirm(false)
     } catch (error) {
@@ -141,20 +147,22 @@ export function FullscreenAppearance({
               true,
             ],
           ] as const
-        ).map(([key, label, description, fallback]) => (
-          <FullscreenSwitch
-            key={key}
-            label={label}
-            description={description}
-            value={
-              fallback
-                ? preferences.values[key]?.trim().toLowerCase() !== 'false'
-                : preferences.values[key]?.trim().toLowerCase() === 'true'
-            }
-            disabled={disabled}
-            change={(value) => preferences.set(key, String(value))}
-          />
-        ))}
+        )
+          .filter(([key]) => key !== 'FullscreenFitUltrawide' || capabilities.fitUltrawide)
+          .map(([key, label, description, fallback]) => (
+            <FullscreenSwitch
+              key={key}
+              label={label}
+              description={description}
+              value={
+                fallback
+                  ? preferences.values[key]?.trim().toLowerCase() !== 'false'
+                  : preferences.values[key]?.trim().toLowerCase() === 'true'
+              }
+              disabled={disabled}
+              change={(value) => preferences.set(key, String(value))}
+            />
+          ))}
         <FullscreenAdjustment
           label="Cover art"
           description="Fit shows the whole image. Fill crops it to the card."
@@ -196,7 +204,9 @@ export function FullscreenAppearance({
             >
               <Dialog.Title>Reset fullscreen appearance?</Dialog.Title>
               <Dialog.Description id="fullscreen-reset-description">
-                Reset fullscreen text size, interface scale, screen margins, reduced motion and ultrawide fit?
+                {capabilities.fitUltrawide
+                  ? 'Reset fullscreen text size, interface scale, screen margins, reduced motion and ultrawide fit?'
+                  : 'Reset fullscreen text size, interface scale, screen margins and reduced motion?'}{' '}
                 Your shared theme and cover dimming stay as they are.
               </Dialog.Description>
               <div className="form-actions">
@@ -217,15 +227,17 @@ export function FullscreenAppearance({
           </Dialog.Portal>
         </Dialog.Root>
       </section>
-      <FullscreenSettingsPreview />
+      <FullscreenSettingsPreview compositionId={compositionId} />
     </div>
   )
 }
 
 export function FullscreenSettingsPreview({
   section = 'Appearance',
+  compositionId = 'avalon',
 }: {
   section?: 'Appearance' | 'Library' | 'Application' | 'Metadata & artwork'
+  compositionId?: string
 }) {
   const preferences = usePresentationPreferences()
   const library = useLibrary()
@@ -250,7 +262,9 @@ export function FullscreenSettingsPreview({
       <h3>{sample?.title ?? 'Your next game is already here.'}</h3>
       <p>
         {section === 'Appearance'
-          ? 'Theme, typography, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen.'
+          ? appearanceCapabilities(compositionId).roleTypography
+            ? 'Theme, typography, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen.'
+            : 'Theme, cover art and cover dimming apply to both views. Other appearance settings apply to fullscreen.'
           : 'Library and account settings apply to both desktop and fullscreen.'}
       </p>
     </aside>

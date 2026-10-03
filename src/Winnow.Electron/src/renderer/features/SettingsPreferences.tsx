@@ -11,6 +11,7 @@ import { parseExpansionGrouping } from './parity-library-grain'
 import { usePluginInstallation } from './plugin-installation'
 import { PluginInstallStatus } from './PluginInstallStatus'
 import { useViewState } from '../viewState'
+import { appearanceCapabilities } from '../theming/appearance-capabilities'
 import './application-info.css'
 import { useLogsFolder } from './useLogsFolder'
 import './account-visibility.css'
@@ -450,7 +451,14 @@ export function JournalPromptPreference({ mode = 'desktop' }: { mode?: Mode } = 
   )
 }
 
-export function FullscreenPreferences({ mode }: { mode: Mode }) {
+export function FullscreenPreferences({
+  mode,
+  compositionId = 'avalon',
+}: {
+  mode: Mode
+  compositionId?: string
+}) {
+  const capabilities = appearanceCapabilities(compositionId)
   const preferences = usePresentationPreferences()
   const client = useQueryClient()
   const [confirmReset, setConfirmReset] = useState(false)
@@ -466,7 +474,7 @@ export function FullscreenPreferences({ mode }: { mode: Mode }) {
         ['FullscreenSafeMargin', '5'],
         ['FullscreenReducedMotion', 'false'],
         ['FullscreenFitUltrawide', 'false'],
-      ])
+      ].filter(([key]) => key !== 'FullscreenFitUltrawide' || capabilities.fitUltrawide))
         await request('preferences.presentation.put', { preference }, { value })
       setConfirmReset(false)
     } catch (failure) {
@@ -506,24 +514,28 @@ export function FullscreenPreferences({ mode }: { mode: Mode }) {
       {[
         ['FullscreenReducedMotion', 'Reduce motion'],
         ['FullscreenFitUltrawide', 'Fit ultrawide displays'],
-      ].map(([key, label]) => (
-        <label className="check-field" key={key}>
-          <input
-            type="checkbox"
-            checked={preferences.values[key]?.toLowerCase() === 'true'}
-            disabled={!preferences.loaded || preferences.pending || resetting}
-            onChange={(event) => preferences.set(key, String(event.target.checked))}
-          />
-          {label}
-        </label>
-      ))}
+      ]
+        .filter(([key]) => key !== 'FullscreenFitUltrawide' || capabilities.fitUltrawide)
+        .map(([key, label]) => (
+          <label className="check-field" key={key}>
+            <input
+              type="checkbox"
+              checked={preferences.values[key]?.toLowerCase() === 'true'}
+              disabled={!preferences.loaded || preferences.pending || resetting}
+              onChange={(event) => preferences.set(key, String(event.target.checked))}
+            />
+            {label}
+          </label>
+        ))}
       <button disabled={preferences.pending || resetting} onClick={() => setConfirmReset(true)}>
         Reset fullscreen appearance…
       </button>
       {confirmReset && (
         <section role="alertdialog" aria-label="Reset fullscreen appearance" className="conflict-panel">
           <p>
-            Reset fullscreen text size, interface scale, screen margins, reduced motion and ultrawide fit?
+            {capabilities.fitUltrawide
+              ? 'Reset fullscreen text size, interface scale, screen margins, reduced motion and ultrawide fit?'
+              : 'Reset fullscreen text size, interface scale, screen margins and reduced motion?'}
           </p>
           <div className="form-actions">
             <button disabled={resetting} onClick={() => void reset()}>

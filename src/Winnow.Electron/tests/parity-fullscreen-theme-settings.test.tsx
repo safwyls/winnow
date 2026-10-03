@@ -8,6 +8,12 @@ import { DEFAULT_TYPOGRAPHY } from '../src/shared/typography'
 import type { ThemeRuntime } from '../src/renderer/theming/runtime'
 
 afterEach(cleanup)
+const compositions = [
+  { id: 'avalon', name: 'Avalon' },
+  { id: 'afterglow', name: 'Afterglow' },
+  { id: 'rift', name: 'Rift' },
+  { id: 'catalogue', name: 'Catalogue' },
+]
 function fixture(profile = structuredClone(DEFAULT_PROFILE), setup = false) {
   let current = profile
   const openStudio = vi.fn(),
@@ -18,7 +24,15 @@ function fixture(profile = structuredClone(DEFAULT_PROFILE), setup = false) {
     current = value
     return (
       <FullscreenThemeSettings
-        runtime={{ profile: value, setProfile, theme: { name: 'Avalon' } } as unknown as ThemeRuntime}
+        runtime={
+          {
+            profile: value,
+            setProfile,
+            theme: compositions.find(({ id }) => id === value.themeId),
+            builtins: compositions,
+            selectTheme: (themeId: string) => setProfile((current) => ({ ...current, themeId })),
+          } as unknown as ThemeRuntime
+        }
         openStudio={openStudio}
         setup={setup}
       />
@@ -26,6 +40,43 @@ function fixture(profile = structuredClone(DEFAULT_PROFILE), setup = false) {
   }
   return { Harness, profile: () => current, listFonts, openStudio }
 }
+
+it.each(compositions)('shows only applicable fullscreen theme controls for $name', ({ id }) => {
+  const profile = { ...structuredClone(DEFAULT_PROFILE), themeId: id }
+  const f = fixture(profile)
+  render(<f.Harness />)
+  expect(screen.queryByRole('heading', { name: 'Typography' }) !== null).toBe(id === 'avalon')
+  for (const name of [
+    'Heading font',
+    'Interface font',
+    'Data font',
+    'Theme text size',
+    'Reset theme typography',
+  ])
+    expect(screen.queryByRole('button', { name }) !== null).toBe(id === 'avalon')
+  expect(screen.getByRole('button', { name: 'Theme Studio' })).toBeTruthy()
+  expect(f.profile()).toEqual(profile)
+})
+
+it('restores saved Avalon typography after selecting other designs in fullscreen setup', async () => {
+  const profile = structuredClone(DEFAULT_PROFILE)
+  profile.appearance.typography = {
+    [typographyKey(profile)]: { ...DEFAULT_TYPOGRAPHY, headingFont: 'Custom Family', sizePercent: 115 },
+  }
+  const f = fixture(profile, true)
+  render(<f.Harness />)
+  for (const { name } of [...compositions.slice(1), compositions[0]]) {
+    fireEvent.click(screen.getByRole('button', { name: 'Winnow design' }))
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Winnow design' })).getByRole('button', { name }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(screen.queryByRole('heading', { name: 'Typography' }) !== null).toBe(name === 'Avalon')
+    expect(f.profile().appearance.typography).toEqual(profile.appearance.typography)
+  }
+  expect(screen.getByRole('button', { name: 'Heading font' }).textContent).toContain('Custom Family')
+  expect(screen.getByRole('button', { name: 'Theme text size' }).textContent).toContain('115%')
+})
 
 it('selects the shared palette without overwriting other composition settings and restores its origin', async () => {
   const initial = structuredClone(DEFAULT_PROFILE)

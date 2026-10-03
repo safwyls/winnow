@@ -243,4 +243,82 @@ test('the native caption follows every composition and an Avalon light palette w
   expect(errors).toEqual([])
 })
 
+for (const fullscreen of [false, true]) {
+  test(`${fullscreen ? 'fullscreen' : 'desktop'} appearance controls follow all four compositions`, async () => {
+    await application.evaluate(({ BrowserWindow }, fullscreen) => {
+      const window = BrowserWindow.getAllWindows()[0]
+      window.setFullScreen(false)
+      window.setContentSize(1440, 1000)
+      window.webContents.send('winnow:fullscreen:changed', fullscreen)
+    }, fullscreen)
+    await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
+    for (const [composition, controls] of [
+      ['Avalon', []],
+      ['Afterglow', ['Typography', 'Spacing', 'Navigation', 'Library cards', 'Game details']],
+      ['Rift', ['Typography', 'Cover finish', 'Game details']],
+      ['Catalogue', ['Typography', 'Cover finish', 'Library cards', 'Game details']],
+    ] as const) {
+      await page
+        .locator('.studio-theme-option')
+        .filter({ has: page.locator('strong', { hasText: new RegExp(`^${composition}$`) }) })
+        .click()
+      await expect(page.locator('html')).toHaveAttribute('data-theme', composition.toLowerCase())
+      for (const name of [
+        'Typography',
+        'Spacing',
+        'Cover finish',
+        'Navigation',
+        'Library cards',
+        'Game details',
+      ]) {
+        await expect(page.getByRole('button', { name, exact: true }), `${composition}: ${name}`).toHaveCount(
+          (controls as readonly string[]).includes(name) ? 1 : 0,
+        )
+      }
+      await expect(page.getByRole('slider', { name: /Artwork shade/ })).toHaveCount(
+        composition === 'Afterglow' ? 1 : 0,
+      )
+      await expect(page.getByRole('heading', { name: 'Artwork materials' })).toHaveCount(
+        composition === 'Rift' || composition === 'Catalogue' ? 1 : 0,
+      )
+      await expect(page.getByRole('heading', { name: 'Arrange your space' })).toHaveCount(
+        composition !== 'Avalon' ? 1 : 0,
+      )
+      const atmosphere = page.getByRole('region', { name: 'Atmosphere', exact: true })
+      await atmosphere.scrollIntoViewIfNeeded()
+      await atmosphere.screenshot({
+        path: test.info().outputPath(`${composition.toLowerCase()}-atmosphere.png`),
+      })
+      await page.getByRole('button', { name: 'Settings', exact: true }).click()
+      await page
+        .getByRole('navigation', { name: 'Settings section' })
+        .getByRole('button', { name: 'Appearance', exact: true })
+        .click()
+      const settings = page.locator('.settings-page')
+      await expect(
+        settings.getByRole(fullscreen ? 'switch' : 'checkbox', {
+          name: 'Fit ultrawide displays',
+          exact: true,
+        }),
+      ).toHaveCount(composition === 'Avalon' ? 1 : 0)
+      if (fullscreen) {
+        await expect(settings.getByRole('button', { name: 'Heading font', exact: true })).toHaveCount(
+          composition === 'Avalon' ? 1 : 0,
+        )
+        await expect(settings.getByRole('heading', { name: 'Typography', exact: true })).toHaveCount(
+          composition === 'Avalon' ? 1 : 0,
+        )
+      }
+      await page.screenshot({ path: test.info().outputPath(`${composition.toLowerCase()}-settings.png`) })
+      await page.getByRole('button', { name: 'Theme Studio', exact: true }).first().click()
+    }
+    // Leave the shared fixture in its original composition for subsequent appearance checks.
+    await page
+      .locator('.studio-theme-option')
+      .filter({ has: page.locator('strong', { hasText: /^Avalon$/ }) })
+      .click()
+    expect(errors).toEqual([])
+  })
+}
+
 test.afterAll(async () => closeFixture(application, directory))

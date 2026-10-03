@@ -12,8 +12,8 @@ const builtins: ThemeDefinition[] = [
   { apiVersion: 1, id: 'avalon', name: 'Avalon' },
   {
     apiVersion: 1,
-    id: 'afterglow',
-    name: 'Afterglow',
+    id: 'reading-room',
+    name: 'Reading room',
     settings: [
       {
         id: 'tone',
@@ -52,6 +52,7 @@ function setSystemReduced(value: boolean) {
 
 beforeEach(() => {
   profile = structuredClone(DEFAULT_PROFILE)
+  profile.themeId = 'reading-room'
   profile.appearance.artwork = { ...DEFAULT_ARTWORK_EFFECTS, finish: 'foil', tilt: 9 }
   systemReduced = false
   mediaListeners.clear()
@@ -80,7 +81,6 @@ afterEach(() => {
 
 describe.each(['desktop', 'fullscreen'] as const)('Theme Studio motion controls in %s', (mode) => {
   it('saves named field choices through themed menus and preserves disabled material controls', async () => {
-    profile.themeId = 'afterglow'
     profile.appearance.artwork!.highlightFoil = false
     render(<Studio mode={mode} />)
     await screen.findByRole('button', { name: 'Typography' })
@@ -121,7 +121,7 @@ describe.each(['desktop', 'fullscreen'] as const)('Theme Studio motion controls 
             cardStyle: 'record',
             detailArrangement: 'stacked',
           }),
-          settings: expect.objectContaining({ afterglow: { tone: 'warm' } }),
+          settings: expect.objectContaining({ 'reading-room': { tone: 'warm' } }),
         }),
       ),
     )

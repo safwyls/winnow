@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { avalonPaletteId, resolvedTypography, typographyKey } from '../../shared/theme'
 import { DEFAULT_TYPOGRAPHY, validFontFamily, type ThemeTypography } from '../../shared/typography'
 import type { ThemeRuntime } from '../theming/runtime'
+import { appearanceCapabilities } from '../theming/appearance-capabilities'
 import { avalonPalettes } from '../themes/avalon-palettes'
 import { FullscreenAdjustment, FullscreenSettingsAction } from './FullscreenSettingRows'
 import { useSetupBusy, useSetupPreferenceError } from './settingsState'
@@ -22,6 +23,7 @@ export function FullscreenThemeSettings({
 }) {
   const { profile, setProfile } = runtime,
     typography = resolvedTypography(profile)
+  const capabilities = appearanceCapabilities(profile.themeId)
   const [picker, setPicker] = useState<
     'design' | 'theme' | 'headingFont' | 'interfaceFont' | 'dataFont' | null
   >(null)
@@ -148,7 +150,9 @@ export function FullscreenThemeSettings({
     )
   return (
     <>
-      <h2 className="fullscreen-settings-group">Theme</h2>
+      {(setup || profile.themeId === 'avalon' || openStudio) && (
+        <h2 className="fullscreen-settings-group">Theme</h2>
+      )}
       {setup && (
         <FullscreenSettingsAction
           label="Winnow design"
@@ -172,42 +176,46 @@ export function FullscreenThemeSettings({
       {openStudio && (
         <FullscreenSettingsAction label="Theme Studio" value={runtime.theme.name} onClick={openStudio} />
       )}
-      <h2 className="fullscreen-settings-group">Typography</h2>
-      <p className="fullscreen-settings-sample">
-        Fonts and text size are saved with this theme. Missing fonts use the bundled face for that role.
-      </p>
-      {(Object.entries(roleNames) as [keyof typeof roleNames, string][]).map(([role, label]) => (
-        <FullscreenSettingsAction
-          key={role}
-          label={label}
-          value={typography[role]}
-          onClick={() => {
-            void chooseFont(role)
-          }}
-        />
-      ))}
-      <FullscreenAdjustment
-        label="Theme text size"
-        description="Saved with the theme. Combines with your fullscreen text size."
-        value={`${typography.sizePercent}%`}
-        steppers
-        change={(direction) =>
-          changeTypography({
-            sizePercent: Math.max(80, Math.min(120, typography.sizePercent + 5 * direction)),
-          })
-        }
-      />
-      <FullscreenSettingsAction
-        label="Reset theme typography"
-        kind="Run"
-        onClick={() =>
-          setProfile((current) => {
-            const remaining = { ...current.appearance.typography }
-            delete remaining[key]
-            return { ...current, appearance: { ...current.appearance, typography: remaining } }
-          })
-        }
-      />
+      {capabilities.roleTypography && (
+        <>
+          <h2 className="fullscreen-settings-group">Typography</h2>
+          <p className="fullscreen-settings-sample">
+            Fonts and text size are saved with this theme. Missing fonts use the bundled face for that role.
+          </p>
+          {(Object.entries(roleNames) as [keyof typeof roleNames, string][]).map(([role, label]) => (
+            <FullscreenSettingsAction
+              key={role}
+              label={label}
+              value={typography[role]}
+              onClick={() => {
+                void chooseFont(role)
+              }}
+            />
+          ))}
+          <FullscreenAdjustment
+            label="Theme text size"
+            description="Saved with the theme. Combines with your fullscreen text size."
+            value={`${typography.sizePercent}%`}
+            steppers
+            change={(direction) =>
+              changeTypography({
+                sizePercent: Math.max(80, Math.min(120, typography.sizePercent + 5 * direction)),
+              })
+            }
+          />
+          <FullscreenSettingsAction
+            label="Reset theme typography"
+            kind="Run"
+            onClick={() =>
+              setProfile((current) => {
+                const remaining = { ...current.appearance.typography }
+                delete remaining[key]
+                return { ...current, appearance: { ...current.appearance, typography: remaining } }
+              })
+            }
+          />
+        </>
+      )}
       <Notice error={runtime.profileSaveError ? new Error(runtime.profileSaveError) : undefined} />
       <Dialog.Root
         open={!!picker}
