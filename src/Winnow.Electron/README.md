@@ -431,11 +431,22 @@ in the chosen directory, or starts the built companion. Sample seeding works onl
 Debug backend and an empty library. Sample games do not include artwork or recorded sessions;
 missing data has visible empty states.
 
+`Run.ps1` and `Build.ps1` default to a fresh directory under `.tmp/development-artifacts`
+for each invocation and print its path. Persistent backends can keep their earlier binaries
+open without blocking the next build. These directories are retained while backends may
+still need them; remove old ones after those backends stop. Passing `-ArtifactsPath` selects
+an exact reusable directory; stop any processes using it before rebuilding.
+An existing backend for the selected data directory is still reused. To test backend source
+changes, use a new throwaway data directory or stop that backend through the authenticated
+shutdown endpoint described in the [API guide](../../docs/frontend-api.md) before relaunching.
+
 To view the production bundle without packaging:
 
 ```powershell
 ./Run.ps1 -Preview -DataDirectory .tmp/winnow-electron-demo -NoSync
 ```
+
+Add `-ApplicationArguments @('--fullscreen')` to open fullscreen, including unfinished setup.
 
 For direct `npm run dev` or `npm run preview` commands in this directory, set
 `WINNOW_BACKEND_PATH` to an absolute backend executable or DLL to use another build and

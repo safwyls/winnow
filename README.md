@@ -64,6 +64,11 @@ frontend instead of the development server. Unpackaged development launches requ
 explicit data directory; normal installed launches use your existing library.
 The wrapper prepares the pinned Electron runtime if it is missing after `npm ci`.
 Use `pwsh` to open PowerShell 7; Windows PowerShell 5.1 is refused before building.
+Each default run or build uses a fresh directory under `.tmp/development-artifacts`, so a
+backend left running from an earlier launch cannot lock the new build's files. The chosen
+directory is printed before building. Old build directories can be removed after their
+backends stop. An explicit `-ArtifactsPath` uses that exact directory and requires its
+executables to be stopped before rebuilding.
 
 The primary frontend uses Electron/TypeScript. Its default **Avalon** composition preserves
 the original Winnow palettes and fonts; **Afterglow**,

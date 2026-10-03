@@ -6,7 +6,7 @@ param(
     [switch]$SeedSample,
     [switch]$NoSync,
     [string[]]$ApplicationArguments = @(),
-    [string]$ArtifactsPath = (Join-Path $PSScriptRoot '.tmp/development-artifacts')
+    [string]$ArtifactsPath = (Join-Path $PSScriptRoot ".tmp/development-artifacts/$([Guid]::NewGuid().ToString('N'))")
 )
 
 $ErrorActionPreference = 'Stop'

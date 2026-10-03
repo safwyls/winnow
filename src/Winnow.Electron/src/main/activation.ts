@@ -77,9 +77,9 @@ export function readActivation(args: string[]): ApplicationActivation {
       return { kind: 'show' }
     return pluginInstallLink(args[index]) ?? { kind: 'show' }
   }
-  const actions = args.filter((value) => value.startsWith('--jump-list-'))
+  const actions = args.filter((value) => value === '--fullscreen' || value.startsWith('--jump-list-'))
   if (actions.length !== 1) return { kind: 'show' }
-  if (actions[0] === '--jump-list-fullscreen') return { kind: 'fullscreen' }
+  if (actions[0] === '--fullscreen' || actions[0] === '--jump-list-fullscreen') return { kind: 'fullscreen' }
   if (actions[0] === '--jump-list-game') {
     const value = args[args.indexOf(actions[0]) + 1]
     const id = ownershipId(value)

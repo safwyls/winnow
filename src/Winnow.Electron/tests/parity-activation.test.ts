@@ -89,6 +89,17 @@ describe('native activation arguments', () => {
       kind: 'show',
     })
   })
+  it('recognizes the documented fullscreen launch switch alongside isolated library flags', () => {
+    expect(readActivation(['--data-dir', 'C:\\isolated library', '--no-sync', '--fullscreen'])).toEqual({
+      kind: 'fullscreen',
+    })
+    for (const args of [
+      ['--fullscreen', '--jump-list-game', '42'],
+      ['--fullscreen', '--jump-list-fullscreen'],
+      ['--fullscreen', '--fullscreen'],
+    ])
+      expect(readActivation(args)).toEqual({ kind: 'show' })
+  })
   it('limits Jump List actions to a single valid local ownership ID or fullscreen', () => {
     expect(readActivation(['--jump-list-game', '42', '--data-dir', 'C:\\games'])).toEqual({
       kind: 'game',

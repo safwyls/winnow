@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-02 18:32'
+updated_date: '2026-10-03 01:08'
 labels:
   - electron
   - parity
@@ -91,6 +91,10 @@ Review boundary: work on this task only after the user prompts continuation from
 Repair user-reported local launcher failures: make the documented PowerShell7 requirement explicit before work begins, ensure the pinned Electron runtime is installed before invoking electron-vite, and verify version/isolated preview launch. Record this focused correction without claiming refreshed full remote CI.
 
 Correct user-reported settings frame spacing: inspect actual Avalon screen wrapper, move consistent desktop inset ownership out of the Plugins-only rule, preserve fullscreen safe margins, then build and visually inspect all settings sections at narrow/wide desktop sizes plus fullscreen. Keep the fix scoped to layout and record both surface results.
+
+Repair persistent-backend build locks in local launch scripts: give default Run.ps1 and Build.ps1 builds a fresh artifacts directory, keep explicit ArtifactsPath overrides, document persistent-backend reuse and cleanup, and verify builds while the reported backend processes remain running plus isolated desktop/fullscreen launches. Do not terminate the existing sample or normal-library backends.
+
+The real launcher probe also exposed that the documented --fullscreen switch was not recognized by Electron activation. Route that switch through the existing fullscreen activation path, cover it and ambiguous argument combinations in the activation tests, and require an actual fullscreen window in the repeated-launch probe.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -131,4 +135,6 @@ Final local combined gates PASS after diagnosing cold-start failure: direct back
 User local launch follow-up: Windows PowerShell5.1 left IsWindows undefined, omitting the executable suffix; Run/Build/test-fixture entry points now explicitly require PowerShell7 before doing work. After npm ci, Electron44.4.5 package existed but native dist and path.txt were absent; installed pinned runtime and added idempotent installer preflight to Run.ps1 and Build-ElectronTestFixtures.ps1. Updated source-run docs and corrected scan flags to omit both SeedSample and NoSync. Verification: Electron --version44.4.5, existing entrypoint16/16 tests, real PowerShell5.1 early refusal with no data created, and actual Run.ps1 -Preview launches for desktop and --fullscreen with isolated sample roots. Both displayed a Winnow window with authenticated matching-epoch backend health and closed normally, shutdown202, wrapper exit0. Logs/evidence .tmp/task38141-launcher-*. This is focused launcher verification; complete remote CI remains pending explicit publication approval.
 
 Settings frame spacing follow-up (2026-10-02): the Avalon rule expected Settings as a direct child of the content frame, but the production screen-view wrapper prevented it from matching. Plugins alone had its own 24px inset. Applied a shared desktop Settings inset with matching left alignment and width, preserving fullscreen safe margins; documented the spacing in design-system.md.
+
+Local build-lock correction (2026-10-02): the reported backends were still running from the shared .tmp/development-artifacts output, one for the sample profile and one for the normal library. This is the intended independent backend lifetime, so closing Electron does not release those DLLs. Run.ps1 and Build.ps1 now choose a fresh GUID subdirectory under .tmp/development-artifacts by default and print it; explicit ArtifactsPath retains its exact-path behavior. Source-run documentation explains retained outputs, safe cleanup after backend shutdown, and reuse of an existing backend for the same data directory.
 <!-- SECTION:NOTES:END -->

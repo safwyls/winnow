@@ -1390,6 +1390,22 @@ describe('integrated frontend', () => {
       )
     },
   )
+  it('applies a fullscreen launch during unfinished setup without completing or resetting its step', async () => {
+    const original = window.winnow.request
+    window.winnow.request = vi.fn(async (value) =>
+      value.route === 'setup.get' ? { ok: true, status: 200, data: { step: 4 } } : original(value),
+    ) as WinnowBridge['request']
+    window.winnow.takeActivations = vi.fn(async (): Promise<ApplicationActivation[]> => [
+      { kind: 'fullscreen' },
+    ])
+    mount()
+    await screen.findByRole('heading', { name: 'Your GOG library' })
+    await waitFor(() => expect(document.querySelector('.setup-dialog.mode-fullscreen')).not.toBeNull())
+    expect(window.winnow.setFullscreen).toHaveBeenCalledWith(true)
+    expect(vi.mocked(window.winnow.request).mock.calls.some(([value]) => value.route === 'setup.put')).toBe(
+      false,
+    )
+  })
   it('delivers startup activations before a newer event received during the pending handshake', async () => {
     const original = window.winnow.request
     let finish!: (value: unknown) => void

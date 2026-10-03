@@ -547,6 +547,7 @@ export function App() {
       setupProgress.isPending ||
       setupProgress.isError ||
       (activation.kind !== 'plugin' &&
+        activation.kind !== 'fullscreen' &&
         !setupSuspended &&
         (typeof setupProgress.data?.step === 'number' || setupOpen)) ||
       activationInFlight ||
