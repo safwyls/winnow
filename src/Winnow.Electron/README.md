@@ -425,6 +425,9 @@ been removed, that bounded retry can wait for a download while holding its permi
 Completed encoded entries retain their existing
 five-minute expiry. A 32 MiB decoded scrollback cache keeps recent pixels; visible images
 remain valid after eviction. The last departing consumer cancels its pending request.
+Cancelled browser conversions clear their image and revoke its URL before releasing the
+decode slot. They do not wait for a cleared image's `decode()` promise, which Chromium
+can leave pending; late completion cannot publish pixels or release the URL twice.
 Details and fullscreen backdrops use the same bounded image cache, so reopening can reuse
 recent decoded pixels. Canonical hero selection and a preferred store cover are read in
 parallel. Cache invalidation revalidates pending and displayed backdrops while retaining
@@ -469,8 +472,12 @@ open without blocking the next build. These directories are retained while backe
 still need them; remove old ones after those backends stop. Passing `-ArtifactsPath` selects
 an exact reusable directory; stop any processes using it before rebuilding.
 An existing backend for the selected data directory is still reused. To test backend source
-changes, use a new throwaway data directory or stop that backend through the authenticated
-shutdown endpoint described in the [API guide](../../docs/frontend-api.md) before relaunching.
+changes, use a new throwaway data directory, or choose **Restart library service** in
+**Settings → Plugins** after launching the newly built frontend. Closing and reopening the
+window alone keeps the old service and its binaries running. Restarting the service briefly
+pauses background work and session tracking; attached windows reconnect automatically.
+The authenticated shutdown endpoint in the [API guide](../../docs/frontend-api.md) is also
+available for scripted development runs.
 
 To view the production bundle without packaging:
 

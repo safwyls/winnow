@@ -1025,7 +1025,11 @@ The reference frontend's decode concurrency bound includes conversion into Avalo
 so native and UI pixel allocations cannot outgrow it while waiting for publication. The backend's image
 endpoint similarly holds its decode permit through PNG encoding and disposes intermediate
 pixels before returning bytes. Network waits do not hold decode slots: artwork already on
-disk can load while other games await downloads. A failed second Avalonia layer
+disk can load while other games await downloads. Cancelling an IGDB fallback request stops
+its wait for shared prewarming or batch resolution and releases its fetch permit; the shared
+lookup continues for other callers. Electron clears and revokes a cancelled browser image
+before releasing its decode permit, without waiting for Chromium to settle the cleared
+image's decode promise. A failed second Avalonia layer
 releases the first layer at either stage. Cancellation callbacks run outside the cache lock;
 their exceptions are logged and cannot interrupt cleanup or replace a caller's cancellation.
 A lease returns the exact art retained by its slot, including when another waiter replaces

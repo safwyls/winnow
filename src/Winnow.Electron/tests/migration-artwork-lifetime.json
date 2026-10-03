@@ -62,10 +62,10 @@
     "tests": [
       {
         "file": "tests/artwork.test.tsx",
-        "case": "shutdown during browser decoding waits for retirement and releases unpublished pixels once"
+        "case": "shutdown during browser decoding releases unpublished pixels without waiting for a cleared image"
       }
     ],
-    "reason": "Shutdown during the actual shared browser decoder aborts and clears its image, remains pending until the blocked decoder retires, publishes no image, and revokes its URL exactly once."
+    "reason": "Shutdown during the shared browser decoder clears its image and revokes its URL exactly once before returning. A cleared Chromium image can leave decode() unsettled, so released resources retire without waiting on that promise. Late completion cannot publish pixels or revoke twice."
   },
   "CoverLifetimeTests.Shutdown_drains_an_inflight_source_and_refuses_late_publication_and_new_admissions": {
     "status": "ported",

@@ -592,7 +592,7 @@ describe('Artwork visible ownership', () => {
   })
 })
 
-it('shutdown during browser decoding waits for retirement and releases unpublished pixels once', async () => {
+it('shutdown during browser decoding releases unpublished pixels without waiting for a cleared image', async () => {
   const decoding = deferred<void>()
   const decode = vi.fn(() => decoding.promise)
   const decoder = { src: '', naturalWidth: 640, naturalHeight: 960, decode }
@@ -610,18 +610,15 @@ it('shutdown during browser decoding waits for retirement and releases unpublish
   try {
     await waitFor(() => expect(decode).toHaveBeenCalledTimes(1))
     const cache = artworkImages(client)
-    let stopped = false
-    const shutdown = closeArtworkImages(client).then(() => {
-      stopped = true
-    })
-    await Promise.resolve()
-    expect(stopped).toBe(false)
+    const shutdown = closeArtworkImages(client)
     expect(decoder.src).toBe('')
-    decoding.resolve()
     await act(async () => shutdown)
     expect(result.container.querySelector('img')).toBeNull()
     expect(cache.pendingCount).toBe(0)
     expect(cache.decodedCount).toBe(0)
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1)
+    await act(async () => decoding.resolve())
+    expect(result.container.querySelector('img')).toBeNull()
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1)
   } finally {
     decoding.resolve()

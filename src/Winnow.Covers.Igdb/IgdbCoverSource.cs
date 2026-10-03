@@ -154,7 +154,9 @@ public sealed class IgdbCoverSource : ICoverSource
                 return null;
             }
 
-            await EnsurePrewarmedAsync().ConfigureAwait(false);
+            // Retiring tiles must release their pipeline fetch permits while
+            // the shared prewarm continues for callers that still need it.
+            await EnsurePrewarmedAsync().WaitAsync(ct).ConfigureAwait(false);
 
             var coverUrl = await _lookup.GetCoverUrlAsync(key.Id, ct).ConfigureAwait(false);
             url = IgdbImageUrl.WithSize(coverUrl, sizeToken);

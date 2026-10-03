@@ -85,3 +85,53 @@ checks exercise desktop and fullscreen artwork lifetimes, idle recovery, image g
 and gallery controls. A held full-image response verifies that the real production
 preload/main path keeps the desktop thumbnail visible until the binary replacement arrives.
 Task execution results are recorded in TASK-382.
+
+## Sustained scrolling and cancellation
+
+On 2026-10-03, TASK-383 added a 1,045-game native fixture using the production Avalon
+library, virtualization, artwork leases and Chromium PNG decoder. Desktop scrolls the
+grid; fullscreen uses PageDown. Two laps include selection refreshes, decoded-cache
+eviction, and clock advances beyond the two-minute freshness and five-minute collection
+limits. Each stop requires all visible covers to finish without opening Details or resizing.
+
+The fixture supplies textured 240 × 360 PNGs under unique artwork keys. The first six reads
+stay pending until scrolling cancels them; other reads take 55 ms. Cancelled reads deliver
+their obsolete bytes 120 ms later. A 40 ms delay after successful
+native decoding widens the cancellation window. These controlled delays exercise lifetime
+boundaries; they are not measurements of provider latency.
+
+Before the fix, fullscreen scrolling left a conversion pending for more than 14 seconds
+after its image source had been cleared and its Blob URL revoked. The image had zero
+natural dimensions, and the native decode promise was still pending before the fixture's
+40 ms delay. The conversion continued holding a permit. A component regression confirms
+that six such cancelled conversions prevent a seventh image from starting.
+
+The decoder now clears the image and revokes its URL before retiring on cancellation,
+independently of that browser promise. Late completion cannot publish pixels or revoke
+the URL twice. Native checks still require zero pending cache jobs and no live resources
+for any unresolved browser promise; they do not require Chromium to settle a promise for
+an image that has already been released.
+
+Separate backend regressions exposed two IGDB waits that ignored individual cancellation:
+shared prewarming and the caller that fills a lookup batch. Six cancelled fallback requests
+could retain all download permits and block an unrelated uncached image. Both waits now
+observe caller cancellation while preserving the shared lookup for remaining consumers.
+The regression holds prewarming open and requires the unrelated image to complete before
+releasing it. Both backend regressions and the six-conversion regression failed before
+their respective fixes.
+
+After the fixes, both native cases passed: desktop completed 2,005 image reads across
+960 artwork keys, and fullscreen completed 1,504 across 736 keys. Every final visible
+cover was ready, pending cache work was zero, and the decoded LRU stayed within 32 MiB.
+Fullscreen retained eight unsettled native promises whose images and URLs were already
+released; they no longer prevented later covers from loading.
+
+Run the native checks from `src/Winnow.Electron`, one worker at a time:
+
+```powershell
+node node_modules/@playwright/test/cli.js test tests/electron/artwork-scroll.spec.ts --workers=1 --retries=0
+```
+
+These are controlled reproductions, not a replay of the user's private library. The
+running background service survives closing the frontend; backend changes require a
+service restart or a fresh scratch data directory. TASK-383 records verification results.

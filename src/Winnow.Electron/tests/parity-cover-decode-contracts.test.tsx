@@ -135,6 +135,41 @@ it('the real six-permit browser limit includes transient conversion before a sev
   }
 })
 
+it('canceled browser conversions release all six permits even when decode never settles', async () => {
+  const converting = deferred<void>()
+  for (let index = 0; index < 6; index++) decode.mockReturnValueOnce(converting.promise)
+  const queue = new ArtworkDecoder()
+  const publish = vi.fn()
+  const controllers = Array.from({ length: 6 }, () => new AbortController())
+  const canceled = controllers.map((controller) =>
+    queue.decode(png, controller.signal, async () => png, publish),
+  )
+  const visible = queue.decode(png, new AbortController().signal, async () => png, publish)
+  try {
+    expect(queue.activeCount).toBe(6)
+    controllers.forEach((controller) => controller.abort())
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(6)
+    await waitFor(() => expect(decode).toHaveBeenCalledTimes(7))
+    const pixels = await visible
+    expect(pixels).not.toBeNull()
+    expect(await Promise.all(canceled)).toEqual(Array(6).fill(null))
+    expect(queue.activeCount).toBe(0)
+    expect(queue.queuedCount).toBe(0)
+    expect(publish).toHaveBeenCalledOnce()
+    // A late browser completion must neither publish canceled pixels nor revoke twice.
+    converting.resolve()
+    await Promise.resolve()
+    expect(publish).toHaveBeenCalledOnce()
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(6)
+    pixels?.dispose()
+  } finally {
+    converting.resolve()
+    const pixels = await visible
+    pixels?.dispose()
+    queue.close()
+  }
+})
+
 it('one conversion permit remains held through the source 300ms boundary and failure releases its URL before the next conversion', async () => {
   const converting = deferred<void>()
   decode

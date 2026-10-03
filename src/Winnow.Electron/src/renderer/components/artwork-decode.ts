@@ -144,10 +144,20 @@ export async function decodeArtworkImage(
     image.src = ''
     URL.revokeObjectURL(url)
   }
-  signal.addEventListener('abort', dispose, { once: true })
+  let retire!: () => void
+  const canceled = new Promise<void>((resolve) => {
+    retire = resolve
+  })
+  const cancel = () => {
+    dispose()
+    retire()
+  }
+  signal.addEventListener('abort', cancel, { once: true })
   try {
     image.src = url
-    await image.decode()
+    // Clearing a detached image can leave Chromium's decode promise unsettled.
+    // Once its source and URL are released, it must not keep a conversion permit.
+    await Promise.race([image.decode(), canceled])
     signal.throwIfAborted()
     if (!image.naturalWidth || !image.naturalHeight) {
       dispose()
@@ -158,6 +168,6 @@ export async function decodeArtworkImage(
     dispose()
     return null
   } finally {
-    signal.removeEventListener('abort', dispose)
+    signal.removeEventListener('abort', cancel)
   }
 }
