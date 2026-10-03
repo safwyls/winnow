@@ -248,12 +248,7 @@
   .avalon-content:focus-visible {
     outline: none;
   }
-  .avalon-content > .journal-page,
-  .avalon-content > .details-page,
-  .avalon-content > .studio-page {
-    padding: 24px;
-  }
-  .avalon-shell.desktop .settings-page {
+  .avalon-shell.desktop .avalon-content > .screen-view > .feature-page {
     margin-left: 0;
     padding: 24px;
     width: 100%;

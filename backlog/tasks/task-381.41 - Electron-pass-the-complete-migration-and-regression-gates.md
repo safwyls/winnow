@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-03 01:08'
+updated_date: '2026-10-03 01:54'
 labels:
   - electron
   - parity
@@ -95,6 +95,8 @@ Correct user-reported settings frame spacing: inspect actual Avalon screen wrapp
 Repair persistent-backend build locks in local launch scripts: give default Run.ps1 and Build.ps1 builds a fresh artifacts directory, keep explicit ArtifactsPath overrides, document persistent-backend reuse and cleanup, and verify builds while the reported backend processes remain running plus isolated desktop/fullscreen launches. Do not terminate the existing sample or normal-library backends.
 
 The real launcher probe also exposed that the documented --fullscreen switch was not recognized by Electron activation. Route that switch through the existing fullscreen activation path, cover it and ambiguous argument combinations in the activation tests, and require an actual fullscreen window in the repeated-launch probe.
+
+Review all production view frame spacing after the user found Merges, Stats and Activity flush against the Avalon frame. Inventory top-level and nested page layouts, centralize the shared desktop inset where appropriate instead of patching one section at a time, preserve intended cover/full-bleed layouts and fullscreen safe margins, and inspect real renders at narrow/wide desktop and fullscreen sizes before recording a scoped correction.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -137,4 +139,8 @@ User local launch follow-up: Windows PowerShell5.1 left IsWindows undefined, omi
 Settings frame spacing follow-up (2026-10-02): the Avalon rule expected Settings as a direct child of the content frame, but the production screen-view wrapper prevented it from matching. Plugins alone had its own 24px inset. Applied a shared desktop Settings inset with matching left alignment and width, preserving fullscreen safe margins; documented the spacing in design-system.md.
 
 Local build-lock correction (2026-10-02): the reported backends were still running from the shared .tmp/development-artifacts output, one for the sample profile and one for the normal library. This is the intended independent backend lifetime, so closing Electron does not release those DLLs. Run.ps1 and Build.ps1 now choose a fresh GUID subdirectory under .tmp/development-artifacts by default and print it; explicit ArtifactsPath retains its exact-path behavior. Source-run documentation explains retained outputs, safe cleanup after backend shutdown, and reuse of an existing backend for the same data directory.
+
+Complete view-spacing review (2026-10-02): replaced the Settings-only inset and obsolete direct-child journal/details/studio selectors with one Avalon desktop rule for root feature pages inside the screen-view wrapper. Merges, Stats and all Activity panels now share the 24px Settings inset and left alignment. Nested LibraryTools inherit Library spacing; Discover, feed history, Library, Details, Search, Theme Studio, dialogs and setup already own their padding. Alternative themes already pad their content shells. Updated the design spec. Verified a fresh build/typecheck, CSS formatting and diff checks, then 92 real Electron page/size combinations before and after using isolated sample data: desktop 900x700 and 1920x1080, fullscreen 1280x720 and 1920x1080. Coverage includes Merges, Stats gameplay/Spending, History/Steam-reported Activity, all Settings sections, Home/feed history, Library, four Library tools sections, Details, Search and Theme Studio. Every root desktop feature page reports 24px on all sides; no horizontal overflow or renderer errors. Fullscreen and other unaffected layouts retained identical frame geometry, root x/y/width and padding; Settings and nested LibraryTools spacing also stayed unchanged. Inspected representative narrow/wide and fullscreen screenshots. Evidence: .tmp/task38141-view-spacing-before/geometry.json and .tmp/task38141-view-spacing-after/geometry.json with adjacent screenshots; .tmp/task38141-view-spacing-build.log. The broader migration gate remains In Progress.
+
+Launcher follow-up validation for commit084261dc: 103 affected activation/application tests passed; actual default desktop and fullscreen previews each used distinct build directories, reported authenticated healthy backends, and exited zero after normal window closure. The second build ran while the first test backend remained alive; original user backends were left untouched. Fullscreen now recognizes --fullscreen during unfinished setup without resetting progress. Evidence: .tmp/task38141-build-lock-evidence.json and .tmp/task38141-launcher-activation-tests.log.
 <!-- SECTION:NOTES:END -->
