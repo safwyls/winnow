@@ -228,6 +228,35 @@ function setup(mode: Mode, origin = 'library') {
   return { ...view, request, client }
 }
 
+it.each(['desktop', 'fullscreen'] as const)(
+  '%s store menu filters and clears without dismissing its owning surface',
+  async (mode) => {
+    setup(mode)
+    if (mode === 'fullscreen') {
+      fireEvent.click(screen.getByRole('button', { name: 'More' }))
+      fireEvent.click(screen.getByText('Current search and sort'))
+    }
+    const trigger = screen.getByRole('button', { name: 'Store · All stores' })
+    fireEvent.click(trigger)
+    const menu = screen.getByRole('menu', { name: 'Store' })
+    expect(document.activeElement).toBe(within(menu).getByRole('menuitemradio', { name: 'All stores' }))
+    if (mode === 'fullscreen') expect(menu.closest('[role="dialog"]')).not.toBeNull()
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: 'GOG' }))
+    await waitFor(() => expect(cards()).toEqual([3]))
+    expect(document.activeElement).toBe(trigger)
+    expect(trigger.getAttribute('aria-label')).toBe('Store · GOG')
+    fireEvent.click(trigger)
+    expect(screen.getByRole('menuitemradio', { name: 'GOG', checked: true })).toBe(document.activeElement)
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(document.activeElement).toBe(trigger)
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'All stores' }))
+    await waitFor(() => expect(cards()).toEqual([1, 2, 3]))
+    if (mode === 'fullscreen') expect(screen.getByRole('dialog')).toBeTruthy()
+  },
+)
+
 it('fullscreen Weekend options move the selected first game later and remove it while preserving the other two', async () => {
   current.lists = [{ id: 999, name: 'Weekend', isLive: false, revision: 'w1', releaseIds: [100, 200, 300] }]
   handler = (input) => {

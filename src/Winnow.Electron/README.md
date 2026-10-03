@@ -9,8 +9,9 @@ floating covers and artwork portals, and **Catalogue**, with a reading desk and 
 All compositions use the public theme interface available to installed themes.
 
 Avalon's desktop covers reveal a compact Play or Install action and a folded Details
-corner on hover or keyboard focus. Clicking the cover still opens Details. Selection
-keeps its border without pinning the action dock open; recycled tiles release outgoing
+corner on hover or keyboard focus. A contrasting underside and crease make the fold
+visible, with three dots in place of the small document glyph. Clicking the cover still
+opens Details. Selection keeps its border without pinning the action dock open; recycled tiles release outgoing
 focus and pending feedback. Store words and compact playtime/idle figures share the
 Library scrim. Fullscreen keeps its separate directional cover and Details action path.
 Accessible cover and list names state the unread patch count, with singular/plural wording

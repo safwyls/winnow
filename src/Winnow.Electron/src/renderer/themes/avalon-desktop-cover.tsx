@@ -126,8 +126,10 @@ export function AvalonDesktopCover({
       setKeyboard(true)
     },
     onFocusCapture: () => {
-      if (!pointerFocus.current) setKeyboard(true)
-      onFocus?.()
+      if (!pointerFocus.current) {
+        setKeyboard(true)
+        onFocus?.()
+      }
     },
     onBlurCapture: (event) => {
       if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) {
@@ -136,7 +138,11 @@ export function AvalonDesktopCover({
         hover.close()
       }
     },
-    onClickCapture: () => hover.close(),
+    onClickCapture: () => {
+      hover.close()
+      // Selection can reveal a toolbar and move this tile; keep a pointer press stable until release.
+      if (pointerFocus.current) onFocus?.()
+    },
   }
   const face = (
     <div
@@ -240,10 +246,14 @@ export function AvalonDesktopCover({
         }}
       >
         <svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">
-          <path className="avalon-tile-fold" d="M0 0H40V40Z" />
-          <path d="M0 0L40 40" stroke="var(--line)" />
-          <g transform="translate(21 5)" stroke="var(--text)" strokeWidth="1.3" fill="none">
-            <path d="M2 2H10V10H2ZM4 4H8M4 6H8M4 8H7" />
+          <path className="avalon-tile-fold-backing" d="M0 0H40V40Z" />
+          <path className="avalon-tile-fold-shadow" d="M0 0L40 40H4Q0 40 0 36Z" />
+          <path className="avalon-tile-fold" d="M0 0L36 36H4Q0 36 0 32Z" />
+          <path className="avalon-tile-fold-crease" d="M0 0L40 40" />
+          <g fill="var(--text)">
+            <circle cx="23" cy="9" r="1.6" />
+            <circle cx="28" cy="9" r="1.6" />
+            <circle cx="33" cy="9" r="1.6" />
           </g>
           <path className="avalon-tile-fold-focus" d="M1 1H39V39Z" fill="none" strokeWidth="2" />
         </svg>

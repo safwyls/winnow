@@ -270,10 +270,12 @@ async function assertStoreCounts(mode: Mode) {
     ['steam', 2],
     ['epic', 1],
   ] as const) {
-    fireEvent.change(screen.getByLabelText('Store'), { target: { value: store } })
+    fireEvent.click(screen.getByRole('button', { name: /^Store ·/ }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: store === 'steam' ? 'Steam' : 'Epic Games' }))
     await waitFor(() => expect(cards()).toHaveLength(count))
   }
-  fireEvent.change(screen.getByLabelText('Store'), { target: { value: 'all' } })
+  fireEvent.click(screen.getByRole('button', { name: /^Store ·/ }))
+  fireEvent.click(screen.getByRole('menuitemradio', { name: 'All stores' }))
 }
 
 describe.each(['desktop', 'fullscreen'] as const)('%s frozen identity projections', (mode) => {

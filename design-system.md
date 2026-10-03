@@ -197,8 +197,10 @@ controls as well as the results. Reserving that strip keeps all 27 labels readab
 a short window has list controls open; those controls and the artwork end before the wave.
 The desktop toolbar groups Display with the grid/list switch on the left, gives Search
 the flexible space, and places Filters on the right beside its panel. Store and Sort stay
-together; narrower panes move that group onto a second row, and Search takes its own row
-when the filter panel leaves too little width. The filter panel reserves an inner gutter
+together. Store uses the same themed single-choice popup as Sort, with the selected store
+marked and keyboard focus returned to its trigger after a choice. The fullscreen More
+panel reuses this menu within its dialog. Narrower panes move that group onto a second row,
+and Search takes its own row when the filter panel leaves too little width. The filter panel reserves an inner gutter
 between its fields, facet counts and scrollbars. Selection actions occupy space only
 while at least one visible game is selected.
 
@@ -336,8 +338,10 @@ the event row. This is the feature that closes the loop: notice → context → 
 Bottom-aligned gradient scrim to `Ground` at 92%. Title in Body L, playtime and idle time in
 Data S. The available primary action (`Play` for an installed game, `Install` otherwise) is a
 32px icon at bottom-right, in the store-chip row. `Details` is the folded top-right corner: a
-40px square hit target whose visible triangle follows the cover edge. The actions appear on
-pointer hover and on Tab or directional focus. Each has a tooltip, an accessible name and the
+40px square hit target whose visible triangle follows the cover edge. Electron shows a
+contrasting folded underside, a diagonal crease and a small shadow; three dots on the
+exposed corner suggest more behind it. The actions appear on pointer hover and on Tab or
+directional focus. Each has a tooltip, an accessible name and the
 standard visible focus treatment from §8.
 
 **Stores are a chip row**, one chip per store the game is owned on, unchanged in appearance for

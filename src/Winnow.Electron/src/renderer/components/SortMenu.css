@@ -13,6 +13,19 @@
     background: var(--raised);
     color: var(--text);
   }
+  .shared-choice-trigger {
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+    gap: 16px;
+  }
+  :root[data-mode='fullscreen'] .shared-choice-trigger,
+  :root[data-mode='fullscreen'] .shared-choice-menu button {
+    min-height: 44px;
+    font-size: calc(16px * var(--theme-text-scale, 1));
+  }
   .shared-sort-menu {
     position: fixed;
     inset: auto;

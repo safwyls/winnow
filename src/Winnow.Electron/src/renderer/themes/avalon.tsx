@@ -34,6 +34,7 @@ import { request, storeLabel } from '../api/client'
 import { bucketLabel } from '../components/primitives'
 import { CreateListButton, LibraryTools, ListEditor } from '../features/LibraryTools'
 import { SortMenu } from '../components/SortMenu'
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { SegmentedGroup } from '../components/SegmentedGroup'
 import { AddToListButton, orderedLists } from '../features/parity-list-prompt'
 import { LiveListActions } from '../features/parity-live-actions'
@@ -1286,16 +1287,17 @@ export function AvalonLibrary(context: ThemeContext) {
           {([...new Set(libraryGames.flatMap((game) => game.entries.map((entry) => entry.store)))].length >
             1 ||
             store !== 'all') && (
-            <select aria-label="Store" value={store} onChange={(event) => setStore(event.target.value)}>
-              <option value="all">All stores</option>
-              {[...new Set(libraryGames.flatMap((game) => game.entries.map((entry) => entry.store)))].map(
-                (value) => (
-                  <option key={value} value={value}>
-                    {storeLabel(value)}
-                  </option>
+            <ChoiceMenu
+              label="Store"
+              value={store}
+              options={[
+                { value: 'all', label: 'All stores' },
+                ...[...new Set(libraryGames.flatMap((game) => game.entries.map((entry) => entry.store)))].map(
+                  (value) => ({ value, label: storeLabel(value) }),
                 ),
-              )}
-            </select>
+              ]}
+              onChange={setStore}
+            />
           )}
           {fullscreen ? (
             <label>
