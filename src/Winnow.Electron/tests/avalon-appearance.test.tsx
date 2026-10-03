@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -319,8 +320,8 @@ it.each([
       expect(slider.disabled).toBe(false)
       expect(slider.value).toBe(String(transparency))
     })
-    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Backdrop' }).selectedIndex).toBe(0)
-    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Pane layout' }).selectedIndex).toBe(0)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Backdrop' }).value).toBe('acrylic')
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Pane layout' }).value).toBe('floating')
     expect(screen.getByRole<HTMLInputElement>('checkbox', { name: /Include content panes/ }).checked).toBe(
       true,
     )
@@ -337,15 +338,15 @@ it('writes each appearance choice once and exposes the original light-desktop co
   expect(document.getElementById(slider.getAttribute('aria-describedby')!)!.textContent).toContain(
     'Reduce transparency',
   )
-  fireEvent.change(screen.getByRole('combobox', { name: 'Backdrop' }), { target: { value: 'mica' } })
+  chooseOption(screen.getByRole('button', { name: 'Backdrop' }), 'mica')
   await waitFor(() =>
-    expect((screen.getByRole('combobox', { name: 'Backdrop' }) as HTMLSelectElement).value).toBe('mica'),
+    expect((screen.getByRole('button', { name: 'Backdrop' }) as HTMLButtonElement).value).toBe('mica'),
   )
-  fireEvent.change(screen.getByRole('combobox', { name: 'Pane layout' }), { target: { value: 'flush' } })
+  chooseOption(screen.getByRole('button', { name: 'Pane layout' }), 'flush')
   await waitFor(() =>
-    expect((screen.getByRole('combobox', { name: 'Pane layout' }) as HTMLSelectElement).value).toBe('flush'),
+    expect((screen.getByRole('button', { name: 'Pane layout' }) as HTMLButtonElement).value).toBe('flush'),
   )
-  fireEvent.change(screen.getByRole('combobox', { name: 'Pane layout' }), { target: { value: 'flush' } })
+  chooseOption(screen.getByRole('button', { name: 'Pane layout' }), 'flush')
   fireEvent.click(screen.getByRole('checkbox', { name: /Include content panes/ }))
   await waitFor(() =>
     expect(
@@ -377,13 +378,13 @@ it('preserves existing solid flush preferences over new Windows defaults without
 it('keeps the prior saved appearance and reports a failed write', async () => {
   refuseSave = true
   render(<AvalonAppearanceControls profile={profile()} />, { wrapper })
-  const select = screen.getByRole('combobox', { name: 'Pane layout' })
-  await waitFor(() => expect((select as HTMLSelectElement).disabled).toBe(false))
-  fireEvent.change(select, { target: { value: 'flush' } })
+  const select = screen.getByRole('button', { name: 'Pane layout' })
+  await waitFor(() => expect((select as HTMLButtonElement).disabled).toBe(false))
+  chooseOption(select, 'flush')
   await waitFor(() =>
     expect(screen.getByRole('alert').textContent).toContain('Window appearance could not be saved'),
   )
-  expect((select as HTMLSelectElement).value).toBe('floating')
+  expect((select as HTMLButtonElement).value).toBe('floating')
   expect(writes).toEqual([])
 })
 

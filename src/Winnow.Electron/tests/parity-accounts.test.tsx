@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -214,7 +215,7 @@ describe('account summary parity with AccountStatsSummaryTests', () => {
           ? await screen.findByLabelText('Chart and detail currency')
           : await screen.findByRole('button', { name: '€ · show charts' })
       currency.focus()
-      if (mode === 'desktop') fireEvent.change(currency, { target: { value: '€' } })
+      if (mode === 'desktop') chooseOption(currency, '€')
       else fireEvent.click(currency)
       const chart = screen.getByRole('region', { name: 'Spending by year' })
       expect(within(chart).getByText('€12.00')).toBeTruthy()

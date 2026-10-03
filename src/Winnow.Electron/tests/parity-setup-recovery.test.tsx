@@ -367,7 +367,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s application preference con
     await act(async () => {
       await h.client.invalidateQueries({ queryKey: ['api'] })
     })
-    expect(((await screen.findByLabelText('Default library sort')) as HTMLSelectElement).value).toBe(
+    expect(((await screen.findByLabelText('Default library sort')) as HTMLButtonElement).value).toBe(
       'DormantLongest',
     )
     expect(h.preferences.get('DefaultSort')).toBe(stored)

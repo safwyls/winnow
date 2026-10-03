@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { ApiError, dateLabel, storeLabel } from '../api/client'
 import { useApiQuery, useCommand, useLibrary, useWorkspace } from '../api/hooks'
 import type { GameList, IdentityReview, LibraryFilter, Mode, Workspace } from '../api/types'
@@ -63,25 +64,33 @@ export function LiveFilterFields({
       <div className="form-row">
         <label className="field">
           Installation
-          <select
+          <ChoiceMenu
+            label="Installation"
+            aria-label="Installation"
             value={filter.installed == null ? '' : String(filter.installed)}
-            onChange={(e) => patch({ installed: e.target.value === '' ? null : e.target.value === 'true' })}
-          >
-            <option value="">Any installation</option>
-            <option value="true">Installed</option>
-            <option value="false">Not installed</option>
-          </select>
+            disabled={disabled}
+            onChange={(value) => patch({ installed: value === '' ? null : value === 'true' })}
+            options={[
+              { value: '', label: 'Any installation' },
+              { value: 'true', label: 'Installed' },
+              { value: 'false', label: 'Not installed' },
+            ]}
+          />
         </label>
         <label className="field">
           Update status
-          <select
+          <ChoiceMenu
+            label="Update status"
+            aria-label="Update status"
             value={filter.hasUnread == null ? '' : String(filter.hasUnread)}
-            onChange={(e) => patch({ hasUnread: e.target.value === '' ? null : e.target.value === 'true' })}
-          >
-            <option value="">Any update status</option>
-            <option value="true">Unread updates</option>
-            <option value="false">No unread updates</option>
-          </select>
+            disabled={disabled}
+            onChange={(value) => patch({ hasUnread: value === '' ? null : value === 'true' })}
+            options={[
+              { value: '', label: 'Any update status' },
+              { value: 'true', label: 'Unread updates' },
+              { value: 'false', label: 'No unread updates' },
+            ]}
+          />
         </label>
       </div>
       <div className="form-row">
@@ -501,7 +510,7 @@ export function IdentityTools({
           <form
             onSubmit={(e) => {
               e.preventDefault()
-              if (!changed)
+              if (!changed && draft.parent && draft.children.length && !command.isPending && !queueBusy)
                 void mutate('identity.link', {
                   expectedRevision: draft.revision,
                   parentWorkId: draft.parent,
@@ -517,35 +526,38 @@ export function IdentityTools({
               <legend>Review this relationship</legend>
               <label className="field">
                 Main game
-                <select
-                  required
-                  value={draft.parent || ''}
-                  onChange={(e) =>
+                <ChoiceMenu
+                  label="Main game"
+                  aria-label="Main game"
+                  disabled={command.isPending || queueBusy}
+                  value={draft.parent ? String(draft.parent) : ''}
+                  onChange={(value) =>
                     setDraft({
                       ...draft,
-                      parent: Number(e.target.value),
-                      children: draft.children.filter((id) => id !== Number(e.target.value)),
+                      parent: Number(value),
+                      children: draft.children.filter((id) => id !== Number(value)),
                     })
                   }
-                >
-                  <option value="">Choose a game</option>
-                  {works.map((work) => (
-                    <option key={work.id} value={work.id}>
-                      {work.name}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '', label: 'Choose a game' },
+                    ...works.map((work) => ({ value: String(work.id), label: work.name })),
+                  ]}
+                />
               </label>
               <label className="field">
                 Relationship
-                <select
+                <ChoiceMenu
+                  label="Relationship"
+                  aria-label="Relationship"
+                  disabled={command.isPending || queueBusy}
                   value={draft.kind}
-                  onChange={(e) => setDraft({ ...draft, kind: e.target.value, label: '' })}
-                >
-                  <option value="same_game">Same game sold in different editions</option>
-                  <option value="expansion_of">Expansion or add-on</option>
-                  <option value="variant_of">Demo, beta or playtest</option>
-                </select>
+                  onChange={(value) => setDraft({ ...draft, kind: value, label: '' })}
+                  options={[
+                    { value: 'same_game', label: 'Same game sold in different editions' },
+                    { value: 'expansion_of', label: 'Expansion or add-on' },
+                    { value: 'variant_of', label: 'Demo, beta or playtest' },
+                  ]}
+                />
               </label>
               {draft.kind !== 'same_game' && (
                 <label className="field">
@@ -691,19 +703,18 @@ export function IdentityTools({
           return (
             <label className="field" key={workId}>
               Header edition for {title(workId)}
-              <select
+              <ChoiceMenu
+                label={`Header edition for ${title(workId)}`}
+                aria-label={`Header edition for ${title(workId)}`}
                 className="group-header-select"
                 disabled={command.isPending || queueBusy}
                 value={facts?.workspace.preferredHeaderStores?.[String(workId)] ?? ''}
-                onChange={(e) => void mutate('identity.header', { workId, store: e.target.value || null })}
-              >
-                <option value="">Automatic</option>
-                {stores.map((store) => (
-                  <option key={store} value={store}>
-                    {storeLabel(store)}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => void mutate('identity.header', { workId, store: value || null })}
+                options={[
+                  { value: '', label: 'Automatic' },
+                  ...stores.map((store) => ({ value: store, label: storeLabel(store) })),
+                ]}
+              />
             </label>
           )
         })}

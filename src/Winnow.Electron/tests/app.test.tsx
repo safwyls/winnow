@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react'
+import { chooseOption } from './choice-test-utils'
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest'
 import { act, cleanup, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider, QueryObserver } from '@tanstack/react-query'
@@ -399,7 +400,7 @@ describe('integrated frontend', () => {
     await screen.findByText('nothing waiting')
     expect(merges.textContent).toBe('Merges')
     expect(merges.style.opacity).toBe('')
-    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Preferred main platform' }), { key: 'Escape' })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Preferred main platform' }), { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Merges', level: 1 })).toBeNull())
     expect(
       within(screen.getByRole('navigation', { name: 'Main navigation' }))
@@ -1339,9 +1340,7 @@ describe('integrated frontend', () => {
     await changeSurface(true)
     for (const palette of AVALON_PALETTES) {
       fireEvent.click(screen.getByRole('button', { name: 'Theme Studio' }))
-      fireEvent.change(await screen.findByRole('combobox', { name: /^Avalon palette/ }), {
-        target: { value: palette.id },
-      })
+      chooseOption(await screen.findByRole('button', { name: /^Avalon palette/ }), palette.id)
       fireEvent.click(screen.getByRole('button', { name: 'For you' }))
       const first = await screen.findByRole('button', { name: 'View A real API title' })
       first.focus()

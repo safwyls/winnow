@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { access, mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -123,15 +124,22 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await page.getByRole('button', { name: 'Reset theme typography' }).click()
     const baseline = await homeMetrics()
     await studio()
-    await page.getByRole('combobox', { name: 'Heading font', exact: true }).fill('IBM Plex Mono')
-    await page.getByRole('combobox', { name: 'Interface font', exact: true }).fill('Bricolage Grotesque')
-    await page.getByRole('combobox', { name: 'Data font', exact: true }).fill('Plus Jakarta Sans')
+    await page.getByRole('textbox', { name: 'Heading font', exact: true }).fill('IBM Plex Mono')
+    await page.getByRole('textbox', { name: 'Interface font', exact: true }).fill('Bricolage Grotesque')
+    await page.getByRole('textbox', { name: 'Data font', exact: true }).fill('Plus Jakarta Sans')
     await textSize(115)
-    await page.getByRole('combobox', { name: /^Avalon palette/ }).selectOption('nightshift')
-    await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveValue('100')
-    await page.getByRole('combobox', { name: /^Avalon palette/ }).selectOption('winnow')
-    await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveValue('115')
-    await expect(page.getByRole('combobox', { name: 'Interface font', exact: true })).toHaveValue(
+    await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'nightshift')
+    await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveJSProperty(
+      'value',
+      '100',
+    )
+    await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'winnow')
+    await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveJSProperty(
+      'value',
+      '115',
+    )
+    await expect(page.getByRole('textbox', { name: 'Interface font', exact: true })).toHaveJSProperty(
+      'value',
       'Bricolage Grotesque',
     )
     await textSize(120)
@@ -143,7 +151,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       'Reset theme typography',
     ]) {
       const control = page.getByRole(
-        name === 'Theme text size' ? 'slider' : name.startsWith('Reset') ? 'button' : 'combobox',
+        name === 'Theme text size' ? 'slider' : name.startsWith('Reset') ? 'button' : 'textbox',
         { name, exact: true },
       )
       await control.scrollIntoViewIfNeeded()
@@ -170,11 +178,18 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await page.locator('.avalon-brand').evaluate((element) => getComputedStyle(element).fontFamily),
     ).toContain('Avalon Data')
     await studio()
-    await page.getByRole('combobox', { name: /^Avalon palette/ }).selectOption('nightshift')
-    await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveValue('100')
-    await page.getByRole('combobox', { name: /^Avalon palette/ }).selectOption('winnow')
-    await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveValue('120')
-    await expect(page.getByRole('combobox', { name: 'Heading font', exact: true })).toHaveValue(
+    await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'nightshift')
+    await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveJSProperty(
+      'value',
+      '100',
+    )
+    await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'winnow')
+    await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveJSProperty(
+      'value',
+      '120',
+    )
+    await expect(page.getByRole('textbox', { name: 'Heading font', exact: true })).toHaveJSProperty(
+      'value',
       'IBM Plex Mono',
     )
     await textSize(80)
@@ -306,11 +321,12 @@ test('native installed-font enumeration supplies usable family choices', async (
   await page.getByRole('button', { name: 'Reset theme typography', exact: true }).click()
   await page.getByRole('button', { name: 'Find installed fonts', exact: true }).click()
   await expect(page.getByText(/installed font families available\./)).toBeVisible()
+  await page.getByRole('button', { name: 'Choose heading font', exact: true }).click()
   const choices = await page
-    .locator('datalist')
-    .first()
-    .locator('option')
-    .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value))
+    .getByRole('menu', { name: 'Choose heading font', exact: true })
+    .getByRole('menuitemradio')
+    .evaluateAll((options) => options.map((option) => (option as HTMLButtonElement).value))
+  await page.keyboard.press('Escape')
   expect(choices.length).toBeGreaterThan(3)
   if (process.platform === 'win32') expect(choices).toContain('Segoe UI')
   const cdp = await page.context().newCDPSession(page)
@@ -343,7 +359,7 @@ test('native installed-font enumeration supplies usable family choices', async (
     ['Interface font', 'Winnow missing interface 913872'],
     ['Data font', 'Winnow missing data 913872'],
   ])
-    await page.getByRole('combobox', { name: label!, exact: true }).fill(missing!)
+    await page.getByRole('textbox', { name: label!, exact: true }).fill(missing!)
   await expect.poll(actualFonts).toEqual(baseline)
   await test.info().attach('actual-role-font-fallback', {
     body: JSON.stringify({ baseline, missing: await actualFonts(), installedFamilyCount: choices.length }),
@@ -378,15 +394,22 @@ test('desktop maximum theme size keeps every control inside its scroller and key
   await writeFile(join(directory, 'themes/typography-authored.json'), JSON.stringify(authored))
   await studio()
   await page.getByRole('button', { name: 'Reload authored palettes', exact: true }).click()
-  const palette = page.getByRole('combobox', { name: /^Avalon palette/ })
-  await expect(palette.locator('option[value="typography-authored"]')).toHaveCount(1)
-  await palette.selectOption('typography-authored')
-  await expect(page.getByRole('combobox', { name: 'Heading font', exact: true })).toHaveValue('IBM Plex Mono')
-  await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveValue('105')
+  const palette = page.getByRole('button', { name: /^Avalon palette/ })
+  await palette.click()
+  await expect(page.getByRole('menu').locator('[value="typography-authored"]')).toHaveCount(1)
+  await chooseOption(palette, 'typography-authored')
+  await expect(page.getByRole('textbox', { name: 'Heading font', exact: true })).toHaveJSProperty(
+    'value',
+    'IBM Plex Mono',
+  )
+  await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveJSProperty(
+    'value',
+    '105',
+  )
   await textSize(120)
   const bounds = []
   for (const name of ['Heading font', 'Interface font', 'Data font', 'Theme text size']) {
-    const control = page.getByRole(name === 'Theme text size' ? 'slider' : 'combobox', { name, exact: true })
+    const control = page.getByRole(name === 'Theme text size' ? 'slider' : 'textbox', { name, exact: true })
     await control.scrollIntoViewIfNeeded()
     await control.focus()
     await expect(control).toBeFocused()
@@ -419,13 +442,19 @@ test('desktop maximum theme size keeps every control inside its scroller and key
   await reset.scrollIntoViewIfNeeded()
   await reset.focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveValue('105')
-  await expect(page.getByRole('combobox', { name: 'Heading font', exact: true })).toHaveValue('IBM Plex Mono')
+  await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveJSProperty(
+    'value',
+    '105',
+  )
+  await expect(page.getByRole('textbox', { name: 'Heading font', exact: true })).toHaveJSProperty(
+    'value',
+    'IBM Plex Mono',
+  )
   await test.info().attach('authored-reset-and-containment', {
     body: JSON.stringify({ authored: authored.typography, bounds }),
     contentType: 'application/json',
   })
-  await palette.selectOption('winnow')
+  await chooseOption(palette, 'winnow')
 })
 
 test('fullscreen Theme Studio and Settings Appearance separately retain TV typography font selection and keyboard focus', async () => {

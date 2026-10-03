@@ -24,6 +24,7 @@ import { normalizeArtworkEffects, type ArtworkEffectOptions } from '../../shared
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { useLibrary } from '../api/hooks'
 import { Artwork } from '../components/Artwork'
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { PortalSurface } from '../components/portal-effects'
 import { AvalonTypographyControls } from '../themes/avalon-typography'
 import { AvalonAppearanceControls } from '../themes/avalon-appearance'
@@ -303,30 +304,36 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               {theme.id !== 'avalon' && (
                 <label className="studio-field">
                   Typography
-                  <select
+                  <ChoiceMenu
+                    label="Typography"
+                    aria-label="Typography"
                     value={appearance.font}
-                    onChange={(event) =>
-                      appearanceChange({ font: event.target.value as ThemeProfile['appearance']['font'] })
+                    onChange={(value) =>
+                      appearanceChange({ font: value as ThemeProfile['appearance']['font'] })
                     }
-                  >
-                    <option value="editorial">Editorial · serif headings</option>
-                    <option value="modern">Modern · sans serif</option>
-                    <option value="mono">Monospace · typewriter</option>
-                  </select>
+                    options={[
+                      { value: 'editorial', label: 'Editorial · serif headings' },
+                      { value: 'modern', label: 'Modern · sans serif' },
+                      { value: 'mono', label: 'Monospace · typewriter' },
+                    ]}
+                  />
                 </label>
               )}
               <label className="studio-field">
                 Spacing
-                <select
+                <ChoiceMenu
+                  label="Spacing"
+                  aria-label="Spacing"
                   value={appearance.density}
-                  onChange={(event) =>
-                    appearanceChange({ density: event.target.value as ThemeProfile['appearance']['density'] })
+                  onChange={(value) =>
+                    appearanceChange({ density: value as ThemeProfile['appearance']['density'] })
                   }
-                >
-                  <option value="compact">Compact</option>
-                  <option value="comfortable">Comfortable</option>
-                  <option value="spacious">Spacious</option>
-                </select>
+                  options={[
+                    { value: 'compact', label: 'Compact' },
+                    { value: 'comfortable', label: 'Comfortable' },
+                    { value: 'spacious', label: 'Spacious' },
+                  ]}
+                />
               </label>
               <label className="studio-field">
                 Interface size <span className="studio-value">{appearance.scale ?? 100}%</span>
@@ -422,17 +429,18 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               <div className="studio-field-grid">
                 <label className="studio-field">
                   Cover finish
-                  <select
+                  <ChoiceMenu
+                    label="Cover finish"
+                    aria-label="Cover finish"
                     value={artwork.finish}
-                    onChange={(event) =>
-                      artworkChange({ finish: event.target.value as ArtworkEffectOptions['finish'] })
-                    }
-                  >
-                    <option value="off">Off</option>
-                    <option value="matte">Matte</option>
-                    <option value="satin">Satin</option>
-                    <option value="foil">Foil</option>
-                  </select>
+                    onChange={(value) => artworkChange({ finish: value as ArtworkEffectOptions['finish'] })}
+                    options={[
+                      { value: 'off', label: 'Off' },
+                      { value: 'matte', label: 'Matte' },
+                      { value: 'satin', label: 'Satin' },
+                      { value: 'foil', label: 'Foil' },
+                    ]}
+                  />
                 </label>
                 <label className="studio-field">
                   Finish intensity <span className="studio-value">{artwork.intensity}%</span>
@@ -464,17 +472,20 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                 </label>
                 <label className="studio-field">
                   Highlight material
-                  <select
+                  <ChoiceMenu
+                    label="Highlight material"
+                    aria-label="Highlight material"
                     value={artwork.foilMetal}
                     disabled={!artwork.highlightFoil}
-                    onChange={(event) =>
-                      artworkChange({ foilMetal: event.target.value as ArtworkEffectOptions['foilMetal'] })
+                    onChange={(value) =>
+                      artworkChange({ foilMetal: value as ArtworkEffectOptions['foilMetal'] })
                     }
-                  >
-                    <option value="silver">Silver</option>
-                    <option value="gold">Gold</option>
-                    <option value="holographic">Holographic</option>
-                  </select>
+                    options={[
+                      { value: 'silver', label: 'Silver' },
+                      { value: 'gold', label: 'Gold' },
+                      { value: 'holographic', label: 'Holographic' },
+                    ]}
+                  />
                 </label>
                 <label className="studio-field">
                   Foil strength <span className="studio-value">{artwork.foilStrength}%</span>
@@ -574,42 +585,51 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               <div className="studio-field-grid">
                 <label className="studio-field">
                   Navigation
-                  <select
+                  <ChoiceMenu
+                    label="Navigation"
+                    aria-label="Navigation"
                     value={layout.navigation}
-                    onChange={(event) =>
-                      layoutChange({ navigation: event.target.value as ThemeProfile['layout']['navigation'] })
+                    onChange={(value) =>
+                      layoutChange({ navigation: value as ThemeProfile['layout']['navigation'] })
                     }
-                  >
-                    <option value="top">Across the top</option>
-                    <option value="left">Along the left</option>
-                  </select>
+                    options={[
+                      { value: 'top', label: 'Across the top' },
+                      { value: 'left', label: 'Along the left' },
+                    ]}
+                  />
                 </label>
                 <label className="studio-field">
                   Library cards
-                  <select
+                  <ChoiceMenu
+                    label="Library cards"
+                    aria-label="Library cards"
                     value={layout.cardStyle}
-                    onChange={(event) =>
-                      layoutChange({ cardStyle: event.target.value as ThemeProfile['layout']['cardStyle'] })
+                    onChange={(value) =>
+                      layoutChange({ cardStyle: value as ThemeProfile['layout']['cardStyle'] })
                     }
-                  >
-                    <option value="landscape">Landscape artwork</option>
-                    <option value="poster">Portrait covers</option>
-                    <option value="record">Compact records</option>
-                  </select>
+                    options={[
+                      { value: 'landscape', label: 'Landscape artwork' },
+                      { value: 'poster', label: 'Portrait covers' },
+                      { value: 'record', label: 'Compact records' },
+                    ]}
+                  />
                 </label>
                 <label className="studio-field">
                   Game details
-                  <select
+                  <ChoiceMenu
+                    label="Game details"
+                    aria-label="Game details"
                     value={layout.detailArrangement}
-                    onChange={(event) =>
+                    onChange={(value) =>
                       layoutChange({
-                        detailArrangement: event.target.value as ThemeProfile['layout']['detailArrangement'],
+                        detailArrangement: value as ThemeProfile['layout']['detailArrangement'],
                       })
                     }
-                  >
-                    <option value="aside">Actions beside the story</option>
-                    <option value="stacked">One reading column</option>
-                  </select>
+                    options={[
+                      { value: 'aside', label: 'Actions beside the story' },
+                      { value: 'stacked', label: 'One reading column' },
+                    ]}
+                  />
                 </label>
               </div>
               <fieldset className="studio-fieldset">
@@ -697,16 +717,13 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
                       <>
                         {field.label}
                         {field.type === 'select' ? (
-                          <select
+                          <ChoiceMenu
+                            label={field.label}
+                            aria-label={field.label}
                             value={String(themeSettings[field.id])}
-                            onChange={(event) => settingChange(field.id, event.target.value)}
-                          >
-                            {field.options.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(value) => settingChange(field.id, value)}
+                            options={field.options}
+                          />
                         ) : (
                           <>
                             <span className="studio-value">{String(themeSettings[field.id])}</span>

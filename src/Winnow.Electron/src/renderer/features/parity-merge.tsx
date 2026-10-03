@@ -6,6 +6,7 @@ import { useViewState } from '../viewState'
 import { Empty, Notice } from './shared'
 import type { Mode } from '../api/types'
 import { Artwork } from '../components/Artwork'
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { dormancy } from '../themes/avalon-data'
 import { mergeIdle, mergePlaytime, mergeRollup, mergeRowDetail, mergeRowMark } from './parity-merge-facts'
 import { MergeBatchConfirmation, MergeMemberSheet, MergeOptionsSheet } from './parity-merge-overlay'
@@ -597,19 +598,15 @@ export function MergeQueue({
           </nav>
           <label className="merge-platform-choice">
             {mergeScreenCopy.preferredMainPlatform}
-            <select
+            <ChoiceMenu
+              label={mergeScreenCopy.preferredMainPlatform}
               aria-label={mergeScreenCopy.preferredMainPlatform}
               aria-description={`${mergeScreenCopy.platformPrefix}${platformOptions.find((option) => option.value === preferred)?.label ?? storeLabel(preferred)}`}
               value={preferred}
               disabled={blocked}
-              onChange={(event) => void savePreferred(event.target.value, event.currentTarget)}
-            >
-              {platformOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onChange={(value, trigger) => void savePreferred(value, trigger)}
+              options={platformOptions}
+            />
           </label>
           {proposalCount}
         </div>
@@ -721,21 +718,15 @@ export function MergeQueue({
                         {card.header && (
                           <label>
                             {mergeScreenCopy.headerStore}
-                            <select
+                            <ChoiceMenu
+                              label={`Header store for ${mergeTitle(card)}`}
                               className="group-header-select"
                               aria-label={`Header store for ${mergeTitle(card)}`}
                               value={card.header.store}
                               disabled={blocked}
-                              onChange={(event) =>
-                                void saveHeader(card, event.target.value, event.currentTarget)
-                              }
-                            >
-                              {card.header.options.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
+                              onChange={(value, trigger) => void saveHeader(card, value, trigger)}
+                              options={card.header.options}
+                            />
                           </label>
                         )}
                         <button

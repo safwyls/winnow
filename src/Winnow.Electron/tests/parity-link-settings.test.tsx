@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -43,21 +44,38 @@ describe.each(['desktop', 'fullscreen'])('%s link preferences', (mode) => {
       )
     }
     let view = mount()
-    await screen.findByRole('option', { name: 'Steam client, when available' })
-    fireEvent.change(screen.getByLabelText('Open links in'), { target: { value: 'store' } })
+    const link = await screen.findByRole('button', { name: 'Open links in' })
+    await waitFor(() => expect((link as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(link)
+    expect(screen.getByRole('menuitemradio', { name: 'Steam client, when available' })).toBeTruthy()
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    chooseOption(screen.getByLabelText('Open links in'), 'store')
     await waitFor(() => expect(stored).toBe('store'))
     view.unmount()
     view = mount()
-    await screen.findByRole('option', { name: 'Steam client, when available' })
-    expect((screen.getByLabelText('Open links in') as HTMLSelectElement).value).toBe('store')
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: 'Open links in' }) as HTMLButtonElement).value).toBe(
+        'store',
+      ),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Open links in' }))
+    expect(
+      screen
+        .getByRole('menuitemradio', { name: 'Steam client, when available' })
+        .getAttribute('aria-checked'),
+    ).toBe('true')
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     view.unmount()
     available = false
     request.mockClear()
     mount()
     await waitFor(() =>
-      expect((screen.getByLabelText('Open links in') as HTMLSelectElement).value).toBe('browser'),
+      expect((screen.getByLabelText('Open links in') as HTMLButtonElement).value).toBe('browser'),
     )
-    expect(screen.queryByRole('option', { name: 'Steam client, when available' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Open links in' }))
+    expect(screen.getByRole('menu')).toBeTruthy()
+    expect(screen.queryByRole('menuitemradio', { name: 'Steam client, when available' })).toBeNull()
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     expect(stored).toBe('store')
     expect(request.mock.calls.every(([input]) => input.route !== 'preferences.presentation.put')).toBe(true)
   })

@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import {
   test,
   expect,
@@ -134,14 +135,14 @@ async function navigate(name: string) {
 }
 async function authored() {
   await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
-  await page.getByRole('combobox', { name: /^Avalon palette/ }).selectOption('native-accessibility')
+  await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'native-accessibility')
   await expect(page.locator('html')).toHaveCSS('color-scheme', 'light')
   const numericValue = page
     .getByRole('slider', { name: 'Theme text size', exact: true })
     .locator('..')
     .locator('.studio-value')
-  await page.getByRole('combobox', { name: 'Data font', exact: true }).fill('Plus Jakarta Sans')
-  await page.getByRole('combobox', { name: 'Data font', exact: true }).press('Tab')
+  await page.getByRole('textbox', { name: 'Data font', exact: true }).fill('Plus Jakarta Sans')
+  await page.getByRole('textbox', { name: 'Data font', exact: true }).press('Tab')
   await expect(numericValue).toHaveCSS('font-family', /Avalon Body/)
   await expect(numericValue).toHaveCSS('font-variant-numeric', 'tabular-nums')
   evidence.liveProportionalData = await numericValue.evaluate((node) => ({
@@ -149,8 +150,8 @@ async function authored() {
     numeric: getComputedStyle(node).fontVariantNumeric,
     text: node.textContent,
   }))
-  await page.getByRole('combobox', { name: 'Data font', exact: true }).fill('IBM Plex Mono')
-  await page.getByRole('combobox', { name: 'Data font', exact: true }).press('Tab')
+  await page.getByRole('textbox', { name: 'Data font', exact: true }).fill('IBM Plex Mono')
+  await page.getByRole('textbox', { name: 'Data font', exact: true }).press('Tab')
   await expect
     .poll(() =>
       page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--font-mono')),
@@ -624,11 +625,11 @@ for (const surface of ['desktop', 'fullscreen'] as const) {
       await expect(page.locator('html')).toHaveClass(/reduced-motion/)
       await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
       await expect(page.getByRole('checkbox', { name: /^Reduce motion/ })).not.toBeChecked()
-      await page.getByRole('combobox', { name: /^Avalon palette/ }).selectOption('winnow')
-      await page.getByRole('combobox', { name: 'Interface font', exact: true }).fill('IBM Plex Mono')
-      await page.getByRole('combobox', { name: 'Interface font', exact: true }).press('Tab')
+      await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'winnow')
+      await page.getByRole('textbox', { name: 'Interface font', exact: true }).fill('IBM Plex Mono')
+      await page.getByRole('textbox', { name: 'Interface font', exact: true }).press('Tab')
       await expect(page.locator('html')).toHaveClass(/reduced-motion/)
-      await page.getByRole('combobox', { name: /^Avalon palette/ }).selectOption('native-accessibility')
+      await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'native-accessibility')
       await page.getByRole('button', { name: 'Winnow home', exact: true }).click()
       evidence.fullscreenSavedAfterThemeEdit = await motionSnapshot(page.locator('.avalon-shell'))
       expect(evidence.fullscreenSavedAfterThemeEdit).toEqual({ moving: [], animations: 0 })

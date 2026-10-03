@@ -1,3 +1,4 @@
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQuery } from '@tanstack/react-query'
@@ -632,16 +633,16 @@ export function AccountStatistics({
                 (mode === 'desktop' ? (
                   <label className="field account-currency">
                     Chart and detail currency
-                    <select
+                    <ChoiceMenu
+                      label="Chart and detail currency"
+                      aria-label="Chart and detail currency"
                       value={selectedSymbol ?? ''}
-                      onChange={(event) => setSelected(event.target.value)}
-                    >
-                      {groups.map((group) => (
-                        <option key={group.currencySymbol} value={group.currencySymbol ?? ''}>
-                          {group.currencySymbol}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setSelected}
+                      options={groups.map((group) => ({
+                        value: group.currencySymbol ?? '',
+                        label: group.currencySymbol ?? '',
+                      }))}
+                    />
                   </label>
                 ) : (
                   <div

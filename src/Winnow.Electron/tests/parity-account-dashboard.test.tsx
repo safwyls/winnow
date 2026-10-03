@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -34,8 +35,7 @@ function mount(mode: Mode) {
   }
 }
 async function choose(mode: Mode, symbol: string) {
-  if (mode === 'desktop')
-    fireEvent.change(await screen.findByLabelText('Chart and detail currency'), { target: { value: symbol } })
+  if (mode === 'desktop') chooseOption(await screen.findByLabelText('Chart and detail currency'), symbol)
   else fireEvent.click(await screen.findByRole('button', { name: `${symbol} · show charts` }))
 }
 async function refresh() {

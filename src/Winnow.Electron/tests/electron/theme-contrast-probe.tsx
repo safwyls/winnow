@@ -9,6 +9,7 @@ import { ConfirmationDialog } from '../../src/renderer/features/ConfirmationDial
 import { AvalonAction, AvalonActions } from '../../src/renderer/themes/avalon-actions'
 import { LibraryCutBar } from '../../src/renderer/themes/avalon-library-chrome'
 import { SegmentedGroup } from '../../src/renderer/components/SegmentedGroup'
+import { ChoiceMenu } from '../../src/renderer/components/ChoiceMenu'
 
 type Kind = 'actions' | 'destructive' | 'selected' | 'inputs' | 'fullscreen'
 const params = new URLSearchParams(location.search)
@@ -25,6 +26,7 @@ function Probe() {
   const [disabled, setDisabled] = useState(false)
   const [current, setCurrent] = useState(false)
   const [confirm, setConfirm] = useState(initialKind === 'destructive')
+  const [sort, setSort] = useState('Recently played')
   state.configure = (patch) =>
     flushSync(() => {
       if (patch.palette) setPalette(patch.palette)
@@ -116,10 +118,13 @@ function Probe() {
         {kind === 'inputs' && (
           <>
             <input aria-label="Library search" defaultValue="Search your library" style={{ width: 320 }} />
-            <select aria-label="Library sort" defaultValue="Recently played" style={{ width: 320 }}>
-              <option>Recently played</option>
-              <option>Title</option>
-            </select>
+            <ChoiceMenu
+              label="Library sort"
+              aria-label="Library sort"
+              value={sort}
+              options={['Recently played', 'Title'].map((value) => ({ value, label: value }))}
+              onChange={setSort}
+            />
           </>
         )}
       </main>

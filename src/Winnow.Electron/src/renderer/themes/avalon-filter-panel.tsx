@@ -4,6 +4,7 @@ import { matchesBucket } from './avalon-data'
 import { libraryBucketLabel } from './avalon-library-chrome'
 import { AvalonFullscreenFilters } from './avalon-fullscreen-filters'
 import { AnnouncedName } from '../components/AnnouncedName'
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import {
   AVALON_FACET_GROUPS,
   avalonRuleOptions,
@@ -186,38 +187,46 @@ export function AvalonFilterPanel({
           <>
             <label>
               Collection
-              <select value={draftBucket} onChange={(event) => setDraftBucket(event.target.value)}>
-                <option value="all">All games</option>
-                {[
-                  ...new Set([
-                    'never_played',
-                    'bounced',
-                    'active',
-                    'stale_but_patched',
-                    'derelict',
-                    ...allGames.map((game) => game.bucket),
-                    draftBucket,
-                  ]),
-                ]
-                  .filter((key) => key !== 'all')
-                  .map((key) => (
-                    <option key={key} value={key}>
-                      {libraryBucketLabel(key)}
-                    </option>
-                  ))}
-              </select>
+              <ChoiceMenu
+                label="Collection"
+                aria-label="Collection"
+                value={draftBucket}
+                onChange={setDraftBucket}
+                options={[
+                  { value: 'all', label: 'All games' },
+                  ...[
+                    ...new Set([
+                      'never_played',
+                      'bounced',
+                      'active',
+                      'stale_but_patched',
+                      'derelict',
+                      ...allGames.map((game) => game.bucket),
+                      draftBucket,
+                    ]),
+                  ]
+                    .filter((key) => key !== 'all')
+                    .map((key) => ({ value: key, label: libraryBucketLabel(key) })),
+                ]}
+              />
             </label>
             <label>
               Sort
-              <select value={draftSort} onChange={(event) => setDraftSort(event.target.value)}>
-                <option value="dormant">Dormant longest</option>
-                <option value="title">Name A–Z</option>
-                <option value="title-desc">Name Z–A</option>
-                <option value="recent">Last played</option>
-                <option value="time">Playtime high to low</option>
-                <option value="time-low">Playtime low to high</option>
-                {browse.manual && <option value="list-order">List order</option>}
-              </select>
+              <ChoiceMenu
+                label="Sort"
+                aria-label="Sort"
+                value={draftSort}
+                onChange={setDraftSort}
+                options={[
+                  { value: 'dormant', label: 'Dormant longest' },
+                  { value: 'title', label: 'Name A–Z' },
+                  { value: 'title-desc', label: 'Name Z–A' },
+                  { value: 'recent', label: 'Last played' },
+                  { value: 'time', label: 'Playtime high to low' },
+                  { value: 'time-low', label: 'Playtime low to high' },
+                  ...(browse.manual ? [{ value: 'list-order', label: 'List order' }] : []),
+                ]}
+              />
             </label>
           </>
         )}
@@ -248,16 +257,17 @@ export function AvalonFilterPanel({
         {error && <p role="alert">{error}</p>}
         <label>
           Installation
-          <select
+          <ChoiceMenu
+            label="Installation"
+            aria-label="Installation"
             value={draft.installed == null ? '' : String(draft.installed)}
-            onChange={(event) =>
-              update({ ...draft, installed: event.target.value ? event.target.value === 'true' : null })
-            }
-          >
-            <option value="">Any installation</option>
-            <option value="true">Installed</option>
-            <option value="false">Not installed</option>
-          </select>
+            onChange={(value) => update({ ...draft, installed: value ? value === 'true' : null })}
+            options={[
+              { value: '', label: 'Any installation' },
+              { value: 'true', label: 'Installed' },
+              { value: 'false', label: 'Not installed' },
+            ]}
+          />
         </label>
         {!visibleGroups.some((group) => group.key !== 'stores') && (
           <p className="muted">No game metadata is available to filter yet.</p>

@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { libraryAction } from './library-controls'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
@@ -230,9 +231,10 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       card = queue.getByRole('article', { name: `${parent.title} saved group`, exact: true })
     await expect(card).toBeVisible()
     if (mode === 'desktop')
-      await card
-        .getByRole('combobox', { name: `Header store for ${parent.title}`, exact: true })
-        .selectOption('gog')
+      await chooseOption(
+        card.getByRole('button', { name: `Header store for ${parent.title}`, exact: true }),
+        'gog',
+      )
     else {
       await card.getByRole('button').click()
       await page.getByRole('button', { name: 'Header store · Automatic', exact: true }).click()
@@ -299,7 +301,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     const label = ({ steam: 'Steam', epic: 'Epic Games', gog: 'GOG' } as Record<string, string>)[store]!
     const choosePlatform = async (value: string, name: string) => {
       if (mode === 'desktop')
-        await page.getByRole('combobox', { name: 'Preferred main platform', exact: true }).selectOption(value)
+        await chooseOption(page.getByRole('button', { name: 'Preferred main platform', exact: true }), value)
       else {
         await page.getByRole('button', { name: /^Preferred platform ·/ }).click()
         await page.getByRole('dialog').getByRole('button', { name, exact: true }).click()
@@ -368,9 +370,9 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await expect(page.getByRole('button', { name: 'Winnow home', exact: true })).toBeVisible()
     await surface(mode)
     if (mode === 'desktop')
-      await expect(page.getByRole('combobox', { name: 'Preferred main platform', exact: true })).toHaveValue(
-        '',
-      )
+      await expect(
+        page.getByRole('button', { name: 'Preferred main platform', exact: true }),
+      ).toHaveJSProperty('value', '')
     else
       await expect(page.getByRole('button', { name: 'Preferred platform · None', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Close tools', exact: true }).click()

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -108,7 +109,7 @@ describe('journal editing parity', () => {
     expect(await screen.findByText('Add a note or rating, or delete this entry.')).toBeTruthy()
     expect(request).not.toHaveBeenCalled()
     fireEvent.change(screen.getByLabelText('Your note'), { target: { value: '  Found the tower  ' } })
-    fireEvent.change(screen.getByLabelText('Your rating'), { target: { value: '5' } })
+    chooseOption(screen.getByRole('button', { name: 'Your rating' }), '5')
     fireEvent.click(screen.getByRole('button', { name: 'Save note' }))
     await waitFor(() => expect(close).toHaveBeenCalledOnce())
     expect(request.mock.calls[0]![0].body).toEqual({
@@ -120,7 +121,7 @@ describe('journal editing parity', () => {
   it('allows a rating-only entry and requires explicit confirmation before deletion', async () => {
     const request = bridge(() => ok({ sessionId: 102, note: null, rating: 3, revision: 'r2' }))
     const view = host(<JournalDraft initial={{ sessionId: 102, revision: 'r1' }} onClose={vi.fn()} />)
-    fireEvent.change(screen.getByLabelText('Your rating'), { target: { value: '3' } })
+    chooseOption(screen.getByRole('button', { name: 'Your rating' }), '3')
     fireEvent.click(screen.getByRole('button', { name: 'Save note' }))
     await waitFor(() => expect(request).toHaveBeenCalledOnce())
     view.unmount()
@@ -284,7 +285,7 @@ describe('activity browsing parity', () => {
       fireEvent.change(await screen.findByLabelText('Your note'), {
         target: { value: 'Older session memory' },
       })
-      fireEvent.change(screen.getByLabelText('Your rating'), { target: { value: '4' } })
+      chooseOption(screen.getByRole('button', { name: 'Your rating' }), '4')
       fireEvent.click(screen.getByRole('button', { name: 'Save note' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
       expect(
@@ -624,7 +625,7 @@ describe('recorded gameplay statistics parity', () => {
       )
       fireEvent.click(screen.getByRole('button', { name: 'Open game' }))
       expect(open).toHaveBeenCalledWith(1)
-      if (mode === 'desktop') fireEvent.change(screen.getByLabelText('Store'), { target: { value: 'steam' } })
+      if (mode === 'desktop') chooseOption(screen.getByLabelText('Store'), 'steam')
       else
         fireEvent.click(
           within(screen.getByRole('group', { name: 'Store' })).getByRole('button', { name: 'Steam' }),
@@ -637,8 +638,7 @@ describe('recorded gameplay statistics parity', () => {
           ),
         ).toBe(true),
       )
-      if (mode === 'desktop')
-        fireEvent.change(screen.getByLabelText('Gameplay period'), { target: { value: 'custom' } })
+      if (mode === 'desktop') chooseOption(screen.getByLabelText('Gameplay period'), 'custom')
       else fireEvent.click(screen.getByRole('button', { name: 'Custom' }))
       fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-09-01' } })
       fireEvent.change(screen.getByLabelText('Through'), { target: { value: '2026-09-10' } })
@@ -655,8 +655,8 @@ describe('recorded gameplay statistics parity', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Spending' }))
       fireEvent.click(screen.getByRole('button', { name: 'Gameplay' }))
       if (mode === 'desktop') {
-        expect((screen.getByLabelText('Gameplay period') as HTMLSelectElement).value).toBe('custom')
-        expect((screen.getByLabelText('Store') as HTMLSelectElement).value).toBe('steam')
+        expect((screen.getByLabelText('Gameplay period') as HTMLButtonElement).value).toBe('custom')
+        expect((screen.getByLabelText('Store') as HTMLButtonElement).value).toBe('steam')
       } else {
         expect(screen.getByRole('button', { name: 'Custom' }).getAttribute('aria-pressed')).toBe('true')
         expect(
@@ -672,7 +672,7 @@ describe('recorded gameplay statistics parity', () => {
     bridge()
     host(<GameplayDashboard />)
     await screen.findByRole('region', { name: 'Recorded hours over time' })
-    fireEvent.change(screen.getByLabelText('Gameplay period'), { target: { value: 'custom' } })
+    chooseOption(screen.getByLabelText('Gameplay period'), 'custom')
     fireEvent.change(screen.getByLabelText('From'), { target: { value: 'not a date' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply dates' }))
     await screen.findByText('Enter both dates as YYYY-MM-DD.')
@@ -707,7 +707,8 @@ describe('recorded gameplay statistics parity', () => {
     bridge()
     const view = host(<GameplayDashboard />)
     await screen.findByRole('region', { name: 'Your library today' })
-    expect(screen.queryByRole('option', { name: /xbox/i })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Store' }))
+    expect(screen.queryByRole('menuitemradio', { name: /xbox/i })).toBeNull()
     act(() =>
       view.client.setQueryData(['api', 'library.get'], {
         games: [
@@ -719,7 +720,8 @@ describe('recorded gameplay statistics parity', () => {
         lists: [],
       }),
     )
-    expect(await screen.findByRole('option', { name: /xbox/i })).toBeTruthy()
+    expect(await screen.findByRole('menuitemradio', { name: /xbox/i })).toBeTruthy()
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     expect(
       within(await screen.findByRole('region', { name: 'Your library today' })).getByText('1 games'),
     ).toBeTruthy()

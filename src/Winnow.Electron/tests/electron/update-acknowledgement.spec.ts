@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import {
   test,
   expect,
@@ -162,7 +163,7 @@ async function history(read: boolean) {
   const tracker = page.locator('.activity-tracker')
   await expect(tracker).toBeVisible()
   for (const id of [1, 2]) {
-    await tracker.getByRole('combobox', { name: 'Edition history', exact: true }).selectOption(String(id))
+    await chooseOption(tracker.getByRole('button', { name: 'Edition history', exact: true }), String(id))
     await expect(tracker.locator('.activity-update-summary')).toHaveText(
       read ? 'No unread updates' : `${id === 1 ? 3 : 2} unread updates`,
     )

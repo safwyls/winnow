@@ -120,8 +120,16 @@ export function moveControllerTab(previous: boolean) {
   })
   active?.dispatchEvent(event)
   if (event.defaultPrevented) return
-  const candidates = controls(controllerScope()).filter((element) => element.tabIndex >= 0)
-  const index = candidates.indexOf(active!)
+  // A menu may restore its trigger before React removes the closing portal.
+  const restored = document.activeElement as HTMLElement | null
+  const scope =
+    restored && restored !== active
+      ? (restored.closest<HTMLElement>(
+          '[role="dialog"], [role="alertdialog"], [role="menu"], [data-controller-scope]',
+        ) ?? document)
+      : controllerScope()
+  const candidates = controls(scope).filter((element) => element.tabIndex >= 0)
+  const index = candidates.indexOf(restored!)
   const next =
     index < 0
       ? previous
@@ -268,7 +276,7 @@ export function useController(actions: Actions) {
           if (backspace) backspace.click()
           else if (action.surface !== 'desktop') {
             if (pageAction) pageAction.click()
-            else action.play()
+            else if (scope === document) action.play()
           }
           return
         }

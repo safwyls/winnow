@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile } from 'node:fs/promises'
@@ -186,7 +187,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
           : stats.getByRole('button', { name: /^€ ·/ })
       if (mode === 'desktop') {
         await currency.focus()
-        await currency.selectOption('€')
+        await chooseOption(currency, '€')
       } else {
         await installPad()
         await stats.getByRole('button', { name: '$ · selected' }).focus()
@@ -213,7 +214,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
         .toBe(reads + 1)
       await expect(stats.getByRole('button', { name: 'Refresh Steam spending' })).toBeEnabled()
       await expect(stats.getByText('Highest recorded year: 2023 · €70.00')).toBeVisible()
-      if (mode === 'desktop') await expect(currency).toHaveValue('€')
+      if (mode === 'desktop') await expect(currency).toHaveJSProperty('value', '€')
       else await expect(currency).toHaveAttribute('aria-pressed', 'true')
       await composition.scrollIntoViewIfNeeded()
       if (mode === 'fullscreen') {

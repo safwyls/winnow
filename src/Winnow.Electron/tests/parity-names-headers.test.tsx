@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -449,9 +450,9 @@ describe.each(['desktop', 'fullscreen'] as const)('%s frozen names and headers',
     if (mode === 'fullscreen') fireEvent.click(within(card).getByRole('button'))
     async function choose(store: string, current: string) {
       if (mode === 'desktop') {
-        const select = screen.getByRole('combobox', { name: `Header store for ${current}` })
+        const select = screen.getByRole('button', { name: `Header store for ${current}` })
         select.focus()
-        fireEvent.change(select, { target: { value: store } })
+        chooseOption(select, store)
       } else {
         fireEvent.click(screen.getByRole('button', { name: /^Header store ·/ }))
         fireEvent.click(screen.getByRole('button', { name: store ? 'GOG' : 'Automatic' }))
@@ -522,9 +523,9 @@ describe.each(['desktop', 'fullscreen'] as const)('%s frozen names and headers',
       expect(await screen.findByText('Saving your header choice…')).toBeTruthy()
       expect(screen.getByRole('button', { name: 'Automatic' }).getAttribute('aria-pressed')).toBe('true')
     } else {
-      const select = screen.getByRole('combobox', { name: 'Header store for Steam title' })
+      const select = screen.getByRole('button', { name: 'Header store for Steam title' })
       select.focus()
-      fireEvent.change(select, { target: { value: 'gog' } })
+      chooseOption(select, 'gog')
     }
     await act(async () => release(response))
     const scope = mode === 'fullscreen' ? within(screen.getByRole('dialog')) : screen
@@ -541,7 +542,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s frozen names and headers',
       expect(scope.getByRole('button', { name: 'Automatic' }).getAttribute('aria-pressed')).toBe('true')
     else
       expect(
-        (screen.getByRole('combobox', { name: 'Header store for Steam title' }) as HTMLSelectElement).value,
+        (screen.getByRole('button', { name: 'Header store for Steam title' }) as HTMLButtonElement).value,
       ).toBe('')
   })
 })

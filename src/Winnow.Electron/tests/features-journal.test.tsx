@@ -42,7 +42,7 @@ describe('journal concurrency', () => {
     )
     expect((screen.getByLabelText('Your note') as HTMLTextAreaElement).value).toBe('The note being saved')
     expect((screen.getByLabelText('Your note') as HTMLTextAreaElement).disabled).toBe(true)
-    expect((screen.getByLabelText('Your rating') as HTMLSelectElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Your rating' }) as HTMLButtonElement).disabled).toBe(true)
     expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(true)
     expect((screen.getByRole('button', { name: 'Saving…' }) as HTMLButtonElement).disabled).toBe(true)
     finish({ ok: true, status: 200, data: { revision: 'r3' } })
@@ -87,17 +87,15 @@ describe('journal concurrency', () => {
     })
   })
   it('preserves the draft after a conflict and only adopts the current revision by explicit choice', async () => {
-    const request = vi
-      .fn()
-      .mockImplementation(async ({ route }: { route: string }) =>
-        route === 'journal.get'
-          ? {
-              ok: true,
-              status: 200,
-              data: { sessionId: 10, note: 'Other window note', rating: 4, revision: 'r2' },
-            }
-          : { ok: false, status: 409, message: 'This note changed' },
-      )
+    const request = vi.fn().mockImplementation(async ({ route }: { route: string }) =>
+      route === 'journal.get'
+        ? {
+            ok: true,
+            status: 200,
+            data: { sessionId: 10, note: 'Other window note', rating: 4, revision: 'r2' },
+          }
+        : { ok: false, status: 409, message: 'This note changed' },
+    )
     Object.defineProperty(window, 'winnow', { value: { request }, configurable: true })
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },

@@ -18,7 +18,7 @@
     "tests": [
       {
         "file": "tests/parity-cover-preference-contracts.test.tsx",
-        "case": "persists Fill, reloads it independently, ignores a missing choice and persists Fit"
+        "case": "persists Fill, reloads it independently, dismisses without changing and persists Fit"
       },
       {
         "file": "../../tests/Winnow.Backend.Tests/CoverBehaviorParityTests.cs",

@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { access, mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises'
@@ -55,14 +56,17 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       window.webContents.send('winnow:fullscreen:changed', fullscreen)
     }, mode === 'fullscreen')
     await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
-    const choice = page.getByRole('combobox', { name: /^Avalon palette/ })
-    await choice.selectOption('winnow')
+    const choice = page.getByRole('button', { name: /^Avalon palette/ })
+    await chooseOption(choice, 'winnow')
     await writeFile(join(directory, 'themes', 'mine.json'), JSON.stringify(authored))
-    await choice.selectOption('native-theme')
+    await chooseOption(choice, 'native-theme')
     await expect(page.locator('html')).toHaveCSS('--bg', '#131018')
     await expect(page.getByLabel('Heading font', { exact: true })).toHaveValue('Georgia')
     await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveValue('110')
-    await expect(page.getByRole('combobox', { name: 'Pane layout', exact: true })).toHaveValue('flush')
+    await expect(page.getByRole('button', { name: 'Pane layout', exact: true })).toHaveJSProperty(
+      'value',
+      'flush',
+    )
     await expect(page.getByRole('checkbox', { name: /Include content panes/ })).not.toBeChecked()
     await page.getByLabel('Heading font', { exact: true }).fill('Arial')
     const edited = {
@@ -73,7 +77,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     }
     await writeFile(join(directory, 'themes', 'mine.json'), JSON.stringify(edited))
     await expect(page.locator('html')).toHaveCSS('--bg', '#212030')
-    await expect(choice.locator('option:checked')).toHaveText('Reloaded authored theme')
+    await expect(choice).toHaveText('Reloaded authored theme')
     await expect(page.getByLabel('Heading font', { exact: true })).toHaveValue('Arial')
     await page.getByRole('button', { name: 'Reset theme typography', exact: true }).click()
     await expect(page.getByLabel('Heading font', { exact: true })).toHaveValue('Cambria')
@@ -105,7 +109,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     await page.reload()
     await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
     await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
-    await expect(choice).toHaveValue('native-theme')
+    await expect(choice).toHaveJSProperty('value', 'native-theme')
     await expect(page.locator('html')).toHaveCSS('--bg', '#212030')
     await expect(page.getByLabel('Heading font', { exact: true })).toHaveValue('Cambria')
     await expect(page.getByRole('slider', { name: 'Transparency', exact: true })).toHaveValue('14')

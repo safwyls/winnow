@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -185,7 +186,7 @@ describe('original saved journal and library-reload fixtures', () => {
         target: { value: 'Found the shortcut.' },
       })
       if (mode === 'desktop') fireEvent.click(screen.getByRole('button', { name: '4 out of 5' }))
-      else fireEvent.change(screen.getByLabelText('Your rating'), { target: { value: '4' } })
+      else chooseOption(screen.getByRole('button', { name: 'Your rating' }), '4')
       fireEvent.click(screen.getByRole('button', { name: 'Save note' }))
       await screen.findByText('Found the shortcut.')
       expect(screen.queryByRole('textbox', { name: 'Journal note' })).toBeNull()
@@ -568,16 +569,16 @@ describe('original session-note validation and recovery matrix', () => {
           ),
         )
         const field = await screen.findByRole('textbox', { name: 'Journal note' })
-        const rating = screen.getByLabelText('Your rating') as HTMLSelectElement
+        const rating = screen.getByRole('button', { name: 'Your rating' }) as HTMLButtonElement
         expect(rating.value).toBe(existing ? '4' : '0')
         fireEvent.change(field, { target: { value: '  \r\n ' } })
-        fireEvent.change(rating, { target: { value: '0' } })
+        chooseOption(rating, '0')
         fireEvent.submit(field.closest('form')!)
         await screen.findByText('Add a note or rating, or delete this entry.')
         expect(f.request.mock.calls.filter(([input]) => input.route === 'journal.put')).toHaveLength(0)
         expect(close).not.toHaveBeenCalled()
         fireEvent.change(field, { target: { value: '  Remember the other route. \r\n ' } })
-        fireEvent.change(rating, { target: { value: '5' } })
+        chooseOption(rating, '5')
         fireEvent.submit(field.closest('form')!)
         await waitFor(() => expect(close).toHaveBeenCalledOnce())
         expect(f.request.mock.calls.find(([input]) => input.route === 'journal.put')![0]).toMatchObject({
@@ -621,12 +622,13 @@ describe('original session-note validation and recovery matrix', () => {
       for (const button of within(scope as HTMLElement).getAllByRole('button'))
         expect((button as HTMLButtonElement).disabled).toBe(true)
       expect(field.disabled).toBe(true)
-      fireEvent.change(screen.getByLabelText('Your rating'), { target: { value: '2' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Your rating' }))
+      expect(screen.queryByRole('menu', { name: 'Your rating' })).toBeNull()
       fireEvent.keyDown(field, { key: 'Escape' })
       fireEvent.submit(field.closest('form')!)
       expect(attempts).toBe(2)
       expect(close).not.toHaveBeenCalled()
-      expect((screen.getByLabelText('Your rating') as HTMLSelectElement).value).toBe('4')
+      expect((screen.getByRole('button', { name: 'Your rating' }) as HTMLButtonElement).value).toBe('4')
       await act(async () => gate.resolve(ok({ ...original(true), note: 'Keep my draft.', revision: 'r2' })))
       await waitFor(() => expect(close).toHaveBeenCalledOnce())
       expect(

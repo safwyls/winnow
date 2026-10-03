@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import {
   test,
@@ -788,7 +789,7 @@ for (const surfaceName of ['desktop', 'fullscreen'])
     nearPixel(await paintedPixel(image, 'fit-library-sampled-padding', paddingPoint), edgeColor)
     if (mode === 'desktop') {
       await activate(page.getByRole('button', { name: 'Display preferences', exact: true }))
-      await page.getByRole('combobox', { name: 'Cover art', exact: true }).selectOption('fill')
+      await chooseOption(page.getByRole('button', { name: 'Cover art', exact: true }), 'fill')
       await page.keyboard.press('Escape')
     } else await preference('fill')
     await cover().focus()

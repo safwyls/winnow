@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import electronPath from 'electron'
 import { access, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -77,8 +78,14 @@ for (const surface of ['desktop', 'fullscreen'] as const)
     await expect(page.getByRole('slider', { name: 'Transparency', exact: true })).toHaveValue(
       process.platform === 'win32' ? '30' : '0',
     )
-    await expect(page.getByRole('combobox', { name: 'Backdrop', exact: true })).toHaveValue('acrylic')
-    await expect(page.getByRole('combobox', { name: 'Pane layout', exact: true })).toHaveValue('floating')
+    await expect(page.getByRole('button', { name: 'Backdrop', exact: true })).toHaveJSProperty(
+      'value',
+      'acrylic',
+    )
+    await expect(page.getByRole('button', { name: 'Pane layout', exact: true })).toHaveJSProperty(
+      'value',
+      'floating',
+    )
     await expect(page.getByRole('checkbox', { name: /Include content panes/ })).toBeChecked()
     const warnings = studio.locator('summary').filter({ hasText: /^Some themes may affect legibility\.$/ })
     await expect(warnings).toBeVisible()
@@ -87,10 +94,12 @@ for (const surface of ['desktop', 'fullscreen'] as const)
     await expect(warnings.locator('..')).toHaveAttribute('open', '')
     await warnings.click()
     await expect(warnings.locator('..')).not.toHaveAttribute('open')
-    const choice = page.getByRole('combobox', { name: /^Avalon palette/ })
-    await expect(choice.locator('option[value="rose-pine-dawn"]')).toHaveCount(1)
-    await expect(choice.locator('option[value="silkcircuit-dawn"]')).toHaveCount(1)
-    await choice.selectOption('rose-pine-dawn')
+    const choice = page.getByRole('button', { name: /^Avalon palette/ })
+    await choice.click()
+    await expect(page.getByRole('menuitemradio', { name: 'Rosé Pine Dawn', exact: true })).toBeVisible()
+    await expect(page.getByRole('menuitemradio', { name: 'SilkCircuit Dawn', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await chooseOption(choice, 'rose-pine-dawn')
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'light')
     await expect(page.getByRole('slider', { name: 'Transparency', exact: true })).toHaveValue('0')
     await expect(warnings.locator('..')).not.toHaveAttribute('open')
@@ -106,17 +115,22 @@ for (const surface of ['desktop', 'fullscreen'] as const)
     await mkdir(join(directory, 'themes'), { recursive: true })
     await writeFile(join(directory, 'themes/native-authored.json'), JSON.stringify(authored))
     await page.getByRole('button', { name: 'Reload authored palettes', exact: true }).click()
-    await expect(choice.locator('option[value="native-authored"]')).toHaveCount(1)
-    await choice.selectOption('native-authored')
+    await chooseOption(choice, 'native-authored')
     await expect.poll(async () => (await saved()).profile?.settings?.avalon?.palette).toBe('native-authored')
     await page.reload()
     await expect(page.locator('.avalon-shell')).toBeVisible()
     await mode(surface === 'fullscreen')
     await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
-    await expect(choice).toHaveValue('native-authored')
+    await expect(choice).toHaveJSProperty('value', 'native-authored')
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'light')
-    await expect(page.getByRole('combobox', { name: 'Backdrop', exact: true })).toHaveValue('acrylic')
-    await expect(page.getByRole('combobox', { name: 'Pane layout', exact: true })).toHaveValue('floating')
+    await expect(page.getByRole('button', { name: 'Backdrop', exact: true })).toHaveJSProperty(
+      'value',
+      'acrylic',
+    )
+    await expect(page.getByRole('button', { name: 'Pane layout', exact: true })).toHaveJSProperty(
+      'value',
+      'floating',
+    )
     await expect(page.getByRole('slider', { name: 'Transparency', exact: true })).toHaveValue('0')
 
     const firstTheme = studio.locator('.studio-theme-option').first()

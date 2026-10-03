@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { useState } from 'react'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -307,7 +308,7 @@ it('opens the desktop display controls together and returns focus to their comma
   fireEvent.click(trigger)
   await screen.findByRole('dialog', { name: 'Display preferences' })
   expect(screen.queryByRole('slider', { name: 'Density' })).toBeNull()
-  expect(screen.getByRole('combobox', { name: 'Cover art' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Cover art' })).toBeTruthy()
   expect(screen.getByRole('slider', { name: 'Rating cap' })).toBeTruthy()
   expect(screen.getByRole('checkbox', { name: 'Dim dormant covers' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Close display preferences' }))
@@ -319,10 +320,10 @@ it('persists the source display preferences through closing and reopening their 
   const { wrapper, request, stored } = fixture()
   render(<DisplayPreferences />, { wrapper })
   fireEvent.click(screen.getByRole('button', { name: 'Display preferences' }))
-  const fit = screen.getByRole('combobox', { name: 'Cover art' }) as HTMLSelectElement
+  const fit = screen.getByRole('button', { name: 'Cover art' }) as HTMLButtonElement
   await waitFor(() => expect(fit.disabled).toBe(false))
   expect(fit.value).toBe('fit')
-  fireEvent.change(fit, { target: { value: 'fill' } })
+  chooseOption(fit, 'fill')
   await waitFor(() => {
     expect(fit.disabled).toBe(false)
     expect(fit.value).toBe('fill')
@@ -358,7 +359,7 @@ it('persists the source display preferences through closing and reopening their 
   ])
   fireEvent.click(screen.getByRole('button', { name: 'Close display preferences' }))
   fireEvent.click(screen.getByRole('button', { name: 'Display preferences' }))
-  expect((screen.getByRole('combobox', { name: 'Cover art' }) as HTMLSelectElement).value).toBe('fill')
+  expect((screen.getByRole('button', { name: 'Cover art' }) as HTMLButtonElement).value).toBe('fill')
   expect((screen.getByRole('checkbox', { name: 'Dim dormant covers' }) as HTMLInputElement).checked).toBe(
     false,
   )

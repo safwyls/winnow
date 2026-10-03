@@ -199,9 +199,16 @@ The desktop toolbar groups Display with the grid/list switch on the left, gives 
 the flexible space, and places Filters on the right beside its panel. Store and Sort stay
 together. Search focus outlines the whole field, including its icon and clear action, on
 desktop and in fullscreen More; the clear button retains its own keyboard focus indicator.
-Store uses the same themed single-choice popup as Sort, with the selected store
-marked and keyboard focus returned to its trigger after a choice. The fullscreen More
-panel reuses this menu within its dialog. Narrower panes move that group onto a second row,
+All Electron single-choice dropdowns use the shared themed `ChoiceMenu`, including Store,
+Sort, filters, settings, setup, activity, journal and Theme Studio fields in every composition.
+The selected choice is marked; disabled choices cannot be selected. Font fields retain typed
+family names and use the same popup for suggestions. Keyboard arrows, Home/End and initials
+move within the menu; choosing or pressing Escape returns focus to the trigger. Controller
+A opens a menu, D-pad moves through its choices and B closes it; closed fields remain
+available to normal D-pad navigation. Popups scroll within the viewport and stay inside
+their owning dialog's focus boundary on both surfaces. Fullscreen filter subpages and
+large choice sheets retain their separate layouts.
+Narrower panes move the Store and Sort group onto a second row,
 and Search takes its own row when the filter panel leaves too little width. The filter panel reserves an inner gutter
 between its fields, facet counts and scrollbars. Selection actions occupy space only
 while at least one visible game is selected.

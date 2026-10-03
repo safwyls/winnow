@@ -164,9 +164,13 @@ describe.each(['desktop', 'fullscreen'] as const)('%s Steam capture consent and 
         .map((value) => value.textContent),
     ).toEqual(['1', 'fixture-commit'])
     if (mode === 'desktop') {
-      expect(screen.queryByRole('option', { name: 'Steam client, when available' })).toBeNull()
-      expect(screen.getByRole('option', { name: 'Default browser' })).toBeTruthy()
-      expect(screen.getByRole('option', { name: 'In Winnow' })).toBeTruthy()
+      const link = screen.getByRole('button', { name: 'Open links in' }) as HTMLButtonElement
+      await waitFor(() => expect(link.disabled).toBe(false))
+      fireEvent.click(link)
+      expect(screen.queryByRole('menuitemradio', { name: 'Steam client, when available' })).toBeNull()
+      expect(screen.getByRole('menuitemradio', { name: 'Default browser' })).toBeTruthy()
+      expect(screen.getByRole('menuitemradio', { name: 'In Winnow' })).toBeTruthy()
+      fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     } else {
       const link = screen.getByRole('button', { name: 'Open links in' }) as HTMLButtonElement
       await waitFor(() => expect(link.disabled).toBe(false))

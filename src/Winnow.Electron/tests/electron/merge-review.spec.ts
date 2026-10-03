@@ -268,13 +268,16 @@ for (const surfaceName of ['desktop', 'fullscreen'] as const) {
     const preferences = () =>
       api<{ preference: string; value: string | null }[]>({ route: 'preferences.presentation.get' })
     if (mode === 'desktop') {
-      const select = queue().getByRole('combobox', { name: 'Preferred main platform', exact: true })
+      const select = queue().getByRole('button', { name: 'Preferred main platform', exact: true })
       await select.focus()
-      // Native HTML select is Electron's equivalent of the source flyout. Use its real keyboard path.
-      await page.keyboard.press('Alt+ArrowDown')
       await page.keyboard.press('ArrowDown')
+      const menu = page.getByRole('menu', { name: 'Preferred main platform', exact: true })
+      await expect(menu.getByRole('menuitemradio', { name: 'None', exact: true })).toBeFocused()
+      await page.keyboard.press('ArrowDown')
+      await expect(menu.getByRole('menuitemradio', { name: 'Steam', exact: true })).toBeFocused()
       await page.keyboard.press('Enter')
-      await expect(select).toHaveValue('steam')
+      await expect(menu).toHaveCount(0)
+      await expect(select).toHaveJSProperty('value', 'steam')
       await expect(select).toBeFocused()
       await expect(select).toHaveAccessibleDescription(/Steam/)
       const bounds = (await select.boundingBox())!,
@@ -315,8 +318,8 @@ for (const surfaceName of ['desktop', 'fullscreen'] as const) {
     await openQueue()
     if (mode === 'desktop')
       await expect(
-        queue().getByRole('combobox', { name: 'Preferred main platform', exact: true }),
-      ).toHaveValue('steam')
+        queue().getByRole('button', { name: 'Preferred main platform', exact: true }),
+      ).toHaveJSProperty('value', 'steam')
     else
       await expect(
         queue().getByRole('button', { name: 'Preferred platform · Steam', exact: true }),
@@ -525,7 +528,10 @@ test('desktop source long title multi-store rows retain trailing actions through
   const saved = queue().getByRole('article', { name: `${longTitle} saved group`, exact: true })
   await expect(saved).toBeVisible()
   await contained(saved)
-  await shot('long-title-resolved', saved.getByRole('combobox'))
+  await shot(
+    'long-title-resolved',
+    saved.getByRole('button', { name: `Header store for ${longTitle}`, exact: true }),
+  )
 })
 
 for (const [width, title] of [

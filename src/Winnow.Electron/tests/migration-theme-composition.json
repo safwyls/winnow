@@ -62,7 +62,7 @@
       },
       {
         "file": "tests/electron/theme-contrast.spec.ts",
-        "case": "retained native input and select follow dark Dawn Dawn dark without stale rendered colors"
+        "case": "retained input and themed choice follow dark Dawn Dawn dark without stale rendered colors"
       }
     ],
     "reason": "The exact method asserts mutable SolidColorBrush identity in a sparse two-entry Avalonia ResourceDictionary and skips insertion of an absent Volt resource. Electron intentionally publishes a complete CSS palette and has no matching sparse brush dictionary mechanism. Supplemental tests verify exact BoxArt Surface/Flare values, retained root style declaration and mounted controls; native live theme switching verifies no stale control colors. Those tests do not claim the original absent-Volt assertion."
@@ -224,7 +224,7 @@
       },
       {
         "file": "tests/electron/theme-contrast.spec.ts",
-        "case": "retained native input and select follow dark Dawn Dawn dark without stale rendered colors"
+        "case": "retained input and themed choice follow dark Dawn Dawn dark without stale rendered colors"
       }
     ],
     "reason": "The same mounted input and choice controls follow the original Winnow/Rosé Pine Dawn/SilkCircuit Dawn/Winnow sequence. Native measurements verify light/dark color-scheme, fill-luminance polarity and text contrast at least 4.5 after each live switch, with retained control identity. Chromium controls replace Fluent templates explicitly."

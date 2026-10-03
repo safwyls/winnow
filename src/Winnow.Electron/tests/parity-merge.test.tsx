@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -146,9 +147,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     }
     async function platform(value: string) {
       if (mode === 'desktop')
-        fireEvent.change(screen.getByRole('combobox', { name: 'Preferred main platform' }), {
-          target: { value },
-        })
+        chooseOption(screen.getByRole('button', { name: 'Preferred main platform' }), value)
       else {
         fireEvent.click(screen.getByRole('button', { name: /^Preferred platform ·/ }))
         fireEvent.click(
@@ -161,7 +160,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       await waitFor(() =>
         expect(
           (
-            screen.getByRole(mode === 'desktop' ? 'combobox' : 'button', {
+            screen.getByRole('button', {
               name: mode === 'desktop' ? 'Preferred main platform' : /^Preferred platform ·/,
             }) as HTMLButtonElement
           ).disabled,
@@ -892,7 +891,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       if (mode === 'desktop')
         await waitFor(() =>
           expect(
-            (screen.getByRole('combobox', { name: 'Preferred main platform' }) as HTMLSelectElement).value,
+            (screen.getByRole('button', { name: 'Preferred main platform' }) as HTMLButtonElement).value,
           ).toBe('gog'),
         )
       else await screen.findByRole('button', { name: 'Preferred platform · GOG' })
@@ -1025,9 +1024,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       await screen.findByRole('article', { name: 'Bastion saved group' })
       const links = structuredClone(review.history)
       if (mode === 'desktop')
-        fireEvent.change(screen.getByRole('combobox', { name: 'Header store for Bastion' }), {
-          target: { value: 'gog' },
-        })
+        chooseOption(screen.getByRole('button', { name: 'Header store for Bastion' }), 'gog')
       else {
         await open('Bastion', true)
         fireEvent.click(screen.getByRole('button', { name: 'Header store · Automatic' }))
@@ -1229,7 +1226,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       const card = await open('Bastion')
       if (mode === 'desktop') {
         expect(
-          (screen.getByRole('combobox', { name: 'Preferred main platform' }) as HTMLSelectElement).value,
+          (screen.getByRole('button', { name: 'Preferred main platform' }) as HTMLButtonElement).value,
         ).toBe('')
         expect((within(card).getAllByRole('radio')[0] as HTMLInputElement).checked).toBe(true)
       } else {
@@ -1653,13 +1650,16 @@ it('desktop leaves unrelated keys and modified shortcuts to their focused contro
       expect(event.defaultPrevented).toBe(false)
     }
   }
-  const control = screen.getByRole('combobox', { name: 'Preferred main platform' })
+  const control = screen.getByRole('button', { name: 'Preferred main platform' })
   control.focus()
   for (const key of ['s', 'd', 'Enter', ' ', 'ArrowDown']) {
     const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
     fireEvent(control, event)
-    expect(event.defaultPrevented).toBe(false)
+    expect(event.defaultPrevented).toBe(key === 'ArrowDown')
   }
+  expect(screen.getByRole('menu', { name: 'Preferred main platform' })).toBeTruthy()
+  fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+  expect(document.activeElement).toBe(control)
   expect(
     request.mock.calls.filter(
       ([input]) => input.route === 'identity.link' || input.route === 'identity.dismiss',

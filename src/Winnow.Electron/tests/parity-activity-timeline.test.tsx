@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import {
@@ -334,7 +335,7 @@ describe('activity timeline interaction parity', () => {
     render(<ActivityTimeline game={twoGames} details={data} />)
     fireEvent.click(screen.getByText('Recorded hours'))
     expect(screen.getAllByRole('button', { name: /10h · monthly history/ })).toHaveLength(2)
-    fireEvent.change(screen.getByLabelText('Edition history'), { target: { value: '2' } })
+    chooseOption(screen.getByLabelText('Edition history'), '2')
     expect(screen.getAllByRole('button', { name: /1h · monthly history/ })).toHaveLength(2)
     expect(screen.queryByRole('button', { name: /10h · monthly history/ })).toBeNull()
   })

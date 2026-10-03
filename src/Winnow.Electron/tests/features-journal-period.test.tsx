@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -39,10 +40,10 @@ describe('Journal whole-second periods', () => {
     const desktop = within(container.querySelector('.mode-desktop') as HTMLElement),
       fullscreen = within(container.querySelector('.mode-fullscreen') as HTMLElement)
     await waitFor(() => expect(client.getQueryData(['api', 'library.get'])).toBeDefined())
-    fireEvent.change(desktop.getByLabelText('Time period'), { target: { value: '7' } })
-    fireEvent.change(fullscreen.getByLabelText('Time period'), { target: { value: '90' } })
-    expect((desktop.getByLabelText('Time period') as HTMLSelectElement).value).toBe('7')
-    expect((fullscreen.getByLabelText('Time period') as HTMLSelectElement).value).toBe('90')
+    chooseOption(desktop.getByLabelText('Time period'), '7')
+    chooseOption(fullscreen.getByLabelText('Time period'), '90')
+    expect((desktop.getByLabelText('Time period') as HTMLButtonElement).value).toBe('7')
+    expect((fullscreen.getByLabelText('Time period') as HTMLButtonElement).value).toBe('90')
     fireEvent.click(desktop.getByRole('button', { name: 'Library summary' }))
     expect(desktop.getByRole('button', { name: 'Library summary' }).getAttribute('aria-pressed')).toBe('true')
     expect(fullscreen.getByRole('button', { name: 'History' }).getAttribute('aria-pressed')).toBe('true')
@@ -93,7 +94,7 @@ describe('Journal whole-second periods', () => {
       await waitFor(() =>
         expect(request.mock.calls.some(([input]) => input.route === 'statistics.gameplay')).toBe(true),
       )
-      fireEvent.change(screen.getByLabelText('Time period'), { target: { value: '7' } })
+      chooseOption(screen.getByLabelText('Time period'), '7')
       await waitFor(() =>
         expect(request.mock.calls.filter(([input]) => input.route === 'statistics.gameplay')).toHaveLength(2),
       )

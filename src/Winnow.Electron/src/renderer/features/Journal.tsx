@@ -1,3 +1,4 @@
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { Fragment, memo, useEffect, useId, useRef, useState } from 'react'
 import { SectionLabel, SectionNavigation } from '../components/SectionNavigation'
 import { FullscreenNoteReading } from './FullscreenNoteReading'
@@ -393,19 +394,18 @@ export function JournalDraft({
         ) : (
           <label className="field">
             Your rating
-            <select
+            <ChoiceMenu
+              label="Your rating"
+              aria-label="Your rating"
               name="rating"
               disabled={pending}
-              value={rating}
-              onChange={(event) => setRating(Number(event.target.value))}
-            >
-              <option value={0}>No rating</option>
-              {[1, 2, 3, 4, 5].map((value) => (
-                <option key={value} value={value}>
-                  {value} / 5
-                </option>
-              ))}
-            </select>
+              value={String(rating)}
+              onChange={(value) => setRating(Number(value))}
+              options={[
+                { value: '0', label: 'No rating' },
+                ...[1, 2, 3, 4, 5].map((value) => ({ value: String(value), label: `${value} / 5` })),
+              ]}
+            />
           </label>
         )}
       </div>
@@ -630,7 +630,9 @@ export function Journal({
         if (
           panel !== 'history' ||
           event.defaultPrevented ||
-          (event.target as HTMLElement).closest('nav, input, select, textarea, [role="dialog"]')
+          (event.target as HTMLElement).closest(
+            'nav, input, select, textarea, [role="dialog"], [aria-haspopup="menu"], [role="menu"]',
+          )
         )
           return
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
@@ -657,21 +659,24 @@ export function Journal({
         {panel === 'history' && (
           <label className="field">
             Time period
-            <select
-              value={days}
-              onChange={(event) => {
-                const value = Number(event.target.value)
+            <ChoiceMenu
+              label="Time period"
+              aria-label="Time period"
+              value={String(days)}
+              onChange={(choice) => {
+                const value = Number(choice)
                 setDays(value)
                 if (value === 0) changeWeek(0)
                 else setBounds(journalPeriod(value))
               }}
-            >
-              <option value={7}>Last 7 days</option>
-              <option value={30}>Last 30 days</option>
-              <option value={90}>Last 90 days</option>
-              <option value={365}>Last year</option>
-              <option value={0}>Monday week</option>
-            </select>
+              options={[
+                { value: '7', label: 'Last 7 days' },
+                { value: '30', label: 'Last 30 days' },
+                { value: '90', label: 'Last 90 days' },
+                { value: '365', label: 'Last year' },
+                { value: '0', label: 'Monday week' },
+              ]}
+            />
           </label>
         )}
       </header>
@@ -751,17 +756,19 @@ export function Journal({
             <button onClick={() => changeWeek(0)}>This week</button>
             <label className="field">
               Game
-              <select
-                value={workId ?? ''}
-                onChange={(event) => setWorkId(event.target.value ? Number(event.target.value) : undefined)}
-              >
-                <option value="">All games</option>
-                {library.data?.games.map((game) => (
-                  <option key={game.workId} value={game.workId}>
-                    {game.title}
-                  </option>
-                ))}
-              </select>
+              <ChoiceMenu
+                label="Game"
+                aria-label="Game"
+                value={workId == null ? '' : String(workId)}
+                onChange={(value) => setWorkId(value ? Number(value) : undefined)}
+                options={[
+                  { value: '', label: 'All games' },
+                  ...(library.data?.games.map((game) => ({
+                    value: String(game.workId),
+                    label: game.title,
+                  })) ?? []),
+                ]}
+              />
             </label>
           </div>
           <nav

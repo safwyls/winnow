@@ -3,6 +3,7 @@ import { avalonPaletteId, resolvedThemeColors, type ThemeProfile } from '../../s
 import type { WindowAppearanceResult } from '../../shared/windowAppearance'
 import { usePresentationPreferences } from '../features/SettingsPreferences'
 import { useContinuousPresentationPreference } from '../features/continuous-preference'
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { useSetupBusy, useSetupPreferenceError } from '../features/settingsState'
 import { avalonPalette, type AvalonPalette } from './avalon-palettes'
 import {
@@ -187,27 +188,31 @@ export function AvalonAppearanceControls({ profile }: { profile: ThemeProfile })
         </label>
         <label className="studio-field">
           Backdrop
-          <select
+          <ChoiceMenu
+            label="Backdrop"
             aria-label="Backdrop"
             value={appearance.backdrop}
             disabled={disabled}
-            onChange={(event) => choose('backdrop', event.target.value)}
-          >
-            <option value="acrylic">Acrylic — blur behind the window</option>
-            <option value="mica">Mica — wallpaper tint</option>
-          </select>
+            onChange={(value) => choose('backdrop', value)}
+            options={[
+              { value: 'acrylic', label: 'Acrylic — blur behind the window' },
+              { value: 'mica', label: 'Mica — wallpaper tint' },
+            ]}
+          />
         </label>
         <label className="studio-field">
           Pane layout
-          <select
+          <ChoiceMenu
+            label="Pane layout"
             aria-label="Pane layout"
             value={appearance.layout}
             disabled={disabled}
-            onChange={(event) => choose('layout', event.target.value)}
-          >
-            <option value="floating">Floating — rounded panes with gaps</option>
-            <option value="flush">Flush — panes meet edge to edge</option>
-          </select>
+            onChange={(value) => choose('layout', value)}
+            options={[
+              { value: 'floating', label: 'Floating — rounded panes with gaps' },
+              { value: 'flush', label: 'Flush — panes meet edge to edge' },
+            ]}
+          />
         </label>
         <label className="studio-toggle">
           <input

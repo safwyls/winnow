@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { test, expect, _electron as electron, type Page } from '@playwright/test'
 import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -199,9 +200,9 @@ test('fullscreen shared settings keep directional controller state across deskto
     await expect(desktop).not.toBeChecked()
     await expect(desktop).toBeEnabled()
     await tabs.getByRole('button', { name: 'Library', exact: true }).click()
-    const desktopSort = page.getByRole('combobox', { name: 'Default library sort', exact: true })
-    await expect(desktopSort).toHaveValue('RecentlyPlayed')
-    await desktopSort.selectOption('NameAscending')
+    const desktopSort = page.getByRole('button', { name: 'Default library sort', exact: true })
+    await expect(desktopSort).toHaveJSProperty('value', 'RecentlyPlayed')
+    await chooseOption(desktopSort, 'NameAscending')
     await expect(desktopSort).toBeEnabled()
     await application.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]!.webContents.send('winnow:fullscreen:changed', true),

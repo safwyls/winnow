@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { test, expect, _electron as electron, type Page } from '@playwright/test'
 import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -113,13 +114,13 @@ for (const [mode, scale] of [
       }
       await openControl()
       if (mode === 'desktop') {
-        const fit = page.getByRole('combobox', { name: 'Cover art', exact: true })
-        await expect(fit).toHaveValue('fit')
+        const fit = page.getByRole('button', { name: 'Cover art', exact: true })
+        await expect(fit).toHaveJSProperty('value', 'fit')
         for (const [value, expected] of [
           ['fill', 'cover'],
           ['fit', 'contain'],
         ]) {
-          await fit.selectOption(value)
+          await chooseOption(fit, value)
           await expect
             .poll(() =>
               page.evaluate(() =>
@@ -137,7 +138,7 @@ for (const [mode, scale] of [
       const tiers = ['everyone', 'preteen', 'teen', 'mature', 'restricted18', 'adults_only']
       const labels = ['All ages', 'Preteen', 'Teen', 'Mature', '18+', 'Adults only']
       const expectCap = async (index: number) => {
-        if (mode === 'desktop') await expect(control).toHaveValue(String(index))
+        if (mode === 'desktop') await expect(control).toHaveJSProperty('value', String(index))
         else await expect(control).toContainText(labels[index]!)
       }
       const setCap = async (index: number) => {

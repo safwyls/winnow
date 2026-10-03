@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import {
   test,
   expect,
@@ -317,20 +318,24 @@ test('desktop source all nine steps retain navigation and fixed IGDB actions at 
       await expect(wizard().getByRole('heading', { name: 'Platforms', exact: true })).toHaveCount(0)
     if (step === 5) {
       for (const name of ['Winnow design', 'Theme', 'Backdrop', 'Pane layout'])
-        await expect(wizard().getByRole('combobox', { name, exact: true })).toBeVisible()
+        await expect(wizard().getByRole('button', { name, exact: true })).toBeVisible()
       for (const name of ['Transparency', 'Theme text size'])
         await expect(wizard().getByRole('slider', { name, exact: true })).toBeVisible()
       await expect(wizard().getByRole('checkbox', { name: /Include content panes/ })).toBeVisible()
-      for (const name of ['Heading font', 'Interface font', 'Data font'])
-        await expect(wizard().getByRole('combobox', { name, exact: true })).toBeVisible()
-      const palette = wizard().getByRole('combobox', { name: 'Theme', exact: true })
+      for (const name of ['Heading font', 'Interface font', 'Data font']) {
+        await expect(wizard().getByRole('textbox', { name, exact: true })).toBeVisible()
+        await expect(
+          wizard().getByRole('button', { name: `Choose ${name.toLowerCase()}`, exact: true }),
+        ).toBeVisible()
+      }
+      const palette = wizard().getByRole('button', { name: 'Theme', exact: true })
       const saved = join(
         profileDirectory(join(directory, 'electron-userdata'), directory),
         'preferences.json',
       )
       for (const value of ['nightshift', 'winnow']) {
-        await palette.selectOption(value)
-        await expect(palette).toHaveValue(value)
+        await chooseOption(palette, value)
+        await expect(palette).toHaveJSProperty('value', value)
         await expect
           .poll(async () => JSON.parse(await readFile(saved, 'utf8')).settings.avalon.palette)
           .toBe(value)

@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { chooseOption } from './choice-test-utils'
 
 export async function returnToLibrary(page: Page) {
   const back = page.getByRole('button', { name: 'Back to library', exact: true })
@@ -40,11 +41,7 @@ export async function setLibrarySort(page: Page, sort: string) {
     await chooseFilterSelect(page, 'Sort', sort)
     await panel.getByRole('button', { name: 'Apply filters' }).click()
   } else {
-    await page.getByRole('button', { name: /^Sort ·/ }).click()
-    await page
-      .getByRole('menu', { name: 'Sort order', exact: true })
-      .locator(`[role="menuitemradio"][value="${sort}"]`)
-      .click()
+    await chooseOption(page.getByRole('button', { name: /^Sort ·/ }), sort)
   }
 }
 
@@ -63,7 +60,6 @@ export async function chooseFilterSelect(
 }
 export async function expectLibrarySort(page: Page, sort: string) {
   const field = await libraryField(page, 'Sort')
-  if (await page.locator('.avalon-shell.desktop').count()) await expect(field).toHaveAttribute('value', sort)
-  else await expect(field).toHaveValue(sort)
+  await expect(field).toHaveJSProperty('value', sort)
   await returnToLibrary(page)
 }

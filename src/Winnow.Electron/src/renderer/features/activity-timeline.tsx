@@ -1,3 +1,4 @@
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { dateLabel, storeLabel } from '../api/client'
 import type { GameDetails, LibraryGame, Mode, Session } from '../api/types'
@@ -296,13 +297,16 @@ export function ActivityTimeline({
       {game.entries.length > 1 && (
         <label className="field">
           Edition history
-          <select value={entry.ownershipId} onChange={(event) => setOwnership(Number(event.target.value))}>
-            {game.entries.map((value) => (
-              <option key={value.ownershipId} value={value.ownershipId}>
-                {storeLabel(value.store)} · {value.title}
-              </option>
-            ))}
-          </select>
+          <ChoiceMenu
+            label="Edition history"
+            aria-label="Edition history"
+            value={String(entry.ownershipId)}
+            onChange={(value) => setOwnership(Number(value))}
+            options={game.entries.map((value) => ({
+              value: String(value.ownershipId),
+              label: `${storeLabel(value.store)} · ${value.title}`,
+            }))}
+          />
         </label>
       )}
     </ActivityTracker>

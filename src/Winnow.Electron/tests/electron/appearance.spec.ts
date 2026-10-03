@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { access, mkdtemp, readFile } from 'node:fs/promises'
@@ -46,7 +47,7 @@ test('desktop material requests preserve opaque covers and one coat per pane, wi
   await expect(slider).toBeEnabled()
   await slider.fill('100')
   await expect(slider).toHaveValue('100')
-  await page.getByRole('combobox', { name: 'Backdrop', exact: true }).selectOption('acrylic')
+  await chooseOption(page.getByRole('button', { name: 'Backdrop', exact: true }), 'acrylic')
   const result = await page.evaluate(() =>
     window.winnow.windowAppearance!({ enabled: true, material: 'acrylic', background: '#0F1C1E' }),
   )
@@ -62,7 +63,7 @@ test('desktop material requests preserve opaque covers and one coat per pane, wi
   expect(
     await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getOpacity()),
   ).toBe(1)
-  await page.getByRole('combobox', { name: 'Pane layout', exact: true }).selectOption('floating')
+  await chooseOption(page.getByRole('button', { name: 'Pane layout', exact: true }), 'floating')
   await expect(shell).toHaveAttribute('data-pane-layout', 'floating')
   await page.getByRole('button', { name: 'Winnow home', exact: true }).click()
   await expect(page.locator('.avalon-cover').first()).toBeVisible()
@@ -78,9 +79,9 @@ test('desktop material requests preserve opaque covers and one coat per pane, wi
   expect(floating.cover).toMatch(/^rgb\(/)
   await page.screenshot({ path: join(directory, 'desktop-floating-acrylic.png') })
   await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
-  await page.getByRole('combobox', { name: 'Pane layout', exact: true }).selectOption('flush')
+  await chooseOption(page.getByRole('button', { name: 'Pane layout', exact: true }), 'flush')
   await expect(shell).toHaveAttribute('data-pane-layout', 'flush')
-  await page.getByRole('combobox', { name: 'Backdrop', exact: true }).selectOption('mica')
+  await chooseOption(page.getByRole('button', { name: 'Backdrop', exact: true }), 'mica')
   await expect(page.locator('html')).toHaveAttribute(
     'data-avalon-material',
     result.supported ? 'mica' : 'none',
@@ -107,7 +108,7 @@ test('fullscreen and disabled transparency restore solid surfaces while saved ma
   ).toBe(1)
   await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
   await expect(page.getByRole('slider', { name: 'Transparency', exact: true })).toHaveValue('100')
-  await expect(page.getByRole('combobox', { name: 'Backdrop', exact: true })).toHaveValue('mica')
+  await expect(page.getByRole('button', { name: 'Backdrop', exact: true })).toHaveJSProperty('value', 'mica')
   await page.getByRole('slider', { name: 'Transparency', exact: true }).fill('0')
   await expect(page.getByRole('slider', { name: 'Transparency', exact: true })).toHaveValue('0')
   await page.getByRole('checkbox', { name: /Include content panes/ }).click()
@@ -116,8 +117,11 @@ test('fullscreen and disabled transparency restore solid surfaces while saved ma
   await expect(page.locator('.avalon-shell')).toBeVisible()
   await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
   await expect(page.getByRole('slider', { name: 'Transparency', exact: true })).toHaveValue('0')
-  await expect(page.getByRole('combobox', { name: 'Backdrop', exact: true })).toHaveValue('mica')
-  await expect(page.getByRole('combobox', { name: 'Pane layout', exact: true })).toHaveValue('flush')
+  await expect(page.getByRole('button', { name: 'Backdrop', exact: true })).toHaveJSProperty('value', 'mica')
+  await expect(page.getByRole('button', { name: 'Pane layout', exact: true })).toHaveJSProperty(
+    'value',
+    'flush',
+  )
   await expect(page.getByRole('checkbox', { name: /Include content panes/ })).not.toBeChecked()
   await expect(page.locator('html')).toHaveAttribute('data-avalon-material', 'none')
   expect(errors).toEqual([])
@@ -222,7 +226,7 @@ test('the native caption follows every composition and an Avalon light palette w
     expect(overlay.width).toBeGreaterThan(0)
     expect(overlay.width).toBeLessThan(overlay.viewport)
   }
-  await page.getByRole('combobox', { name: /^Avalon palette/ }).selectOption('rose-pine-dawn')
+  await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'rose-pine-dawn')
   await expect
     .poll(() =>
       application.evaluate(

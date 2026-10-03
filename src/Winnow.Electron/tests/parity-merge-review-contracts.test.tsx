@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -302,17 +303,18 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     it('applies and remembers Steam while exposing the current platform and restoring the picker origin', async () => {
       const test = harness(mode)
       if (mode === 'desktop') {
-        const select = await screen.findByRole('combobox', { name: 'Preferred main platform' })
-        await waitFor(() => expect((select as HTMLSelectElement).disabled).toBe(false))
+        const select = await screen.findByRole('button', { name: 'Preferred main platform' })
+        await waitFor(() => expect((select as HTMLButtonElement).disabled).toBe(false))
         expect(select.getAttribute('aria-description')).toBe('Preferred platform · None')
         select.focus()
-        fireEvent.change(select, { target: { value: 'steam' } })
+        chooseOption(select, 'steam')
         await waitFor(() =>
           expect(select.getAttribute('aria-description')).toBe('Preferred platform · Steam'),
         )
-        expect((within(select).getByRole('option', { name: 'Steam' }) as HTMLOptionElement).selected).toBe(
-          true,
-        )
+        expect((select as HTMLButtonElement).value).toBe('steam')
+        fireEvent.click(select)
+        expect(screen.getByRole('menuitemradio', { name: 'Steam' }).getAttribute('aria-checked')).toBe('true')
+        fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
         expect(document.activeElement).toBe(select)
       } else {
         const trigger = await screen.findByRole('button', { name: 'Preferred platform · None' })
@@ -343,7 +345,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       render(test.page())
       if (mode === 'desktop')
         expect(
-          ((await screen.findByRole('combobox', { name: 'Preferred main platform' })) as HTMLSelectElement)
+          ((await screen.findByRole('button', { name: 'Preferred main platform' })) as HTMLButtonElement)
             .value,
         ).toBe('steam')
       else await screen.findByRole('button', { name: 'Preferred platform · Steam' })

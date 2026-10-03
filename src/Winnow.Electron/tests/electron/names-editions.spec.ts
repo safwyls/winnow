@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import {
   test,
@@ -339,12 +340,12 @@ for (const surfaceName of ['desktop', 'fullscreen'] as const) {
     const choose = async (title: string, value: string, label: string) => {
       const card = page.getByRole('article', { name: `${title} saved group`, exact: true })
       if (mode === 'desktop') {
-        const selector = card.getByRole('combobox', { name: `Header store for ${title}`, exact: true })
+        const selector = card.getByRole('button', { name: `Header store for ${title}`, exact: true })
         await selector.focus()
         expect((await selector.boundingBox())!.width).toBeGreaterThanOrEqual(160)
-        await selector.selectOption(value)
+        await chooseOption(selector, value)
         await expect(
-          page.getByRole('combobox', {
+          page.getByRole('button', {
             name: `Header store for ${label === 'Automatic' ? 'Steam title' : 'GOG title'}`,
             exact: true,
           }),
@@ -433,13 +434,18 @@ for (const surfaceName of ['desktop', 'fullscreen'] as const) {
       acts = (await control<EditionState>('state')).acts
     await queue()
     const card = page.getByRole('article', { name: 'Steam title saved group', exact: true })
+    const headerChoice = card.getByRole('button', { name: 'Header store for Steam title', exact: true })
+    const headerMenu = page.getByRole('menu', { name: 'Header store for Steam title', exact: true })
     if (mode === 'fullscreen') {
       await activate(card.getByRole('button'))
       await activate(
         page.getByRole('dialog').getByRole('button', { name: 'Header store · Automatic', exact: true }),
       )
       await expect(page.getByRole('dialog').getByRole('button', { name: 'GOG', exact: true })).toBeVisible()
-    } else await expect(card.getByRole('combobox').locator('option[value="gog"]')).toHaveCount(1)
+    } else {
+      await headerChoice.click()
+      await expect(headerMenu.getByRole('menuitemradio', { name: 'GOG', exact: true })).toBeVisible()
+    }
     // Ownership can disappear without changing the identity review hash. Keep the already-open
     // choices stale and use the real API refusal; only this disposable fixture mutation bypasses it.
     database((db) => db.prepare('DELETE FROM ownerships WHERE release_id=2').run())
@@ -449,9 +455,7 @@ for (const surfaceName of ['desktop', 'fullscreen'] as const) {
     if (mode === 'fullscreen')
       await activate(page.getByRole('dialog').getByRole('button', { name: 'GOG', exact: true }))
     else {
-      const select = card.getByRole('combobox')
-      await select.focus()
-      await select.selectOption('gog')
+      await headerMenu.getByRole('menuitemradio', { name: 'GOG', exact: true }).click()
     }
     const scope =
       mode === 'fullscreen'
@@ -472,7 +476,7 @@ for (const surfaceName of ['desktop', 'fullscreen'] as const) {
         'false',
       )
       await headerHints(scope)
-    } else await expect(card.getByRole('combobox')).toHaveValue('')
+    } else await expect(headerChoice).toHaveJSProperty('value', '')
     const refused = await api<MergeReview>({ route: 'identity.get' })
     expect(refused.revision).toBe(linked.revision)
     expect(refused.workspace.preferredHeaderStores).toEqual(linked.workspace.preferredHeaderStores)
@@ -487,8 +491,11 @@ for (const surfaceName of ['desktop', 'fullscreen'] as const) {
       await expect(scope.getByRole('button', { name: 'GOG', exact: true })).toHaveCount(0)
       await expect(scope.getByRole('button', { name: 'Automatic', exact: true })).toBeFocused()
     } else {
-      await expect(card.getByRole('combobox')).toBeEnabled()
-      await expect(card.getByRole('combobox').locator('option')).toHaveText(['Automatic', 'Steam'])
+      await expect(headerChoice).toBeEnabled()
+      await headerChoice.click()
+      await expect(headerMenu.getByRole('menuitemradio')).toHaveText(['Automatic', 'Steam'])
+      await page.keyboard.press('Escape')
+      await expect(headerChoice).toBeFocused()
     }
   })
   test(`${surfaceName} preferred GOG automatic cover reaches tile and Details while canonical metadata stays Steam`, async () => {

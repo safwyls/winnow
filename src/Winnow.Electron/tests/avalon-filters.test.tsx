@@ -231,7 +231,7 @@ describe.each([false, true])('Avalon filter panel fullscreen=%s', (fullscreen) =
     expect(screen.queryByRole('textbox', { name: 'From this year' })).toBeNull()
     expect(screen.getByText('No game metadata is available to filter yet.')).toBeDefined()
     expect(
-      screen.getByRole(fullscreen ? 'button' : 'combobox', {
+      screen.getByRole('button', {
         name: fullscreen ? /^ON DISK ·/ : 'Installation',
       }),
     ).toBeDefined()

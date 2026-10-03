@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { ChevronDown, X } from 'lucide-react'
 import { useApiQuery } from '../api/hooks'
 import type { LibraryPreferences } from '../api/types'
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { JournalPromptPreference, usePresentationPreferences } from './SettingsPreferences'
 import { RatingCapPreference, useLibraryPreferenceChange } from './RatingCap'
 import { parseExpansionGrouping } from './parity-library-grain'
@@ -71,15 +72,17 @@ function DisplayPreferenceToggles() {
     <>
       <label className="field">
         Cover art
-        <select
+        <ChoiceMenu
+          label="Cover art"
           aria-label="Cover art"
           value={preferences.values.CoverArtMode === 'fill' ? 'fill' : 'fit'}
           disabled={!preferences.loaded || preferences.pending}
-          onChange={(event) => preferences.set('CoverArtMode', event.target.value)}
-        >
-          <option value="fit">Fit — show entire artwork</option>
-          <option value="fill">Fill — crop to card</option>
-        </select>
+          onChange={(value) => preferences.set('CoverArtMode', value)}
+          options={[
+            { value: 'fit', label: 'Fit — show entire artwork' },
+            { value: 'fill', label: 'Fill — crop to card' },
+          ]}
+        />
       </label>
       <label className="check-field">
         <input

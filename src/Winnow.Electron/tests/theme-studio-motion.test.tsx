@@ -6,8 +6,28 @@ import { DEFAULT_PROFILE, type ThemeDefinition, type ThemeProfile } from '../src
 import { DEFAULT_ARTWORK_EFFECTS } from '../src/shared/artworkEffects'
 import { ThemeStudio } from '../src/renderer/theming/ThemeStudio'
 import { useThemeRuntime } from '../src/renderer/theming/runtime'
+import { chooseOption } from './choice-test-utils'
 
-const builtins: ThemeDefinition[] = [{ apiVersion: 1, id: 'avalon', name: 'Avalon' }]
+const builtins: ThemeDefinition[] = [
+  { apiVersion: 1, id: 'avalon', name: 'Avalon' },
+  {
+    apiVersion: 1,
+    id: 'afterglow',
+    name: 'Afterglow',
+    settings: [
+      {
+        id: 'tone',
+        label: 'Reading tone',
+        type: 'select',
+        default: 'calm',
+        options: [
+          { value: 'calm', label: 'Calm' },
+          { value: 'warm', label: 'Warm' },
+        ],
+      },
+    ],
+  },
+]
 let profile: ThemeProfile
 let systemReduced: boolean
 const mediaListeners = new Set<() => void>()
@@ -59,6 +79,55 @@ afterEach(() => {
 })
 
 describe.each(['desktop', 'fullscreen'] as const)('Theme Studio motion controls in %s', (mode) => {
+  it('saves named field choices through themed menus and preserves disabled material controls', async () => {
+    profile.themeId = 'afterglow'
+    profile.appearance.artwork!.highlightFoil = false
+    render(<Studio mode={mode} />)
+    await screen.findByRole('button', { name: 'Typography' })
+    const material = screen.getByRole<HTMLButtonElement>('button', { name: 'Highlight material' })
+    expect(material.disabled).toBe(true)
+    fireEvent.click(screen.getByRole('checkbox', { name: /Foil on light areas/ }))
+    expect(material.disabled).toBe(false)
+    for (const [name, value] of [
+      ['Typography', 'mono'],
+      ['Spacing', 'compact'],
+      ['Cover finish', 'satin'],
+      ['Highlight material', 'holographic'],
+      ['Navigation', 'left'],
+      ['Library cards', 'record'],
+      ['Game details', 'stacked'],
+      ['Reading tone', 'warm'],
+    ]) {
+      const control = screen.getByRole<HTMLButtonElement>('button', { name })
+      chooseOption(control, value)
+      expect(control.value).toBe(value)
+      expect(document.activeElement).toBe(control)
+      expect(screen.queryByRole('menu')).toBeNull()
+    }
+    await waitFor(() =>
+      expect(window.winnow.savePreferences).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          appearance: expect.objectContaining({
+            font: 'mono',
+            density: 'compact',
+            artwork: expect.objectContaining({
+              finish: 'satin',
+              highlightFoil: true,
+              foilMetal: 'holographic',
+            }),
+          }),
+          layout: expect.objectContaining({
+            navigation: 'left',
+            cardStyle: 'record',
+            detailArrangement: 'stacked',
+          }),
+          settings: expect.objectContaining({ afterglow: { tone: 'warm' } }),
+        }),
+      ),
+    )
+    expect(document.querySelector('select, datalist')).toBeNull()
+  })
+
   it.each([false, true])(
     'preserves artwork after an accent change with reduced motion %s',
     async (reduced) => {

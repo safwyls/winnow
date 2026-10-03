@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp, readFile, access } from 'node:fs/promises'
@@ -152,7 +153,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await card.click({ modifiers: [] })
     await expect(page.locator('.avalon-details')).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(search).toHaveValue('Hades')
+    await expect(search).toHaveJSProperty('value', 'Hades')
     await search.fill('')
   })
   test(`${mode} exposes account and application settings and keeps Activity in bounds`, async () => {
@@ -203,7 +204,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       mode === 'desktop'
         ? statistics.getByLabel('Chart and detail currency')
         : statistics.getByRole('button', { name: /^€ ·/ })
-    if (mode === 'desktop') await currency.selectOption('€')
+    if (mode === 'desktop') await chooseOption(currency, '€')
     else await currency.click()
     await currency.focus()
     await expect(currency).toBeFocused()
@@ -317,9 +318,9 @@ test('controller input opens the keyboard and quick menu and restores focus with
   const keyboard = page.getByRole('dialog', { name: 'Enter text' })
   await expect(keyboard).toBeVisible()
   await keyboard.getByRole('button', { name: 'a', exact: true }).click()
-  await expect(search).toHaveValue('a')
+  await expect(search).toHaveJSProperty('value', 'a')
   await tap(2)
-  await expect(search).toHaveValue('')
+  await expect(search).toHaveJSProperty('value', '')
   await tap(1)
   await expect(keyboard).toHaveCount(0)
   await expect(search).toBeFocused()

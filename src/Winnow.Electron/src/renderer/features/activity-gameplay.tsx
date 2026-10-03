@@ -1,3 +1,4 @@
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { dateLabel, hours, request, storeLabel } from '../api/client'
@@ -294,28 +295,33 @@ function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) 
           <>
             <label className="field">
               Gameplay period
-              <select
+              <ChoiceMenu
+                label="Gameplay period"
+                aria-label="Gameplay period"
                 value={period}
-                onChange={(event) => {
-                  setPeriod(event.target.value)
+                onChange={(value) => {
+                  setPeriod(value)
                   setValidation(null)
                 }}
-              >
-                <option value="30">30 days</option>
-                <option value="90">90 days</option>
-                <option value="custom">Custom</option>
-              </select>
+                options={[
+                  { value: '30', label: '30 days' },
+                  { value: '90', label: '90 days' },
+                  { value: 'custom', label: 'Custom' },
+                ]}
+              />
             </label>
             <label className="field">
               Store
-              <select value={effectiveStore} onChange={(event) => setStore(event.target.value)}>
-                <option value="">All stores</option>
-                {stores.map((value) => (
-                  <option key={value} value={value}>
-                    {storeLabel(value)}
-                  </option>
-                ))}
-              </select>
+              <ChoiceMenu
+                label="Store"
+                aria-label="Store"
+                value={effectiveStore}
+                onChange={setStore}
+                options={[
+                  { value: '', label: 'All stores' },
+                  ...stores.map((value) => ({ value, label: storeLabel(value) })),
+                ]}
+              />
             </label>
           </>
         )}

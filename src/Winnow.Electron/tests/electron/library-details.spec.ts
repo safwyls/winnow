@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { libraryAction, returnToLibrary } from './library-controls'
 import { selectCollection, collectionChoice, expectCollection } from './collection-controls'
 import { closeFixture } from './fixture-cleanup'
@@ -54,14 +55,14 @@ test.beforeAll(async () => {
           trace.push({
             event: type,
             disabled: button.disabled,
-            form: Boolean(document.querySelector('select[required]')),
+            form: Boolean(document.querySelector('button[aria-label="Main game"][aria-haspopup="menu"]')),
             time: Date.now(),
           })
           requestAnimationFrame(() =>
             trace.push({
               event: `${type}:frame`,
               disabled: button.disabled,
-              form: Boolean(document.querySelector('select[required]')),
+              form: Boolean(document.querySelector('button[aria-label="Main game"][aria-haspopup="menu"]')),
               time: Date.now(),
             }),
           )
@@ -146,13 +147,13 @@ async function openRelationship() {
         window as unknown as { relationshipInputTrace: { event: string; disabled: boolean }[] }
       ).relationshipInputTrace.slice(start)
     }, start)
-    if (await page.getByRole('combobox', { name: 'Main game', exact: true }).count()) return
+    if (await page.getByRole('button', { name: 'Main game', exact: true }).count()) return
     // A refresh can disable the target after Playwright's actionability check. Retry
     // only when native input confirms that Chromium suppressed the click entirely.
     expect(events.some((event) => event.event === 'click')).toBe(false)
     expect(events.some((event) => event.event === 'pointerdown' && event.disabled)).toBe(true)
   }
-  await expect(page.getByRole('combobox', { name: 'Main game', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Main game', exact: true })).toBeVisible()
 }
 async function controller() {
   await page.evaluate(() => {
@@ -191,7 +192,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await (await libraryAction(page, 'Manage library')).click()
     await page.getByRole('button', { name: 'Identity review', exact: true }).click()
     await openRelationship()
-    await page.getByRole('combobox', { name: 'Main game', exact: true }).selectOption(String(parent.workId))
+    await chooseOption(page.getByRole('button', { name: 'Main game', exact: true }), String(parent.workId))
     await page.getByLabel('Find games to include').fill(`Parity ${mode}`)
     await page.getByRole('checkbox', { name: child.title, exact: true }).check()
     const before = await api<LibraryResponse>({ route: 'library.get' })

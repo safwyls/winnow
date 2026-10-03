@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -113,7 +114,7 @@ it.each(['saved', 'failed'] as const)(
     )
     const gate = deferred<void>()
     f.savePreferences.mockImplementationOnce(async () => gate.promise)
-    fireEvent.change(screen.getByRole('combobox', { name: 'Theme' }), { target: { value: 'nightshift' } })
+    chooseOption(screen.getByRole('button', { name: 'Theme' }), 'nightshift')
     await waitFor(() =>
       expect((screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement).disabled).toBe(true),
     )
@@ -169,7 +170,7 @@ it('desktop setup composes ordinary appearance controls and waits for palette, m
   const next = (await screen.findByRole('button', { name: 'Continue' })) as HTMLButtonElement
   await waitFor(() => expect(next.disabled).toBe(false))
   for (const name of ['Winnow design', 'Theme', 'Backdrop', 'Pane layout'])
-    expect(screen.getByRole('combobox', { name })).toBeTruthy()
+    expect(screen.getByRole('button', { name })).toBeTruthy()
   for (const name of ['Transparency', 'Theme text size'])
     expect(screen.getByRole('slider', { name })).toBeTruthy()
   for (const name of ['Heading font', 'Interface font', 'Data font'])
@@ -177,7 +178,7 @@ it('desktop setup composes ordinary appearance controls and waits for palette, m
   expect(screen.getByRole('checkbox', { name: /Include content panes/ })).toBeTruthy()
   const gate = deferred<void>()
   f.savePreferences.mockImplementationOnce(async () => gate.promise)
-  fireEvent.change(screen.getByRole('combobox', { name: 'Theme' }), { target: { value: 'nightshift' } })
+  chooseOption(screen.getByRole('button', { name: 'Theme' }), 'nightshift')
   await waitFor(() => expect(next.disabled).toBe(true))
   expect(f.cursor()).toBe(5)
   await act(async () => gate.resolve())
@@ -187,7 +188,7 @@ it('desktop setup composes ordinary appearance controls and waits for palette, m
       settings: expect.objectContaining({ avalon: expect.objectContaining({ palette: 'nightshift' }) }),
     }),
   )
-  fireEvent.change(screen.getByRole('combobox', { name: 'Pane layout' }), { target: { value: 'flush' } })
+  chooseOption(screen.getByRole('button', { name: 'Pane layout' }), 'flush')
   await waitFor(() => expect(f.preferences.get('Layout')).toBe('flush'))
   await waitFor(() => expect(next.disabled).toBe(false))
   fireEvent.change(screen.getByRole('slider', { name: 'Transparency' }), { target: { value: '25' } })

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -132,12 +133,15 @@ describe.each(['desktop', 'fullscreen'] as const)('saved default in %s', (mode) 
       }
       const initial = mount()
       await waitFor(() =>
-        expect((screen.getByLabelText('Default library sort') as HTMLSelectElement).value).toBe(
+        expect((screen.getByLabelText('Default library sort') as HTMLButtonElement).value).toBe(
           stored.get('DefaultSort'),
         ),
       )
+      await waitFor(() =>
+        expect((screen.getByLabelText('Default library sort') as HTMLButtonElement).disabled).toBe(false),
+      )
       fireEvent.click(screen.getByRole('button', { name: 'Browse Z–A temporarily' }))
-      fireEvent.change(screen.getByLabelText('Default library sort'), { target: { value } })
+      chooseOption(screen.getByLabelText('Default library sort'), value)
       await waitFor(() => expect(screen.getByLabelText('Current browsing order').textContent).toBe(order))
       expect(stored.get('DefaultSort')).toBe(value)
       fireEvent.click(screen.getByRole('button', { name: 'Browse Z–A temporarily' }))
@@ -145,7 +149,7 @@ describe.each(['desktop', 'fullscreen'] as const)('saved default in %s', (mode) 
       initial.unmount()
       mount()
       await waitFor(() =>
-        expect((screen.getByLabelText('Default library sort') as HTMLSelectElement).value).toBe(value),
+        expect((screen.getByLabelText('Default library sort') as HTMLButtonElement).value).toBe(value),
       )
       expect(screen.getByLabelText('Current browsing order').textContent).toBe('title-desc')
       expect(

@@ -1,4 +1,5 @@
 import type { Mode } from '../api/types'
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { avalonPaletteId } from '../../shared/theme'
 import type { ThemeRuntime } from '../theming/runtime'
 import { AvalonAppearanceControls } from '../themes/avalon-appearance'
@@ -20,40 +21,33 @@ export function SetupAppearance({ runtime, mode }: { runtime: ThemeRuntime; mode
     <div className="setup-appearance">
       <label className="field">
         Winnow design
-        <select
+        <ChoiceMenu
+          label="Winnow design"
           aria-label="Winnow design"
           value={profile.themeId}
-          onChange={(event) => runtime.selectTheme(event.target.value)}
-        >
-          {runtime.builtins.map((theme) => (
-            <option key={theme.id} value={theme.id}>
-              {theme.name}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => runtime.selectTheme(value)}
+          options={runtime.builtins.map((theme) => ({ value: theme.id, label: theme.name }))}
+        />
       </label>
       {profile.themeId === 'avalon' && (
         <>
           <label className="field">
             Theme
-            <select
+            <ChoiceMenu
+              label="Theme"
               aria-label="Theme"
               value={avalonPaletteId(profile)}
-              onChange={(event) => {
-                const palette = event.target.value
+              onChange={(palette) => {
                 setProfile((current) => ({
                   ...current,
                   settings: { ...current.settings, avalon: { ...current.settings.avalon, palette } },
                 }))
               }}
-            >
-              {avalonPalettes().map(({ id, name }) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-              <option value="profile">Studio colors</option>
-            </select>
+              options={[
+                ...avalonPalettes().map(({ id, name }) => ({ value: id, label: name })),
+                { value: 'profile', label: 'Studio colors' },
+              ]}
+            />
           </label>
           <AvalonAppearanceControls profile={profile} />
           <AvalonTypographyControls

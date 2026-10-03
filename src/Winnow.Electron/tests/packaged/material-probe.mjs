@@ -164,10 +164,14 @@ async function choose(transparency, backdrop) {
   await expect(slider).toBeEnabled()
   await slider.fill(String(transparency))
   await expect(slider).toHaveValue(String(transparency))
-  const select = page.getByRole('combobox', { name: 'Backdrop', exact: true })
+  const select = page.getByRole('button', { name: 'Backdrop', exact: true })
   await expect(select).toBeEnabled()
-  await select.selectOption(backdrop)
-  await expect(select).toHaveValue(backdrop)
+  await select.click()
+  await page
+    .getByRole('menu', { name: 'Backdrop', exact: true })
+    .getByRole('menuitemradio', { name: backdrop === 'mica' ? /^Mica —/ : /^Acrylic —/ })
+    .click()
+  await expect(select).toHaveJSProperty('value', backdrop)
   const wall = page.getByRole('checkbox', { name: /Include content panes/ })
   await expect(wall).toBeEnabled()
   await wall.check()
@@ -338,7 +342,7 @@ try {
   await capture('desktop-restored-mica-100')
   await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
   await expect(page.getByRole('slider', { name: 'Transparency', exact: true })).toHaveValue('100')
-  await expect(page.getByRole('combobox', { name: 'Backdrop', exact: true })).toHaveValue('mica')
+  await expect(page.getByRole('button', { name: 'Backdrop', exact: true })).toHaveJSProperty('value', 'mica')
   assert.deepEqual(report.pageErrors, [])
   report.passed = true
 } catch (error) {

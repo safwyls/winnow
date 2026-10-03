@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { mkdtemp } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -188,7 +189,7 @@ test('desktop and controller link settings share confirmed values and persist th
     .getByRole('navigation', { name: 'Settings section' })
     .getByRole('button', { name: 'Application', exact: true })
     .click()
-  await page.getByRole('combobox', { name: 'Open links in', exact: true }).selectOption('browser')
+  await chooseOption(page.getByRole('button', { name: 'Open links in', exact: true }), 'browser')
   await surface('fullscreen')
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page
@@ -227,7 +228,10 @@ test('desktop and controller link settings share confirmed values and persist th
     .getByRole('navigation', { name: 'Settings section' })
     .getByRole('button', { name: 'Application', exact: true })
     .click()
-  await expect(page.getByRole('combobox', { name: 'Open links in', exact: true })).toHaveValue('store')
+  await expect(page.getByRole('button', { name: 'Open links in', exact: true })).toHaveJSProperty(
+    'value',
+    'store',
+  )
   await page.reload()
   await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
@@ -235,7 +239,10 @@ test('desktop and controller link settings share confirmed values and persist th
     .getByRole('navigation', { name: 'Settings section' })
     .getByRole('button', { name: 'Application', exact: true })
     .click()
-  await expect(page.getByRole('combobox', { name: 'Open links in', exact: true })).toHaveValue('store')
+  await expect(page.getByRole('button', { name: 'Open links in', exact: true })).toHaveJSProperty(
+    'value',
+    'store',
+  )
 })
 test('link destination composition neither launches games nor reports renderer or network errors', async () => {
   expect(errors).toEqual([])

@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useController } from '../src/renderer/controller'
+import { ChoiceMenu } from '../src/renderer/components/ChoiceMenu'
 
 let frames: Map<number, FrameRequestCallback>, nextFrame: number, time: number
 let held: number[], axes: number[], focused: boolean
@@ -41,6 +42,156 @@ function tap(...buttons: number[]) {
   held = []
   frame()
 }
+
+function StoreChoice({ onChange }: { onChange: (value: string) => void }) {
+  const [value, setValue] = useState('steam')
+  return (
+    <ChoiceMenu
+      label="Store"
+      value={value}
+      options={[
+        { value: 'steam', label: 'Steam' },
+        { value: 'gog', label: 'GOG' },
+      ]}
+      onChange={(next) => {
+        setValue(next)
+        onChange(next)
+      }}
+    />
+  )
+}
+
+it.each(['desktop', 'fullscreen'] as const)(
+  '%s controller moves between closed choice fields and opens, selects and dismisses with A/B',
+  (surface) => {
+    const actions = callbacks(),
+      change = vi.fn()
+    render(
+      <Harness actions={actions} surface={surface}>
+        <button>Before</button>
+        <StoreChoice onChange={change} />
+        <button>After</button>
+      </Harness>,
+    )
+    const trigger = screen.getByRole('button', { name: /^Store/ })
+    trigger.focus()
+    tap(13)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'After' }))
+    expect(screen.queryByRole('menu')).toBeNull()
+    tap(12)
+    expect(document.activeElement).toBe(trigger)
+    tap(0)
+    expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Steam' }))
+    tap(13)
+    expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'GOG' }))
+    tap(0)
+    expect(change).toHaveBeenCalledExactlyOnceWith('gog')
+    expect(document.activeElement).toBe(trigger)
+    expect(screen.queryByRole('menu')).toBeNull()
+    tap(0)
+    expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'GOG' }))
+    tap(1)
+    expect(document.activeElement).toBe(trigger)
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(change).toHaveBeenCalledOnce()
+  },
+)
+
+it.each([false, true])(
+  'desktop bumpers leave a choice menu next to its restored trigger (inside dialog: %s)',
+  (dialog) => {
+    const actions = callbacks(),
+      change = vi.fn()
+    const fields = (
+      <>
+        <button>Before</button>
+        <StoreChoice onChange={change} />
+        <button>After</button>
+      </>
+    )
+    render(
+      <Harness actions={actions}>
+        <button>Outside first</button>
+        {dialog ? <div role="dialog">{fields}</div> : fields}
+        <button>Outside last</button>
+      </Harness>,
+    )
+    for (const [button, name] of [
+      [5, 'After'],
+      [4, 'Before'],
+    ] as const) {
+      const trigger = screen.getByRole('button', { name: /^Store/ })
+      trigger.focus()
+      tap(0)
+      expect(screen.getByRole('menu')).toBeTruthy()
+      expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Steam' }))
+      tap(button)
+      expect(screen.queryByRole('menu')).toBeNull()
+      expect(document.activeElement).toBe(screen.getByRole('button', { name }))
+    }
+    expect(change).not.toHaveBeenCalled()
+    expect(actions.switchPage).not.toHaveBeenCalled()
+  },
+)
+
+it.each(['menu', 'dialog', 'alertdialog'])(
+  'fullscreen Play cannot launch a game behind a %s without its own action',
+  (role) => {
+    const actions = callbacks(),
+      background = vi.fn()
+    render(
+      <Harness actions={actions} surface="fullscreen">
+        <button data-controller-play onClick={background}>
+          Background game
+        </button>
+        <div role={role}>
+          <button>Overlay choice</button>
+        </div>
+      </Harness>,
+    )
+    screen.getByRole('button', { name: 'Overlay choice' }).focus()
+    tap(2)
+    expect(background).not.toHaveBeenCalled()
+    expect(actions.play).not.toHaveBeenCalled()
+  },
+)
+
+it('a fullscreen choice menu protects a dialog action until Back restores that dialog', () => {
+  const actions = callbacks(),
+    local = vi.fn(),
+    change = vi.fn()
+  const view = render(
+    <Harness actions={actions} surface="fullscreen">
+      <div role="dialog">
+        <button data-controller-play onClick={local}>
+          Dialog action
+        </button>
+        <StoreChoice onChange={change} />
+      </div>
+    </Harness>,
+  )
+  const trigger = screen.getByRole('button', { name: /^Store/ })
+  trigger.focus()
+  tap(0)
+  expect(screen.getByRole('menu')).toBeTruthy()
+  tap(2)
+  expect(local).not.toHaveBeenCalled()
+  expect(actions.play).not.toHaveBeenCalled()
+  tap(1)
+  expect(screen.queryByRole('menu')).toBeNull()
+  expect(document.activeElement).toBe(trigger)
+  tap(2)
+  expect(local).toHaveBeenCalledOnce()
+  expect(change).not.toHaveBeenCalled()
+  view.rerender(
+    <Harness actions={actions} surface="fullscreen">
+      <button>Game</button>
+    </Harness>,
+  )
+  screen.getByRole('button', { name: 'Game' }).focus()
+  tap(2)
+  expect(actions.play).toHaveBeenCalledOnce()
+})
 
 it('releases cursor ownership on surface changes and unmount while mouse movement restores it', () => {
   const actions = callbacks()

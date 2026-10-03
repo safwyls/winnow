@@ -24,6 +24,7 @@ import {
 import type { ThemeContext, ThemeDefinition } from '../../shared/theme'
 import type { LibraryGame } from '../api/types'
 import { SegmentedGroup } from '../components/SegmentedGroup'
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { useLibrary } from '../api/hooks'
 import { Artwork } from '../components/Artwork'
 import { Empty, GameCard, Impression, bucketLabel, hours } from '../components/primitives'
@@ -580,22 +581,32 @@ export function AfterglowLibrary({ quietCards = true, ...context }: ThemeContext
         </label>
         <label className="select-label">
           Source
-          <select value={store} onChange={(event) => setStore(event.target.value)}>
-            <option value="all">All stores</option>
-            {[...new Set(context.games.flatMap((game) => game.entries.map((entry) => entry.store)))].map(
-              (name) => (
-                <option key={name}>{name}</option>
+          <ChoiceMenu
+            label="Source"
+            aria-label="Source"
+            value={store}
+            onChange={setStore}
+            options={[
+              { value: 'all', label: 'All stores' },
+              ...[...new Set(context.games.flatMap((game) => game.entries.map((entry) => entry.store)))].map(
+                (name) => ({ value: name, label: name }),
               ),
-            )}
-          </select>
+            ]}
+          />
         </label>
         <label className="select-label">
           Sort
-          <select value={sort} onChange={(event) => setSort(event.target.value)}>
-            <option value="title">Title</option>
-            <option value="recent">Last played</option>
-            <option value="time">Playtime</option>
-          </select>
+          <ChoiceMenu
+            label="Sort"
+            aria-label="Sort"
+            value={sort}
+            onChange={setSort}
+            options={[
+              { value: 'title', label: 'Title' },
+              { value: 'recent', label: 'Last played' },
+              { value: 'time', label: 'Playtime' },
+            ]}
+          />
         </label>
         <SegmentedGroup label="Library view">
           <button aria-label="Grid view" aria-pressed={!listMode} onClick={() => setView('grid')}>

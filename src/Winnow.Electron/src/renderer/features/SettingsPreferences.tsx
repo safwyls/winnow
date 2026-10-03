@@ -1,3 +1,4 @@
+import { ChoiceMenu } from '../components/ChoiceMenu'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { request } from '../api/client'
@@ -247,7 +248,8 @@ export function ApplicationPreferences({
       ) : (
         <label className="field">
           Open links in
-          <select
+          <ChoiceMenu
+            label="Open links in"
             aria-label="Open links in"
             aria-description="Choose where store pages and external links open."
             value={
@@ -256,14 +258,15 @@ export function ApplicationPreferences({
                 : (preferences.values.LinkDestination ?? 'in-app')
             }
             disabled={!preferences.loaded || preferences.pending}
-            onChange={(event) => preferences.set('LinkDestination', event.target.value)}
-          >
-            <option value="in-app">In Winnow</option>
-            <option value="browser">Default browser</option>
-            {info.data?.steamStoreAvailable === true && (
-              <option value="store">Steam client, when available</option>
-            )}
-          </select>
+            onChange={(value) => preferences.set('LinkDestination', value)}
+            options={[
+              { value: 'in-app', label: 'In Winnow' },
+              { value: 'browser', label: 'Default browser' },
+              ...(info.data?.steamStoreAvailable === true
+                ? [{ value: 'store', label: 'Steam client, when available' }]
+                : []),
+            ]}
+          />
           <small className="reading-prose">Choose where store pages and external links open.</small>
         </label>
       )}
@@ -325,7 +328,9 @@ export function LibraryPresentationPreferences() {
       </p>
       <label className="field">
         Default library sort
-        <select
+        <ChoiceMenu
+          label="Default library sort"
+          aria-label="Default library sort"
           value={
             [
               'DormantLongest',
@@ -339,45 +344,46 @@ export function LibraryPresentationPreferences() {
               : 'DormantLongest'
           }
           disabled={!preferences.loaded || preferences.pending}
-          onChange={(event) => preferences.set('DefaultSort', event.target.value)}
-        >
-          {Object.entries({
+          onChange={(value) => preferences.set('DefaultSort', value)}
+          options={Object.entries({
             DormantLongest: 'Dormant longest',
             RecentlyPlayed: 'Recently played',
             PlaytimeHighToLow: 'Playtime high to low',
             PlaytimeLowToHigh: 'Playtime low to high',
             NameAscending: 'Name A–Z',
             NameDescending: 'Name Z–A',
-          }).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+          }).map(([value, label]) => ({ value, label }))}
+        />
       </label>
       <label className="field">
         Preferred platform for grouped games
-        <select
+        <ChoiceMenu
+          label="Preferred platform for grouped games"
+          aria-label="Preferred platform for grouped games"
           value={preferences.values.PreferredMergePlatform ?? ''}
           disabled={!preferences.loaded || preferences.pending}
-          onChange={(event) => preferences.set('PreferredMergePlatform', event.target.value)}
-        >
-          <option value="">No preference</option>
-          <option value="steam">Steam</option>
-          <option value="epic">Epic Games</option>
-          <option value="gog">GOG</option>
-        </select>
+          onChange={(value) => preferences.set('PreferredMergePlatform', value)}
+          options={[
+            { value: '', label: 'No preference' },
+            { value: 'steam', label: 'Steam' },
+            { value: 'epic', label: 'Epic Games' },
+            { value: 'gog', label: 'GOG' },
+          ]}
+        />
       </label>
       <label className="field">
         Cover artwork
-        <select
+        <ChoiceMenu
+          label="Cover artwork"
+          aria-label="Cover artwork"
           value={preferences.values.CoverArtMode === 'fill' ? 'fill' : 'fit'}
           disabled={!preferences.loaded || preferences.pending}
-          onChange={(event) => preferences.set('CoverArtMode', event.target.value)}
-        >
-          <option value="fit">Fit the whole cover</option>
-          <option value="fill">Fill the cover frame</option>
-        </select>
+          onChange={(value) => preferences.set('CoverArtMode', value)}
+          options={[
+            { value: 'fit', label: 'Fit the whole cover' },
+            { value: 'fill', label: 'Fill the cover frame' },
+          ]}
+        />
       </label>
       <label className="check-field">
         <input
@@ -784,17 +790,18 @@ export function OfficialPluginInstall({
       >
         <label className="field">
           Provider
-          <select
+          <ChoiceMenu
+            label="Provider"
+            aria-label="Provider"
             value={pluginId}
             disabled={state.busy}
-            onChange={(event) => {
-              setPluginId(event.target.value)
-            }}
-          >
-            <option value="steamgriddb">SteamGridDB</option>
-            <option value="psn">PlayStation Network</option>
-            <option value="xbox">Xbox</option>
-          </select>
+            onChange={setPluginId}
+            options={[
+              { value: 'steamgriddb', label: 'SteamGridDB' },
+              { value: 'psn', label: 'PlayStation Network' },
+              { value: 'xbox', label: 'Xbox' },
+            ]}
+          />
         </label>
         <label className="field">
           Release tag

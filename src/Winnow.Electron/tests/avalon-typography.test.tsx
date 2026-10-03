@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -154,13 +155,13 @@ describe.each(['desktop', 'fullscreen'])('Avalon typography controls in %s', (mo
   }
   it('keeps independent role fonts and size through palette switches, restart and reset', () => {
     render(<Harness />)
-    fireEvent.change(screen.getByRole('combobox', { name: 'Heading font' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Heading font' }), {
       target: { value: 'IBM Plex Mono' },
     })
-    fireEvent.change(screen.getByRole('combobox', { name: 'Interface font' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Interface font' }), {
       target: { value: 'Bricolage Grotesque' },
     })
-    fireEvent.change(screen.getByRole('combobox', { name: 'Data font' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Data font' }), {
       target: { value: 'Plus Jakarta Sans' },
     })
     fireEvent.change(screen.getByRole('slider', { name: 'Theme text size' }), { target: { value: '115' } })
@@ -190,10 +191,10 @@ describe.each(['desktop', 'fullscreen'])('Avalon typography controls in %s', (mo
     expect(window.winnow.listFonts).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Find installed fonts' }))
     await screen.findByText('3 installed font families available.')
-    expect(screen.getAllByRole('option', { name: 'Georgia', hidden: true })).toHaveLength(3)
-    fireEvent.change(screen.getByRole('combobox', { name: 'Heading font' }), { target: { value: 'Georgia' } })
+    chooseOption(screen.getByRole('button', { name: 'Choose heading font' }), 'Georgia')
+    expect((screen.getByRole('textbox', { name: 'Heading font' }) as HTMLInputElement).value).toBe('Georgia')
     expect(JSON.parse(screen.getByTestId('effective').textContent!).headingFont).toBe('Georgia')
-    fireEvent.change(screen.getByRole('combobox', { name: 'Heading font' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Heading font' }), {
       target: { value: 'https://bad.test/font' },
     })
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('single font'))
@@ -209,7 +210,7 @@ describe.each(['desktop', 'fullscreen'])('Avalon typography controls in %s', (mo
     const updated = structuredClone(profile)
     updated.appearance.typography!.winnow.headingFont = 'ibm plex mono'
     view.rerender(<AvalonTypographyControls profile={updated} onChange={onChange} />)
-    expect((screen.getByRole('combobox', { name: 'Heading font' }) as HTMLInputElement).value).toBe(
+    expect((screen.getByRole('textbox', { name: 'Heading font' }) as HTMLInputElement).value).toBe(
       'IBM Plex Mono',
     )
     expect(resolvedTypography(updated).headingFont).toBe('ibm plex mono')

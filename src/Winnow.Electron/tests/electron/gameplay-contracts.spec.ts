@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import {
   test,
@@ -205,7 +206,7 @@ async function noHorizontalOverflow() {
 
 async function choosePeriod(value: '30' | '90' | 'custom') {
   if (mode === 'desktop')
-    await dashboard().getByRole('combobox', { name: 'Gameplay period', exact: true }).selectOption(value)
+    await chooseOption(dashboard().getByRole('button', { name: 'Gameplay period', exact: true }), value)
   else
     await activate(
       dashboard()
@@ -215,7 +216,7 @@ async function choosePeriod(value: '30' | '90' | 'custom') {
 }
 async function chooseStore(key: string, label: string) {
   if (mode === 'desktop')
-    await dashboard().getByRole('combobox', { name: 'Store', exact: true }).selectOption(key)
+    await chooseOption(dashboard().getByRole('button', { name: 'Store', exact: true }), key)
   else
     await activate(
       dashboard()
@@ -225,7 +226,10 @@ async function chooseStore(key: string, label: string) {
 }
 async function expectStore(key: string, label: string) {
   if (mode === 'desktop')
-    await expect(dashboard().getByRole('combobox', { name: 'Store', exact: true })).toHaveValue(key)
+    await expect(dashboard().getByRole('button', { name: 'Store', exact: true })).toHaveJSProperty(
+      'value',
+      key,
+    )
   else
     await expect(
       dashboard()
@@ -492,17 +496,20 @@ for (const [surfaceName, width, height, scale] of [
     await section('Gameplay')
     await expectStore('gog', 'GOG')
     if (mode === 'desktop')
-      await expect(dashboard().getByRole('combobox', { name: 'Gameplay period', exact: true })).toHaveValue(
-        'custom',
-      )
+      await expect(
+        dashboard().getByRole('button', { name: 'Gameplay period', exact: true }),
+      ).toHaveJSProperty('value', 'custom')
     else
       await expect(
         dashboard()
           .getByRole('group', { name: 'Gameplay period', exact: true })
           .getByRole('button', { name: 'Custom', exact: true }),
       ).toHaveAttribute('aria-pressed', 'true')
-    await expect(from).toHaveValue('2026-09-01')
-    await expect(dashboard().getByRole('textbox', { name: 'Through', exact: true })).toHaveValue('2026-09-10')
+    await expect(from).toHaveJSProperty('value', '2026-09-01')
+    await expect(dashboard().getByRole('textbox', { name: 'Through', exact: true })).toHaveJSProperty(
+      'value',
+      '2026-09-10',
+    )
     await noHorizontalOverflow()
     if (surfaceName === 'desktop' && width === 1200) {
       mode = 'fullscreen'
@@ -518,10 +525,13 @@ for (const [surfaceName, width, height, scale] of [
       await surface(width, height)
       await openGameplay()
       await expectStore('gog', 'GOG')
-      await expect(dashboard().getByRole('combobox', { name: 'Gameplay period', exact: true })).toHaveValue(
-        'custom',
+      await expect(
+        dashboard().getByRole('button', { name: 'Gameplay period', exact: true }),
+      ).toHaveJSProperty('value', 'custom')
+      await expect(dashboard().getByRole('textbox', { name: 'From', exact: true })).toHaveJSProperty(
+        'value',
+        '2026-09-01',
       )
-      await expect(dashboard().getByRole('textbox', { name: 'From', exact: true })).toHaveValue('2026-09-01')
     }
   })
 

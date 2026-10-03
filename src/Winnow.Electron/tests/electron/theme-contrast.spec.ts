@@ -328,7 +328,7 @@ test('selected segments and real Steam chip retain Dawn text hover glyph and foc
     await page.screenshot({ path: test.info().outputPath(`${palette}-selected-controls.png`) })
   }
 })
-test('retained native input and select follow dark Dawn Dawn dark without stale rendered colors', async () => {
+test('retained input and themed choice follow dark Dawn Dawn dark without stale rendered colors', async () => {
   await start('winnow', 'inputs', 420, 260)
   for (const palette of ['winnow', 'rose-pine-dawn', 'silkcircuit-dawn', 'winnow']) {
     await configure({ palette })
@@ -338,7 +338,7 @@ test('retained native input and select follow dark Dawn Dawn dark without stale 
       `${palette}/input`,
     )
     const select = await measure(
-      page.getByRole('combobox', { name: 'Library sort', exact: true }),
+      page.getByRole('button', { name: 'Library sort', exact: true }),
       `${palette}/select`,
     )
     const light = palette !== 'winnow'

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { chooseOption } from './choice-test-utils'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ApiRequest } from '../src/shared/bridge'
@@ -66,9 +67,9 @@ function fixture(initial: string | null) {
       )
       if (surface === 'desktop Display')
         fireEvent.click(screen.getByRole('button', { name: 'Display preferences' }))
-      const control = (await screen.findByRole(surface === 'fullscreen Appearance' ? 'button' : 'combobox', {
+      const control = (await screen.findByRole('button', {
         name: surface === 'desktop Library' ? 'Cover artwork' : 'Cover art',
-      })) as HTMLSelectElement | HTMLButtonElement
+      })) as HTMLButtonElement
       await waitFor(() => expect(control.disabled).toBe(false))
       return {
         control,
@@ -80,16 +81,16 @@ function fixture(initial: string | null) {
     },
   }
 }
-function selected(control: HTMLSelectElement | HTMLButtonElement) {
-  if (control instanceof HTMLSelectElement) return control.value
+function selected(control: HTMLButtonElement) {
+  if (control.getAttribute('aria-haspopup') === 'menu') return control.value
   const valueId = control
     .getAttribute('aria-describedby')
     ?.split(' ')
     .find((id) => id.endsWith('-value'))
   return document.getElementById(valueId ?? '')?.textContent?.toLowerCase()
 }
-async function choose(control: HTMLSelectElement | HTMLButtonElement, mode: 'fit' | 'fill') {
-  if (control instanceof HTMLSelectElement) fireEvent.change(control, { target: { value: mode } })
+async function choose(control: HTMLButtonElement, mode: 'fit' | 'fill') {
+  if (control.getAttribute('aria-haspopup') === 'menu') chooseOption(control, mode)
   else fireEvent.keyDown(control, { key: mode === 'fill' ? 'ArrowRight' : 'ArrowLeft' })
   await waitFor(() => expect(selected(control)).toBe(mode))
   await waitFor(() => expect(control.disabled).toBe(false))
@@ -109,7 +110,7 @@ describe.each(['desktop Display', 'desktop Library', 'fullscreen Appearance'] as
       },
     )
 
-    it('persists Fill, reloads it independently, ignores a missing choice and persists Fit', async () => {
+    it('persists Fill, reloads it independently, dismisses without changing and persists Fit', async () => {
       const f = fixture(null)
       const first = await f.open(surface)
       await choose(first.control, 'fill')
@@ -119,8 +120,10 @@ describe.each(['desktop Display', 'desktop Library', 'fullscreen Appearance'] as
       const reopened = await f.open(surface)
       expect(selected(reopened.control)).toBe('fill')
       expect(f.writes()).toHaveLength(1)
-      if (reopened.control instanceof HTMLSelectElement) {
-        fireEvent.change(reopened.control, { target: { selectedIndex: -1 } })
+      if (reopened.control.getAttribute('aria-haspopup') === 'menu') {
+        fireEvent.click(reopened.control)
+        fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+        expect(document.activeElement).toBe(reopened.control)
       } else {
         fireEvent.keyDown(reopened.control, { key: 'ArrowUp' })
       }

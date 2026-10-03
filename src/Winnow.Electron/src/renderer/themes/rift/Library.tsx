@@ -5,6 +5,7 @@ import type { ThemeContext } from '../../../shared/theme'
 import type { LibraryGame } from '../../api/types'
 import { useLibrary } from '../../api/hooks'
 import { bucketLabel, Empty } from '../../components/primitives'
+import { ChoiceMenu } from '../../components/ChoiceMenu'
 import { LibraryTools } from '../../features/LibraryTools'
 import { libraryScroll, useViewState } from '../../viewState'
 import { filterGames } from './data'
@@ -175,22 +176,32 @@ export function RiftLibrary(context: ThemeContext) {
             </label>
             <label>
               Source
-              <select value={store} onChange={(event) => setStore(event.target.value)}>
-                <option value="all">All stores</option>
-                {[...new Set(context.games.flatMap((game) => game.entries.map((entry) => entry.store)))].map(
-                  (name) => (
-                    <option key={name}>{name}</option>
-                  ),
-                )}
-              </select>
+              <ChoiceMenu
+                label="Source"
+                aria-label="Source"
+                value={store}
+                onChange={setStore}
+                options={[
+                  { value: 'all', label: 'All stores' },
+                  ...[
+                    ...new Set(context.games.flatMap((game) => game.entries.map((entry) => entry.store))),
+                  ].map((name) => ({ value: name, label: name })),
+                ]}
+              />
             </label>
             <label>
               Sort
-              <select value={sort} onChange={(event) => setSort(event.target.value)}>
-                <option value="title">Title</option>
-                <option value="recent">Last played</option>
-                <option value="time">Playtime</option>
-              </select>
+              <ChoiceMenu
+                label="Sort"
+                aria-label="Sort"
+                value={sort}
+                onChange={setSort}
+                options={[
+                  { value: 'title', label: 'Title' },
+                  { value: 'recent', label: 'Last played' },
+                  { value: 'time', label: 'Playtime' },
+                ]}
+              />
             </label>
             <button
               className="rift-filter-toggle"
@@ -218,15 +229,19 @@ export function RiftLibrary(context: ThemeContext) {
             </div>
             <label>
               Your lists
-              <select value={listId} onChange={(event) => setListId(event.target.value)}>
-                <option value="all">Every list</option>
-                {library.data?.lists.map((list) => (
-                  <option key={list.id} value={String(list.id)}>
-                    {list.name}
-                    {list.isLive ? ' · Live' : ''}
-                  </option>
-                ))}
-              </select>
+              <ChoiceMenu
+                label="Your lists"
+                aria-label="Your lists"
+                value={listId}
+                onChange={setListId}
+                options={[
+                  { value: 'all', label: 'Every list' },
+                  ...(library.data?.lists ?? []).map((list) => ({
+                    value: String(list.id),
+                    label: `${list.name}${list.isLive ? ' · Live' : ''}`,
+                  })),
+                ]}
+              />
             </label>
           </div>
           <div className="rift-gallery-heading">

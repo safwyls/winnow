@@ -76,7 +76,7 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     ).toBe(true)
     expect(
       (
-        screen.getByRole(mode === 'desktop' ? 'combobox' : 'button', {
+        screen.getByRole('button', {
           name: mode === 'desktop' ? 'Preferred main platform' : /^Preferred platform ·/,
         }) as HTMLButtonElement
       ).disabled,

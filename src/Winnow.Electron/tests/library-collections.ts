@@ -1,9 +1,13 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { libraryRole, returnToLibrary } from './library-controls'
+import { chooseOption } from './choice-test-utils'
+
+const listPicker = () =>
+  document.querySelector<HTMLButtonElement>('.avalon-list-picker button[aria-haspopup="menu"]')
 
 export function selectCollection(id: number | 'all') {
-  const picker = document.querySelector<HTMLSelectElement>('.avalon-list-picker select')
-  if (picker) fireEvent.change(picker, { target: { value: String(id) } })
+  const picker = listPicker()
+  if (picker) chooseOption(picker, String(id))
   else {
     returnToLibrary()
     if (
@@ -29,12 +33,21 @@ export function selectCollection(id: number | 'all') {
 export function selectedCollection() {
   return (
     document.querySelector<HTMLElement>('.avalon-library')?.dataset.listId ??
-    document.querySelector<HTMLSelectElement>('.avalon-list-picker select')?.value ??
+    listPicker()?.value ??
     document.querySelector<HTMLElement>('[data-avalon-list][aria-pressed="true"]')?.dataset.avalonList ??
     'all'
   )
 }
 export function collectionNames() {
+  const picker = listPicker()
+  if (picker) {
+    if (picker.getAttribute('aria-expanded') !== 'true') fireEvent.click(picker)
+    const menu = document.getElementById(picker.getAttribute('aria-controls') ?? '')
+    if (!menu) throw Error('List picker did not open its menu')
+    const names = [...menu.querySelectorAll('[role="menuitemradio"]')].map((option) => option.textContent)
+    fireEvent.keyDown(menu, { key: 'Escape' })
+    return names
+  }
   const fullscreen = screen.queryByRole('button', { name: 'My lists' })
   if (fullscreen) {
     fireEvent.click(fullscreen)
@@ -47,11 +60,8 @@ export function collectionNames() {
     returnToLibrary()
     return names
   }
-  const picker = document.querySelector<HTMLSelectElement>('.avalon-list-picker select')
-  return picker
-    ? [...picker.options].map((option) => option.textContent)
-    : [
-        'All games',
-        ...[...document.querySelectorAll('[data-avalon-list] > span')].map((span) => span.textContent),
-      ]
+  return [
+    'All games',
+    ...[...document.querySelectorAll('[data-avalon-list] > span')].map((span) => span.textContent),
+  ]
 }

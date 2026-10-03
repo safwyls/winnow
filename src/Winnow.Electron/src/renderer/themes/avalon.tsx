@@ -227,22 +227,23 @@ function Collections({ context, fullscreenTools }: { context: ThemeContext; full
           ) : (
             <label className="avalon-list-picker">
               My lists
-              <select
+              <ChoiceMenu
+                label="My lists"
+                aria-label="My lists"
                 value={context.page === 'library' ? listId : 'all'}
-                onChange={(event) => {
-                  selectList(event.target.value)
+                onChange={(value) => {
+                  selectList(value)
                   setTools(false)
                   context.setPage('library')
                 }}
-              >
-                <option value="all">All games</option>
-                {orderedLists(library.data?.lists ?? []).map((list) => (
-                  <option value={list.id} key={list.id}>
-                    {list.name}
-                    {list.isLive ? ' · Live' : ''}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: 'all', label: 'All games' },
+                  ...orderedLists(library.data?.lists ?? []).map((list) => ({
+                    value: String(list.id),
+                    label: `${list.name}${list.isLive ? ' · Live' : ''}`,
+                  })),
+                ]}
+              />
             </label>
           )}
           {context.mode === 'fullscreen' && context.page === 'library' && listId !== 'all' && (
@@ -1302,18 +1303,18 @@ export function AvalonLibrary(context: ThemeContext) {
           {fullscreen ? (
             <label>
               Sort
-              <select aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
-                {[
+              <ChoiceMenu
+                label="Sort"
+                aria-label="Sort"
+                value={sort}
+                onChange={setSort}
+                options={[
                   ...librarySortOptions,
                   ...(listState.list && !listState.list.isLive
                     ? [{ value: 'list-order', label: 'List order' }]
                     : []),
-                ].map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                ]}
+              />
             </label>
           ) : (
             <SortMenu

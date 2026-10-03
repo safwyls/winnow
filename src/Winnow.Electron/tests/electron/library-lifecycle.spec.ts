@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { selectCollection, collectionChoice } from './collection-controls'
 import {
   fillLibrarySearch,
@@ -246,10 +247,12 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       .getByRole('button', { name: 'Library', exact: true })
       .click()
     if (mode === 'desktop') {
-      await page
-        .getByRole('combobox', { name: 'Default library sort', exact: true })
-        .selectOption('NameAscending')
-      await expect(page.getByRole('combobox', { name: 'Default library sort', exact: true })).toHaveValue(
+      await chooseOption(
+        page.getByRole('button', { name: 'Default library sort', exact: true }),
+        'NameAscending',
+      )
+      await expect(page.getByRole('button', { name: 'Default library sort', exact: true })).toHaveJSProperty(
+        'value',
         'NameAscending',
       )
     } else {
@@ -359,10 +362,10 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       const slider = page.getByRole('slider', { name: 'Density', exact: true })
       await slider.focus()
       await slider.press('Home')
-      await expect(slider).toHaveValue('108')
+      await expect(slider).toHaveJSProperty('value', '108')
       const wide = await page.locator('.avalon-library [data-avalon-game]').first().boundingBox()
       await slider.press('End')
-      await expect(slider).toHaveValue('200')
+      await expect(slider).toHaveJSProperty('value', '200')
       await expect
         .poll(
           async () => (await page.locator('.avalon-library [data-avalon-game]').first().boundingBox())!.width,

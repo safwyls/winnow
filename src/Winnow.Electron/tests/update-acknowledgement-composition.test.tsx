@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { chooseOption } from './choice-test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDetails, useLibrary } from '../src/renderer/api/hooks'
 import type { GameDetails, LibraryGame, Mode, UpdateEvent } from '../src/renderer/api/types'
@@ -458,21 +459,21 @@ describe.each(['desktop', 'fullscreen'] as const)(
       expect(document.querySelectorAll('.update-row[data-unread="true"]')).toHaveLength(6)
       const historyCount = () => document.querySelector('.activity-update-summary')!.textContent
       expect(historyCount()).toBe('3 unread updates')
-      fireEvent.change(screen.getByLabelText('Edition history'), { target: { value: '2' } })
+      chooseOption(screen.getByLabelText('Edition history'), '2')
       expect(historyCount()).toBe('2 unread updates')
       fireEvent.click(screen.getByRole('button', { name: 'Mark as read' }))
       await waitFor(() => expect(screen.getByRole('button', { name: 'Show it again' })).toBeDefined())
       expect(view.acknowledgements).toEqual({ 1: at('2026-06-01'), 2: at('2026-08-01') })
       expect(document.querySelectorAll('.update-row[data-unread="true"]')).toHaveLength(0)
       expect(historyCount()).toBe('No unread updates')
-      fireEvent.change(screen.getByLabelText('Edition history'), { target: { value: '1' } })
+      chooseOption(screen.getByLabelText('Edition history'), '1')
       expect(historyCount()).toBe('No unread updates')
       fireEvent.click(screen.getByRole('button', { name: 'Show it again' }))
       await waitFor(() => expect(screen.getByRole('button', { name: 'Mark as read' })).toBeDefined())
       expect(view.acknowledgements).toEqual({})
       expect(document.querySelectorAll('.update-row[data-unread="true"]')).toHaveLength(6)
       expect(historyCount()).toBe('3 unread updates')
-      fireEvent.change(screen.getByLabelText('Edition history'), { target: { value: '2' } })
+      chooseOption(screen.getByLabelText('Edition history'), '2')
       expect(historyCount()).toBe('2 unread updates')
       expect(
         view

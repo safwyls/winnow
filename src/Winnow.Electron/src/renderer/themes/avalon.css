@@ -59,7 +59,6 @@
   }
   .avalon-shell button,
   .avalon-shell input,
-  .avalon-shell select,
   .avalon-shell textarea {
     border-radius: 4px;
   }
@@ -228,10 +227,10 @@
     color: var(--muted);
     font-size: calc(11px * var(--theme-text-scale, 1));
   }
-  .avalon-list-picker select {
+  .avalon-list-picker .shared-choice-trigger {
     width: 100%;
     font-size: calc(12px * var(--theme-text-scale, 1));
-    padding: 8px 30px 8px 8px;
+    padding: 8px;
   }
   .avalon-rail-note {
     margin-top: auto;
@@ -603,8 +602,8 @@
       flex-wrap: wrap;
     }
   }
-  .avalon-toolbar select {
-    padding: 7px 30px 7px 8px;
+  .avalon-toolbar label > .shared-choice-trigger {
+    padding: 7px 8px;
     font-size: calc(12px * var(--theme-text-scale, 1));
   }
   .avalon-toolbar .avalon-search {
@@ -1158,12 +1157,12 @@
     white-space: nowrap;
     font-size: calc(16px * var(--theme-text-scale, 1));
   }
-  .avalon-shell.fullscreen .avalon-list-picker select {
+  .avalon-shell.fullscreen .avalon-list-picker .shared-choice-trigger {
     font-size: calc(16px * var(--theme-text-scale, 1));
     min-width: 140px;
   }
   .avalon-shell.fullscreen .avalon-toolbar > label,
-  .avalon-shell.fullscreen .avalon-toolbar select {
+  .avalon-shell.fullscreen .avalon-toolbar .shared-choice-trigger {
     font-size: calc(16px * var(--theme-text-scale, 1));
   }
   .avalon-shell.fullscreen .avalon-search input {
@@ -1312,10 +1311,10 @@
     padding-left: 4px;
     padding-right: 4px;
   }
-  .avalon-shell.desktop .avalon-content :is(input, select, textarea) {
+  .avalon-shell.desktop .avalon-content :is(input, textarea, .shared-choice-trigger) {
     background-color: var(--avalon-field-ground, var(--surface));
   }
-  .avalon-shell.desktop .avalon-rail :is(input, select, textarea) {
+  .avalon-shell.desktop .avalon-rail :is(input, textarea, .shared-choice-trigger) {
     background-color: var(--avalon-field-surface, var(--bg));
   }
   .avalon-shell.desktop .avalon-navigation button:hover,

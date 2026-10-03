@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication } from '@playwright/test'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -73,9 +74,9 @@ test('development appearance overrides remain live on both surfaces without chan
       }, mode)
       await expect(page.locator('.avalon-shell')).toHaveClass(new RegExp(mode))
       await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
-      const choice = page.getByRole('combobox', { name: /^Avalon palette/ })
-      if (mode === 'desktop') await expect(choice).toHaveValue('tungsten')
-      await choice.selectOption(palette)
+      const choice = page.getByRole('button', { name: /^Avalon palette/ })
+      if (mode === 'desktop') await expect(choice).toHaveJSProperty('value', 'tungsten')
+      await chooseOption(choice, palette)
       await expect
         .poll(() =>
           page.evaluate(async () => {
@@ -109,7 +110,7 @@ test('development appearance overrides remain live on both surfaces without chan
       await page.reload()
       await expect(page.locator('.avalon-cover').first()).toBeVisible()
       await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
-      await expect(page.getByRole('combobox', { name: /^Avalon palette/ })).toHaveValue(palette)
+      await expect(page.getByRole('button', { name: /^Avalon palette/ })).toHaveJSProperty('value', palette)
       expect(await readFile(preferenceFile, 'utf8')).toBe(original)
       expect(await saved()).toEqual(before)
     }

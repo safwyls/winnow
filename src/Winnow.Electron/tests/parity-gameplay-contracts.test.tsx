@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -203,13 +204,12 @@ function setup(
   }
 }
 function choose(mode: Mode, label: 'Store' | 'Gameplay period', value: string, text: string) {
-  if (mode === 'desktop')
-    fireEvent.change(screen.getByRole('combobox', { name: label }), { target: { value } })
+  if (mode === 'desktop') chooseOption(screen.getByRole('button', { name: label }), value)
   else fireEvent.click(within(screen.getByRole('group', { name: label })).getByRole('button', { name: text }))
 }
 function selectedStore(mode: Mode, text: string, value: string) {
   if (mode === 'desktop')
-    expect((screen.getByRole('combobox', { name: 'Store' }) as HTMLSelectElement).value).toBe(value)
+    expect((screen.getByRole('button', { name: 'Store' }) as HTMLButtonElement).value).toBe(value)
   else
     expect(
       within(screen.getByRole('group', { name: 'Store' }))

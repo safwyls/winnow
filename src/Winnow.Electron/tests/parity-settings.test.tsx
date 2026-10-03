@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -86,7 +87,7 @@ describe.each(['desktop', 'fullscreen'] as const)('%s settings parity', (mode) =
       input.route === 'operations.detail' ? { state: 'Queued', message: 'Queued' } : {},
     )
     render(<OfficialPluginInstall initialRequest={{ pluginId: 'xbox', releaseTag: 'v1.2.3' }} />, { wrapper })
-    expect((screen.getByLabelText('Provider') as HTMLSelectElement).value).toBe('xbox')
+    expect((screen.getByLabelText('Provider') as HTMLButtonElement).value).toBe('xbox')
     expect((screen.getByLabelText('Release tag') as HTMLInputElement).value).toBe('v1.2.3')
     expect(request).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Install provider' }))
@@ -132,8 +133,8 @@ describe.each(['desktop', 'fullscreen'] as const)('%s settings parity', (mode) =
     }) as HTMLInputElement
     expect(grouped.checked).toBe(false)
     const fit = screen.getByLabelText('Cover artwork')
-    await waitFor(() => expect((fit as HTMLSelectElement).disabled).toBe(false))
-    fireEvent.change(fit, { target: { value: 'fill' } })
+    await waitFor(() => expect((fit as HTMLButtonElement).disabled).toBe(false))
+    chooseOption(fit, 'fill')
     await waitFor(() =>
       expect(request).toHaveBeenCalledWith({
         route: 'preferences.presentation.put',

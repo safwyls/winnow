@@ -20,6 +20,28 @@
     background: var(--surface);
     color: var(--text);
     gap: 16px;
+    min-width: 0;
+    max-width: 100%;
+    justify-content: space-between;
+    text-align: left;
+  }
+  .shared-choice-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .shared-sort-trigger > svg {
+    flex: none;
+  }
+  :is(.field, .studio-field) > .shared-choice-trigger {
+    width: 100%;
+    min-height: 40px;
+    font: inherit;
+  }
+  .shared-choice-trigger:disabled,
+  .shared-sort-menu button:disabled {
+    cursor: default;
   }
   :root[data-mode='fullscreen'] .shared-choice-trigger,
   :root[data-mode='fullscreen'] .shared-choice-menu button {
@@ -46,7 +68,7 @@
     justify-content: flex-start;
     width: 100%;
     min-height: 30px;
-    padding: 0 8px;
+    padding: 6px 8px;
     border: 0;
     border-radius: 4px;
     background: transparent;
@@ -55,9 +77,11 @@
     gap: 8px;
     transition: none;
     transform: none;
+    text-align: left;
+    overflow-wrap: anywhere;
   }
-  .shared-sort-menu button:hover,
-  .shared-sort-menu button:focus-visible {
+  .shared-sort-menu button:enabled:hover,
+  .shared-sort-menu button:enabled:focus-visible {
     background: var(--surface);
     outline: none;
   }

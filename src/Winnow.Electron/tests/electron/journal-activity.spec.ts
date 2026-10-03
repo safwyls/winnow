@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { prebuiltFixture as fixture, prebuiltActivationHelper } from './prebuilt-backend'
 import {
   test,
@@ -89,7 +90,7 @@ async function saveEditor() {
   await activate(editor().getByRole('button', { name: /^Save(?: note)?$/, exact: true }))
 }
 function ratingValue() {
-  return editor().locator('select[name="rating"], .journal-rating input[name="rating"]')
+  return editor().locator('input[name="rating"]')
 }
 async function chooseRating(value: number) {
   const group = editor().getByRole('group', { name: 'Your rating', exact: true })
@@ -99,14 +100,13 @@ async function chooseRating(value: number) {
       const target = value || current
       await activate(group.getByRole('button', { name: `${target} out of 5`, exact: true }))
     }
-  } else
-    await editor().getByRole('combobox', { name: 'Your rating', exact: true }).selectOption(String(value))
-  await expect(ratingValue()).toHaveValue(String(value))
+  } else await chooseOption(editor().getByRole('button', { name: 'Your rating', exact: true }), String(value))
+  await expect(ratingValue()).toHaveJSProperty('value', String(value))
 }
 async function openSessionEditor(context: 'details' | 'activity', item: Seed, existing: boolean) {
   if (context === 'activity') {
     await enterHistory()
-    await activity().getByRole('combobox', { name: 'Time period', exact: true }).selectOption('90')
+    await chooseOption(activity().getByRole('button', { name: 'Time period', exact: true }), '90')
     await expect(events()).toHaveCount(1)
     await activate(events().getByRole('button', { name: existing ? 'Edit note' : 'Add note', exact: true }))
   } else {
@@ -553,12 +553,12 @@ for (const surfaceName of ['desktop', 'fullscreen']) {
     }
     await activate(edit)
     const field = editor().getByRole('textbox', { name: 'Journal note', exact: true })
-    await expect(field).toHaveValue('Looking for the key.')
+    await expect(field).toHaveJSProperty('value', 'Looking for the key.')
     await field.fill('Found the key behind the waterfall.')
     if (mode === 'desktop') {
       await activate(details().getByRole('tab', { name: 'Library', exact: true }))
       await activate(details().getByRole('tab', { name: 'Journal', exact: true }))
-      await expect(field).toHaveValue('Found the key behind the waterfall.')
+      await expect(field).toHaveJSProperty('value', 'Found the key behind the waterfall.')
     }
     await saveEditor()
     await expect(editor()).toHaveCount(0)
@@ -615,7 +615,7 @@ for (const [surfaceName, context] of [
       await openSessionEditor(context, item, existing)
       const field = editor().getByRole('textbox', { name: 'Journal note', exact: true })
       const rating = ratingValue()
-      await expect(rating).toHaveValue(existing ? '4' : '0')
+      await expect(rating).toHaveJSProperty('value', existing ? '4' : '0')
       await field.fill('  \r\n ')
       await chooseRating(0)
       await saveEditor()
@@ -644,22 +644,22 @@ for (const [surfaceName, context] of [
     await expect(editor().getByRole('alert')).toHaveText(
       "Couldn't save that. Your changes are still here — try again.",
     )
-    await expect(field).toHaveValue('  Keep my draft.  ')
-    await expect(ratingValue()).toHaveValue('4')
+    await expect(field).toHaveJSProperty('value', '  Keep my draft.  ')
+    await expect(ratingValue()).toHaveJSProperty('value', '4')
     expect((await state()).notes).toEqual([{ sessionId: 7, note: 'Original note', rating: 4 }])
     const held = await arm('write')
     await saveEditor()
     await entered(held)
     await expect(field).toBeDisabled()
-    if (await editor().locator('select[name="rating"]:visible').count())
-      await expect(editor().locator('select[name="rating"]')).toBeDisabled()
+    if (await editor().getByRole('button', { name: 'Your rating', exact: true }).count())
+      await expect(editor().getByRole('button', { name: 'Your rating', exact: true })).toBeDisabled()
     for (const button of await editor().getByRole('button').all())
       if (await button.isVisible()) await expect(button).toBeDisabled()
     await page.keyboard.press('Escape')
     if (mode === 'fullscreen') await tap(1)
     await page.keyboard.press('Enter')
     await expect(editor()).toBeVisible()
-    await expect(field).toHaveValue('  Keep my draft.  ')
+    await expect(field).toHaveJSProperty('value', '  Keep my draft.  ')
     expect(await calls('write')).toHaveLength(2)
     await capture(`${context}-held-journal-retry`, editor())
     await released(held)
@@ -790,7 +790,8 @@ for (const width of [2560, 1280])
     await prompt
       .getByRole('textbox', { name: 'Journal note', exact: true })
       .fill('Return to the mountain camp before exploring the next valley.')
-    await expect(prompt.getByRole('textbox', { name: 'Journal note', exact: true })).toHaveValue(
+    await expect(prompt.getByRole('textbox', { name: 'Journal note', exact: true })).toHaveJSProperty(
+      'value',
       'Return to the mountain camp before exploring the next valley.',
     )
     await expect(prompt.locator('.journal-prompt-group')).toHaveCount(3)

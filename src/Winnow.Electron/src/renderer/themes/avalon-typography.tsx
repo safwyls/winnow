@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { DEFAULT_TYPOGRAPHY, validFontFamily, type ThemeTypography } from '../../shared/typography'
 import { resolvedTypography, typographyKey, type ThemeProfile } from '../../shared/theme'
+import { ChoiceMenu } from '../components/ChoiceMenu'
 
 const roles = [
   ['headingFont', 'Heading font'],
@@ -26,11 +27,11 @@ function FontChoice({
   useEffect(() => setDraft(canonical), [canonical])
   const invalid = !validFontFamily(draft)
   return (
-    <label className="studio-field">
-      {label}
+    <div className="studio-field">
+      <label htmlFor={id}>{label}</label>
       <input
+        id={id}
         aria-label={label}
-        list={id}
         value={draft}
         maxLength={128}
         aria-invalid={invalid}
@@ -42,15 +43,18 @@ function FontChoice({
           if (invalid) setDraft(canonical)
         }}
       />
-      <datalist id={id}>
-        {choices.map((name) => (
-          <option key={name} value={name}>
-            {name}
-          </option>
-        ))}
-      </datalist>
+      <ChoiceMenu
+        label={`Choose ${label.toLowerCase()}`}
+        aria-label={`Choose ${label.toLowerCase()}`}
+        value={canonical}
+        options={choices.map((name) => ({ value: name, label: name }))}
+        onChange={(value) => {
+          setDraft(value)
+          onChange(value)
+        }}
+      />
       {invalid && <small role="alert">Enter a single font family name.</small>}
-    </label>
+    </div>
   )
 }
 

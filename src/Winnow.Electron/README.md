@@ -78,11 +78,14 @@ member without promoting it; a missing library entry leaves the review open with
 Fullscreen review sheets use large action text, a fixed title and controller hints, and
 scroll their choices within the window. Desktop keeps group answers beside the title.
 
-Desktop Library and Merges share a compact sort menu. Its button states the selected order;
-choosing a row closes the menu and returns focus. Arrow keys, Home/End and typed initials
-move within it; Escape returns to the button and Tab continues to the next control.
-The menu stays inside the window at the saved interface scale. Fullscreen keeps its own
-filter and sort panels.
+All bundled single-choice dropdowns use `components/ChoiceMenu`; `SortMenu` is its compact
+sort variant. Forms, filters, setup, activity, journal and Theme Studio use the same popup
+in every composition and both modes. Font fields also allow typed custom names. Choosing
+a row returns focus; arrows, Home/End and initials navigate, Escape closes, and Tab continues
+to the next field. Controller A opens, D-pad navigates choices, and B closes. Disabled fields
+and options remain unavailable. The popup stays inside the viewport at the saved scale and
+within its owning dialog's focus boundary. Fullscreen filter subpages and large choice sheets
+keep their layouts. A source audit rejects native `select` and `datalist` controls in the renderer.
 
 Avalon's desktop Details opens over the retained library with five sections and a fixed
 header. Fullscreen Details uses the original cinematic layout, two screenshot previews and

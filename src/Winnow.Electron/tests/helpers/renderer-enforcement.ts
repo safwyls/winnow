@@ -167,6 +167,7 @@ const namedRoles = new Set([
 ])
 // Reviewed wrappers forward names onto these native hosts; new wrappers require a review.
 export const namedWrappers = {
+  ChoiceMenu: 'components/ChoiceMenu.tsx → button with explicit aria-label and description forwarding',
   'Dialog.Close': '@radix-ui/react-dialog Close → button',
   'Dialog.Content': '@radix-ui/react-dialog Content → dialog',
   MergeActionButton: 'features/parity-merge-overlay.tsx → button {...props}',

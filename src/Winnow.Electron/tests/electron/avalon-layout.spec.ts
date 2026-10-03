@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { closeFixture } from './fixture-cleanup'
 import { fillLibrarySearch, libraryField, returnToLibrary, setLibrarySort } from './library-controls'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
@@ -366,8 +367,8 @@ test('fullscreen theme font changes retain measured cover space', async () => {
   }
   const before = await metrics()
   await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
-  await page.getByRole('combobox', { name: 'Heading font', exact: true }).fill('IBM Plex Mono')
-  await page.getByRole('combobox', { name: 'Interface font', exact: true }).fill('Bricolage Grotesque')
+  await page.getByRole('textbox', { name: 'Heading font', exact: true }).fill('IBM Plex Mono')
+  await page.getByRole('textbox', { name: 'Interface font', exact: true }).fill('Bricolage Grotesque')
   await page.getByRole('slider', { name: 'Theme text size', exact: true }).fill('120')
   await page.getByRole('button', { name: 'Winnow home', exact: true }).click()
   await expect(page.locator('.avalon-home-hero')).toBeVisible()
@@ -837,7 +838,7 @@ for (const [width, height] of [
     })
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await page.getByRole('banner').getByRole('button', { name: 'Theme Studio', exact: true }).click()
-    await page.getByRole('combobox', { name: /^Avalon palette/ }).selectOption('bottle-green')
+    await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'bottle-green')
     await page
       .getByRole('navigation', { name: 'Main navigation' })
       .getByRole('button', { name: 'For you', exact: true })

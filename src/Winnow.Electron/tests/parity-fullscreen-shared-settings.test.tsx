@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -111,7 +112,9 @@ function LibraryRows() {
   return <FullscreenLibrarySettings onTools={() => {}} onSpending={() => {}} onRecommendations={() => {}} />
 }
 async function ready(name: string, role = 'button') {
-  const row = (await screen.findByRole(role, { name: new RegExp(`^${name}$`) })) as HTMLButtonElement
+  const matches = await screen.findAllByRole(role, { name: new RegExp(`^${name}$`) })
+  const row = (matches.find((control) => control.getAttribute('aria-haspopup') !== 'menu') ??
+    matches[0]) as HTMLButtonElement
   await waitFor(() => expect(row.disabled).toBe(false))
   return row
 }
@@ -145,7 +148,9 @@ describe('fullscreen Library uses the shared application preferences', () => {
       { wrapper: f.wrapper },
     )
     const row = await ready('Default library sort')
-    const desktop = screen.getByRole('combobox', { name: 'Default library sort' }) as HTMLSelectElement
+    const desktop = screen
+      .getAllByRole('button', { name: 'Default library sort' })
+      .find((control) => control.getAttribute('aria-haspopup') === 'menu') as HTMLButtonElement
     const values = [
       'DormantLongest',
       'RecentlyPlayed',
@@ -164,7 +169,7 @@ describe('fullscreen Library uses the shared application preferences', () => {
     const count = f.request.mock.calls.length
     fireEvent.keyDown(row, { key: 'ArrowRight' })
     expect(f.request.mock.calls).toHaveLength(count)
-    fireEvent.change(desktop, { target: { value: 'RecentlyPlayed' } })
+    chooseOption(desktop, 'RecentlyPlayed')
     await waitFor(() => expect(row.textContent).toContain('Recently played'))
     await waitFor(() => expect(row.disabled).toBe(false))
     await setDirection(row, 'ArrowLeft', 'Dormant longest')
@@ -272,18 +277,16 @@ describe('fullscreen Application uses the shared native and saved preferences', 
     async (mode) => {
       const f = fixture()
       render(<ApplicationPreferences mode={mode} />, { wrapper: f.wrapper })
-      const control = await ready('Open links in', mode === 'fullscreen' ? 'button' : 'combobox')
+      const control = await ready('Open links in', 'button')
       const change = () =>
-        mode === 'fullscreen'
-          ? fireEvent.click(control)
-          : fireEvent.change(control, { target: { value: 'browser' } })
+        mode === 'fullscreen' ? fireEvent.click(control) : chooseOption(control, 'browser')
       f.refuse(true)
       change()
       await screen.findByText(/^Could not save this preference\./)
       await waitFor(() => expect(control.disabled).toBe(false))
       expect(f.values.LinkDestination).toBeUndefined()
       if (mode === 'fullscreen') expect(control.textContent).toContain('In Winnow')
-      else expect((control as unknown as HTMLSelectElement).value).toBe('in-app')
+      else expect((control as unknown as HTMLButtonElement).value).toBe('in-app')
       f.refuse(false)
       change()
       await waitFor(() => expect(f.values.LinkDestination).toBe('browser'))

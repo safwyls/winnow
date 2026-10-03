@@ -1,4 +1,5 @@
 import { fireEvent, screen } from '@testing-library/react'
+import { chooseOption } from './choice-test-utils'
 
 // Shared behavior tests reach fullscreen actions through the same explicit panels
 // as a user; desktop controls keep their direct path. Native tests measure the panels.
@@ -29,14 +30,15 @@ export function libraryRole(...args: Parameters<typeof screen.getByRole>) {
   control = screen.queryByRole(role, options)
   if (control) return control
   fireEvent.click(screen.getByRole('button', { name: 'More' }))
-  if (['textbox', 'combobox'].includes(role)) fireEvent.click(screen.getByText('Current search and sort'))
+  if (role === 'textbox' || (role === 'button' && options?.name === 'Sort'))
+    fireEvent.click(screen.getByText('Current search and sort'))
   return screen.getByRole(role, options)
 }
 
 export function chooseFilterSelect(field: 'Sort' | 'Collection' | 'Installation', value: string) {
   const panel = document.querySelector('.avalon-filter-panel.fullscreen')
   if (!panel) {
-    fireEvent.change(screen.getByLabelText(field), { target: { value } })
+    chooseOption(screen.getByLabelText(field), value)
     return
   }
   const back = screen.queryByRole('button', { name: 'Back to filters' })
@@ -68,13 +70,5 @@ export function libraryLabel(...args: Parameters<typeof screen.getByLabelText>) 
   return field
 }
 export function setLibrarySort(value: string) {
-  if (fullscreenLibrary()) fireEvent.change(libraryLabel('Sort'), { target: { value } })
-  else {
-    fireEvent.click(screen.getByRole('button', { name: /^Sort ·/ }))
-    const option = screen
-      .getAllByRole('menuitemradio')
-      .find((item) => (item as HTMLButtonElement).value === value)
-    if (!option) throw new Error(`Missing library sort option: ${value}`)
-    fireEvent.click(option)
-  }
+  chooseOption(libraryLabel('Sort'), value)
 }

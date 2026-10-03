@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { chooseOption } from './choice-test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -119,12 +120,37 @@ it.each(['desktop', 'fullscreen'] as const)(
 )
 
 describe.each<Mode>(['desktop', 'fullscreen'])('%s library parity', (mode) => {
+  it('requires a main game before submitting a relationship from its themed choices', async () => {
+    const { request } = setup(mode)
+    fireEvent.click(screen.getByRole('button', { name: 'Identity review' }))
+    const create = await screen.findByRole('button', { name: 'Create a relationship' })
+    await waitFor(() => expect((create as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(create)
+    const main = screen.getByRole('button', { name: 'Main game' })
+    const submit = screen.getByRole('button', { name: 'Confirm relationship' }) as HTMLButtonElement
+    fireEvent.click(screen.getByRole('checkbox', { name: 'An expansion' }))
+    expect(submit.disabled).toBe(true)
+    fireEvent.submit(main.closest('form')!)
+    expect(request.mock.calls.some(([input]) => input.route === 'identity.link')).toBe(false)
+    chooseOption(main, '1')
+    chooseOption(screen.getByRole('button', { name: 'Relationship' }), 'expansion_of')
+    expect(submit.disabled).toBe(false)
+    fireEvent.click(submit)
+    await waitFor(() =>
+      expect(request.mock.calls.find(([input]) => input.route === 'identity.link')?.[0].body).toMatchObject({
+        parentWorkId: 1,
+        childWorkIds: [2],
+        kind: 'expansion_of',
+      }),
+    )
+  })
+
   it('edits live filters, preserves all existing facets, and submits the captured revision', async () => {
     const { request } = setup(mode)
     fireEvent.click(await screen.findByRole('button', { name: 'Edit live filters' }))
-    expect((screen.getByLabelText('Installation') as HTMLSelectElement).value).toBe('false')
+    expect((screen.getByLabelText('Installation') as HTMLButtonElement).value).toBe('false')
     fireEvent.change(screen.getByLabelText('Title contains'), { target: { value: 'Moon' } })
-    fireEvent.change(screen.getByLabelText('Update status'), { target: { value: 'true' } })
+    chooseOption(screen.getByLabelText('Update status'), 'true')
     fireEvent.change(screen.getByLabelText('Released from'), { target: { value: '2015' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save live filters' }))
     await waitFor(() =>
@@ -305,7 +331,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s library parity', (mode) => {
     if (mode === 'fullscreen')
       fireEvent.click(await screen.findByRole('button', { name: /Original game · 2 entries/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'Review relationship…' }))
-    expect((screen.getByLabelText('Relationship') as HTMLSelectElement).value).toBe('expansion_of')
+    expect((screen.getByLabelText('Relationship') as HTMLButtonElement).value).toBe('expansion_of')
     expect(request.mock.calls.some(([input]) => input.route === 'identity.link')).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: 'Confirm relationship' }))
     await waitFor(() =>

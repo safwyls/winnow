@@ -1,3 +1,4 @@
+import { chooseOption } from './choice-test-utils'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { build } from 'esbuild'
 import { mkdtemp, readFile } from 'node:fs/promises'
@@ -154,7 +155,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await expect(page.getByRole('dialog', { name: 'Enter text' })).toBeVisible()
       await tap(1)
       await expect(note).toBeFocused()
-      await dialog.getByRole('combobox', { name: 'Your rating', exact: true }).selectOption('0')
+      await chooseOption(dialog.getByRole('button', { name: 'Your rating', exact: true }), '0')
       await dialog.getByRole('button', { name: 'Save note', exact: true }).focus()
       await tap(0)
       await expect(dialog.getByRole('alert')).toHaveText('Add a note or rating, or delete this entry.')

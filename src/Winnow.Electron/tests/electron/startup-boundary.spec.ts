@@ -173,7 +173,7 @@ for (const mode of ['desktop', 'fullscreen'])
       await expect(page.locator('.settings-page, .fullscreen-settings-page').first()).toBeVisible()
       await activate(page, settings.getByRole('button', { name: 'Library', exact: true }))
       await expect(
-        page.getByRole(mode === 'desktop' ? 'combobox' : 'button', {
+        page.getByRole('button', {
           name: 'Default library sort',
           exact: true,
         }),
