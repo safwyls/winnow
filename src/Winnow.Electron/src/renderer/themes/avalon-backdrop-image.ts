@@ -1,5 +1,6 @@
 import type { BackdropKey, BackdropPixels } from './avalon-backdrop-model'
 import { decodeArtworkImage } from '../components/artwork-images'
+import type { ArtworkSource } from '../components/artwork-decode'
 
 /** Each visible transition layer owns its URL; aborted and detached layers release it immediately. */
 export async function loadBackdropImage(
@@ -13,9 +14,11 @@ export async function loadBackdropImage(
     void window.winnow.cancelRequest?.(requestId).catch(() => undefined)
   }
   signal.addEventListener('abort', cancel, { once: true })
-  let source: string | null
+  let source: ArtworkSource | null
   try {
-    source = await window.winnow.artwork(key.provider, key.id, width, requestId)
+    source = window.winnow.artworkBytes
+      ? await window.winnow.artworkBytes(key.provider, key.id, width, requestId)
+      : await window.winnow.artwork(key.provider, key.id, width, requestId)
   } finally {
     signal.removeEventListener('abort', cancel)
   }

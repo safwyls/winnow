@@ -1,12 +1,12 @@
 import { QueryObserver, type QueryClient } from '@tanstack/react-query'
 import { ArtworkCache, type OwnedArtwork } from './artwork-cache'
-import { ArtworkDecoder } from './artwork-decode'
+import { ArtworkDecoder, type ArtworkSource } from './artwork-decode'
 export { decodeArtworkImage } from './artwork-decode'
 
 export const artworkFreshness = 120_000
 export const artworkLifetime = 300_000
 export type ArtworkKey = readonly ['artwork-image', string, string, number, string]
-type Bytes = { source: string }
+type Bytes = { source: ArtworkSource }
 const owners = new WeakMap<QueryClient, ArtworkCache<OwnedArtwork>>()
 const decoders = new WeakMap<QueryClient, ArtworkDecoder>()
 const subscriptions = new WeakMap<QueryClient, () => void>()
@@ -67,9 +67,11 @@ export async function loadArtworkImage(client: QueryClient, key: ArtworkKey, sig
       }
       signal.addEventListener('abort', cancel, { once: true })
       try {
-        const source = (await window.winnow.artwork(key[1], key[2], key[3], requestId)) ?? undefined
+        const source = window.winnow.artworkBytes
+          ? await window.winnow.artworkBytes(key[1], key[2], key[3], requestId)
+          : await window.winnow.artwork(key[1], key[2], key[3], requestId)
         signal.throwIfAborted()
-        return source
+        return source ?? undefined
       } finally {
         signal.removeEventListener('abort', cancel)
       }

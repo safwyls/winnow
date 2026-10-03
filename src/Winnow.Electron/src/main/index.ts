@@ -601,23 +601,26 @@ function startGui(): void {
       if (updateBackendReady) void distributionLease?.ready().catch(failStartup)
       return pendingActivations.drain()
     })
-    ipcMain.handle(
-      'winnow:artwork',
-      async (event, provider: string, id: string, width?: number, requestId?: string) => {
-        validateSender(event)
-        observeRequestOwner(event.sender)
-        const result = await requestLifetimes.run(
-          event.sender,
-          { route: 'artwork.image', requestId },
-          async (signal) => ({
-            ok: true,
-            status: 200,
-            data: await transport!.artwork(provider, id, width, signal),
-          }),
-        )
-        return result.ok ? (result.data ?? null) : null
-      },
-    )
+    for (const binary of [false, true])
+      ipcMain.handle(
+        binary ? 'winnow:artwork:bytes' : 'winnow:artwork',
+        async (event, provider: string, id: string, width?: number, requestId?: string) => {
+          validateSender(event)
+          observeRequestOwner(event.sender)
+          const result = await requestLifetimes.run(
+            event.sender,
+            { route: 'artwork.image', requestId },
+            async (signal) => ({
+              ok: true,
+              status: 200,
+              data: binary
+                ? await transport!.artworkBytes(provider, id, width, signal)
+                : await transport!.artwork(provider, id, width, signal),
+            }),
+          )
+          return result.ok ? (result.data ?? null) : null
+        },
+      )
     handle('winnow:artwork:import', (input: unknown) =>
       importArtworkFile(input, {
         choose: async () => {

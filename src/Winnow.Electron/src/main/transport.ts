@@ -444,6 +444,15 @@ export class BackendTransport {
     width = 1280,
     requestSignal?: AbortSignal,
   ): Promise<string | null> {
+    const bytes = await this.artworkBytes(provider, id, width, requestSignal)
+    return bytes ? `data:image/png;base64,${Buffer.from(bytes).toString('base64')}` : null
+  }
+  async artworkBytes(
+    provider: string,
+    id: string,
+    width = 1280,
+    requestSignal?: AbortSignal,
+  ): Promise<Uint8Array | null> {
     if (
       typeof provider !== 'string' ||
       !/^[a-zA-Z0-9:.-]{1,80}$/.test(provider) ||
@@ -456,7 +465,7 @@ export class BackendTransport {
       return null
     try {
       requestSignal?.throwIfAborted()
-      const connection = await this.ready()
+      const connection = await this.ready(requestSignal)
       requestSignal?.throwIfAborted()
       const query = new URLSearchParams({ provider, id, width: String(width) })
       const response = await this.fetcher(new URL(`/api/v1/artwork/image?${query}`, connection.address), {
@@ -472,7 +481,7 @@ export class BackendTransport {
       const bytes = await response.arrayBuffer()
       requestSignal?.throwIfAborted()
       if (bytes.byteLength > 32 * 1024 * 1024) return null
-      return `data:image/png;base64,${Buffer.from(bytes).toString('base64')}`
+      return new Uint8Array(bytes)
     } catch {
       return null
     }

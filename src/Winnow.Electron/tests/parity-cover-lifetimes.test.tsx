@@ -95,8 +95,9 @@ afterEach(async () => {
   vi.unstubAllGlobals()
 })
 function setup(mode: Mode = 'desktop', ready = false) {
-  const artwork = vi.fn((_provider: string, _id: string, _width: number, _requestId?: string) =>
-    ready ? Promise.resolve(pixels) : new Promise<null>((resolve) => pending.push(resolve)),
+  const artwork = vi.fn(
+    (_provider: string, _id: string, _width: number, _requestId?: string): Promise<string | null> =>
+      ready ? Promise.resolve(pixels) : new Promise<null>((resolve) => pending.push(resolve)),
   )
   const cancel = vi.fn(async () => true)
   Object.defineProperty(window, 'winnow', {
@@ -151,6 +152,47 @@ function shots(ids: string) {
 }
 
 for (const mode of ['desktop', 'fullscreen'] as const) {
+  it(`${mode} screenshot navigation immediately reuses only the selected shot's decoded thumbnail`, async () => {
+    const f = setup(mode, true)
+    const upgrades = new Map<string, (value: string | null) => void>()
+    f.artwork.mockImplementation((_provider, id, width) =>
+      width === 400
+        ? Promise.resolve(pixels)
+        : new Promise<string | null>((resolve) => upgrades.set(id, resolve)),
+    )
+    const view = render(<Screenshots details={shots('aa11,bb22')} />, { wrapper: f.wrapper })
+    await waitFor(() => expect(document.querySelectorAll('.screenshot-strip img')).toHaveLength(2))
+    const thumbnails = [...document.querySelectorAll('.screenshot-strip img')].map((image) =>
+      image.getAttribute('src'),
+    )
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Open screenshot 1 of 2' }))
+      const first = document.querySelector('.screenshot-frame img')!
+      expect(first.getAttribute('src')).toBe(thumbnails[0])
+      expect(f.artwork).toHaveBeenCalledTimes(3)
+      const firstRequest = f.artwork.mock.calls.find((call) => call[1] === 'aa11' && call[2] === 1280)!
+
+      fireEvent.click(screen.getByRole('button', { name: 'Next screenshot' }))
+      const second = document.querySelector('.screenshot-frame img')!
+      expect(first.getAttribute('src')).toBeNull()
+      expect(second.getAttribute('src')).toBe(thumbnails[1])
+      expect(f.cancel).toHaveBeenCalledWith(firstRequest[3])
+      await act(async () => upgrades.get('aa11')!(pixels))
+      expect(second.getAttribute('src')).toBe(thumbnails[1])
+      await act(async () => upgrades.get('bb22')!(pixels))
+      await waitFor(() => expect(second.getAttribute('src')).not.toBe(thumbnails[1]))
+      expect(f.artwork).toHaveBeenCalledTimes(4)
+      expect(f.cache.liveSlots).toBe(3)
+      fireEvent.click(screen.getByRole('button', { name: 'Close screenshots' }))
+      expect(second.getAttribute('src')).toBeNull()
+      expect(f.cache.liveSlots).toBe(2)
+      view.unmount()
+      expect(f.cache.liveSlots).toBe(0)
+    } finally {
+      for (const complete of upgrades.values()) complete(null)
+    }
+  })
+
   it(`${mode} closing Details releases its never-answering Steam620 cover consumer`, async () => {
     const f = setup(mode)
     const view = render(<Details workId={1} mode={mode} />, { wrapper: f.wrapper })
@@ -205,6 +247,122 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     expect(f.cache.liveSlots).toBe(0)
   })
 }
+
+it('a thumbnail preview holds evicted pixels until the larger screenshot replaces its DOM source', async () => {
+  const f = setup()
+  const source = 'blob:thumbnail-preview'
+  const dispose = vi.fn()
+  const key = JSON.stringify(['artwork-image', 'igdb-shot', 'aa11', 400, 'asset'])
+  const thumbnail = f.cache.acquire(key, async () => ({ source, width: 400, height: 225, dispose }))
+  await thumbnail.ready
+  thumbnail.release()
+  let complete!: (value: string | null) => void
+  f.artwork.mockReturnValueOnce(
+    new Promise<string | null>((resolve) => {
+      complete = resolve
+    }),
+  )
+  const view = render(
+    <ArtworkAsset
+      asset={{ provider: 'igdb-shot', id: 'aa11' }}
+      width={1280}
+      previewWidth={400}
+      alt="Preview"
+    />,
+    { wrapper: f.wrapper },
+  )
+  const image = screen.getByRole('img', { name: 'Preview' })
+  expect(image.getAttribute('src')).toBe(source)
+  f.cache.invalidate(key)
+  expect(dispose).not.toHaveBeenCalled()
+  dispose.mockImplementation(() => expect(image.getAttribute('src')).not.toBe(source))
+  try {
+    await act(async () => complete(pixels))
+    await waitFor(() => expect(image.getAttribute('src')).not.toBe(source))
+    expect(dispose).toHaveBeenCalledTimes(1)
+    expect(f.cache.liveSlots).toBe(1)
+    view.unmount()
+    expect(image.getAttribute('src')).toBeNull()
+    expect(f.cache.liveSlots).toBe(0)
+  } finally {
+    complete(null)
+  }
+})
+
+it('a failed larger screenshot retains its same-shot preview and releases it on unmount', async () => {
+  const f = setup()
+  const dispose = vi.fn()
+  const key = JSON.stringify(['artwork-image', 'igdb-shot', 'aa11', 400, 'asset'])
+  const thumbnail = f.cache.acquire(key, async () => ({
+    source: 'blob:thumbnail-preview',
+    width: 400,
+    height: 225,
+    dispose,
+  }))
+  await thumbnail.ready
+  thumbnail.release()
+  f.artwork.mockRejectedValueOnce(new Error('Temporary screenshot failure'))
+  const view = render(
+    <ArtworkAsset
+      asset={{ provider: 'igdb-shot', id: 'aa11' }}
+      width={1280}
+      previewWidth={400}
+      alt="Preview"
+    />,
+    { wrapper: f.wrapper },
+  )
+  const image = screen.getByRole('img', { name: 'Preview' })
+  await waitFor(() => expect(f.cache.pendingCount).toBe(0))
+  expect(image.getAttribute('src')).toBe('blob:thumbnail-preview')
+  expect(f.cache.liveSlots).toBe(1)
+  f.cache.invalidate(key)
+  expect(dispose).not.toHaveBeenCalled()
+  view.unmount()
+  expect(image.getAttribute('src')).toBeNull()
+  expect(dispose).toHaveBeenCalledTimes(1)
+  expect(f.cache.liveSlots).toBe(0)
+})
+
+it('a missing thumbnail preview never starts a second artwork request', async () => {
+  const f = setup()
+  const view = render(
+    <ArtworkAsset
+      asset={{ provider: 'igdb-shot', id: 'aa11' }}
+      width={1280}
+      previewWidth={400}
+      alt="Preview"
+    />,
+    { wrapper: f.wrapper },
+  )
+  expect(screen.getByText('Loading screenshot…')).toBeDefined()
+  expect(f.artwork).toHaveBeenCalledTimes(1)
+  expect(f.artwork.mock.calls[0].slice(0, 3)).toEqual(['igdb-shot', 'aa11', 1280])
+  view.unmount()
+  expect(f.cache.liveSlots).toBe(0)
+})
+
+it('fullscreen gallery reuses its already loaded 1280px previews without another request', async () => {
+  const f = setup('fullscreen', true)
+  const view = render(<Screenshots details={shots('aa11,bb22')} previewCount={2} />, {
+    wrapper: f.wrapper,
+  })
+  await waitFor(() => expect(document.querySelectorAll('.screenshot-strip img')).toHaveLength(2))
+  const thumbnails = [...document.querySelectorAll('.screenshot-strip img')].map((image) =>
+    image.getAttribute('src'),
+  )
+  expect(f.artwork.mock.calls.map((call) => call.slice(0, 3))).toEqual([
+    ['igdb-shot', 'aa11', 1280],
+    ['igdb-shot', 'bb22', 1280],
+  ])
+  fireEvent.click(screen.getByRole('button', { name: 'Open screenshot 1 of 2' }))
+  expect(document.querySelector('.screenshot-frame img')?.getAttribute('src')).toBe(thumbnails[0])
+  fireEvent.click(screen.getByRole('button', { name: 'Next screenshot' }))
+  expect(document.querySelector('.screenshot-frame img')?.getAttribute('src')).toBe(thumbnails[1])
+  expect(f.artwork).toHaveBeenCalledTimes(2)
+  expect(f.cache.liveSlots).toBe(2)
+  view.unmount()
+  expect(f.cache.liveSlots).toBe(0)
+})
 
 it('desktop Fixture merge row releases its one pending Steam620 image used for both vivid and dormant states', async () => {
   const f = setup()

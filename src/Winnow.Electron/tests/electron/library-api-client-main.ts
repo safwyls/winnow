@@ -108,6 +108,14 @@ async function initialize() {
     }))
     return result.ok ? (result.data ?? null) : null
   })
+  handle('winnow:artwork:bytes', async (provider: string, id: string, width?: number, requestId?: string) => {
+    const result = await requests.run(owner, { route: 'artwork.image', requestId }, async (signal) => ({
+      ok: true,
+      status: 200,
+      data: await transport.artworkBytes(provider, id, width, signal),
+    }))
+    return result.ok ? (result.data ?? null) : null
+  })
   const fonts = new FontCatalogue(trustedRendererUrl)
   session.defaultSession.setPermissionRequestHandler((contents, permission, callback, details) =>
     callback(

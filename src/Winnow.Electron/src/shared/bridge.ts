@@ -123,6 +123,7 @@ export interface WinnowBridge {
   onEvent(callback: (event: BackendEvent) => void): () => void
   onConnection(callback: (state: ConnectionState) => void): () => void
   artwork(provider: string, id: string, width?: number, requestId?: string): Promise<string | null>
+  artworkBytes?(provider: string, id: string, width?: number, requestId?: string): Promise<Uint8Array | null>
   loadPreferences(): Promise<unknown>
   savePreferences(value: unknown): Promise<void>
   importProfile(): Promise<unknown | null>

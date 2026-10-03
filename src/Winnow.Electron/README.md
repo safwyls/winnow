@@ -400,10 +400,14 @@ fullscreen and unsupported environments stay solid. Covers remain opaque. See
 Artwork selection still refreshes with library events. Unchanged images reuse encoded bytes
 for up to two minutes, with explicit artwork changes and reconnects forcing revalidation.
 Cover and screenshot images share decoded pixels through leases, including thumbnails and
-the lightbox. Their cache admits at most 32 image loads, leaving room within the main
+the lightbox. A desktop lightbox immediately borrows its screenshot's decoded thumbnail
+while the larger image loads, without another thumbnail request. Fullscreen previews
+already use the lightbox's image size and share that entry directly. Their cache admits
+at most 32 image loads, leaving room within the main
 process's 128-request allowance for artwork selections and other API reads. Six browser
-decodes run at once. Initial network waits do not hold those decode permits. Encoded strings waiting for a decode
-have a separate 32 MiB budget; excess requests retain only their identity and reread the
+decodes run at once. Initial network waits do not hold those decode permits. Encoded images
+waiting for a decode have a separate 32 MiB budget, counted by byte length for binary
+images and conservatively as UTF-16 for compatibility strings. Excess requests retain only their identity and reread the
 backend's cached bytes under a permit before decoding. If those disk bytes have meanwhile
 been removed, that bounded retry can wait for a download while holding its permit.
 Completed encoded entries retain their existing
@@ -413,7 +417,13 @@ Detached images clear their sources. A mounted cover retries a failed image load
 2, 10 and 30 seconds, retaining any existing pixels during a failed refresh. Retries stop
 after three attempts or when the cover detaches.
 Requests use the original display-width buckets, measured at the actual pixel density,
-over the existing backend PNG/base64 transport. Avalon's saved Fit/Fill preference changes
+over the backend's PNG transport. Main passes PNG bytes through the named preload bridge
+as a `Uint8Array`, avoiding base64 encoding and decoding for covers, screenshots and Avalon
+backdrops. The compatibility string bridge remains available; its renderer decoder uses
+native base64 conversion where available, with an indexed-loop fallback. Credentials and
+backend addresses remain in main, and binary requests share the same validation, size
+limit and cancellation ownership. See the [artwork performance measurement](../../docs/spikes/electron-artwork-performance.md)
+for the reproducible decoder benchmark and its limits. Avalon's saved Fit/Fill preference changes
 the crop without changing cover bounds or fetching the image again, including desktop merge-review
 portraits. Heroes and screenshots retain their own presentation. Missing or invalid saved
 modes display as Fit without writing back; only a valid Fit or Fill selection is saved.

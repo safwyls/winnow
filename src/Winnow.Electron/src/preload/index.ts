@@ -36,6 +36,8 @@ const bridge: WinnowBridge = {
   onConnection: (callback) => subscribe<ConnectionState>('winnow:connection', callback),
   artwork: (provider, id, width, requestId) =>
     ipcRenderer.invoke('winnow:artwork', provider, id, width, requestId),
+  artworkBytes: (provider, id, width, requestId) =>
+    ipcRenderer.invoke('winnow:artwork:bytes', provider, id, width, requestId),
   loadPreferences: () => ipcRenderer.invoke('winnow:preferences:load'),
   appearanceSession: () => ipcRenderer.invoke('winnow:appearance:session'),
   savePreferences: (value) => ipcRenderer.invoke('winnow:preferences:save', value),

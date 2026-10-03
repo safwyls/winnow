@@ -203,7 +203,9 @@ export function Screenshots({ details, previewCount }: { details?: GameDetails; 
               Use the previous and next buttons or the arrow keys to browse.
             </Dialog.Description>
             <div className="screenshot-frame">
-              {open && current && <ScreenshotImage asset={current} width={1280} />}
+              {open && current && (
+                <ScreenshotImage asset={current} width={1280} previewWidth={previewCount ? 1280 : 400} />
+              )}
               <Dialog.Close
                 ref={closeButton}
                 className="screenshot-close"
@@ -243,8 +245,16 @@ export function Screenshots({ details, previewCount }: { details?: GameDetails; 
   )
 }
 
-function ScreenshotImage({ asset, width }: { asset: { provider: string; id: string }; width: number }) {
-  return <ArtworkAsset asset={asset} width={width} alt="Game screenshot" />
+function ScreenshotImage({
+  asset,
+  width,
+  previewWidth,
+}: {
+  asset: { provider: string; id: string }
+  width: number
+  previewWidth?: number
+}) {
+  return <ArtworkAsset asset={asset} width={width} previewWidth={previewWidth} alt="Game screenshot" />
 }
 
 export function UpdateSignals({

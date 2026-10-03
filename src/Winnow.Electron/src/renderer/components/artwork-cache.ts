@@ -76,6 +76,17 @@ export class ArtworkCache<T extends OwnedArtwork> {
     return [...this.retained].filter((slot) => slot.refs > 0).length
   }
 
+  /** Retain a ready preview without starting a download or joining a pending request. */
+  acquireExisting(key: string): ArtworkLease<T> | null {
+    const slot = this.slots.get(key)
+    if (this.closed || !slot?.value || slot.abort.signal.aborted) return null
+    if (this.now() - slot.loadedAt >= this.freshness) {
+      this.evict(slot, true)
+      return null
+    }
+    return this.acquire(key, slot.load)
+  }
+
   acquire(key: string, load: Loader<T>): ArtworkLease<T> {
     if (this.closed) return this.empty()
     let slot = this.slots.get(key)

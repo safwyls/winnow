@@ -13,6 +13,8 @@ for (let y = 0; y < 720; y++)
 const png = nativeImage.createFromBitmap(pixels, { width: 1280, height: 720 }).toPNG()
 const originalFetch = globalThis.fetch
 globalThis.__galleryCount = 10
+globalThis.__galleryHoldImages = false
+globalThis.__galleryReleaseImages = []
 globalThis.__openedInstallationFolders = []
 // Record the final OS handoff without opening Explorer on the test runner.
 shell.openPath = async (path) => {
@@ -22,8 +24,11 @@ shell.openPath = async (path) => {
 globalThis.fetch = async (input, init) => {
   const url = new URL(input instanceof Request ? input.url : input)
   if (url.hostname === '127.0.0.1' && (!init?.method || init.method === 'GET')) {
-    if (url.pathname === '/api/v1/artwork/image' && url.searchParams.get('provider') === 'igdb-shot')
+    if (url.pathname === '/api/v1/artwork/image' && url.searchParams.get('provider') === 'igdb-shot') {
+      if (globalThis.__galleryHoldImages)
+        await new Promise((done) => globalThis.__galleryReleaseImages.push(done))
       return new Response(png, { headers: { 'content-type': 'image/png' } })
+    }
     if (/^\/api\/v1\/games\/\d+\/details$/.test(url.pathname)) {
       const response = await originalFetch(input, init)
       if (!response.ok) return response

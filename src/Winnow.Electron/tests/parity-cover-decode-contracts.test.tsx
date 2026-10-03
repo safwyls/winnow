@@ -78,6 +78,41 @@ it('six blocked image fetches do not stop the seventh already-available backend 
   }
 })
 
+it('production binary artwork bypasses base64 conversion and retains cached bytes for decode reuse', async () => {
+  const f = setup(vi.fn())
+  const bytes = Uint8Array.from(atob(png.split(',')[1]), (character) => character.charCodeAt(0))
+  const binary = vi.fn(async () => bytes)
+  Object.assign(window.winnow, { artworkBytes: binary })
+  const base64 = vi.spyOn(globalThis, 'atob')
+  const lease = f.acquire('42')
+  expect(await lease.ready).not.toBeNull()
+  expect(binary).toHaveBeenCalledExactlyOnceWith('steam', '42', 160, expect.any(String))
+  expect(window.winnow.artwork).not.toHaveBeenCalled()
+  expect(base64).not.toHaveBeenCalled()
+  expect(f.client.getQueryData(key('42'))).toEqual({ source: bytes })
+  lease.release()
+})
+
+it('binary queue pressure counts byte length and drops overflow bytes until a decode permit opens', async () => {
+  const converting = deferred<void>()
+  decode.mockReturnValueOnce(converting.promise)
+  const bytes = Uint8Array.from(atob(png.split(',')[1]), (character) => character.charCodeAt(0))
+  const queue = new ArtworkDecoder({ concurrent: 1, maxQueuedBytes: bytes.byteLength })
+  const reload = vi.fn(async () => bytes)
+  const requests = Array.from({ length: 3 }, () =>
+    queue.decode(bytes, new AbortController().signal, reload, () => {}),
+  )
+  expect(queue.queuedBytes).toBe(bytes.byteLength)
+  expect(queue.queuedCount).toBe(2)
+  converting.resolve()
+  const images = await Promise.all(requests)
+  expect(images.every(Boolean)).toBe(true)
+  expect(reload).toHaveBeenCalledOnce()
+  expect(queue.queuedBytes).toBe(0)
+  images.forEach((image) => image?.dispose())
+  queue.close()
+})
+
 it('the real six-permit browser limit includes transient conversion before a seventh image allocates its URL', async () => {
   const converting = deferred<void>()
   decode.mockImplementation(() => converting.promise)

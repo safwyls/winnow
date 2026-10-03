@@ -1,16 +1,20 @@
 import type { OwnedArtwork } from './artwork-cache'
 
+export type ArtworkSource = string | Uint8Array
+const encodedSize = (source?: ArtworkSource) =>
+  typeof source === 'string' ? source.length * 2 : (source?.byteLength ?? 0)
+
 type DecodeJob = {
-  source?: string
+  source?: ArtworkSource
   signal: AbortSignal
-  reload(): Promise<string | undefined>
-  publish(source: string): void
+  reload(): Promise<ArtworkSource | undefined>
+  publish(source: ArtworkSource): void
   complete(value: OwnedArtwork | null): void
   fail(error: unknown): void
   cancel(): void
 }
 
-/** Downloads do not hold a browser conversion permit; queued encoded strings have a separate budget. */
+/** Downloads do not hold a browser conversion permit; queued encoded images have a separate budget. */
 export class ArtworkDecoder {
   private readonly concurrent: number
   private readonly maxQueuedBytes: number
@@ -34,12 +38,17 @@ export class ArtworkDecoder {
     return this.running
   }
 
-  decode(source: string, signal: AbortSignal, reload: DecodeJob['reload'], publish: DecodeJob['publish']) {
+  decode(
+    source: ArtworkSource,
+    signal: AbortSignal,
+    reload: DecodeJob['reload'],
+    publish: DecodeJob['publish'],
+  ) {
     if (this.closed || signal.aborted) return Promise.resolve(null)
     return new Promise<OwnedArtwork | null>((complete, fail) => {
       // Under pressure, retain only the request identity. Re-read the backend's now-cached bytes
       // once a conversion permit is available, so an attached image eventually completes.
-      const keep = this.running < this.concurrent || this.bytes + source.length * 2 <= this.maxQueuedBytes
+      const keep = this.running < this.concurrent || this.bytes + encodedSize(source) <= this.maxQueuedBytes
       const job: DecodeJob = {
         source: keep ? source : undefined,
         signal,
@@ -51,13 +60,13 @@ export class ArtworkDecoder {
           const index = this.queue.indexOf(job)
           if (index < 0) return
           this.queue.splice(index, 1)
-          this.bytes -= (job.source?.length ?? 0) * 2
+          this.bytes -= encodedSize(job.source)
           job.source = undefined
           signal.removeEventListener('abort', job.cancel)
           complete(null)
         },
       }
-      this.bytes += (job.source?.length ?? 0) * 2
+      this.bytes += encodedSize(job.source)
       this.queue.push(job)
       signal.addEventListener('abort', job.cancel, { once: true })
       this.drain()
@@ -72,7 +81,7 @@ export class ArtworkDecoder {
   private drain() {
     while (!this.closed && this.running < this.concurrent && this.queue.length) {
       const job = this.queue.shift()!
-      this.bytes -= (job.source?.length ?? 0) * 2
+      this.bytes -= encodedSize(job.source)
       job.signal.removeEventListener('abort', job.cancel)
       this.running++
       void this.run(job)
@@ -109,13 +118,24 @@ export class ArtworkDecoder {
   }
 }
 
-export async function decodeArtworkImage(source: string, signal: AbortSignal): Promise<OwnedArtwork | null> {
+export async function decodeArtworkImage(
+  source: ArtworkSource,
+  signal: AbortSignal,
+): Promise<OwnedArtwork | null> {
   signal.throwIfAborted()
-  if (!source.startsWith('data:image/png;base64,')) return null
-  const bytes = Uint8Array.from(atob(source.slice('data:image/png;base64,'.length)), (character) =>
-    character.charCodeAt(0),
-  )
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }))
+  let bytes: Uint8Array
+  if (typeof source === 'string') {
+    if (!source.startsWith('data:image/png;base64,')) return null
+    const encoded = source.slice('data:image/png;base64,'.length)
+    const native = (Uint8Array as typeof Uint8Array & { fromBase64?(value: string): Uint8Array }).fromBase64
+    if (native) bytes = native(encoded)
+    else {
+      const decoded = atob(encoded)
+      bytes = new Uint8Array(decoded.length)
+      for (let index = 0; index < decoded.length; index++) bytes[index] = decoded.charCodeAt(index)
+    }
+  } else bytes = source
+  const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'image/png' }))
   const image = new Image()
   let released = false
   const dispose = () => {

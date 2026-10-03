@@ -159,6 +159,65 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await expect(page.locator('.avalon-details')).toHaveCount(0)
   })
 }
+test('desktop gallery retains its thumbnail until the binary full image arrives', async () => {
+  await page.reload()
+  await expect(page.locator('.avalon-cover').first()).toBeVisible()
+  await application.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    window.setFullScreen(false)
+    window.setContentSize(1280, 720)
+    window.webContents.send('winnow:fullscreen:changed', false)
+  })
+  await page.getByRole('button', { name: 'Winnow home', exact: true }).click()
+  await page.locator('.avalon-cover').first().click()
+  const thumbnail = page.getByRole('button', { name: 'Open screenshot 1 of 10', exact: true })
+  await expect(thumbnail.locator('img')).toBeVisible()
+  const preview = await thumbnail.locator('img').getAttribute('src')
+  expect(preview).toMatch(/^blob:/)
+  await application.evaluate(() => {
+    ;(globalThis as unknown as { __galleryHoldImages: boolean }).__galleryHoldImages = true
+  })
+  try {
+    await thumbnail.click()
+    const dialog = page.getByRole('dialog', { name: 'Screenshot 1 of 10', exact: true })
+    await expect(dialog.locator('img')).toHaveAttribute('src', preview!)
+    await expect(dialog.getByText('Loading screenshot…')).toHaveCount(0)
+    await expect
+      .poll(() =>
+        application.evaluate(
+          () =>
+            (globalThis as unknown as { __galleryReleaseImages: (() => void)[] }).__galleryReleaseImages
+              .length,
+        ),
+      )
+      .toBeGreaterThan(0)
+    await application.evaluate(() => {
+      const fixture = globalThis as unknown as {
+        __galleryHoldImages: boolean
+        __galleryReleaseImages: (() => void)[]
+      }
+      fixture.__galleryHoldImages = false
+      fixture.__galleryReleaseImages.splice(0).forEach((release) => release())
+    })
+    await expect(dialog.locator('img')).not.toHaveAttribute('src', preview!)
+    await expect(dialog.locator('img')).toBeVisible()
+    expect(await dialog.locator('img').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(1280)
+    await page.keyboard.press('Escape')
+    await expect(thumbnail).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(page.locator('.avalon-details')).toHaveCount(0)
+  } finally {
+    await application.evaluate(() => {
+      const fixture = globalThis as unknown as {
+        __galleryHoldImages: boolean
+        __galleryReleaseImages: (() => void)[]
+      }
+      fixture.__galleryHoldImages = false
+      fixture.__galleryReleaseImages.splice(0).forEach((release) => release())
+    })
+  }
+})
+
 test('both details modes open the installed copy folder through the named ownership bridge', async () => {
   const folder = join(directory, 'fixture-installed-game')
   await mkdir(folder)

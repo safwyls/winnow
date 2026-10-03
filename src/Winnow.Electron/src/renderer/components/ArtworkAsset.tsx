@@ -7,10 +7,12 @@ import { artworkImages, loadArtworkImage, type ArtworkKey } from './artwork-imag
 export function ArtworkAsset({
   asset,
   width,
+  previewWidth,
   alt,
 }: {
   asset: { provider: string; id: string }
   width: number
+  previewWidth?: number
   alt: string
 }) {
   const client = useQueryClient(),
@@ -54,7 +56,7 @@ export function ArtworkAsset({
     let published = false
     let lease: ArtworkLease<OwnedArtwork> | undefined
     setSnapshot((previous) => (previous?.identity === identity ? previous : null))
-    const retained = snapshot?.identity === identity ? snapshot.pixels : null
+    let retained = snapshot?.identity === identity ? snapshot.pixels : null
     const publish = (pixels: OwnedArtwork | null) => {
       if (!active) return
       published = true
@@ -83,7 +85,19 @@ export function ArtworkAsset({
       lease = cache.acquire(queryKey.current, (signal) => loadArtworkImage(client, key, signal))
       leases.current.add(lease)
       if (lease.current) publish(lease.current)
-      else publish(await lease.ready)
+      else {
+        if (!retained && previewWidth !== undefined && previewWidth < width) {
+          const previewKey: ArtworkKey = ['artwork-image', asset.provider, id, previewWidth, 'asset']
+          const preview = cache.acquireExisting(JSON.stringify(previewKey))
+          if (preview?.current) {
+            // Own the same screenshot's thumbnail until its larger decode replaces the DOM source.
+            leases.current.add(preview)
+            retained = preview.current
+            setSnapshot({ identity, pixels: retained, lease: preview })
+          } else preview?.release()
+        }
+        publish(await lease.ready)
+      }
     }
     void load().catch(() => publish(null))
     return () => {
@@ -93,7 +107,7 @@ export function ArtworkAsset({
         leases.current.delete(lease)
       }
     }
-  }, [asset.provider, asset.id, width, identity, client, cache, revision])
+  }, [asset.provider, asset.id, width, previewWidth, identity, client, cache, revision])
   useLayoutEffect(
     () => () => {
       if (snapshot?.lease) {

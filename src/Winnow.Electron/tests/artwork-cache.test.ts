@@ -12,6 +12,31 @@ function pixels(source = 'fixture'): OwnedArtwork {
   return { source, width: 160, height: 240, dispose: vi.fn() }
 }
 
+it('ready previews gain an independent lease without fetching, and stale or invalidated images cannot be borrowed', async () => {
+  let now = 0
+  const cache = new ArtworkCache({ now: () => now, freshness: 10 })
+  const art = pixels(),
+    load = vi.fn(async () => art)
+  expect(cache.acquireExisting('missing')).toBeNull()
+  const original = cache.acquire('preview', load)
+  await original.ready
+  const preview = cache.acquireExisting('preview')!
+  original.release()
+  cache.invalidate('preview')
+  expect(cache.acquireExisting('preview')).toBeNull()
+  expect(preview.current).toBe(art)
+  expect(art.dispose).not.toHaveBeenCalled()
+  preview.release()
+  expect(art.dispose).toHaveBeenCalledOnce()
+  expect(load).toHaveBeenCalledOnce()
+  const fresh = cache.acquire('other', async () => pixels('other'))
+  await fresh.ready
+  fresh.release()
+  now = 10
+  expect(cache.acquireExisting('other')).toBeNull()
+  await cache.close()
+})
+
 it('one hundred direct callers share one factory and decoded object', async () => {
   const cache = new ArtworkCache()
   const pending = deferred<OwnedArtwork>()
