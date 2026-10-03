@@ -606,7 +606,9 @@ for (const surfaceName of ['desktop', 'fullscreen']) {
       await navigate('Library')
       // Keep the wall's240px rendition distinct from the modal's160px rendition,
       // so closing the modal really removes the last consumer of its pending read.
+      await page.getByRole('button', { name: 'Display preferences', exact: true }).click()
       await page.getByRole('slider', { name: 'Density', exact: true }).fill('108')
+      await page.getByRole('button', { name: 'Close display preferences', exact: true }).click()
     }
     await seed('lifetime')
     const held = await arm(

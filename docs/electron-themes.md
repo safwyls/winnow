@@ -277,7 +277,9 @@ lifetime of the renderer. Reload the window after reinstalling changes to helper
 whose relative import URLs may remain the same.
 
 If loading or rendering fails, the built-in frontend remains available. The persistent
-recovery control and **Ctrl+Shift+T** restore Avalon. For a theme that prevents normal
+recovery control and **Ctrl+Shift+T** restore Avalon. Avalon reserves space for the control
+inside its footer on both surfaces. Themes without that slot, and failed themes, retain
+the host's fixed fallback control. For a theme that prevents normal
 interaction, use **View → Recover bundled appearance** (**Ctrl+Shift+R**) or start the app
 with `--safe-theme`. That startup mode ignores the saved profile. A rendering error boundary
 cannot interrupt an infinite JavaScript loop; restarting with `--safe-theme` is the recovery

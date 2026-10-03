@@ -34,6 +34,26 @@
   min-width: 24px;
   min-height: 24px;
 }
+.display-cover-size {
+  display: grid;
+  gap: 8px;
+  padding-block: 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.display-cover-size input {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+.display-cover-size-hints {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: calc(11px * var(--theme-text-scale, 1));
+}
 .display-preference-help {
   margin: 0 0 8px 29px;
   color: var(--muted);

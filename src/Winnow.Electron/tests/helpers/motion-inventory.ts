@@ -22,6 +22,10 @@ export const cssMotionOwners = [
 export const scheduledOwners: Record<string, [number, string]> = {
   'App.tsx': [2, 'Focus restoration and search focus; no interpolated visual values.'],
   'api/prepare-library.ts': [1, 'Bounded API request timeout.'],
+  'components/Artwork.tsx': [
+    1,
+    'Bounded image retry delay, not animation; stays enabled in reduced motion and cancels on detach.',
+  ],
   'components/FullscreenHints.tsx': [1, 'Controller presence polling.'],
   'components/FullscreenStatus.tsx': [2, 'Clock and controller presence polling.'],
   'components/GamePreview.tsx': [2, 'Hover open/close delays, not interpolation.'],

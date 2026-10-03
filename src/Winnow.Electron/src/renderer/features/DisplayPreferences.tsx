@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { ChevronDown, X } from 'lucide-react'
 import { useApiQuery } from '../api/hooks'
@@ -9,7 +9,7 @@ import { parseExpansionGrouping } from './parity-library-grain'
 import { Notice } from './shared'
 import './display-preferences.css'
 
-export function DisplayPreferences() {
+export function DisplayPreferences({ children }: { children?: ReactNode }) {
   const [open, setOpen] = useState(false)
   const anchor = useRef<HTMLButtonElement>(null)
   const [panel, setPanel] = useState<HTMLDivElement | null>(null)
@@ -20,7 +20,7 @@ export function DisplayPreferences() {
       const bounds = anchor.current!.getBoundingClientRect()
       const height = panel.scrollHeight + panel.offsetHeight - panel.clientHeight
       setPosition({
-        left: Math.max(18, Math.min(bounds.right - 460, window.innerWidth - 478)),
+        left: Math.max(18, Math.min(bounds.left, window.innerWidth - panel.offsetWidth - 18)),
         top: Math.max(18, Math.min(bounds.bottom + 8, window.innerHeight - height - 18)),
       })
     }
@@ -55,6 +55,7 @@ export function DisplayPreferences() {
           <Dialog.Description className="display-preferences-description">
             Adjust the games and covers shown in your library.
           </Dialog.Description>
+          {children}
           <DisplayPreferenceToggles />
         </Dialog.Content>
       </Dialog.Portal>

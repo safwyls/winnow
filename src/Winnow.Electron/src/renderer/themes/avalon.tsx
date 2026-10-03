@@ -53,6 +53,7 @@ import { AvalonAction, AvalonActions } from './avalon-actions'
 import { AvalonBrowseSpine } from './avalon-browse-spine'
 import { AvalonCollectionLists, collectionName } from './avalon-collection-lists'
 import { AvalonRailFooter } from './avalon-rail-footer'
+import { ThemeRecoveryButton } from '../theming/ThemeRecovery'
 import { ownershipStores, ownershipDescription } from './avalon-store-marks'
 import {
   LibraryColumnHeaders,
@@ -460,10 +461,16 @@ export function AvalonShell(context: ThemeContext) {
       </main>
       <footer className="avalon-footer">
         {fullscreen ? (
-          <FullscreenHints page={shellPage} />
+          <>
+            <FullscreenHints page={shellPage} />
+            <ThemeRecoveryButton />
+          </>
         ) : (
           <>
-            <span>Your library. Rediscovered.</span>
+            <span className="avalon-footer-identity">
+              <ThemeRecoveryButton />
+              <span>Your library. Rediscovered.</span>
+            </span>
             <span>Ctrl+K · Search</span>
           </>
         )}
@@ -1228,92 +1235,106 @@ export function AvalonLibrary(context: ThemeContext) {
     )
   }
   const toolbar = (
-    <div className="avalon-toolbar">
-      {!fullscreen && (
-        <button aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}>
-          Filters
-        </button>
-      )}
-      <label className="avalon-search">
-        <Search size={17} />
-        <input
-          data-library-search
-          aria-label="Search games"
-          placeholder="Search your library…"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        {query && (
-          <button aria-label="Clear search" onClick={() => setQuery('')}>
-            <X size={15} />
+    <div className="avalon-toolbar-container">
+      <div className="avalon-toolbar">
+        {!fullscreen && (
+          <div className="avalon-toolbar-view">
+            <DisplayPreferences>
+              <label className="display-cover-size">
+                Cover size
+                <input
+                  aria-label="Density"
+                  type="range"
+                  min={MINIMUM_TILE_WIDTH}
+                  max={MAXIMUM_TILE_WIDTH}
+                  step={4}
+                  value={reflectedDensity(density)}
+                  onChange={(event) => setDensity(reflectedDensity(Number(event.target.value)))}
+                />
+                <span className="display-cover-size-hints" aria-hidden="true">
+                  <span>Larger covers</span>
+                  <span>Smaller covers</span>
+                </span>
+              </label>
+            </DisplayPreferences>
+            <SegmentedGroup className="avalon-segmented" label="Library view">
+              <button aria-label="Grid view" aria-pressed={!listMode} onClick={() => setView('grid')}>
+                <Grid2X2 size={17} />
+              </button>
+              <button aria-label="List view" aria-pressed={listMode} onClick={() => setView('list')}>
+                <List size={17} />
+              </button>
+            </SegmentedGroup>
+          </div>
+        )}
+        <label className="avalon-search">
+          <Search size={17} />
+          <input
+            data-library-search
+            aria-label="Search games"
+            placeholder="Search your library…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          {query && (
+            <button aria-label="Clear search" onClick={() => setQuery('')}>
+              <X size={15} />
+            </button>
+          )}
+        </label>
+        <div className="avalon-toolbar-sort">
+          {([...new Set(libraryGames.flatMap((game) => game.entries.map((entry) => entry.store)))].length >
+            1 ||
+            store !== 'all') && (
+            <select aria-label="Store" value={store} onChange={(event) => setStore(event.target.value)}>
+              <option value="all">All stores</option>
+              {[...new Set(libraryGames.flatMap((game) => game.entries.map((entry) => entry.store)))].map(
+                (value) => (
+                  <option key={value} value={value}>
+                    {storeLabel(value)}
+                  </option>
+                ),
+              )}
+            </select>
+          )}
+          {fullscreen ? (
+            <label>
+              Sort
+              <select aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
+                {[
+                  ...librarySortOptions,
+                  ...(listState.list && !listState.list.isLive
+                    ? [{ value: 'list-order', label: 'List order' }]
+                    : []),
+                ].map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <SortMenu
+              value={sort}
+              options={
+                listState.list && !listState.list.isLive
+                  ? [...librarySortOptions, { value: 'list-order', label: 'List order' }]
+                  : librarySortOptions
+              }
+              onChange={setSort}
+            />
+          )}
+        </div>
+        {!fullscreen && (
+          <button
+            className="avalon-toolbar-filters"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen(!filtersOpen)}
+          >
+            Filters
           </button>
         )}
-      </label>
-      {([...new Set(libraryGames.flatMap((game) => game.entries.map((entry) => entry.store)))].length > 1 ||
-        store !== 'all') && (
-        <label>
-          Store
-          <select aria-label="Store" value={store} onChange={(event) => setStore(event.target.value)}>
-            <option value="all">All stores</option>
-            {[...new Set(libraryGames.flatMap((game) => game.entries.map((entry) => entry.store)))].map(
-              (value) => (
-                <option key={value} value={value}>
-                  {storeLabel(value)}
-                </option>
-              ),
-            )}
-          </select>
-        </label>
-      )}
-      {fullscreen ? (
-        <label>
-          Sort
-          <select aria-label="Sort" value={sort} onChange={(event) => setSort(event.target.value)}>
-            <option value="dormant">Dormant longest</option>
-            <option value="title">Name A–Z</option>
-            <option value="title-desc">Name Z–A</option>
-            <option value="recent">Last played</option>
-            <option value="time">Playtime high to low</option>
-            <option value="time-low">Playtime low to high</option>
-            {listState.list && !listState.list.isLive && <option value="list-order">List order</option>}
-          </select>
-        </label>
-      ) : (
-        <SortMenu
-          value={sort}
-          options={
-            listState.list && !listState.list.isLive
-              ? [...librarySortOptions, { value: 'list-order', label: 'List order' }]
-              : librarySortOptions
-          }
-          onChange={setSort}
-        />
-      )}
-      {!fullscreen && (
-        <>
-          <SegmentedGroup className="avalon-segmented" label="Library view">
-            <button aria-label="Grid view" aria-pressed={!listMode} onClick={() => setView('grid')}>
-              <Grid2X2 size={17} />
-            </button>
-            <button aria-label="List view" aria-pressed={listMode} onClick={() => setView('list')}>
-              <List size={17} />
-            </button>
-          </SegmentedGroup>
-          <label className="avalon-density">
-            Density
-            <input
-              aria-label="Density"
-              type="range"
-              min={MINIMUM_TILE_WIDTH}
-              max={MAXIMUM_TILE_WIDTH}
-              step={4}
-              value={reflectedDensity(density)}
-              onChange={(event) => setDensity(reflectedDensity(Number(event.target.value)))}
-            />
-          </label>
-          <DisplayPreferences />
-        </>
-      )}
+      </div>
     </div>
   )
   const browseActions = (
@@ -1365,12 +1386,9 @@ export function AvalonLibrary(context: ThemeContext) {
           className="avalon-selection-actions"
           role="group"
           aria-label="Selected games"
-          style={{
-            visibility:
-              selection.length > 0 || (selected != null && games.some((game) => game.workId === selected))
-                ? 'visible'
-                : 'hidden',
-          }}
+          hidden={
+            selection.length === 0 && (selected == null || !games.some((game) => game.workId === selected))
+          }
         >
           <span>{selection.length || 1} selected</span>
           <AddToListButton

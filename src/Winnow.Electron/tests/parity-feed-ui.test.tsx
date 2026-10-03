@@ -260,6 +260,27 @@ describe.each(['desktop', 'fullscreen'] as const)('feed feedback in %s', (mode) 
     expect(panel.getByText(/Undone on/)).toBeTruthy()
     expect(panel.queryByRole('button', { name: 'Undo' })).toBeNull()
   })
+  it('opens a long response history at its exit and restores the trigger after Escape', async () => {
+    history = Array.from({ length: 60 }, (_, index) => ({
+      releaseId: (index % 12) + 1,
+      kind: 0,
+      createdAt: new Date(Date.UTC(2026, 8, index + 1)).toISOString(),
+      status: 0,
+    }))
+    mount(mode)
+    await tick(10)
+    const trigger = screen.getByRole('button', { name: /What you've told the feed/ })
+    act(() => trigger.focus())
+    await click(/What you've told the feed/)
+    const panel = screen.getByRole('region', { name: "What you've told the feed" })
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(60)
+    expect(document.activeElement).toBe(within(panel).getByRole('button', { name: 'Back to the feed' }))
+    const undo = within(panel).getAllByRole('button', { name: 'Undo' }).at(-1)!
+    act(() => undo.focus())
+    await act(async () => fireEvent.keyDown(undo, { key: 'Escape' }))
+    expect(screen.queryByRole('region', { name: "What you've told the feed" })).toBeNull()
+    expect(document.activeElement).toBe(trigger)
+  })
   function withReplacement(configure?: (context: ThemeContext) => void) {
     const view = mount(mode, (context) => {
       if (mode === 'fullscreen')

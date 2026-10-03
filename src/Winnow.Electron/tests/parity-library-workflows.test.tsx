@@ -21,7 +21,8 @@ import { clearViewState } from '../src/renderer/viewState'
 import { selectCollection as openList, selectedCollection, collectionNames } from './library-collections'
 
 const preferences = vi.hoisted(() => ({ values: { DefaultSort: 'NameAscending' } as Record<string, string> }))
-vi.mock('../src/renderer/features/SettingsPreferences', () => ({
+vi.mock('../src/renderer/features/SettingsPreferences', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/renderer/features/SettingsPreferences')>()),
   usePresentationPreferences: () => preferences,
 }))
 vi.mock('@tanstack/react-virtual', () => ({
@@ -426,7 +427,8 @@ describe('Library column and density controls', () => {
   })
   it('mirrors density across the declared 108 to 200 range and adds grid columns toward the right', () => {
     setup('desktop')
-    const slider = libraryRole('slider', { name: 'Density' }) as HTMLInputElement
+    fireEvent.click(libraryRole('button', { name: 'Display preferences' }))
+    const slider = screen.getByRole('slider', { name: 'Density' }) as HTMLInputElement
     expect([slider.min, slider.max, slider.value]).toEqual(['108', '200', '160'])
     fireEvent.change(slider, { target: { value: '108' } })
     expect(document.querySelector<HTMLElement>('.avalon-grid-row')!.style.gridTemplateColumns).toContain(
@@ -436,9 +438,11 @@ describe('Library column and density controls', () => {
     expect(document.querySelector<HTMLElement>('.avalon-grid-row')!.style.gridTemplateColumns).toContain(
       'repeat(7,',
     )
+    fireEvent.click(screen.getByRole('button', { name: 'Close display preferences' }))
     fireEvent.click(libraryRole('button', { name: 'List view' }))
     fireEvent.click(libraryRole('button', { name: 'Grid view' }))
-    expect(slider.value).toBe('200')
+    fireEvent.click(libraryRole('button', { name: 'Display preferences' }))
+    expect((screen.getByRole('slider', { name: 'Density' }) as HTMLInputElement).value).toBe('200')
   })
 })
 
@@ -631,7 +635,7 @@ it.each(['grid', 'list'] as const)(
     expect(selectedCards()).toEqual([1])
     fireEvent.click(document.querySelector('[data-avalon-game="1"]')!, { ctrlKey: true })
     expect(selectedCards()).toEqual([])
-    expect(document.querySelector<HTMLElement>('.avalon-selection-actions')!.style.visibility).toBe('hidden')
+    expect(screen.queryByRole('group', { name: 'Selected games' })).toBeNull()
     fireEvent.click(document.querySelector('[data-avalon-game="2"]')!, { ctrlKey: true })
     fireEvent.click(libraryRole('button', { name: 'Clear selection' }))
     expect(selectedCards()).toEqual([])

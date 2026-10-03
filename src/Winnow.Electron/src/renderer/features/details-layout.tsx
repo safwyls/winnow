@@ -416,20 +416,26 @@ export function AvalonDetailsLayout({
         </p>
       )}
       <LifecycleEvidence workId={workId} workspace={workspace.data} />
-      {unread > 0 && (
-        <button className="detail-text-link" onClick={() => change('Updates')}>
-          {unread} unread {unread === 1 ? 'update' : 'updates'} →
-        </button>
+      {(unread > 0 || fullscreen) && (
+        <div className="detail-history-actions">
+          {unread > 0 && (
+            <button className="detail-text-link" onClick={() => change('Updates')}>
+              {unread} unread {unread === 1 ? 'update' : 'updates'} →
+            </button>
+          )}
+          {fullscreen && (
+            <button
+              className="detail-text-link"
+              data-details-reading="History"
+              onClick={(event) => openReading('History', event.currentTarget)}
+            >
+              Play history →
+            </button>
+          )}
+        </div>
       )}
       {fullscreen && (
         <>
-          <button
-            className="detail-text-link"
-            data-details-reading="History"
-            onClick={(event) => openReading('History', event.currentTarget)}
-          >
-            Play history →
-          </button>
           <div className="avalon-latest-note">
             <h2>{notes[0] ? 'Latest note' : 'Journal'}</h2>
             {notes[0] && (
@@ -688,7 +694,9 @@ export function AvalonDetailsLayout({
               onClick={() => change(name)}
             >
               {fullscreen ? (
-                <SectionLabel>{name === 'Updates' && unread ? `Updates ${unread}` : name}</SectionLabel>
+                <SectionLabel>
+                  {name === 'Updates' && unread ? `Updates · ${unread} unread` : name}
+                </SectionLabel>
               ) : (
                 name
               )}

@@ -219,6 +219,13 @@
   .avalon-personal-history {
     margin-bottom: 24px;
   }
+  .detail-history-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 24px;
+    margin-top: 8px;
+  }
   .avalon-history-figures {
     display: flex;
     gap: 12px;
@@ -260,6 +267,22 @@
     border: 0;
     background: transparent;
     text-align: left;
+  }
+  .avalon-details-menu .game-links {
+    margin: 0 0 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .avalon-details-menu .game-links nav {
+    gap: 3px;
+  }
+  .avalon-details-menu .entry-actions {
+    padding: 0;
+    border: 0;
+    gap: 3px;
+  }
+  .avalon-details-menu .entry-actions:empty {
+    display: none;
   }
   .avalon-details-menu p {
     padding: 8px;
@@ -447,6 +470,9 @@
   }
   .avalon-shell .avalon-details.fullscreen .detail-text-link {
     margin: 8px 0;
+  }
+  .avalon-shell .avalon-details.fullscreen .detail-history-actions .detail-text-link {
+    margin: 0;
   }
   .avalon-shell .avalon-details.fullscreen .avalon-details-back-row {
     margin: 0;

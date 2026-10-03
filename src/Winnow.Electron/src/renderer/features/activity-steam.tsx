@@ -269,7 +269,7 @@ function SteamProjection({
                       {words}
                     </button>
                   ) : (
-                    <div>
+                    <div className="steam-observation-copy">
                       {onOpenGame && game ? (
                         <button className="text-button" onClick={() => onOpenGame(game.workId)}>
                           {game.title}

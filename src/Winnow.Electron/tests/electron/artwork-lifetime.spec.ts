@@ -65,6 +65,7 @@ test.beforeAll(async () => {
     chromiumSandbox: true,
   })
   page = await application.firstWindow()
+  await page.clock.install()
 })
 test.afterAll(async () => closeFixture(application))
 async function surface(mode: 'desktop' | 'fullscreen') {
@@ -246,6 +247,27 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await page.getByRole('button', { name: 'Attach cover' }).click()
     await expect(page.locator('.avalon-cover img')).toHaveClass('art-ready')
     expect((await read()).requests.map((request) => request.width)).toEqual([480, 480])
+  })
+  test(`${mode} a cover recovers a failed reload after five idle minutes without resizing or navigating`, async () => {
+    await surface(mode)
+    const cover = page.locator('[data-wall] .artwork')
+    await page.getByRole('button', { name: 'Attach cover', exact: true }).click()
+    await expect(cover.locator('img')).toHaveClass('art-ready')
+    const original = await cover.locator('img').getAttribute('src')
+    await page.getByRole('button', { name: 'Detach cover', exact: true }).click()
+    await page.clock.fastForward(300_001)
+    await page.evaluate(() => {
+      ;(window as unknown as { artworkProbe: Probe }).artworkProbe.failNext = true
+    })
+    await page.getByRole('button', { name: 'Attach cover', exact: true }).click()
+    await expect(cover).toHaveAttribute('data-state', 'error')
+    await page.clock.fastForward(2_001)
+    await expect(cover.locator('img')).toHaveClass('art-ready')
+    expect(await cover.locator('img').getAttribute('src')).not.toBe(original)
+    expect((await read()).requests.map((request) => request.width)).toEqual([480, 480, 480])
+    await page.getByRole('button', { name: 'Detach cover', exact: true }).click()
+    await page.clock.fastForward(60_000)
+    expect((await read()).requests).toHaveLength(3)
   })
   test(`${mode} canceled image work retires before reattachment starts its replacement`, async () => {
     await surface(mode)

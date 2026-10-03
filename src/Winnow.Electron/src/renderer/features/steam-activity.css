@@ -1,4 +1,21 @@
 @layer themes {
+  .steam-observation-copy,
+  .steam-observation {
+    display: grid;
+    justify-items: start;
+    gap: 8px;
+    min-width: 0;
+  }
+  .steam-observation-copy > :is(h3, p),
+  .steam-observation > :is(h3, p) {
+    margin: 0;
+  }
+  .steam-observation-copy > :is(button, strong, p) {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
   .steam-activity.mode-fullscreen {
     --steam-reading-scale: calc(var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
     font-size: calc(clamp(16px, 1.25vw, 24px) * var(--steam-reading-scale));
@@ -22,7 +39,6 @@
   }
   .steam-observation {
     width: 100%;
-    display: block;
     text-align: left;
     white-space: normal;
     padding: 20px;

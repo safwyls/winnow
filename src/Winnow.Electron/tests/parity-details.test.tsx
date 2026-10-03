@@ -898,6 +898,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s original Avalon Details compo
     )
     fireEvent.click(await screen.findByRole('button', { name: '2 unread updates →' }))
     const updates = screen.getByRole('tab', { name: 'Updates, 2 unread updates' })
+    expect(updates.textContent).toBe(mode === 'fullscreen' ? 'Updates · 2 unread' : 'Updates')
     expect(updates.getAttribute('aria-selected')).toBe('true')
     await client.invalidateQueries({ queryKey: ['api', 'game.details'] })
     expect(updates.getAttribute('aria-selected')).toBe('true')

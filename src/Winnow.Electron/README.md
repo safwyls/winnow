@@ -33,6 +33,8 @@ Fullscreen exposes the complete scored shelf through horizontal navigation. Only
 that enter the visible, focused window record impressions; Recently played records none.
 Verdict controls appear only when the backend can save feedback.
 **What you've told the feed** replaces the feed body and returns to the same cards.
+Its **Back to the feed** button stays beside the heading while the history scrolls,
+including empty and failed reads. Escape and controller Back keep the same return behavior.
 Fullscreen **Y · More** opens the selected game's actions; Recently played omits verdicts.
 The fullscreen list picker shows **Y · Keyboard** while its name field has focus and
 returns focus to the originating card action when closed.
@@ -397,15 +399,18 @@ fullscreen and unsupported environments stay solid. Covers remain opaque. See
 Artwork selection still refreshes with library events. Unchanged images reuse encoded bytes
 for up to two minutes, with explicit artwork changes and reconnects forcing revalidation.
 Cover and screenshot images share decoded pixels through leases, including thumbnails and
-the lightbox. Their cache admits at most 128 image loads and runs six browser decodes at
-once. Initial network waits do not hold those decode permits. Encoded strings waiting for a decode
+the lightbox. Their cache admits at most 32 image loads, leaving room within the main
+process's 128-request allowance for artwork selections and other API reads. Six browser
+decodes run at once. Initial network waits do not hold those decode permits. Encoded strings waiting for a decode
 have a separate 32 MiB budget; excess requests retain only their identity and reread the
 backend's cached bytes under a permit before decoding. If those disk bytes have meanwhile
 been removed, that bounded retry can wait for a download while holding its permit.
 Completed encoded entries retain their existing
 five-minute expiry. A 32 MiB decoded scrollback cache keeps recent pixels; visible images
 remain valid after eviction. The last departing consumer cancels its pending request.
-Detached images clear their sources.
+Detached images clear their sources. A mounted cover retries a failed image load after
+2, 10 and 30 seconds, retaining any existing pixels during a failed refresh. Retries stop
+after three attempts or when the cover detaches.
 Requests use the original display-width buckets, measured at the actual pixel density,
 over the existing backend PNG/base64 transport. Avalon's saved Fit/Fill preference changes
 the crop without changing cover bounds or fetching the image again, including desktop merge-review

@@ -16,6 +16,7 @@ interface ArtState {
   revision: string
 }
 let selectionRead = 0
+const imageRetryDelays = [2_000, 10_000, 30_000]
 
 export function useArtworkSelection(workId: number, hero = false, enabled = true) {
   return useQuery({
@@ -123,27 +124,39 @@ export function Artwork({
     if (!imageKey) {
       return
     }
-    const lease = cache.acquire(signature, (signal) => loadArtworkImage(client, imageKey, signal))
-    leases.current.add(lease)
     let active = true,
       published = false
+    let lease: ArtworkLease<OwnedArtwork>
+    let retry: ReturnType<typeof setTimeout> | undefined
     const retained = snapshot?.identity === identity && snapshot.asset !== failure ? snapshot.asset : null
-    const publish = (asset: OwnedArtwork | null) => {
-      if (!active) return
-      published = true
-      if (!asset && retained) {
-        lease.release()
-        leases.current.delete(lease)
-        setUpgradeFailed(true)
-        return
+    const load = (attempt: number) => {
+      lease = cache.acquire(signature, (signal) => loadArtworkImage(client, imageKey, signal))
+      leases.current.add(lease)
+      published = false
+      const publish = (asset: OwnedArtwork | null) => {
+        if (!active) return
+        published = true
+        if (!asset && retained) {
+          lease.release()
+          leases.current.delete(lease)
+          setUpgradeFailed(true)
+        } else {
+          setSnapshot({ key: imageKey, identity, asset, lease })
+          setFailure(null)
+          setUpgradeFailed(false)
+        }
+        // A timeout or a busy backend must not leave a mounted cover empty until a
+        // resize. Bound retries because a selected source can also have no image.
+        if (!asset && attempt < imageRetryDelays.length)
+          retry = setTimeout(() => load(attempt + 1), imageRetryDelays[attempt])
       }
-      setSnapshot({ key: imageKey, identity, asset, lease })
-      setFailure(null)
+      if (lease.current) publish(lease.current)
+      else void lease.ready.then(publish)
     }
-    if (lease.current) publish(lease.current)
-    else void lease.ready.then(publish)
+    load(0)
     return () => {
       active = false
+      clearTimeout(retry)
       if (!published) {
         lease.release()
         leases.current.delete(lease)

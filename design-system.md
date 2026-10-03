@@ -195,10 +195,16 @@ button with the standard visible focus treatment.
 In Electron the spine spans the area below the toolbar, beside the filter and selection
 controls as well as the results. Reserving that strip keeps all 27 labels readable when
 a short window has list controls open; those controls and the artwork end before the wave.
+The desktop toolbar groups Display with the grid/list switch on the left, gives Search
+the flexible space, and places Filters on the right beside its panel. Store and Sort stay
+together; narrower panes move that group onto a second row, and Search takes its own row
+when the filter panel leaves too little width. The filter panel reserves an inner gutter
+between its fields, facet counts and scrollbars. Selection actions occupy space only
+while at least one visible game is selected.
 
 ```
 ┌──────────────┬────────────────────────────────────────────────────────┐
-│  RAIL 220px  │  search           ▦ ▤   density ──○──   sort ▾         │
+│  RAIL 220px  │  Display ▾ ▦ ▤   search         store  sort ▾ Filters │
 │              ├────────────────────────────────────────────────────────┤
 │  1,247       │   ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐       │
 │              │   │    │● │    │  │▓▓▓▓│  │    │● │▓▓▓▓│  │    │       │
@@ -223,8 +229,9 @@ crops artwork to the card. Both modes retain the same 2:3 geometry and apply imm
 to portrait covers on desktop and fullscreen. Set this in desktop Display or fullscreen
 Settings → Appearance; it persists across launches. Heroes and screenshots keep their
 own presentation. Reset fullscreen appearance leaves this shared preference intact.
-Default 148×222, gutter 16px. The density slider spans 108×162 → 200×300; the grid reflows on
-available width and does not use fixed column counts.
+Default 148×222, gutter 16px. Desktop Display contains the Cover size slider, with labeled
+larger and smaller ends. It spans 108×162 → 200×300; the grid reflows on available width and
+does not use fixed column counts. The control remains available in narrow windows.
 
 Segmented selectors keep every selected, hover and pressed fill inside the enclosing rule.
 The grid/list switch, Settings sections, platform tabs and merge-kind filter use an inner
@@ -477,7 +484,9 @@ Local-only discovery is an available source, not an unconnected account requirin
 
 **Statistics.** Desktop Stats and fullscreen Activity → Library summary offer Gameplay and
 Spending with independent navigation and filter state on each surface. Gameplay opens first.
-The heading, section choices and Spending refresh share a wrapping toolbar. Desktop Spending
+The heading, section choices and Spending refresh share a wrapping toolbar. Gameplay Refresh
+sits beside the period and store controls, with 16px separating the scope/date line from
+the controls. Desktop Spending
 shows its source and coverage across the available width, without a second account heading;
 absent loading and error messages reserve no space. Fullscreen keeps its readable control
 sizes while sharing the heading row and omitting the repeated library count above the charts.
@@ -1118,7 +1127,8 @@ preserves focus on the section controls or reading actions.
 
 **Steam-reported activity** opens a separate reading page from fullscreen Activity and game
 play history. Desktop game details place the same evidence below the Activity tracker.
-Entries state approximate unmatched minutes, or Steam's reported increase when comparison
+Each entry stacks its game title, duration and explanatory lines with an 8px gap on both
+surfaces. Entries state approximate unmatched minutes, or Steam's reported increase when comparison
 is unavailable, followed by the observation window and uncertainty. They are not editable
 sessions and do not contribute to recorded-session totals. Own-account scope applies to both
 surfaces. Twenty entries form a page with **Previous**, **Next** and **Refresh** actions;
@@ -1584,7 +1594,9 @@ no plot when there is no temporal evidence. The tracker always retains calendar 
 use `Flare`, other recorded updates use neutral ink. Nearby marks group into a count instead
 of dropping everything after an arbitrary cap. Selection names the updates and their dates;
 a grouped lifetime mark switches to the closer tracked view when that range exists. The full
-Updates tab remains the route to patch notes and read controls. Acknowledgement refreshes
+Updates tab remains the route to patch notes and read controls. In fullscreen its visible
+count reads **Updates · 2 unread**, so the number's meaning does not depend on the dot.
+Acknowledgement refreshes
 the marks without switching the selected range.
 
 **The chart has one ownership scope.** Cumulative counters for linked copies cannot be joined

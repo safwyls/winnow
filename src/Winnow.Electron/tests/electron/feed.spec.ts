@@ -102,6 +102,8 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     await expect(scope.locator('time').first()).toHaveAttribute('dateTime', active.expiresAt!)
     await page.getByRole('button', { name: /What you've told the feed/ }).click()
     const dialog = page.getByRole('region', { name: "What you've told the feed", exact: true })
+    await expect(dialog.getByRole('button', { name: 'Back to the feed' })).toBeInViewport()
+    await expect(dialog.getByRole('button', { name: 'Back to the feed' })).toBeFocused()
     await expect(dialog.getByRole('button', { name: 'Undo', exact: true })).toBeVisible()
     const geometry = await dialog.boundingBox(),
       viewport = page.viewportSize()

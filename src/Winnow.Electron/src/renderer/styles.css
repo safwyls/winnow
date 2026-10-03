@@ -1404,6 +1404,10 @@
   .check-field input {
     flex-shrink: 0;
   }
+  .check-field > span > small {
+    display: block;
+    margin-top: 4px;
+  }
   .form-row {
     display: flex;
     gap: 20px;

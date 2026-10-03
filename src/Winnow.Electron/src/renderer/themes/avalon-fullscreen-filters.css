@@ -194,7 +194,9 @@
   .fullscreen-filter-hints svg path {
     fill: currentColor;
   }
-  .avalon-shell.fullscreen:has(.avalon-filter-panel.fullscreen) .avalon-footer > span:first-child {
+  .avalon-shell.fullscreen:has(.avalon-filter-panel.fullscreen)
+    .avalon-footer
+    > .fullscreen-input-hints:first-child {
     visibility: hidden;
   }
   .avalon-shell.fullscreen .avalon-library[data-filters-open='true'] > :not(.avalon-filter-panel) {

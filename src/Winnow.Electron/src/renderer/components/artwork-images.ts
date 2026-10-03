@@ -14,7 +14,9 @@ const subscriptions = new WeakMap<QueryClient, () => void>()
 export function artworkImages(client: QueryClient) {
   let cache = owners.get(client)
   if (cache) return cache
-  cache = new ArtworkCache<OwnedArtwork>({ concurrent: 128 })
+  // Main allows 128 renderer requests in total. Leave room for selection and snapshot
+  // reads while slow image downloads occupy their own bounded part of that allowance.
+  cache = new ArtworkCache<OwnedArtwork>({ concurrent: 32 })
   owners.set(client, cache)
   const owned = cache
   const unsubscribe = client.getQueryCache().subscribe((event) => {

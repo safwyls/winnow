@@ -12,6 +12,10 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+.screen-view:has(> .avalon-feed-history) {
+  height: 100%;
+  min-height: 0;
+}
 .avalon-feed-history {
   width: 100%;
   height: 100%;
@@ -19,6 +23,34 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+.avalon-feed-history-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  flex: 0 0 auto;
+}
+.avalon-feed-history-header > div {
+  min-width: 0;
+}
+.avalon-feed-history-header > button {
+  flex: 0 0 auto;
+}
+.avalon-feed-history-entries {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  margin-top: 16px;
+  padding: 4px 12px 4px 4px;
+}
+.avalon-feed-history [role='alert'] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 .avalon-feed-body {
   display: contents;
@@ -32,7 +64,7 @@
 .avalon-shell.desktop .avalon-feed-history {
   padding: 24px 24px 32px;
 }
-.avalon-shell.fullscreen:has([data-feed-history-body]) .avalon-footer > span {
+.avalon-shell.fullscreen:has([data-feed-history-body]) .avalon-footer > .fullscreen-input-hints {
   visibility: hidden;
 }
 .avalon-shell.fullscreen .avalon-feed-history {
@@ -47,7 +79,7 @@
   font: 700 calc(32 * var(--feed-info-unit) * var(--feed-info-text))/1.2 var(--font-body);
 }
 .avalon-feed-history h1 {
-  margin: 0 0 14px;
+  margin: 0 0 8px;
 }
 .avalon-shell.fullscreen .avalon-feed-history li p {
   font-size: calc(22 * var(--feed-info-unit) * var(--feed-info-text));
@@ -69,9 +101,7 @@
 .avalon-feed-history ol {
   list-style: none;
   padding: 0;
-  margin: 16px 0;
-  overflow-y: auto;
-  min-height: 0;
+  margin: 0;
 }
 .avalon-feed-history li {
   display: flex;
@@ -84,10 +114,6 @@
 .avalon-feed-history h3,
 .avalon-feed-history p {
   margin: 4px 0;
-}
-.avalon-feed-history > button {
-  flex: 0 0 auto;
-  align-self: flex-end;
 }
 .avalon-feed-summary {
   display: flex;

@@ -355,6 +355,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       `SEARCH: ${prefix}`,
     )
     if (mode === 'desktop') {
+      await page.getByRole('button', { name: 'Display preferences', exact: true }).click()
       const slider = page.getByRole('slider', { name: 'Density', exact: true })
       await slider.focus()
       await slider.press('Home')
@@ -367,6 +368,7 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
           async () => (await page.locator('.avalon-library [data-avalon-game]').first().boundingBox())!.width,
         )
         .toBeLessThan(wide!.width)
+      await page.getByRole('button', { name: 'Close display preferences', exact: true }).click()
       await page.getByRole('button', { name: 'List view', exact: true }).click()
       const header = page.getByRole('group', { name: 'Library columns' })
       for (const [column, first, second] of [

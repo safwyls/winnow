@@ -393,7 +393,7 @@ for (const [width, height, scale] of [
     expect(await art.boundingBox()).toEqual({ x: 0, y: 0, width, height })
     const tabs = page.getByRole('tablist', { name: 'Game information' })
     await expect(tabs.getByRole('tab', { name: 'Updates, 1 unread update', exact: true })).toHaveText(
-      'Updates 1',
+      'Updates · 1 unread',
     )
     await expect(tabs.locator('.avalon-details-unread')).toBeVisible()
     const geometry = () =>

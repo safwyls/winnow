@@ -544,26 +544,76 @@
     overflow: auto;
     min-height: 0;
   }
+  .avalon-toolbar-container {
+    container: library-toolbar / inline-size;
+    flex: none;
+    min-width: 0;
+  }
   .avalon-toolbar {
-    display: flex;
+    display: grid;
+    grid-template-areas: 'view search sort filters';
+    grid-template-columns: auto minmax(140px, 1fr) auto auto;
     gap: 12px;
     align-items: center;
-    flex-wrap: wrap;
   }
-  .avalon-toolbar > label {
+  .avalon-toolbar-view,
+  .avalon-toolbar-sort {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--muted);
-    font-size: calc(11px * var(--theme-text-scale, 1));
+    min-width: 0;
+  }
+  .avalon-toolbar-view {
+    grid-area: view;
+  }
+  .avalon-toolbar-sort {
+    grid-area: sort;
+    justify-content: end;
+  }
+  .avalon-toolbar-filters {
+    grid-area: filters;
+    justify-self: end;
+  }
+  .avalon-shell.fullscreen .avalon-toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .avalon-shell.fullscreen .avalon-toolbar-sort {
+    flex-wrap: wrap;
+    justify-content: start;
+  }
+  .avalon-shell.fullscreen .avalon-toolbar-sort label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  @container library-toolbar (max-width: 760px) {
+    .avalon-toolbar {
+      grid-template-areas: 'view search filters' 'sort sort sort';
+      grid-template-columns: auto minmax(120px, 1fr) auto;
+    }
+  }
+  @container library-toolbar (max-width: 480px) {
+    .avalon-toolbar {
+      grid-template-areas: 'view filters' 'search search' 'sort sort';
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .avalon-toolbar-sort {
+      flex-wrap: wrap;
+    }
   }
   .avalon-toolbar select {
     padding: 7px 30px 7px 8px;
     font-size: calc(12px * var(--theme-text-scale, 1));
   }
   .avalon-toolbar .avalon-search {
-    flex: 1;
-    min-width: 180px;
+    grid-area: search;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: var(--muted);
     border: 1px solid var(--line);
     border-radius: 4px;
     padding-left: 10px;
@@ -571,6 +621,7 @@
   }
   .avalon-search input {
     width: 100%;
+    min-width: 0;
     border: 0;
     padding: 8px;
     background: transparent;
@@ -579,11 +630,6 @@
   .avalon-search button {
     border: 0;
     padding: 6px;
-  }
-  .avalon-density input {
-    width: 84px;
-    accent-color: var(--accent);
-    padding: 0;
   }
   .avalon-segmented {
     display: flex;
@@ -638,7 +684,7 @@
   .avalon-library-results > .avalon-library-scroll {
     width: 100%;
   }
-  .avalon-shell.desktop .avalon-library[data-filters-open='true'] > .avalon-toolbar,
+  .avalon-shell.desktop .avalon-library[data-filters-open='true'] > .avalon-toolbar-container,
   .avalon-shell.desktop .avalon-library[data-filters-open='true'] > .avalon-library-browse {
     margin-right: 300px;
   }
@@ -670,13 +716,17 @@
   .avalon-filter-fields {
     flex: 1;
     min-height: 0;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    padding: 2px 12px 4px 2px;
     display: flex;
     flex-direction: column;
     gap: 16px;
   }
   .avalon-filter-fields > label,
   .avalon-filter-year > label {
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -685,11 +735,12 @@
   }
   .avalon-filter-year {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
   .avalon-filter-year input {
     width: 100%;
+    min-width: 0;
   }
   .avalon-filter-fields summary {
     cursor: pointer;
@@ -701,6 +752,8 @@
     flex-direction: column;
     max-height: 240px;
     overflow: auto;
+    scrollbar-gutter: stable;
+    padding: 2px 8px 2px 2px;
   }
   .avalon-filter-options label {
     display: flex;
@@ -713,6 +766,7 @@
   }
   .avalon-filter-options small {
     margin-left: auto;
+    flex-shrink: 0;
     font-family: var(--font-mono);
   }
   .avalon-filter-fields p[role='alert'] {
@@ -1153,9 +1207,6 @@
     }
     .avalon-shelf > header p {
       margin-top: 6px;
-    }
-    .avalon-density {
-      display: none !important;
     }
     .avalon-shell.fullscreen .avalon-header {
       grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);

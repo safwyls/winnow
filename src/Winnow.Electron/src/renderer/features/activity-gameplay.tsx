@@ -340,9 +340,12 @@ function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) 
             <button onClick={applyDates}>Apply dates</button>
           </>
         )}
+        {!problem && !library.error && !query.error && !canceled && (
+          <button onClick={refresh}>{mode === 'fullscreen' ? 'Refresh gameplay' : 'Refresh'}</button>
+        )}
       </div>
-      {problem || library.error || query.error || canceled ? (
-        <div role="alert">
+      {(problem || library.error || query.error || canceled) && (
+        <div role="alert" className="activity-read-status">
           <p>
             {problem ??
               (canceled
@@ -351,11 +354,9 @@ function Gameplay({ mode, onOpenGame }: { mode: Mode; onOpenGame?: (id: number) 
           </p>
           <button onClick={refresh}>Try again</button>
         </div>
-      ) : (
-        <button onClick={refresh}>{mode === 'fullscreen' ? 'Refresh gameplay' : 'Refresh'}</button>
       )}
       {!problem && !canceled && query.isFetching ? (
-        <div role="status">
+        <div role="status" className="activity-read-status">
           <p>Reading gameplay statistics…</p>
           <button
             onClick={() => {

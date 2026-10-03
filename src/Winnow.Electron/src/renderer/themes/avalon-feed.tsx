@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
 } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft } from 'lucide-react'
 import type { ThemeContext } from '../../shared/theme'
 import type { FeedSnapshot, FeedVerdict, LibraryGame } from '../api/types'
 import { request } from '../api/client'
@@ -397,57 +398,65 @@ export function FeedHistory({
             }
           }}
         >
-          <h1>What you've told the feed</h1>
-          <p>Your responses stay here, including choices you have taken back.</p>
-          {(error || history.error) && (
-            <p role="alert">
-              {error || 'Your feed responses could not be loaded.'}{' '}
-              <button
-                onClick={() => {
-                  setError('')
-                  void history.refetch()
-                }}
-              >
-                Try again
-              </button>
-            </p>
-          )}
-          {history.isPending ? (
-            <p role="status">Loading your responses…</p>
-          ) : history.data?.length ? (
-            <ol>
-              {[...history.data]
-                .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-                .map((row, index) => {
-                  const key = `${row.releaseId}:${row.kind}:${row.createdAt}:${index}`,
-                    status = verdictStatus(row)
-                  return (
-                    <li key={key}>
-                      <div>
-                        <h3>{titles.get(row.releaseId) ?? 'A game that is no longer in your library'}</h3>
-                        <span className="avalon-label">{row.kind === 1 ? 'NOT NOW' : 'NOT INTERESTED'}</span>
-                        <p>
-                          {status.note}{' '}
-                          <time className="avalon-feed-date" dateTime={status.date ?? undefined}>
-                            {feedDate(status.date)}
-                          </time>
-                        </p>
-                      </div>
-                      {row.status === 0 && (
-                        <button disabled={!!pending} onClick={() => void undo(row, key)}>
-                          {pending === key ? 'Undoing…' : 'Undo'}
-                        </button>
-                      )}
-                    </li>
-                  )
-                })}
-            </ol>
-          ) : (
-            !history.error && <p>Nothing yet. Your feed responses will appear here.</p>
-          )}
-          <button ref={back} onClick={() => setOpen(false)}>
-            Back to the feed
-          </button>
+          <header className="avalon-feed-history-header">
+            <div>
+              <h1>What you've told the feed</h1>
+              <p>Your responses stay here, including choices you have taken back.</p>
+            </div>
+            <button ref={back} onClick={() => setOpen(false)}>
+              <ArrowLeft size={18} aria-hidden="true" /> Back to the feed
+            </button>
+          </header>
+          <div className="avalon-feed-history-entries">
+            {(error || history.error) && (
+              <p role="alert">
+                {error || 'Your feed responses could not be loaded.'}{' '}
+                <button
+                  onClick={() => {
+                    setError('')
+                    void history.refetch()
+                  }}
+                >
+                  Try again
+                </button>
+              </p>
+            )}
+            {history.isPending ? (
+              <p role="status">Loading your responses…</p>
+            ) : history.data?.length ? (
+              <ol>
+                {[...history.data]
+                  .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+                  .map((row, index) => {
+                    const key = `${row.releaseId}:${row.kind}:${row.createdAt}:${index}`,
+                      status = verdictStatus(row)
+                    return (
+                      <li key={key}>
+                        <div>
+                          <h3>{titles.get(row.releaseId) ?? 'A game that is no longer in your library'}</h3>
+                          <span className="avalon-label">
+                            {row.kind === 1 ? 'NOT NOW' : 'NOT INTERESTED'}
+                          </span>
+                          <p>
+                            {status.note}{' '}
+                            <time className="avalon-feed-date" dateTime={status.date ?? undefined}>
+                              {feedDate(status.date)}
+                            </time>
+                          </p>
+                        </div>
+                        {row.status === 0 && (
+                          <button disabled={!!pending} onClick={() => void undo(row, key)}>
+                            {pending === key ? 'Undoing…' : 'Undo'}
+                          </button>
+                        )}
+                      </li>
+                    )
+                  })}
+              </ol>
+            ) : (
+              !history.error && <p>Nothing yet. Your feed responses will appear here.</p>
+            )}
+          </div>
           <p className="avalon-feed-history-hints">A · Select · B · Back to the feed</p>
         </section>
       )}

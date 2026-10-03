@@ -161,7 +161,9 @@ for (const mode of ['desktop', 'fullscreen'] as const)
         .click()
       if (mode === 'desktop') {
         await page.getByRole('button', { name: 'Grid view', exact: true }).click()
+        await page.getByRole('button', { name: 'Display preferences', exact: true }).click()
         await page.getByRole('slider', { name: 'Density', exact: true }).fill('200')
+        await page.getByRole('button', { name: 'Close display preferences', exact: true }).click()
       }
       await setLibrarySort(page, 'title')
       if (mode === 'desktop') await page.getByRole('button', { name: /^Sort ·/ }).focus()
@@ -239,7 +241,9 @@ for (const width of [1200, 1920])
       await scroll.evaluate((element) => {
         element.scrollTop = 0
       })
+      await page.getByRole('button', { name: 'Display preferences', exact: true }).click()
       await page.getByRole('slider', { name: 'Density', exact: true }).fill(String(density))
+      await page.getByRole('button', { name: 'Close display preferences', exact: true }).click()
       await measured()
       const geometry = await page
         .locator('.avalon-grid-row')
@@ -518,6 +522,8 @@ test('desktop directional input reveals the last cover and carries its column be
   }
 })
 test('fullscreen retains row nodes, carries and clamps columns on revisits, and reverses without fading', async () => {
+  await replace(fixture())
+  await page.reload()
   await surface('fullscreen', 1920, 1080)
   await page.getByRole('button', { name: 'Show Layout shelf 1', exact: true }).click()
   await settled()
