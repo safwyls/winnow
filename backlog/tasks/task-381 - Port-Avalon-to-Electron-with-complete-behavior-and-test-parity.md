@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-29 04:12'
-updated_date: '2026-10-02 10:37'
+updated_date: '2026-10-04 19:17'
 labels: []
 dependencies: []
 priority: high
@@ -228,4 +228,6 @@ Review checkpoint: TASK-381.4 completed in 359e79da, following root LB/RB correc
 Review checkpoint: TASK-381.5 completed in c355f48b. Restored the five-row keyboard, fullscreen file chooser, journal keyboard actions and accessible controller/focus routes. Build/typecheck, all 3,388 component/live API cases and 65 distinct native cases pass. All ten assigned contracts are ported; inventory now has 1,313 ported, 625 retained backend, 30 framework-specific, 384 pending and 83 partial (467 unresolved). Evidence: docs/spikes/2026-09-28-electron-parity/checkpoint-sixty.md. Physical devices remain unverified and fullscreen filter visual comparison is recorded in existing TASK-381.7. No parent acceptance criterion is complete. Stopped for review; TASK-381.6, library loading and live refresh, waits for explicit continuation.
 
 Final local verification is green:7183 .NET passes with2explicit Linux-only skips and4451 component/live-API passes with0skips. Source audit accounts for2435 methods with0pending/partial. Simultaneous-start write-probe race corrected and reviewed; evidence is checkpoint96. Four of the final six tasks are Done;381.40 remains open for the other named device exceptions and381.41 for complete final remote CI plus acceptance. Explicit GitHub push/draft-PR approval is pending after automatic approval review rejected those external actions. No completion, merge, tag or release claim.
+
+2026-10-04 user-requested layout correction: anchored the desktop Library browse spine to the results container so it starts at the native scrollbar below selection controls, counts and list headings. Grid and list assert exact top alignment; drag, halo, keyboard and scroll-retention checks pass. The full-alphabet interaction fixture uses a 900px window because the rail now shares the shorter results area. Fullscreen retains its paged grid with no desktop rail. Verified TypeScript, Electron build, all 5 browse-spine native tests and inspected both screenshots. Native tests used the current development companion explicitly after the default companion prevented startup. Updated design-system.md in place.
 <!-- SECTION:NOTES:END -->

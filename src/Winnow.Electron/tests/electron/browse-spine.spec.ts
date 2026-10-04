@@ -65,7 +65,8 @@ async function prepare(view: 'grid' | 'list') {
   await app.evaluate(({ BrowserWindow }) => {
     const window = BrowserWindow.getAllWindows()[0]!
     window.setFullScreen(false)
-    window.setContentSize(1200, 640)
+    // Keep all 27 letters readable; the scroll viewport is constrained separately.
+    window.setContentSize(1200, 900)
     window.webContents.send('winnow:fullscreen:changed', false)
   })
   await page
@@ -138,6 +139,7 @@ for (const view of ['grid', 'list'] as const) {
       const cards = [...scroll.querySelectorAll('[data-avalon-game]')]
       return {
         width: box.width,
+        topGap: box.top - scroll.getBoundingClientRect().top,
         rowHeight: box.height / 27,
         gap: scrollbarLeft - box.right,
         font: getComputedStyle(stops[0]).fontSize,
@@ -151,6 +153,7 @@ for (const view of ['grid', 'list'] as const) {
       }
     })
     expect(geometry.width).toBe(24)
+    expect(geometry.topGap).toBe(0)
     expect(geometry.rowHeight).toBeGreaterThanOrEqual(11)
     expect(geometry.gap).toBeGreaterThanOrEqual(0)
     expect(geometry.gap).toBeLessThanOrEqual(2)

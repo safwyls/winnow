@@ -195,9 +195,9 @@ arrow. When it leaves, the wave returns to rest and the halo again marks the cur
 The spine reverses to
 `Z–A` with the sort so downward motion always moves down the library. Each stop remains a named
 button with the standard visible focus treatment.
-In Electron the spine spans the area below the toolbar, beside the filter and selection
-controls as well as the results. Reserving that strip keeps all 27 labels readable when
-a short window has list controls open; those controls and the artwork end before the wave.
+In Electron the spine starts at the top of the results scrollbar, below the filter and
+selection controls, game count and any list column headings. It follows the results
+viewport as those controls wrap or change height; artwork ends before the wave.
 The desktop toolbar groups Display with the grid/list switch on the left, gives Search
 the flexible space, and places Filters on the right beside its panel. Store and Sort stay
 together. Search focus outlines the whole field, including its icon and clear action, on

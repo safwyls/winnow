@@ -9,12 +9,11 @@
     min-height: 0;
     position: relative;
   }
-  .avalon-shell.desktop
-    .avalon-library-browse
-    > :not(.avalon-library-results, .avalon-browse-spine, .avalon-record-header) {
+  .avalon-shell.desktop .avalon-library-browse > :not(.avalon-library-results, .avalon-record-header) {
     margin-right: 54px;
   }
   .avalon-shell.desktop .avalon-library-results {
+    position: relative;
     padding-right: 10px;
   }
   .avalon-shell.desktop .avalon-library[data-filters-open='true'] .avalon-library-results {
@@ -28,8 +27,8 @@
   }
   .avalon-browse-spine {
     position: absolute;
-    top: 4px;
-    bottom: 4px;
+    top: 0;
+    bottom: 0;
     right: 18px;
     width: 24px;
     display: grid;

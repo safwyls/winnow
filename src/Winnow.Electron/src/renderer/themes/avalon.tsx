@@ -1752,15 +1752,15 @@ export function AvalonLibrary(context: ThemeContext) {
                       </div>
                     )}
                   </div>
+                  {!fullscreen && !context.loading && (
+                    <AvalonBrowseSpine
+                      games={games}
+                      sort={sort}
+                      scroll={scroll}
+                      jump={(index) => virtual.scrollToIndex(Math.floor(index / columns), { align: 'start' })}
+                    />
+                  )}
                 </div>
-                {!fullscreen && !context.loading && (
-                  <AvalonBrowseSpine
-                    games={games}
-                    sort={sort}
-                    scroll={scroll}
-                    jump={(index) => virtual.scrollToIndex(Math.floor(index / columns), { align: 'start' })}
-                  />
-                )}
               </div>
               {fullscreen && (
                 <AvalonLibraryPanel
