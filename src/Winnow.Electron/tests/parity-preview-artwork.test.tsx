@@ -17,7 +17,14 @@ function deferred<T>() {
   return { promise, resolve }
 }
 function selection(provider: string, id: string): ApiResult<unknown> {
-  return { ok: true, status: 200, data: { current: { previewKey: { provider, id } }, revision: 'source' } }
+  return {
+    ok: true,
+    status: 200,
+    data: {
+      candidates: [{ key: { provider, id }, aspectRatio: 16 / 9, fitWholeHero: false }],
+      coverKey: null,
+    },
+  }
 }
 function client() {
   const value = new QueryClient({
@@ -42,6 +49,8 @@ function bridge(request: ReturnType<typeof vi.fn>, artwork: ReturnType<typeof vi
 }
 
 beforeEach(() => {
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(440)
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(190)
   const NativeBlob = Blob
   const bytes = new WeakMap<Blob, Uint8Array>()
   vi.stubGlobal(
@@ -110,8 +119,8 @@ it('released 440 by 190 Steam hero123 ignores late eight-pixel artwork and reacq
   try {
     await waitFor(() => expect(artwork).toHaveBeenCalledTimes(1))
     expect(request.mock.calls[0][0]).toMatchObject({
-      route: 'artworkState',
-      params: { workId: 1, slot: 'Hero' },
+      route: 'artwork.backdrop',
+      params: { workId: 1, aspectRatio: 440 / 190 },
     })
     const oldRequest = artwork.mock.calls[0][3]
     // Electron chooses the next available decode width while retaining the source's 440x190 target.
@@ -121,7 +130,7 @@ it('released 440 by 190 Steam hero123 ignores late eight-pixel artwork and reacq
     expect(cache.liveSlots).toBe(0)
     expect(cancel).toHaveBeenCalledWith(oldRequest)
     await act(async () => old.resolve(pixels))
-    expect(queries.getQueryData(['artwork-image', 'steam-hero', '123', 480, 'source'])).toBeUndefined()
+    expect(queries.getQueryData(['artwork-image', 'steam-hero', '123', 480, 'asset'])).toBeUndefined()
     expect(URL.createObjectURL).not.toHaveBeenCalled()
     expect(document.querySelector('.artwork img')).toBeNull()
 

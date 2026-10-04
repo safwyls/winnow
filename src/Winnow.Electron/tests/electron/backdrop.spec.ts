@@ -38,21 +38,6 @@ test.beforeAll(async () => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   page.on('pageerror', (error) => errors.push(error.message))
   await expect(page.locator('.avalon-cover').first()).toBeVisible()
-  await page.evaluate(() => {
-    const live = new Set<string>(),
-      create = URL.createObjectURL.bind(URL),
-      revoke = URL.revokeObjectURL.bind(URL)
-    ;(window as unknown as { backdropUrls: Set<string> }).backdropUrls = live
-    URL.createObjectURL = (value) => {
-      const url = create(value)
-      live.add(url)
-      return url
-    }
-    URL.revokeObjectURL = (url) => {
-      live.delete(url)
-      revoke(url)
-    }
-  })
 })
 test.afterAll(async () => closeFixture(application, directory))
 async function surface(mode: 'desktop' | 'fullscreen', width = 1920, height = 1080) {
@@ -86,9 +71,31 @@ async function choose(kind: string, delay = false) {
   )
 }
 const backdrop = () => page.locator('.avalon-backdrop').first()
-const urls = () => page.evaluate(() => (window as unknown as { backdropUrls: Set<string> }).backdropUrls.size)
+async function rememberBackdropImages() {
+  await page.evaluate(() => {
+    const images = [...document.querySelectorAll<HTMLImageElement>('.avalon-backdrop img')]
+    if (!images.length) throw Error('Expected visible backdrop pixels before detaching')
+    Object.assign(window, {
+      rememberedBackdropImages: images.map((image) => ({ image, source: image.getAttribute('src') })),
+    })
+  })
+}
+async function expectReleasedImages() {
+  // The shared cache may retain URLs for reopening; detached layers must release their DOM source.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (
+          window as unknown as {
+            rememberedBackdropImages: { image: HTMLImageElement; source: string | null }[]
+          }
+        ).rememberedBackdropImages.every(({ image, source }) => image.getAttribute('src') !== source),
+      ),
+    )
+    .toBe(true)
+}
 
-test('fullscreen Home crossfades independent source geometry, keeps visible art while loading, and releases replaced URLs', async ({}, info) => {
+test('fullscreen Home crossfades independent source geometry, keeps visible art while loading, and retires replaced images', async ({}, info) => {
   await surface('fullscreen', 2520, 1080)
   await choose('hero')
   await expect(backdrop().locator('[data-key="steam-hero:hero"] img')).toBeVisible()
@@ -129,6 +136,7 @@ test('fullscreen Home crossfades independent source geometry, keeps visible art 
       .evaluate((image) => getComputedStyle(image).maskImage),
   ).toContain('98%')
   await page.screenshot({ path: info.outputPath('home-wide-hero.png') })
+  await rememberBackdropImages()
   await choose('landscape', true)
   await expect
     .poll(() =>
@@ -138,7 +146,6 @@ test('fullscreen Home crossfades independent source geometry, keeps visible art 
     )
     .toBeGreaterThan(0)
   await expect(backdrop().locator('[data-key="steam-hero:hero"] img')).toBeVisible()
-  expect(await urls()).toBe(1)
   await page.evaluate(() => {
     const state = { sampled: false, incoming: 0, outgoing: 0, opacity: 0 }
     ;(window as unknown as { backdropMotion: typeof state }).backdropMotion = state
@@ -191,7 +198,7 @@ test('fullscreen Home crossfades independent source geometry, keeps visible art 
   expect(motion.opacity).toBeGreaterThan(0)
   expect(motion.opacity).toBeLessThan(1)
   await expect(backdrop()).not.toHaveAttribute('data-crossfading')
-  await expect.poll(urls).toBe(1)
+  await expectReleasedImages()
   await choose('hero')
   await expect(backdrop().locator('[data-key="steam-hero:hero"] img')).toBeVisible()
   await expect(backdrop()).not.toHaveAttribute('data-crossfading')
@@ -208,7 +215,7 @@ test('fullscreen Home crossfades independent source geometry, keeps visible art 
   }
 })
 
-test('detaching Home cancels the real named image request and releases retained decoded art', async () => {
+test('detaching Home cancels the real named image request and clears detached image sources', async () => {
   await surface('fullscreen')
   await choose('hero')
   await expect(backdrop().locator('img')).toBeVisible()
@@ -218,7 +225,8 @@ test('detaching Home cancels the real named image request and releases retained 
   const pendingBefore = await application.evaluate(
     () => (globalThis as unknown as { __backdropFixture: Fixture }).__backdropFixture.pending.length,
   )
-  await choose('landscape', true)
+  await rememberBackdropImages()
+  await choose('landscape-pending', true)
   await expect(backdrop()).toHaveAttribute('data-loading', 'true')
   await expect
     .poll(() =>
@@ -232,7 +240,7 @@ test('detaching Home cancels the real named image request and releases retained 
     .getByRole('button', { name: 'Activity', exact: true })
     .click()
   await expect(backdrop()).toHaveCount(0)
-  await expect.poll(urls).toBe(0)
+  await expectReleasedImages()
   await expect
     .poll(() =>
       application.evaluate(
@@ -276,17 +284,18 @@ for (const mode of ['desktop', 'fullscreen'] as const)
       await details.locator('.avalon-backdrop img').evaluate((node) => getComputedStyle(node).opacity),
     ).toBe('1')
     await page.screenshot({ path: info.outputPath(`details-${mode}-backdrop.png`) })
+    await rememberBackdropImages()
     await page.keyboard.press('Escape')
     await expect(details).toHaveCount(0)
     await page
       .getByRole('navigation', { name: 'Main navigation' })
       .getByRole('button', { name: 'Activity', exact: true })
       .click()
-    await expect.poll(urls).toBe(0)
+    await expectReleasedImages()
     expect(errors).toEqual([])
   })
 
-test('fullscreen Library retains one dimmed backdrop across selected games and releases its pixels and pending request on departure', async ({}, info) => {
+test('fullscreen Library retains one dimmed backdrop across selected games and clears its images and cancels its pending request on departure', async ({}, info) => {
   const pending = () =>
     application.evaluate(
       () => (globalThis as unknown as { __backdropFixture: Fixture }).__backdropFixture.pending.length,
@@ -309,9 +318,10 @@ test('fullscreen Library retains one dimmed backdrop across selected games and r
   })
   await application.evaluate(() => {
     const fixture = (globalThis as unknown as { __backdropFixture: Fixture }).__backdropFixture
-    fixture.kind = 'landscape'
+    fixture.kind = 'landscape-library'
     fixture.delay = true
   })
+  await rememberBackdropImages()
   await page.keyboard.press('ArrowRight')
   const selected = Number(await page.locator('.avalon-fullscreen-grid').getAttribute('data-selected-id'))
   await expect
@@ -336,14 +346,15 @@ test('fullscreen Library retains one dimmed backdrop across selected games and r
     fixture.delay = false
     fixture.pending.splice(0).forEach((finish) => finish())
   })
-  await expect(root.locator('[data-key="igdb-backdrop:landscape"] img')).toBeVisible()
+  await expect(root.locator('[data-key="igdb-backdrop:landscape-library"] img')).toBeVisible()
   await expect(root.locator('.avalon-backdrop')).not.toHaveAttribute('data-crossfading')
-  await expect.poll(urls).toBe(1)
+  await expectReleasedImages()
   await page.screenshot({ path: info.outputPath('library-dimmed-backdrop.png') })
   const before = await application.evaluate(
     () => (globalThis as unknown as { __backdropFixture: Fixture }).__backdropFixture.aborted,
   )
-  await choose('hero', true)
+  await rememberBackdropImages()
+  await choose('hero-pending', true)
   await expect(root.locator('.avalon-backdrop')).toHaveAttribute('data-loading', 'true')
   await expect.poll(pending).toBeGreaterThan(0)
   await page
@@ -351,7 +362,7 @@ test('fullscreen Library retains one dimmed backdrop across selected games and r
     .getByRole('button', { name: 'Activity', exact: true })
     .click()
   await expect(root).toHaveCount(0)
-  await expect.poll(urls).toBe(0)
+  await expectReleasedImages()
   await expect
     .poll(() =>
       application.evaluate(

@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import {
-  AvalonBackdropController,
+  BackdropController,
   backdropGeometry,
   backdropWidth,
   type BackdropCandidate,
@@ -8,7 +8,7 @@ import {
   type BackdropPixels,
   type BackdropSelection,
   type BackdropSize,
-} from '../src/renderer/themes/avalon-backdrop-model'
+} from '../src/renderer/components/backdrop-model'
 
 const landscape = (id: string, ratio = 16 / 9): BackdropCandidate => ({
   key: { provider: 'igdb-backdrop', id },
@@ -37,7 +37,7 @@ let images: {
   signal: AbortSignal
   finish: (value: BackdropPixels | null) => void
 }[]
-let controller: AvalonBackdropController
+let controller: BackdropController
 const flush = async () => {
   await Promise.resolve()
   await Promise.resolve()
@@ -66,7 +66,7 @@ beforeEach(() => {
   reads = []
   images = []
   id = 0
-  controller = new AvalonBackdropController({
+  controller = new BackdropController({
     resolve: (workId, _ratio, signal) => {
       const value = pending<BackdropSelection>()
       reads.push({ workId, signal, finish: value.resolve })
@@ -196,12 +196,10 @@ it('desktop exhausts high-resolution hero artwork screenshot standard hero and p
   controller.setReducedMotion(true)
   controller.select(1, { ...size, fullscreen: false })
   const standard = { ...hero, key: { provider: 'steam-hero-standard', id: '42' } }
-  reads
-    .at(-1)!
-    .finish({
-      candidates: [hero, landscape('art'), landscape('shot'), standard],
-      coverKey: { provider: 'steam', id: '42' },
-    })
+  reads.at(-1)!.finish({
+    candidates: [hero, landscape('art'), landscape('shot'), standard],
+    coverKey: { provider: 'steam', id: '42' },
+  })
   await flush()
   for (const [key, width] of [
     ['steam-hero:42', 3840],
@@ -281,7 +279,7 @@ it('detach cancels pending art and releases current outgoing queued and late res
   controller.dispose()
   expect(first.dispose).toHaveBeenCalledOnce()
   // A separate pending instance also ignores a downloader that does not honour cancellation.
-  const pendingController = new AvalonBackdropController({
+  const pendingController = new BackdropController({
     resolve: async () => ({ candidates: [landscape('pending')], coverKey: null }),
     image: () => Promise.resolve(late),
     publish: vi.fn(),

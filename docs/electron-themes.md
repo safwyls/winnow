@@ -157,14 +157,18 @@ game links and install-folder access when available. Edits and library operation
 same shared controls as other compositions. Afterglow, Rift and Catalogue retain the shared
 Details screen and its existing section arrangement.
 
-Avalon's Home, fullscreen Library and Details backdrops use the backend's ranked candidates, including saved
-artwork, grouped store identities, landscape art, screenshots and portrait fallback.
+All compositions use the shared backdrop loader and the backend's ranked candidates for hero art,
+including saved artwork, grouped store identities, landscape art, screenshots and portrait fallback.
+Failed candidates advance through that order; the current image stays visible during refresh.
+Visible-game preloading uses the same selection and cache. Each composition owns its crop and veils.
+Avalon's Home, fullscreen Library and Details use this shared path.
 Visible artwork remains while its replacement loads. Fullscreen completes each 180 ms
 crossfade before showing the latest queued result; reduced motion replaces it immediately.
 Steam heroes fit their whole composition from 21:9 upward, with independent geometry for
 each transition layer. Desktop Details uses the palette's Surface color at 92% over art;
 fullscreen uses Ground gradients around its reading areas. The renderer cancels obsolete
-image requests and releases decoded images when replaced or detached.
+image requests and releases display leases when replaced or detached. The bounded shared cache
+may retain decoded pixels for reopening.
 Fullscreen Library retains one backdrop across cover selections and dims the complete
 layer to 45%; filter and library-tool pages release it while they replace Browse.
 
@@ -430,14 +434,16 @@ Each optional screen is a React component receiving the same `ThemeContext`:
 | `actions.launch(ownershipId)` | Invoke the host's supported play/install command for a copy. |
 | `components.GameCard` | Host card with authenticated artwork; takes `game`, optional `reason`, `onOpen`, `presentation`, `effects`, and `preview`. |
 | `components.Impression` | Visibility-aware recommendation exposure wrapper; takes `releaseId`, `shelfId`, and children. |
-| `components.Artwork` | Authenticated artwork without a card layout; takes `workId`, optional `hero`, `className`, and `eager`. |
+| `components.Artwork` | Authenticated artwork without a card layout; takes `workId`, optional `hero`, `coverWorkId`, `fullscreen`, `className`, and `eager`. |
 | `components.ArtworkEffects` | Reusable material and depth surface around artwork; takes `children`, optional `className`, `effects`, and `interactionRef`. |
 | `components.GamePreview` | Game information flyout around a theme-owned trigger; takes `game`, `children`, optional `reason`, `disabled`, and `className`. |
 | `components.PortalSurface?` | Reusable fixed-plane reveal with optional cached artwork, shape/activity options, cursor origin and full-view expansion. Older API-1 hosts may omit it. |
 
 `game.workId` remains the canonical identity for navigation and edits. A saved group header
 can supply a different title, first store entry and optional `headerWorkId`. Use
-`game.headerWorkId ?? game.workId` for cover artwork; hero metadata keeps `game.workId`.
+`game.headerWorkId ?? game.workId` for cover artwork; hero metadata keeps `game.workId`. For hero art, pass
+`coverWorkId: game.headerWorkId` to retain the preferred cover fallback and `fullscreen`
+for the active surface. All hero consumers share automatic fallbacks, refresh and caching.
 The shared GameCard already makes this choice. Older hosts may omit `headerWorkId`.
 
 A definition can replace `Shell`, `Discover`, `Library`, `Search`, `Details`, `Journal`,

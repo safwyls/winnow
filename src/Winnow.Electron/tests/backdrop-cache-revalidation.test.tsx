@@ -2,6 +2,7 @@
 import { act, cleanup, render, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { Artwork } from '../src/renderer/components/Artwork'
 import { AvalonBackdrop } from '../src/renderer/themes/avalon-backdrop'
 import { artworkImages, closeArtworkImages } from '../src/renderer/components/artwork-images'
 import type { BackendEvent, WinnowBridge } from '../src/shared/bridge'
@@ -62,63 +63,70 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-for (const fullscreen of [false, true])
-  it.each(['pending', 'ready'] as const)(
-    `revalidates a %s shared backdrop after delayed cache invalidation, fullscreen ${fullscreen}`,
-    async (state) => {
-      const client = new QueryClient()
-      if (state === 'pending')
-        vi.mocked(window.winnow.artworkBytes!).mockImplementationOnce(
-          () =>
-            new Promise((resolve) => {
-              finish = resolve
-            }),
-        )
-      const view = render(
-        <QueryClientProvider client={client}>
-          <AvalonBackdrop workId={1} fullscreen={fullscreen} reducedMotion />
-        </QueryClientProvider>,
-      )
-      try {
-        await waitFor(() => expect(window.winnow.artworkBytes).toHaveBeenCalledOnce())
-        if (state === 'ready') {
-          await waitFor(() =>
-            expect(view.container.querySelector('img')?.getAttribute('src')).toBe('blob:backdrop-1'),
-          )
+for (const presentation of ['avalon', 'generic'])
+  for (const fullscreen of [false, true])
+    it.each(['pending', 'ready'] as const)(
+      `revalidates a %s shared backdrop after delayed cache invalidation, fullscreen ${fullscreen}, ${presentation}`,
+      async (state) => {
+        const client = new QueryClient()
+        if (state === 'pending')
           vi.mocked(window.winnow.artworkBytes!).mockImplementationOnce(
             () =>
               new Promise((resolve) => {
                 finish = resolve
               }),
           )
-        }
-        await act(async () => {
-          await client.invalidateQueries({ queryKey: ['artwork-image'], refetchType: 'none' })
-        })
-        if (state === 'ready') {
-          await waitFor(() => expect(window.winnow.artworkBytes).toHaveBeenCalledTimes(2))
-          expect(view.container.querySelector('img')?.getAttribute('src')).toBe('blob:backdrop-1')
-          expect(URL.revokeObjectURL).not.toHaveBeenCalled()
-        }
-        await act(async () => finish(bytes))
-        await waitFor(() =>
-          expect(view.container.querySelector('img')?.getAttribute('src')).toBe(
-            `blob:backdrop-${state === 'ready' ? 2 : 1}`,
-          ),
+        const view = render(
+          <QueryClientProvider client={client}>
+            {presentation === 'avalon' ? (
+              <AvalonBackdrop workId={1} fullscreen={fullscreen} reducedMotion />
+            ) : (
+              <Artwork workId={1} fullscreen={fullscreen} hero />
+            )}
+          </QueryClientProvider>,
         )
-        expect(window.winnow.artworkBytes).toHaveBeenCalledTimes(2)
-        expect(view.container.querySelector('.avalon-backdrop')?.getAttribute('data-state')).toBe('ready')
-        view.unmount()
-        expect(artworkImages(client).liveSlots).toBe(0)
-        await client.invalidateQueries({ queryKey: ['artwork-image'], refetchType: 'none' })
-        expect(window.winnow.artworkBytes).toHaveBeenCalledTimes(2)
-      } finally {
-        view.unmount()
-        await closeArtworkImages(client)
-        client.clear()
-      }
-    },
-  )
+        try {
+          await waitFor(() => expect(window.winnow.artworkBytes).toHaveBeenCalledOnce())
+          if (state === 'ready') {
+            await waitFor(() =>
+              expect(view.container.querySelector('img')?.getAttribute('src')).toBe('blob:backdrop-1'),
+            )
+            vi.mocked(window.winnow.artworkBytes!).mockImplementationOnce(
+              () =>
+                new Promise((resolve) => {
+                  finish = resolve
+                }),
+            )
+          }
+          await act(async () => {
+            await client.invalidateQueries({ queryKey: ['artwork-image'], refetchType: 'none' })
+          })
+          if (state === 'ready') {
+            await waitFor(() => expect(window.winnow.artworkBytes).toHaveBeenCalledTimes(2))
+            expect(view.container.querySelector('img')?.getAttribute('src')).toBe('blob:backdrop-1')
+            expect(URL.revokeObjectURL).not.toHaveBeenCalled()
+          }
+          await act(async () => finish(bytes))
+          await waitFor(() =>
+            expect(view.container.querySelector('img')?.getAttribute('src')).toBe(
+              `blob:backdrop-${state === 'ready' ? 2 : 1}`,
+            ),
+          )
+          expect(window.winnow.artworkBytes).toHaveBeenCalledTimes(2)
+          expect(
+            view.container.querySelector('.avalon-backdrop, .backdrop-artwork')?.getAttribute('data-state'),
+          ).toBe('ready')
+          view.unmount()
+          expect(artworkImages(client).liveSlots).toBe(0)
+          await client.invalidateQueries({ queryKey: ['artwork-image'], refetchType: 'none' })
+          expect(window.winnow.artworkBytes).toHaveBeenCalledTimes(2)
+        } finally {
+          view.unmount()
+          await closeArtworkImages(client)
+          client.clear()
+        }
+      },
+    )
 
 it('coalesces an artwork event and its query invalidations, then cancels a queued refresh on detach', async () => {
   const client = new QueryClient()

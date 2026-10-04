@@ -5,11 +5,11 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { Artwork } from '../src/renderer/components/Artwork'
 import { artworkImages, closeArtworkImages } from '../src/renderer/components/artwork-images'
 import { AvalonBackdrop } from '../src/renderer/themes/avalon-backdrop'
-import { loadBackdropImage, loadCachedBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
-import type { BackdropPixels } from '../src/renderer/themes/avalon-backdrop-model'
+import { loadBackdropImage, loadCachedBackdropImage } from '../src/renderer/components/backdrop-image'
+import type { BackdropPixels } from '../src/renderer/components/backdrop-model'
 import type { WinnowBridge } from '../src/shared/bridge'
 
-vi.mock('../src/renderer/themes/avalon-backdrop-image', () => ({
+vi.mock('../src/renderer/components/backdrop-image', () => ({
   loadBackdropImage: vi.fn(),
   loadCachedBackdropImage: vi.fn(),
 }))

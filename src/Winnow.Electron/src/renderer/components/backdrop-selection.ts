@@ -1,5 +1,5 @@
 import { request } from '../api/client'
-import type { BackdropSelection } from './avalon-backdrop-model'
+import type { BackdropSelection } from './backdrop-model'
 
 export async function resolveBackdropSelection(
   workId: number,

@@ -404,6 +404,10 @@
     overflow: hidden;
     background: var(--raised);
   }
+  .backdrop-artwork-layer {
+    position: absolute;
+    inset: 0;
+  }
   .artwork img {
     position: absolute;
     inset: 0;

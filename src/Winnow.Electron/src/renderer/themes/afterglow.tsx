@@ -228,7 +228,14 @@ export function AfterglowDiscover(context: ThemeContext) {
         onBlurCapture={rotation.onBlurCapture}
       >
         <div className="hero-stage">
-          <Artwork key={`art-${hero.workId}`} workId={hero.workId} hero eager />
+          <Artwork
+            key={`art-${hero.workId}`}
+            workId={hero.workId}
+            coverWorkId={hero.headerWorkId}
+            fullscreen={context.mode === 'fullscreen'}
+            hero
+            eager
+          />
           <div className="hero-scrim" />
           {firstItems.length > 1 && (
             <div className="hero-controls" role="group" aria-label="Recommendation controls">

@@ -1,3 +1,5 @@
+import { BackdropArtwork } from './BackdropArtwork'
+import type { BackdropProps } from './useBackdrop'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { ArtworkPlaceholder } from './ArtworkPlaceholder'
@@ -54,22 +56,17 @@ export function useArtworkSelection(workId: number, hero = false, enabled = true
   return useQuery({ ...artworkSelectionOptions(workId, hero), enabled })
 }
 
-export function Artwork({
-  workId,
-  hero = false,
-  className = '',
-}: {
-  workId: number
-  hero?: boolean
-  className?: string
-  eager?: boolean
-}) {
+export function Artwork(props: BackdropProps & { hero?: boolean; eager?: boolean }) {
+  return props.hero ? <BackdropArtwork {...props} /> : <CoverArtwork {...props} />
+}
+
+function CoverArtwork({ workId, className = '' }: { workId: number; className?: string }) {
   const client = useQueryClient(),
     cache = artworkImages(client)
   const root = useRef<HTMLDivElement>(null),
     image = useRef<HTMLImageElement>(null)
   const leases = useRef(new Set<ArtworkLease<OwnedArtwork>>())
-  const view = `${workId}:${hero}`
+  const view = `${workId}:false`
   const [width, setWidth] = useState(0)
   const [measureRetry, setMeasureRetry] = useState(0)
   const [upgradeFailed, setUpgradeFailed] = useState(false)
@@ -113,7 +110,7 @@ export function Artwork({
     },
     [],
   )
-  const state = useArtworkSelection(workId, hero)
+  const state = useArtworkSelection(workId)
   const key = state.data?.selection?.current?.previewKey
   const identity = key ? JSON.stringify([view, key.provider, key.id, state.data!.selection!.revision]) : ''
   // A realized surface keeps its best size; recycling starts from the new surface's measured width.
@@ -258,13 +255,7 @@ export function Artwork({
           }}
         />
       )}
-      {loading ? (
-        <div className={`art-loading${hero ? ' art-loading-hero' : ''}`}>
-          {hero && <span className="art-loading-orbit" />}
-        </div>
-      ) : (
-        (!asset || failed) && <ArtworkPlaceholder />
-      )}
+      {loading ? <div className="art-loading" /> : (!asset || failed) && <ArtworkPlaceholder />}
     </div>
   )
 }

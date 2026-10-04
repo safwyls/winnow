@@ -112,7 +112,14 @@ export interface ThemeContext {
   components: {
     GameCard: ComponentType<ThemeGameCardProps>
     Impression: ComponentType<{ releaseId: number; shelfId: string; enabled?: boolean; children: ReactNode }>
-    Artwork: ComponentType<{ workId: number; hero?: boolean; className?: string; eager?: boolean }>
+    Artwork: ComponentType<{
+      workId: number
+      coverWorkId?: number
+      fullscreen?: boolean
+      hero?: boolean
+      className?: string
+      eager?: boolean
+    }>
     ArtworkEffects: ComponentType<ThemeArtworkEffectsProps>
     GamePreview: ComponentType<ThemeGamePreviewProps>
     /** Available in hosts with portal effects; older API-1 hosts may omit it. */

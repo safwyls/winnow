@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Details } from '../src/renderer/features/Details'
 import { MetadataEditor } from '../src/renderer/features/parity-details'
 import { ReceptionLine } from '../src/renderer/features/details-presentation'
-import { AvalonBackdropController } from '../src/renderer/themes/avalon-backdrop-model'
+import { BackdropController } from '../src/renderer/components/backdrop-model'
 import { clearViewState } from '../src/renderer/viewState'
 import type { ApiRequest } from '../src/shared/bridge'
 import type { GameDetails, Metadata, Mode } from '../src/renderer/api/types'
@@ -422,7 +422,7 @@ describe.each<Mode>(['desktop', 'fullscreen'])('%s frozen metadata composition c
   })
   it.each([false, true])('Reduced_motion_reaches_the_panel: saved=%s', async (reduced) => {
     document.documentElement.classList.toggle('reduced-motion', reduced)
-    const motion = vi.spyOn(AvalonBackdropController.prototype, 'setReducedMotion')
+    const motion = vi.spyOn(BackdropController.prototype, 'setReducedMotion')
     setup(mode)
     await screen.findByRole('heading', { name: 'Prey', level: 1 })
     // Desktop art is static in either setting; fullscreen follows the saved motion preference.

@@ -409,7 +409,14 @@ function SharedDetails({
           <ArrowLeft size={16} /> Back to your library
         </button>
       )}
-      <Artwork workId={workId} hero eager className="detail-hero" />
+      <Artwork
+        workId={workId}
+        coverWorkId={game?.headerWorkId}
+        fullscreen={mode === 'fullscreen'}
+        hero
+        eager
+        className="detail-hero"
+      />
       <header className="feature-heading">
         <div>
           <p className="eyebrow">{game?.bucket.replaceAll('_', ' ') ?? 'YOUR LIBRARY'}</p>

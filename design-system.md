@@ -1076,8 +1076,10 @@ A dark left and top veil protects the title and status text; a vertical fade set
 Ground before the overview content. Prefer the saved game background, then the automatic
 source order from Metadata & artwork settings. The default is high-resolution Steam heroes,
 SteamGridDB, then suitable IGDB landscape artwork or screenshots. Standard Steam heroes and
-a quiet cover remain final fallbacks. Desktop and fullscreen
-share this selection policy. Artwork has its own display-sized lease
+a quiet cover remain final fallbacks. Desktop and fullscreen in Avalon, Afterglow, Rift and Catalogue
+share this selection and fallback policy. An unavailable candidate advances to the next
+source before the composition placeholder is shown; saved choices and source-order changes
+refresh open backgrounds without clearing their current art. Artwork has its own display-sized lease
 and high-resolution cache entry; its source quality remains the upper limit on sharpness.
 The header shows B and the previous page name plus controller status and the clock. The
 root navigation and wordmark return when leaving details.

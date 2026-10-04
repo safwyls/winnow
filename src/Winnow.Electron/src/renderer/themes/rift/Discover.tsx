@@ -346,7 +346,15 @@ export function RiftDiscover(context: ThemeContext) {
                 <PortalSurface
                   options={journey.options}
                   reducedMotion={journey.reducedMotion}
-                  artwork={<Artwork workId={game.workId} hero eager />}
+                  artwork={
+                    <Artwork
+                      workId={game.workId}
+                      coverWorkId={game.headerWorkId}
+                      fullscreen={context.mode === 'fullscreen'}
+                      hero
+                      eager
+                    />
+                  }
                 >
                   <div className="rift-reading">
                     <span className="eyebrow">{bucketLabel(game.bucket)}</span>

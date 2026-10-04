@@ -32,19 +32,27 @@ globalThis.fetch = async (input, init) => {
     if (/^\/api\/v1\/works\/\d+\/backdrop$/.test(url.pathname)) {
       fixture.selections.push(Number(url.pathname.split('/')[4]))
       return Response.json({
-        candidates:
-          fixture.kind === 'missing'
-            ? []
-            : [
-                {
-                  key: {
-                    provider: fixture.kind === 'hero' ? 'steam-hero' : 'igdb-backdrop',
-                    id: fixture.kind,
-                  },
-                  aspectRatio: fixture.kind === 'hero' ? 3840 / 1240 : 16 / 9,
-                  fitWholeHero: fixture.kind === 'hero',
+        candidates: ['missing', 'cover-only'].includes(fixture.kind)
+          ? []
+          : [
+              ...(fixture.kind === 'fallback'
+                ? [
+                    {
+                      key: { provider: 'steam-hero', id: 'missing-highres' },
+                      aspectRatio: 3840 / 1240,
+                      fitWholeHero: true,
+                    },
+                  ]
+                : []),
+              {
+                key: {
+                  provider: fixture.kind === 'hero' ? 'steam-hero' : 'igdb-backdrop',
+                  id: fixture.kind === 'fallback' ? 'landscape' : fixture.kind,
                 },
-              ],
+                aspectRatio: fixture.kind === 'hero' ? 3840 / 1240 : 16 / 9,
+                fitWholeHero: fixture.kind === 'hero',
+              },
+            ],
         coverKey: fixture.kind === 'missing' ? null : { provider: 'fixture', id: 'cover' },
       })
     }
@@ -55,8 +63,11 @@ globalThis.fetch = async (input, init) => {
         id,
         width: Number(url.searchParams.get('width')),
       })
+      if (id === 'missing-highres') return new Response(null, { status: 404 })
       const response = () =>
-        new Response(pictures[id] ?? pictures.cover, { headers: { 'content-type': 'image/png' } })
+        new Response(pictures[id] ?? (id?.startsWith('landscape') ? pictures.landscape : pictures.cover), {
+          headers: { 'content-type': 'image/png' },
+        })
       if (fixture.delay && id === fixture.kind)
         return new Promise((resolve, reject) => {
           fixture.pending.push(() => resolve(response()))

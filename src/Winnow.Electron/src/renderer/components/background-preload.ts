@@ -1,9 +1,7 @@
-import { QueryObserver, type QueryClient } from '@tanstack/react-query'
-import { artworkSelectionOptions } from './Artwork'
-import { artworkWidth } from './artwork-cache'
+import type { QueryClient } from '@tanstack/react-query'
 import { preloadArtworkSource } from './artwork-source'
-import { backdropKey, backdropWidth, type BackdropSize } from '../themes/avalon-backdrop-model'
-import { resolveBackdropSelection } from '../themes/avalon-backdrop-selection'
+import { backdropCandidates, backdropWidth, type BackdropSize } from './backdrop-model'
+import { resolveBackdropSelection } from './backdrop-selection'
 
 export interface BackgroundPreloadTarget {
   workId: number
@@ -22,68 +20,63 @@ export async function preloadBackground(
 ): Promise<void> {
   signal.throwIfAborted()
   if (target.width <= 0 || target.height <= 0 || target.scale <= 0 || target.workId <= 0) return
-  if (target.compositionId === 'avalon') {
-    const size = detailsBackdropSize(target)
-    const selection = await resolveBackdropSelection(
-      target.workId,
-      size.width / size.height,
-      target.coverWorkId,
-      signal,
-    )
-    const candidates = [...selection.candidates]
-    if (
-      selection.coverKey &&
-      !candidates.some((candidate) => backdropKey(candidate.key) === backdropKey(selection.coverKey!))
-    )
-      candidates.push({ key: selection.coverKey, aspectRatio: 2 / 3, fitWholeHero: false })
-    for (const candidate of candidates) {
-      signal.throwIfAborted()
-      try {
-        if (
-          await preloadArtworkSource(
-            client,
-            [
-              'artwork-image',
-              candidate.key.provider,
-              candidate.key.id,
-              backdropWidth(candidate, size),
-              'asset',
-            ],
-            signal,
-          )
-        )
-          return
-      } catch {
-        signal.throwIfAborted()
-        // Preserve Details' ordered fallbacks when one source is unavailable.
-      }
-    }
-    return
-  }
-  const options = { ...artworkSelectionOptions(target.workId, true), retry: false }
-  const observer = new QueryObserver(client, { ...options, enabled: false })
-  const unsubscribe = observer.subscribe(() => {})
-  // Removing this observer cancels a speculative selection only when no foreground reader remains.
-  signal.addEventListener('abort', unsubscribe, { once: true })
-  try {
-    const { selection } = await client.fetchQuery(options)
+  const size = detailsBackdropSize(target)
+  const selection = await resolveBackdropSelection(
+    target.workId,
+    size.width / size.height,
+    target.coverWorkId,
+    signal,
+  )
+  for (const candidate of backdropCandidates(selection)) {
     signal.throwIfAborted()
-    const key = selection?.current?.previewKey
-    if (key)
-      await preloadArtworkSource(
-        client,
-        ['artwork-image', key.provider, key.id, heroWidth(target), selection!.revision],
-        signal,
+    try {
+      if (
+        await preloadArtworkSource(
+          client,
+          [
+            'artwork-image',
+            candidate.key.provider,
+            candidate.key.id,
+            backdropWidth(candidate, size),
+            'asset',
+          ],
+          signal,
+        )
       )
-  } finally {
-    signal.removeEventListener('abort', unsubscribe)
-    unsubscribe()
+        return
+    } catch {
+      signal.throwIfAborted()
+      // Preserve foreground fallback order when one source is unavailable.
+    }
   }
 }
 
 /** Match the already loaded Details CSS, including user zoom and the desktop dialog cap. */
 export function detailsBackdropSize(target: BackgroundPreloadTarget): BackdropSize {
   const zoom = Number.parseFloat(getComputedStyle(document.body).zoom) || 1
+  if (target.compositionId !== 'avalon') {
+    const rift = target.compositionId === 'rift'
+    const content = document.querySelector<HTMLElement>(rift ? '.rift-content' : '.page-content')
+    let width = target.width / zoom
+    if (content) {
+      const style = getComputedStyle(content)
+      width =
+        content.clientWidth -
+        (Number.parseFloat(style.paddingLeft) || 0) -
+        (Number.parseFloat(style.paddingRight) || 0)
+    }
+    return {
+      width: Math.min(rift ? 1500 : 1300, width),
+      height: rift
+        ? target.width <= 600
+          ? 450
+          : Math.min(680, target.height * 0.8)
+        : Math.max(220, Math.min(420, target.width * 0.32)),
+      scale: target.scale * zoom,
+      fullscreen: target.fullscreen,
+      fitWholeHero: false,
+    }
+  }
   if (target.fullscreen)
     return {
       width: target.width / zoom,
@@ -116,22 +109,4 @@ export function detailsBackdropSize(target: BackgroundPreloadTarget): BackdropSi
     scale: target.scale * zoom,
     fullscreen: false,
   }
-}
-
-function heroWidth(target: BackgroundPreloadTarget) {
-  const zoom = Number.parseFloat(getComputedStyle(document.body).zoom) || 1
-  if (target.compositionId === 'rift') {
-    const content = document.querySelector<HTMLElement>('.rift-content')
-    return artworkWidth(Math.min(1500, content?.clientWidth || target.width / zoom) * zoom * target.scale)
-  }
-  const content = document.querySelector<HTMLElement>('.page-content')
-  let width = target.width / zoom
-  if (content) {
-    const style = getComputedStyle(content)
-    width =
-      content.clientWidth -
-      (Number.parseFloat(style.paddingLeft) || 0) -
-      (Number.parseFloat(style.paddingRight) || 0)
-  }
-  return artworkWidth(Math.min(1300, width) * zoom * target.scale)
 }

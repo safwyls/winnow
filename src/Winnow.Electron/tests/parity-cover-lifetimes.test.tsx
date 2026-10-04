@@ -53,6 +53,8 @@ const pending: ((value: null) => void)[] = []
 const pixels =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAEklEQVR4nGP4z8DwHx9mGBkKAMLXf4EvceABAAAAAElFTkSuQmCC'
 beforeEach(() => {
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(160)
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(240)
   let sequence = 0
   URL.createObjectURL = vi.fn(() => `blob:fixture-${++sequence}`)
   URL.revokeObjectURL = vi.fn()
@@ -119,17 +121,19 @@ function setup(mode: Mode = 'desktop', ready = false) {
                   ? { available: false, fields: [] }
                   : input.route === 'metadata.igdb'
                     ? { available: false }
-                    : input.route === 'artworkState'
-                      ? {
-                          current:
-                            input.params?.workId === 1
-                              ? { previewKey: { provider: 'steam', id: '620' } }
-                              : null,
-                          revision: 'source',
-                        }
-                      : input.route === 'identity.get'
-                        ? { revision: 'source', workspace, candidates: [], history: [], expansions: [] }
-                        : [],
+                    : input.route === 'artwork.backdrop'
+                      ? { candidates: [], coverKey: { provider: 'steam', id: '620' } }
+                      : input.route === 'artworkState'
+                        ? {
+                            current:
+                              input.params?.workId === 1
+                                ? { previewKey: { provider: 'steam', id: '620' } }
+                                : null,
+                            revision: 'source',
+                          }
+                        : input.route === 'identity.get'
+                          ? { revision: 'source', workspace, candidates: [], history: [], expansions: [] }
+                          : [],
       })),
     },
   })

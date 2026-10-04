@@ -441,6 +441,11 @@ remain valid after eviction. The last departing consumer cancels its pending req
 Cancelled browser conversions clear their image and revoke its URL before releasing the
 decode slot. They do not wait for a cleared image's `decode()` promise, which Chromium
 can leave pending; late completion cannot publish pixels or release the URL twice.
+All compositions share background selection, fallback, pixel ownership and live refresh through
+`components/useBackdrop.ts`; compositions only choose the crop, veils and layout. The backend
+returns saved backgrounds first, then ordered automatic candidates and a cover fallback.
+A failed candidate advances to the next image, and a placeholder appears only after none
+can load. Visible-game preloading uses the same selector and asset cache keys.
 Details and fullscreen backdrops use the same bounded image cache, so reopening can reuse
 recent decoded pixels. Canonical hero selection and a preferred store cover are read in
 parallel. Cache invalidation revalidates pending and displayed backdrops while retaining
@@ -450,7 +455,7 @@ Detached images clear their sources. A mounted cover retries a failed image load
 after three attempts or when the cover detaches.
 Requests use the original display-width buckets, measured at the actual pixel density,
 over the backend's PNG transport. Main passes PNG bytes through the named preload bridge
-as a `Uint8Array`, avoiding base64 encoding and decoding for covers, screenshots and Avalon
+as a `Uint8Array`, avoiding base64 encoding and decoding for covers, screenshots and all
 backdrops. The compatibility string bridge remains available; its renderer decoder uses
 native base64 conversion where available, with an indexed-loop fallback. Credentials and
 backend addresses remain in main, and binary requests share the same validation, size

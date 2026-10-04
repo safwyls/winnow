@@ -9,7 +9,7 @@ import {
 } from '../src/renderer/components/background-preload'
 import { preloadArtworkSource } from '../src/renderer/components/artwork-source'
 import { artworkImages, closeArtworkImages, type ArtworkKey } from '../src/renderer/components/artwork-images'
-import { loadCachedBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
+import { loadCachedBackdropImage } from '../src/renderer/components/backdrop-image'
 
 let client: QueryClient
 const bytes = new Uint8Array([137, 80, 78, 71])
@@ -128,15 +128,28 @@ it('preserves candidate order and uses the header work cover only after backgrou
 })
 
 it.each(['afterglow', 'catalogue', 'rift'])(
-  'warms %s through its normal Hero selection revision',
+  'warms %s through the shared backdrop candidates and reuses the same cached bytes',
   async (compositionId) => {
     await preloadBackground(client, { ...target, compositionId }, signal())
     expect(window.winnow.request).toHaveBeenCalledWith(
-      expect.objectContaining({ route: 'artworkState', params: { workId: 7, slot: 'Hero' } }),
+      expect.objectContaining({
+        route: 'artwork.backdrop',
+        params: { workId: 7, aspectRatio: expect.any(Number) },
+      }),
     )
-    expect(client.getQueryData(['artwork', 7, true])).toMatchObject({ selection: { revision: 'r1' } })
-    expect(client.getQueryData(['artwork-image', 'fixture', 'hero', 1920, 'r1'])).toEqual({ source: bytes })
+    expect(client.getQueryData(['artwork-image', 'fixture', 'landscape', 1920, 'asset'])).toEqual({
+      source: bytes,
+    })
     expect(Image).not.toHaveBeenCalled()
+    const pixels = await loadCachedBackdropImage(
+      client,
+      { provider: 'fixture', id: 'landscape' },
+      1920,
+      signal(),
+    )
+    expect(pixels).not.toBeNull()
+    expect(window.winnow.artworkBytes).toHaveBeenCalledOnce()
+    pixels!.dispose()
   },
 )
 

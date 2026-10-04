@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { loadBackdropImage, loadCachedBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
+import { loadBackdropImage, loadCachedBackdropImage } from '../src/renderer/components/backdrop-image'
 import { QueryClient } from '@tanstack/react-query'
 import { closeArtworkImages } from '../src/renderer/components/artwork-images'
 import type { WinnowBridge } from '../src/shared/bridge'

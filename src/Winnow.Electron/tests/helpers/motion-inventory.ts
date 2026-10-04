@@ -20,6 +20,10 @@ export const cssMotionOwners = [
 // Each tuple is [scheduling sites, reviewed responsibility]. Counts make added
 // sites fail closed; nonvisual clocks, IO, focus and measurement remain enabled.
 export const scheduledOwners: Record<string, [number, string]> = {
+  'components/settled-background-queue.ts': [
+    2,
+    'Background preloading waits for idle browsing and caps the cover head start; queue and native background-preload tests.',
+  ],
   'App.tsx': [2, 'Focus restoration and search focus; no interpolated visual values.'],
   'api/prepare-library.ts': [1, 'Bounded API request timeout.'],
   'components/Artwork.tsx': [
@@ -67,9 +71,9 @@ export const scheduledOwners: Record<string, [number, string]> = {
     2,
     'Search focus plus hero Motion initial=false/duration=0 when reduced; afterglow-cards tests.',
   ],
-  'themes/avalon-backdrop.tsx': [
+  'components/useBackdrop.ts': [
     1,
-    'Backdrop controller cancels and snaps when reduced; avalon-backdrop-renderer tests.',
+    'Shared backdrop controller cancels and snaps when reduced; avalon-backdrop-renderer and composition-backdrops tests.',
   ],
   'themes/avalon-feed.tsx': [
     1,

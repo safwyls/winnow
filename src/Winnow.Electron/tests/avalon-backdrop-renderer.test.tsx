@@ -3,11 +3,11 @@ import { act, cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { StrictMode } from 'react'
 import { AvalonBackdrop } from '../src/renderer/themes/avalon-backdrop'
-import { loadBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
+import { loadBackdropImage } from '../src/renderer/components/backdrop-image'
 import type { ApiRequest, BackendEvent, WinnowBridge } from '../src/shared/bridge'
-import type { BackdropPixels } from '../src/renderer/themes/avalon-backdrop-model'
+import type { BackdropPixels } from '../src/renderer/components/backdrop-model'
 
-vi.mock('../src/renderer/themes/avalon-backdrop-image', () => ({ loadBackdropImage: vi.fn() }))
+vi.mock('../src/renderer/components/backdrop-image', () => ({ loadBackdropImage: vi.fn() }))
 let width: number, height: number, resize: () => void, notify: (event: BackendEvent) => void
 const frames = new Map<number, FrameRequestCallback>()
 const released = vi.fn()

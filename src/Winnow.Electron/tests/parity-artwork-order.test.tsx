@@ -3,14 +3,14 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { AvalonBackdrop } from '../src/renderer/themes/avalon-backdrop'
-import { loadBackdropImage, loadCachedBackdropImage } from '../src/renderer/themes/avalon-backdrop-image'
+import { loadBackdropImage, loadCachedBackdropImage } from '../src/renderer/components/backdrop-image'
 import { Details } from '../src/renderer/features/Details'
 import { primaryEntry } from '../src/shared/game-actions'
 import type { LibraryGame, Mode, Workspace } from '../src/renderer/api/types'
-import type { BackdropPixels, BackdropSelection } from '../src/renderer/themes/avalon-backdrop-model'
+import type { BackdropPixels, BackdropSelection } from '../src/renderer/components/backdrop-model'
 import type { ApiRequest, BackendEvent, WinnowBridge } from '../src/shared/bridge'
 
-vi.mock('../src/renderer/themes/avalon-backdrop-image', () => ({
+vi.mock('../src/renderer/components/backdrop-image', () => ({
   loadBackdropImage: vi.fn(),
   loadCachedBackdropImage: vi.fn(),
 }))

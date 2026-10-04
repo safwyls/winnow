@@ -920,7 +920,14 @@ export function Journal({
                   })}
                 </div>
                 <aside className="feature-panel activity-preview" aria-label="Selected activity">
-                  {chosenGame && <Artwork workId={chosenGame.workId} hero />}
+                  {chosenGame && (
+                    <Artwork
+                      workId={chosenGame.workId}
+                      coverWorkId={chosenGame.headerWorkId}
+                      fullscreen={mode === 'fullscreen'}
+                      hero
+                    />
+                  )}
                   <p className="eyebrow">{chosen && storeLabel(chosen.store)}</p>
                   <h2>{chosenGame?.title ?? 'Your activity'}</h2>
                   {chosen && <p>{dateLabel(chosen.atUtc)}</p>}

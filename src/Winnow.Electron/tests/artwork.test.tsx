@@ -339,7 +339,24 @@ describe('Artwork image reuse', () => {
   })
 
   it('keeps hero and cover size variants separate even with the same source key', async () => {
-    const bridge = installBridge(vi.fn().mockResolvedValue(currentArt))
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1920)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(900)
+    const bridge = installBridge(
+      vi.fn(async ({ route }) =>
+        route === 'artwork.backdrop'
+          ? {
+              ok: true,
+              status: 200,
+              data: {
+                candidates: [
+                  { key: { provider: 'steam', id: '123' }, aspectRatio: 16 / 9, fitWholeHero: false },
+                ],
+                coverKey: null,
+              },
+            }
+          : currentArt,
+      ),
+    )
     const client = queryClient()
     const { container } = render(
       <QueryClientProvider client={client}>

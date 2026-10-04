@@ -16,6 +16,7 @@ export interface BackdropSize {
   height: number
   scale: number
   fullscreen: boolean
+  fitWholeHero?: boolean
 }
 export interface BackdropPixels {
   source: string
@@ -37,12 +38,25 @@ export interface BackdropFrame {
 }
 export const BACKDROP_FADE_MS = 180
 export const backdropKey = (key: BackdropKey) => `${key.provider}:${key.id}`
+export function backdropCandidates(selection: BackdropSelection): BackdropCandidate[] {
+  const candidates = [...selection.candidates]
+  if (
+    selection.coverKey &&
+    !candidates.some((candidate) => backdropKey(candidate.key) === backdropKey(selection.coverKey!))
+  )
+    candidates.push({ key: selection.coverKey, aspectRatio: 2 / 3, fitWholeHero: false })
+  return candidates
+}
 export function backdropGeometry(
   candidate: BackdropCandidate,
   size: BackdropSize,
   ratio = candidate.aspectRatio,
 ) {
-  const fitted = size.fullscreen && candidate.fitWholeHero && size.width / size.height >= 21 / 9 - 0.0001
+  const fitted =
+    size.fullscreen &&
+    size.fitWholeHero !== false &&
+    candidate.fitWholeHero &&
+    size.width / size.height >= 21 / 9 - 0.0001
   const width = fitted ? Math.min(size.width, size.height * ratio) : size.width
   return { fitted, width, height: fitted ? width / ratio : size.height, left: (size.width - width) / 2 }
 }
@@ -55,7 +69,7 @@ export function backdropWidth(candidate: BackdropCandidate, size: BackdropSize) 
 }
 
 /** Only decoded replacements may displace visible pixels. A pending blend owns both layers until it ends. */
-export class AvalonBackdropController {
+export class BackdropController {
   private current: BackdropLayer | null = null
   private outgoing: BackdropLayer | null = null
   private ready: BackdropLayer | null | undefined
@@ -85,7 +99,7 @@ export class AvalonBackdropController {
 
   select(workId: number, size: BackdropSize, force = false) {
     if (this.disposed || size.width <= 0 || size.height <= 0) return
-    const target = `${workId}:${size.width}:${size.height}:${size.scale}:${size.fullscreen}`
+    const target = `${workId}:${size.width}:${size.height}:${size.scale}:${size.fullscreen}:${size.fitWholeHero}`
     if (!force && target === this.target) return
     this.target = target
     const generation = ++this.generation
@@ -113,12 +127,7 @@ export class AvalonBackdropController {
       return
     }
     if (stale()) return
-    const candidates = [...selection.candidates]
-    if (
-      selection.coverKey &&
-      !candidates.some((candidate) => backdropKey(candidate.key) === backdropKey(selection.coverKey!))
-    )
-      candidates.push({ key: selection.coverKey, aspectRatio: 2 / 3, fitWholeHero: false })
+    const candidates = backdropCandidates(selection)
     for (let index = 0; index < candidates.length; index++) {
       const candidate = candidates[index]
       const width = backdropWidth(candidate, size)

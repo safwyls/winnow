@@ -1,8 +1,8 @@
-import type { BackdropKey, BackdropPixels } from './avalon-backdrop-model'
-import { decodeArtworkImage } from '../components/artwork-images'
-import type { ArtworkSource } from '../components/artwork-decode'
+import type { BackdropKey, BackdropPixels } from './backdrop-model'
+import { decodeArtworkImage } from './artwork-images'
+import type { ArtworkSource } from './artwork-decode'
 import type { QueryClient } from '@tanstack/react-query'
-import { artworkImages, loadArtworkImage, type ArtworkKey } from '../components/artwork-images'
+import { artworkImages, loadArtworkImage, type ArtworkKey } from './artwork-images'
 
 /** Backdrops share the bounded image cache; each transition layer keeps its own lease. */
 export async function loadCachedBackdropImage(

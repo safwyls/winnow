@@ -258,7 +258,7 @@ describe('original saved journal and library-reload fixtures', () => {
         .getAllByRole('article')
         .find((row) => row.getAttribute('aria-current') === 'true')!
       expect(within(selected).getByRole('button', { name: 'Game 2' })).toBeTruthy()
-      expect(within(selected).getByText('A newly saved note')).toBeTruthy()
+      await waitFor(() => expect(within(selected).getByText('A newly saved note')).toBeTruthy())
       hidden = true
       await act(async () => refreshSnapshots(f.client))
       await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1))

@@ -81,7 +81,15 @@ export function CoverPreview({
         options={journey.options}
         reducedMotion={journey.reducedMotion || target.keyboard}
         origin={origin}
-        artwork={<Artwork workId={target.game.workId} hero eager />}
+        artwork={
+          <Artwork
+            workId={target.game.workId}
+            coverWorkId={target.game.headerWorkId}
+            fullscreen={fullscreen}
+            hero
+            eager
+          />
+        }
       >
         <div className="rift-preview-reading">
           <span className="eyebrow">A WINDOW INTO THIS WORLD</span>
