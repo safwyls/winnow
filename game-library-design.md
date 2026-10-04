@@ -1099,9 +1099,11 @@ gallery renditions remain unchanged; both presentations share lease and eviction
 Electron Library preloads backgrounds for the actual clipped visible games after 400 ms
 without browsing changes. All bundled compositions use the same observer and a two-job
 speculative queue on desktop and fullscreen. Scroll, filter and layout changes cancel stale
-work, and foreground image work goes first. Warm requests use the same selected hero or
-ranked backdrop candidates and rendition widths as Details, retaining at most 32 MiB across
-128 encoded images rather than pinned decoded backgrounds. Cache hits refresh retention order
+work. Foreground images get up to one additional second to settle before the two background
+jobs proceed, so a slow cover in an offscreen virtual row cannot starve visible backgrounds.
+Warm requests use the same selected hero or ranked backdrop candidates and rendition widths
+as Details, retaining at most 32 MiB across 128 encoded images rather than pinned decoded
+backgrounds. Cache hits refresh retention order
 so returning to a visible title protects it from older offscreen entries. Offscreen virtual rows
 and hidden retained panes do not contribute requests. Normal selection, fallback and invalidation
 rules still apply.

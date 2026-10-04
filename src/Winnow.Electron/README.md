@@ -48,10 +48,11 @@ Dormancy changes reuse the same pixels on desktop, fullscreen and desktop merge 
 
 Library grids and lists warm the backgrounds of visible games after browsing pauses for
 400 ms. Scrolling, filtering or resizing cancels obsolete work; offscreen buffered rows and
-hidden panes do not preload. Desktop and fullscreen share a two-job queue that yields to
-requested artwork. Preloading retains up to 32 MiB across 128 images rather than decoded
-full-size backgrounds, so it does not displace cover pixels. Details reuses a matching warm image;
-opening before preloading finishes still follows the normal loading path.
+hidden panes do not preload. Desktop and fullscreen share a two-job queue. Pending cover
+loads get up to a one-second head start after browsing settles; a slow offscreen cover cannot
+block the visible backgrounds indefinitely. Preloading retains up to 32 MiB across 128 images
+rather than decoded full-size backgrounds, so it does not displace cover pixels. Details reuses
+matching warm images; opening before preloading finishes still follows the normal loading path.
 
 Unavailable artwork uses local illustrations from the active composition: Avalon's misted
 landscape, Afterglow's warm halo, Rift's starfield, and Catalogue's printed index cards.

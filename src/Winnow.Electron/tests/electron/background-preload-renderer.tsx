@@ -10,7 +10,7 @@ import { ArtworkEffects } from '../../src/renderer/components/artwork-effects'
 import { GamePreview } from '../../src/renderer/components/GamePreview'
 import { GameCard, Impression } from '../../src/renderer/components/primitives'
 import { artworkImages, closeArtworkImages } from '../../src/renderer/components/artwork-images'
-import { AvalonLibrary, avalon } from '../../src/renderer/themes/avalon'
+import { AvalonLibrary, AvalonShell, avalon } from '../../src/renderer/themes/avalon'
 import { AfterglowLibrary, afterglow } from '../../src/renderer/themes/afterglow'
 import { catalogue } from '../../src/renderer/themes/catalogue'
 import { rift } from '../../src/renderer/themes/rift'
@@ -66,10 +66,11 @@ const viewportSelector = '.avalon-library-scroll, .library-scroll, .rift-gallery
 const cardSelector = '[data-work-id], [data-rift-game]'
 function cards() {
   const viewport = document.querySelector<HTMLElement>(viewportSelector)
-  if (!viewport) return { visible: [] as number[], mounted: [] as number[] }
+  if (!viewport) return { visible: [] as number[], mounted: [] as number[], readyVisible: [] as number[] }
   const clip = viewport.getBoundingClientRect()
   const mounted = new Set<number>(),
-    visible = new Set<number>()
+    visible = new Set<number>(),
+    readyVisible = new Set<number>()
   for (const card of viewport.querySelectorAll<HTMLElement>(cardSelector)) {
     const id = Number(card.dataset.workId ?? card.dataset.riftGame)
     mounted.add(id)
@@ -84,10 +85,13 @@ function cards() {
       box.top < Math.min(innerHeight, clip.bottom) &&
       box.right > Math.max(0, clip.left) &&
       box.left < Math.min(innerWidth, clip.right)
-    )
+    ) {
       visible.add(id)
+      const image = card.querySelector('img')
+      if (image?.complete && image.naturalWidth > 0) readyVisible.add(id)
+    }
   }
-  return { visible: [...visible], mounted: [...mounted] }
+  return { visible: [...visible], mounted: [...mounted], readyVisible: [...readyVisible] }
 }
 type Read = {
   id: number
@@ -104,6 +108,9 @@ const pending = new Map<string, { background: boolean; finish(canceled?: boolean
 let phase: Read['phase'] = 'library',
   hold = false,
   maxBackgroundPending = 0
+let holdNextOverscan = false
+let heldCover: { id: number; width: number; requestId: string; finished: boolean; canceled: boolean } | null =
+  null
 function log(id: number, kind: Read['kind'], width?: number) {
   const entry: Read = {
     id,
@@ -190,6 +197,16 @@ window.winnow = {
   },
   artworkBytes: (provider: string, id: string, width: number, requestId: string) => {
     const isBackground = provider === 'fixture-background'
+    if (!isBackground && holdNextOverscan && !cards().visible.includes(Number(id))) {
+      holdNextOverscan = false
+      const record = { id: Number(id), width, requestId, finished: false, canceled: false }
+      heldCover = record
+      return later(requestId, coverBytes.slice(), 0, undefined, true).then((bytes) => {
+        record.finished = true
+        record.canceled = bytes === null
+        return bytes
+      })
+    }
     return later(
       requestId,
       (isBackground ? heroBytes : coverBytes).slice(),
@@ -218,8 +235,13 @@ function activity() {
   target.dispatchEvent(new WheelEvent('wheel', { deltaY: 800, bubbles: true, cancelable: true }))
   if (target === viewport) viewport.scrollTop += 800
 }
+type FixtureOptions = { normalMotion?: boolean; fullShell?: boolean }
 const probe = {
-  start: (_theme: string, _mode: ThemeMode) => {},
+  start: (_theme: string, _mode: ThemeMode, _options: FixtureOptions = {}) => {},
+  holdOneOverscanCover() {
+    holdNextOverscan = true
+  },
+  scrollOnce: activity,
   hold(value: boolean) {
     hold = value
   },
@@ -248,6 +270,7 @@ const probe = {
       background,
       phase,
       hold,
+      heldCover,
       maxBackgroundPending,
       retainedWorkIds: [
         ...new Set(
@@ -301,7 +324,12 @@ function Background({ workId, theme, mode }: { workId: number; theme: string; mo
     details
   )
 }
-function LibraryFixture({ theme: themeId, mode }: { theme: string; mode: ThemeMode }) {
+function LibraryFixture({
+  theme: themeId,
+  mode,
+  normalMotion = false,
+  fullShell = false,
+}: { theme: string; mode: ThemeMode } & FixtureOptions) {
   const [selected, setSelected] = useState<number | null>(null)
   const [filter, setFilter] = useState('')
   const [hidden, setHidden] = useState(false)
@@ -311,13 +339,13 @@ function LibraryFixture({ theme: themeId, mode }: { theme: string; mode: ThemeMo
   const definition = [avalon, afterglow, catalogue, rift].find((theme) => theme.id === themeId)!
   const profile = useMemo(() => {
     const profile = selectThemeProfile(structuredClone(DEFAULT_PROFILE), themeId, definition)
-    profile.appearance.reducedMotion = true
+    profile.appearance.reducedMotion = !normalMotion
     profile.layout.cardStyle = 'poster'
     applyThemeProfile(profile)
     document.documentElement.dataset.mode = mode
     document.documentElement.style.setProperty('--effective-interface-scale', '1')
     return profile
-  }, [themeId, mode, definition])
+  }, [themeId, mode, definition, normalMotion])
   const openGame = (id: number) => {
     phase = 'details'
     setSelected(id)
@@ -346,6 +374,23 @@ function LibraryFixture({ theme: themeId, mode }: { theme: string; mode: ThemeMo
       <RiftLibrary {...context} />
     ) : (
       <AfterglowLibrary {...context} quietCards={themeId === 'afterglow'} />
+    )
+  if (fullShell && themeId === 'avalon')
+    return (
+      <AvalonShell {...context}>
+        <div className={`screen-view screen-${context.page}`}>
+          {selected !== null ? (
+            <Background workId={selected} theme={themeId} mode={mode} />
+          ) : (
+            <div
+              className="background-probe-library"
+              style={{ height: '100%', visibility: hidden ? 'hidden' : 'visible' }}
+            >
+              {library}
+            </div>
+          )}
+        </div>
+      </AvalonShell>
     )
   return (
     <JourneyContext.Provider
@@ -381,8 +426,10 @@ function LibraryFixture({ theme: themeId, mode }: { theme: string; mode: ThemeMo
   )
 }
 function Fixture() {
-  const [configuration, setConfiguration] = useState<{ theme: string; mode: ThemeMode } | null>(null)
-  probe.start = (theme, mode) => setConfiguration({ theme, mode })
+  const [configuration, setConfiguration] = useState<
+    ({ theme: string; mode: ThemeMode } & FixtureOptions) | null
+  >(null)
+  probe.start = (theme, mode, options) => setConfiguration({ theme, mode, ...options })
   return configuration ? <LibraryFixture {...configuration} /> : <p>Background preload fixture ready</p>
 }
 createRoot(document.getElementById('root')!).render(

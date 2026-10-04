@@ -59,3 +59,53 @@ it('waits behind foreground artwork and continues after a speculative failure', 
   expect(load.mock.calls.map(([id]) => id)).toEqual([1, 2, 3])
   queue.dispose()
 })
+
+it('starts after a bounded foreground head start even when a cover remains pending, and resets on new browsing', async () => {
+  let visible = [1, 2, 3]
+  let running = 0,
+    maximumRunning = 0
+  const jobs: { id: number; signal: AbortSignal; finish(): void }[] = []
+  const queue = new SettledBackgroundQueue({
+    collect: () => visible,
+    busy: () => true,
+    load: (id, signal) =>
+      new Promise<void>((resolve) => {
+        running++
+        maximumRunning = Math.max(maximumRunning, running)
+        jobs.push({
+          id,
+          signal,
+          finish() {
+            running--
+            resolve()
+          },
+        })
+      }),
+  })
+  queue.changed()
+  await vi.advanceTimersByTimeAsync(1399)
+  expect(jobs).toHaveLength(0)
+  await vi.advanceTimersByTimeAsync(1)
+  expect(jobs.map((job) => job.id)).toEqual([1, 2])
+  jobs[0].finish()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(jobs.map((job) => job.id)).toEqual([1, 2, 3])
+
+  visible = [8, 9, 10]
+  queue.changed()
+  expect(jobs[1].signal.aborted).toBe(true)
+  expect(jobs[2].signal.aborted).toBe(true)
+  await vi.advanceTimersByTimeAsync(399)
+  jobs[1].finish()
+  jobs[2].finish()
+  await vi.advanceTimersByTimeAsync(1000)
+  expect(jobs).toHaveLength(3)
+  await vi.advanceTimersByTimeAsync(1)
+  expect(jobs.map((job) => job.id)).toEqual([1, 2, 3, 8, 9])
+  expect(maximumRunning).toBe(2)
+  queue.dispose()
+  jobs[3].finish()
+  jobs[4].finish()
+  await vi.advanceTimersByTimeAsync(2000)
+  expect(jobs).toHaveLength(5)
+})

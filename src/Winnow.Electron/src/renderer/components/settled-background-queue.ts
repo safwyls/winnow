@@ -5,6 +5,7 @@ export class SettledBackgroundQueue<T> {
   private queued: T[] = []
   private disposed = false
   private settled = false
+  private foregroundUntil = 0
 
   constructor(
     private options: {
@@ -22,6 +23,7 @@ export class SettledBackgroundQueue<T> {
     for (const controller of this.active) controller.abort()
     this.timer = setTimeout(() => {
       this.settled = true
+      this.foregroundUntil = Date.now() + 1000
       this.queued = this.options.collect()
       this.drain()
     }, 400)
@@ -36,8 +38,8 @@ export class SettledBackgroundQueue<T> {
 
   private drain() {
     if (this.disposed || !this.settled || !this.queued.length) return
-    // Covers and requested detail images get their downloads and decoding underway first.
-    if (this.options.busy()) {
+    // Give covers a head start; one slow offscreen source must not starve the visible batch.
+    if (this.options.busy() && Date.now() < this.foregroundUntil) {
       clearTimeout(this.timer)
       this.timer = setTimeout(() => this.drain(), 100)
       return

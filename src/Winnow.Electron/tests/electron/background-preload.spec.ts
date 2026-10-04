@@ -25,9 +25,14 @@ type State = {
   maxBackgroundPending: number
   coverPixels: number
   retainedWorkIds: number[]
+  readyVisible: number[]
+  heldCover: { id: number; width: number; requestId: string; finished: boolean; canceled: boolean } | null
 }
+type FixtureOptions = { normalMotion?: boolean; fullShell?: boolean }
 type Probe = {
-  start(theme: string, mode: 'desktop' | 'fullscreen'): void
+  start(theme: string, mode: 'desktop' | 'fullscreen', options?: FixtureOptions): void
+  holdOneOverscanCover(): void
+  scrollOnce(): void
   state(): State
   filter(query: string): void
   hold(hold: boolean): void
@@ -111,7 +116,7 @@ test.afterEach(async ({}, info) => {
   }
   expect(errors).toEqual([])
 })
-async function start(theme: string, mode: 'desktop' | 'fullscreen') {
+async function start(theme: string, mode: 'desktop' | 'fullscreen', options: FixtureOptions = {}) {
   errors.length = 0
   const data = await mkdtemp(join(resolve('../..', '.tmp'), `winnow-background-preload-${theme}-${mode}-`))
   application = await electron.launch({
@@ -132,12 +137,16 @@ async function start(theme: string, mode: 'desktop' | 'fullscreen') {
     window.focus()
   })
   await expect(page.getByText('Background preload fixture ready')).toBeVisible()
-  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.emulateMedia({ reducedMotion: options.normalMotion ? 'no-preference' : 'reduce' })
   await page.mouse.move(0, 0)
   await page.evaluate(
-    ({ theme, mode }) =>
-      (window as unknown as { backgroundPreloadProbe: Probe }).backgroundPreloadProbe.start(theme, mode),
-    { theme, mode },
+    ({ theme, mode, options }) =>
+      (window as unknown as { backgroundPreloadProbe: Probe }).backgroundPreloadProbe.start(
+        theme,
+        mode,
+        options,
+      ),
+    { theme, mode, options },
   )
   await expect.poll(async () => (await read()).visible.length).toBeGreaterThan(0)
 }
@@ -245,3 +254,93 @@ for (const theme of ['avalon', 'afterglow', 'rift', 'catalogue'])
         expect((await read()).maxBackgroundPending).toBeLessThanOrEqual(2)
       })
     })
+
+for (const mode of ['desktop', 'fullscreen'] as const)
+  test(`avalon ${mode}: a slow overscan cover cannot starve newly scrolled backgrounds with normal motion`, async ({}, info) => {
+    await start('avalon', mode, { normalMotion: true, fullShell: true })
+    await settled()
+    const initial = await read()
+    await page.evaluate(() => {
+      const probe = (window as unknown as { backgroundPreloadProbe: Probe }).backgroundPreloadProbe
+      probe.holdOneOverscanCover()
+      probe.scrollOnce()
+    })
+    if (mode === 'fullscreen') {
+      // The first wheel selects the second visible row; the next one advances the two-row window.
+      await expect(page.locator('.avalon-fullscreen-grid')).not.toHaveAttribute(
+        'data-selected-id',
+        String(initial.visible[0]),
+      )
+      await page.evaluate(() =>
+        (window as unknown as { backgroundPreloadProbe: Probe }).backgroundPreloadProbe.scrollOnce(),
+      )
+    }
+    await expect
+      .poll(
+        async () => {
+          const state = await read()
+          return (
+            state.heldCover &&
+            !state.heldCover.finished &&
+            state.mounted.includes(state.heldCover.id) &&
+            !state.visible.includes(state.heldCover.id)
+          )
+        },
+        { message: 'One newly mounted offscreen cover stays pending in the real library' },
+      )
+      .toBeTruthy()
+    await expect
+      .poll(
+        async () => {
+          const state = await read()
+          return (
+            state.visible.length > 0 &&
+            state.visible.every((id) => state.readyVisible.includes(id)) &&
+            state.artworkPending === 1
+          )
+        },
+        { message: 'Visible covers and the selected backdrop finish with only the overscan cover pending' },
+      )
+      .toBe(true)
+    const scrolled = await read()
+    const newlyVisible = scrolled.visible.filter((id) => !initial.visible.includes(id))
+    expect(newlyVisible.length).toBeGreaterThan(0)
+    expect(scrolled.artworkPending).toBe(1)
+    await writeFile(info.outputPath('slow-cover-before-warm.json'), JSON.stringify(scrolled, null, 2))
+    await expect
+      .poll(
+        async () => {
+          const state = await read()
+          return newlyVisible.every((id) => state.retainedWorkIds.includes(id))
+        },
+        {
+          timeout: 10000,
+          message: 'Newly scrolled visible backgrounds must warm without waiting for one offscreen cover',
+        },
+      )
+      .toBe(true)
+    const warmed = await read()
+    expect(warmed.heldCover?.finished).toBe(false)
+    expect(warmed.visible).not.toContain(warmed.heldCover?.id)
+    expect(warmed.artworkPending).toBe(1)
+    // The cached background must come from this browse stop, not the initial visible set.
+    const id = newlyVisible.find((id) => !initial.retainedWorkIds.includes(id))!
+    expect(id).toBeDefined()
+    const reads = warmed.background.filter((entry) => entry.id === id && entry.kind === 'bytes').length
+    await page.locator(`.background-probe-library [data-work-id="${id}"]`).click()
+    await expect(page.locator(`[data-fixture-details="${id}"]`)).toBeVisible()
+    await expect
+      .poll(() =>
+        page
+          .locator('[data-fixture-details] .avalon-detail-backdrop img')
+          .first()
+          .evaluate(
+            (image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0,
+          )
+          .catch(() => false),
+      )
+      .toBe(true)
+    expect(
+      (await read()).background.filter((entry) => entry.id === id && entry.kind === 'bytes').length,
+    ).toBe(reads)
+  })
