@@ -13,6 +13,8 @@ for (let y = 0; y < 720; y++)
 const png = nativeImage.createFromBitmap(pixels, { width: 1280, height: 720 }).toPNG()
 const originalFetch = globalThis.fetch
 globalThis.__galleryCount = 10
+globalThis.__galleryPrefix = 'fixture'
+globalThis.__galleryUnavailable = false
 globalThis.__galleryHoldImages = false
 globalThis.__galleryReleaseImages = []
 globalThis.__openedInstallationFolders = []
@@ -27,6 +29,7 @@ globalThis.fetch = async (input, init) => {
     if (url.pathname === '/api/v1/artwork/image' && url.searchParams.get('provider') === 'igdb-shot') {
       if (globalThis.__galleryHoldImages)
         await new Promise((done) => globalThis.__galleryReleaseImages.push(done))
+      if (globalThis.__galleryUnavailable) return new Response(null, { status: 404 })
       return new Response(png, { headers: { 'content-type': 'image/png' } })
     }
     if (/^\/api\/v1\/games\/\d+\/details$/.test(url.pathname)) {
@@ -41,7 +44,7 @@ globalThis.fetch = async (input, init) => {
             kind: 'screenshot',
             imageIds: Array.from(
               { length: globalThis.__galleryCount },
-              (_, index) => `fixture_${index}`,
+              (_, index) => `${globalThis.__galleryPrefix}_${index}`,
             ).join(','),
           },
         ],

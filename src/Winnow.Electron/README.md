@@ -58,7 +58,9 @@ Unavailable artwork uses local illustrations from the active composition: Avalon
 landscape, Afterglow's warm halo, Rift's starfield, and Catalogue's printed index cards.
 Covers retain the title, and unavailable screenshot and artwork previews retain their labels.
 Desktop, fullscreen and portal surfaces share these static, palette-aware illustrations.
-Loading remains distinct, and games without screenshots have no invented gallery entries.
+Screenshot thumbnails and fullscreen previews reserve their image area while loading. Loading and
+unavailable placeholders stay inside that frame, leaving the surrounding Details text, focus and
+scroll position intact. Games without screenshots have no invented gallery entries.
 
 Library responses validate in batches of 128 games or lists so input and cancellation can
 run before a large response finishes. The query cache receives one complete snapshot;

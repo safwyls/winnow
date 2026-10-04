@@ -1511,7 +1511,11 @@ description and Show less restores the preview. The prose keeps `ProseMeasure` (
 automatically.” A game with no screenshots draws no placeholder frames.
 
 **Screenshots sit inside ABOUT.** The horizontal strip uses 120x68 thumbnails and a caption
-naming the count and source. Each thumbnail is a real button with visible focus; selecting
+naming the count and source. In Electron, thumbnail frames reserve their image area during
+loading; loading and unavailable placeholders stay inside each frame. Fullscreen previews
+reserve a 16:9 frame and contain the complete source image. Images arriving must not cover
+or move unrelated Details content, reset its scroll position, or take focus.
+Each thumbnail is a real button with visible focus; selecting
 one opens the existing lightbox (§10.7). Tab brings an offscreen thumbnail into view. Ordinary
 wheel, Shift-wheel and horizontal trackpad input scroll the strip horizontally, and input
 stays with the strip at either edge. The image path remains `CoverKey.IgdbScreenshot` through

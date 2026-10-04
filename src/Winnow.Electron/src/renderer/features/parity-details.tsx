@@ -148,7 +148,9 @@ export function Screenshots({ details, previewCount }: { details?: GameDetails; 
               setOpen(true)
             }}
           >
-            <ScreenshotImage asset={shot} width={previewCount ? 1280 : 400} />
+            <span className="screenshot-thumbnail">
+              <ScreenshotImage asset={shot} width={previewCount ? 1280 : 400} />
+            </span>
           </button>
         ))}
       </div>

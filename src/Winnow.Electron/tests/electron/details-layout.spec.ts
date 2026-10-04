@@ -399,3 +399,127 @@ for (const mode of ['desktop', 'fullscreen'] as const)
     })
 
 test('Details emits no uncaught renderer errors', () => expect(errors).toEqual([]))
+
+for (const mode of ['desktop', 'fullscreen'] as const)
+  for (const unavailable of [false, true])
+    test(
+      mode + ' screenshot loading stays inside previews when unavailable is ' + unavailable,
+      async ({}, info) => {
+        await application.evaluate(
+          (_, input) => {
+            Object.assign(globalThis, {
+              __detailsHero: false,
+              __galleryCount: 3,
+              __galleryPrefix: 'loading_' + input.mode + '_' + input.unavailable,
+              __galleryHoldImages: true,
+              __galleryUnavailable: input.unavailable,
+            })
+          },
+          { mode, unavailable },
+        )
+        try {
+          await page.reload()
+          await expect(page.locator('.avalon-cover').first()).toBeVisible()
+          await surface(mode, 1920, 1080)
+          await page.locator('.avalon-cover').first().click()
+          const details = page.locator('.avalon-details')
+          const previews = details.locator('.screenshot-strip > button')
+          const count = mode === 'fullscreen' ? 2 : 3
+          await expect(previews).toHaveCount(count)
+          await expect(previews.locator('.art-placeholder')).toHaveCount(count)
+          const sizes = await previews.evaluateAll((buttons) =>
+            buttons.map((button) => {
+              const box = button.getBoundingClientRect()
+              const placeholder = button.querySelector('.art-placeholder')!.getBoundingClientRect()
+              return {
+                width: box.width,
+                height: box.height,
+                contained:
+                  placeholder.left >= box.left &&
+                  placeholder.top >= box.top &&
+                  placeholder.right <= box.right + 0.1 &&
+                  placeholder.bottom <= box.bottom + 0.1,
+              }
+            }),
+          )
+          expect(
+            sizes.every((size) => size.contained),
+            JSON.stringify(sizes),
+          ).toBe(true)
+          expect(sizes.every((size) => size.height > 50)).toBe(true)
+          const tab = details.getByRole('tab', { name: 'Overview', exact: true })
+          await tab.focus()
+          const retained = await details.evaluateHandle((root) => {
+            const reading = root.querySelector<HTMLElement>('.avalon-details-reading')!
+            reading.scrollTop = 80
+            const nodes = ['.game-summary', '.avalon-personal-history', '.avalon-details-header'].map(
+              (selector) => root.querySelector<HTMLElement>(selector)!,
+            )
+            const mutations: string[] = []
+            const observer = new MutationObserver((records) =>
+              mutations.push(...records.map((record) => record.type)),
+            )
+            for (const node of nodes)
+              observer.observe(node, { childList: true, subtree: true, characterData: true })
+            return { reading, scrollTop: reading.scrollTop, nodes, mutations, observer }
+          })
+          await page.screenshot({ path: info.outputPath(mode + '-screenshots-loading.png') })
+          await application.evaluate(() => {
+            const fixture = globalThis as unknown as {
+              __galleryHoldImages: boolean
+              __galleryReleaseImages: (() => void)[]
+            }
+            fixture.__galleryHoldImages = false
+            fixture.__galleryReleaseImages.splice(0).forEach((release) => release())
+          })
+          if (unavailable) await expect(previews.locator('.artwork-placeholder')).toHaveCount(count)
+          else {
+            await expect(previews.locator('img')).toHaveCount(count)
+            for (const image of await previews.locator('img').all())
+              await expect
+                .poll(() => image.evaluate((node) => (node as HTMLImageElement).naturalWidth))
+                .toBe(1280)
+          }
+          const after = await previews.evaluateAll((buttons) =>
+            buttons.map((button) => {
+              const box = button.getBoundingClientRect()
+              return { width: box.width, height: box.height }
+            }),
+          )
+          for (let index = 0; index < count; index++) {
+            expect(after[index].width).toBeCloseTo(sizes[index].width, 1)
+            expect(after[index].height).toBeCloseTo(sizes[index].height, 1)
+          }
+          expect(
+            await retained.evaluate((state) => {
+              state.observer.disconnect()
+              return {
+                connected: state.nodes.every((node) => node.isConnected),
+                mutations: state.mutations,
+                scrollDelta: state.reading.scrollTop - state.scrollTop,
+              }
+            }),
+          ).toEqual({ connected: true, mutations: [], scrollDelta: 0 })
+          await retained.dispose()
+          await expect(tab).toBeFocused()
+          await page.screenshot({ path: info.outputPath(mode + '-screenshots-settled.png') })
+        } finally {
+          await application.evaluate(() => {
+            const fixture = globalThis as unknown as {
+              __galleryHoldImages: boolean
+              __galleryUnavailable: boolean
+              __galleryReleaseImages: (() => void)[]
+            }
+            fixture.__galleryHoldImages = false
+            fixture.__galleryUnavailable = false
+            fixture.__galleryReleaseImages.splice(0).forEach((release) => release())
+          })
+          await page
+            .getByRole('button', {
+              name: mode === 'desktop' ? 'Close game details' : 'B · Back to Library',
+              exact: true,
+            })
+            .click()
+        }
+      },
+    )
