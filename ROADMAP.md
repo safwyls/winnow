@@ -44,13 +44,14 @@ hardware validation. The remaining validation is listed in §6.
 | Metadata and artwork | Optional IGDB, built-in store metadata, cached artwork, user corrections and artwork source preferences. Desktop and fullscreen browse and save individual hero, cover and icon choices, with Steam, IGDB and plugin sources according to availability. Local provider plugins can add imports, metadata, artwork and shelves. SteamGridDB is bundled separately; collection application awaits a supported API or export. |
 | Presentation | Desktop and fullscreen views, controller navigation and text entry, shared themes, separate layout preferences, accessibility and reduced-motion support. |
 | Setup | Optional resumable setup for providers, themes and preferences, available again from Application settings on both surfaces. GOG uses local discovery. |
+| Phone sync | Off by default. While on, the backend serves a read-only library snapshot over HTTPS on the local network to phones paired by QR code, pinned by certificate fingerprint. Desktop and fullscreen Application settings turn it on and off, pair phones and remove them. The phone app, Winnow Deck, is a separate project. |
 | Export | Acquisition CSV with title, store, acquisition date, licence and price paid. Missing values stay blank; recorded prices are cents without a currency. |
 | Distribution | Windows/Linux x64 packages, release checks and draft publication workflow. Installed Windows updating and portable Windows/Ubuntu update staging, paired backup and journal recovery; shared desktop/fullscreen update-and-restart action. |
 
 ## 4. Excluded and deferred
 
 **Excluded:** Hosted or multi-user services, co-op and friend
-library matching, mobile, and a 3D shelf view. Fullscreen is a separate TV interface.
+library matching, a mobile app in this repository, and a 3D shelf view. Fullscreen is a separate TV interface.
 
 **Deferred work:**
 

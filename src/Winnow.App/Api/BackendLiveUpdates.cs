@@ -51,6 +51,7 @@ public sealed class BackendLiveUpdates(WinnowApiClient api, IServiceProvider ser
                     {
                         ct.ThrowIfCancellationRequested();
                         var window = services.GetRequiredService<MainWindowViewModel>();
+                        if ((flags & Companion) != 0) await window.ApplicationSettings.PhoneSync.RefreshAsync(ct);
                         if ((flags & Diagnostics) != 0
                             && services.GetService<ConnectionSessionWatcherHealth>() is { } health)
                             await health.RefreshAsync(ct);
@@ -104,10 +105,12 @@ public sealed class BackendLiveUpdates(WinnowApiClient api, IServiceProvider ser
     private const int Preferences = 2;
     private const int Feed = 4;
     private const int Diagnostics = 8;
+    private const int Companion = 16;
     internal static int Flags(BackendEvent change)
         => change.Kind switch
         {
-            "resync-required" => Library | Preferences | Feed | Diagnostics,
+            "resync-required" => Library | Preferences | Feed | Diagnostics | Companion,
+            "companion.changed" => Companion,
             "diagnostics.changed" => Diagnostics,
             "preferences.changed" => Library | Preferences | Feed,
             "connections.changed" or "plugins.changed" => Library | Preferences | Feed,

@@ -32,6 +32,7 @@ internal static class FrontendServiceRegistration
         services.AddSingleton<ArtworkPreferences>();
         services.AddSingleton<IFirstRunSetup, ApiSetupProgress>();
         services.AddSingleton<IIgdbSettingsService, ConnectionIgdbSettingsService>();
+        services.AddSingleton<Winnow.Api.Contracts.Companion.ICompanionSettingsService, ApiCompanionSettings>();
         services.AddSingleton<IPluginSettingsBackend, ConnectionPluginSettingsBackend>();
         services.AddSingleton<IOfficialPluginInstaller, ConnectionOfficialPluginInstaller>();
         services.AddSingleton<IManualMetadataSyncService, ConnectionManualMetadataSyncService>();
@@ -101,6 +102,7 @@ internal static class FrontendServiceRegistration
         services.AddSingleton<MetadataSyncViewModel>();
         services.AddSingleton<EnrichmentSettingsViewModel>();
         services.AddSingleton(sp => new DiagnosticsViewModel(sp.GetRequiredService<Winnow.Monitor.ISessionWatcherHealth>(), dataDirectory: data.Root));
+        services.AddSingleton<PhoneSyncViewModel>();
         services.AddSingleton<ApplicationSettingsViewModel>();
         services.AddSingleton<FirstRunSetupViewModel>();
         services.AddHttpClient<GitHubReleaseClient>(client => client.Timeout = Timeout.InfiniteTimeSpan)

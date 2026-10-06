@@ -396,6 +396,11 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             problem.Bind(IsVisibleProperty, new Binding(nameof(app.HasProblem)) { Source = app });
             AutomationProperties.SetLiveSetting(problem, AutomationLiveSetting.Polite);
             rows.Children.Add(problem);
+            if (app.PhoneSync.IsAvailable)
+            {
+                Group("Phone sync");
+                Action("Phone sync", () => Context.Push(new FullscreenPhoneSyncPage(Context)));
+            }
             Group("Diagnostics");
             Action("Open logs folder", () => app.Diagnostics.OpenLogsCommand.Execute(null));
             rows.Children.Add(FullscreenInformation.Text(app.Diagnostics.ReportHelp));

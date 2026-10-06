@@ -3121,6 +3121,17 @@ switch the current view. Windows sign-in and explicit background launches retain
 behavior. Exiting fullscreen restores the desktop, and reopening a hidden window does not
 reapply the startup preference.
 
+Its **PHONE SYNC** card has **Sync with phones**, off by default, and a polite status line:
+off, starting, on, or the problem that stops it, such as no local network address. While on,
+it shows the address phones reach. **Start pairing** shows a QR code beside the pairing code
+in groups of four and a countdown. QR modules are black on a white quiet zone in every theme,
+because cameras need that contrast. **New code** replaces the code and **Stop pairing** closes
+it. When a phone pairs, the code closes and the card says which phone paired; when the code
+expires, it says so and how to get another. **Paired phones** lists each phone with its last
+sync, or when it paired if it has not synced, and a **Remove** button named for that phone.
+Fullscreen offers the same controls on a **Phone sync** page opened from Application, with
+the QR code at 320 px and controller rows for the switch, pairing actions, each Remove and Back.
+
 METADATA & ARTWORK groups credentials and automatic backdrop preferences. A **Library metadata**
 card offers **Sync metadata now** for an explicit pass over the existing library. The shared
 command is disabled while running; a polite live status shows waiting, the current stage,

@@ -226,5 +226,31 @@ public sealed class CompanionTests
         Assert.Equal(secret, protector.Unprotect(stored));
         Assert.Null(protector.Unprotect("not base64!"));
     }
+    [Fact]
+    public async Task TheFrontendClientDrivesPhoneSyncThroughTheLoopbackApi()
+    {
+        await using var h = await Harness.StartAsync();
+        using var api = Winnow.Api.Client.WinnowApiClient.Attach(h.Directory);
+        var settings = new Winnow.Api.Client.ApiCompanionSettings(api);
+
+        var conflict = await Assert.ThrowsAsync<Winnow.Api.Client.BackendApiException>(() => settings.OpenPairingAsync());
+        Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+        var on = await settings.SetEnabledAsync(true);
+        Assert.True(on.Running);
+        var pairing = (await settings.OpenPairingAsync()).Pairing!;
+        using var phone = Harness.Phone(on);
+        (await phone.PostAsJsonAsync("/companion/v1/pair", new CompanionPairRequest(pairing.Code, "Pixel 9"), Json)).EnsureSuccessStatusCode();
+        var paired = await settings.StatusAsync();
+        Assert.Null(paired.Pairing);
+        var device = Assert.Single(paired.Devices);
+        Assert.Equal("Pixel 9", device.Name);
+        Assert.NotNull((await settings.OpenPairingAsync()).Pairing);
+        Assert.Null((await settings.ClosePairingAsync()).Pairing);
+        await settings.RemoveDeviceAsync(device.Id);
+        Assert.Empty((await settings.StatusAsync()).Devices);
+        var missing = await Assert.ThrowsAsync<Winnow.Api.Client.BackendApiException>(() => settings.RemoveDeviceAsync(device.Id));
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.False((await settings.SetEnabledAsync(false)).Running);
+    }
 }
 

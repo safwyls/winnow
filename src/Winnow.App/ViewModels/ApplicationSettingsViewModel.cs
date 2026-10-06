@@ -30,7 +30,8 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         IgdbSettingsViewModel? igdb = null,
         IStoreClientAvailability? storeClients = null,
         DiagnosticsViewModel? diagnostics = null,
-        IGameLinkRouter? linkRouter = null)
+        IGameLinkRouter? linkRouter = null,
+        PhoneSyncViewModel? phoneSync = null)
     {
         _settings = settings;
         _startup = startup;
@@ -41,6 +42,7 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         LinkDestinationOptions = storeClients?.IsAvailable(GameLink.SteamScheme) == true
             ? ["In Winnow", "System browser", "Store client"] : ["In Winnow", "System browser"];
         Igdb = igdb ?? new IgdbSettingsViewModel();
+        PhoneSync = phoneSync ?? new PhoneSyncViewModel();
         if (_updater is not null)
         {
             _updater.Changed += (_, _) =>
@@ -55,15 +57,16 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     public string Title => "Application";
     public DiagnosticsViewModel Diagnostics { get; }
     public IgdbSettingsViewModel Igdb { get; }
+    public PhoneSyncViewModel PhoneSync { get; }
     public event Action? SetupRequested;
     [RelayCommand]
     private void OpenSetup() => SetupRequested?.Invoke();
     public string ApplicationVersion => ApplicationBuildInfo.Current.Version;
     public string BuildCommit => ApplicationBuildInfo.Current.Commit;
     public string IntroMessage =>
-        "Manage startup, links and updates.";
+        "Manage startup, links, phone sync and updates.";
     public string SegmentLabel => "APPLICATION";
-    public string SegmentTooltip => "Startup, links, metadata and updates";
+    public string SegmentTooltip => "Startup, links, phone sync and updates";
 
     public IReadOnlyList<string> LinkDestinationOptions { get; }
     public string LinkDestinationNote => LinkDestinationOptions.Count == 3
@@ -247,6 +250,7 @@ public partial class ApplicationSettingsViewModel : ObservableObject
             _loading = false;
         }
         await Igdb.LoadAsync(ct);
+        await PhoneSync.LoadAsync(ct);
     }
 
     partial void OnMinimizeToTrayChanged(bool value)

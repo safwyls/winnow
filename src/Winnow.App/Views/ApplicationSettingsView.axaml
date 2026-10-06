@@ -3,6 +3,7 @@
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
+             xmlns:v="using:Winnow.App.Views"
              x:Class="Winnow.App.Views.ApplicationSettingsView"
              x:DataType="vm:ApplicationSettingsViewModel">
 
@@ -114,6 +115,94 @@
                                    TextWrapping="Wrap" Text="{Binding LinkDestinationNote}"/>
                     </StackPanel>
                 </Border>
+                <TextBlock Classes="label" AutomationProperties.HeadingLevel="2"
+                           IsVisible="{Binding PhoneSync.IsAvailable}" Text="PHONE SYNC"/>
+                <Border Name="PhoneSyncCard" Classes="card" IsVisible="{Binding PhoneSync.IsAvailable}"
+                        AutomationProperties.Name="Phone sync" AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="16">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                            <StackPanel Spacing="5">
+                                <TextBlock Classes="body-l" Text="Sync with phones"/>
+                                <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                           Text="{Binding PhoneSync.Intro}"/>
+                            </StackPanel>
+                            <ToggleSwitch Name="PhoneSyncToggle" Grid.Column="1" VerticalAlignment="Center"
+                                          IsChecked="{Binding PhoneSync.Enabled, Mode=TwoWay}"
+                                          IsEnabled="{Binding !PhoneSync.IsBusy}"
+                                          AutomationProperties.Name="Sync with phones"/>
+                        </Grid>
+                        <TextBlock Name="PhoneSyncStatus" Classes="body" TextWrapping="Wrap"
+                                   Text="{Binding PhoneSync.Status}" AutomationProperties.LiveSetting="Polite"/>
+                        <TextBlock Classes="data" Foreground="{StaticResource TextDim}"
+                                   IsVisible="{Binding PhoneSync.Address, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   Text="{Binding PhoneSync.Address, StringFormat='Address: {0}'}"/>
+                        <TextBlock Classes="problem" IsVisible="{Binding PhoneSync.HasProblem}"
+                                   Text="{Binding PhoneSync.Problem}" AutomationProperties.LiveSetting="Polite"/>
+
+                        <Border Height="1" Background="{StaticResource Line}"/>
+                        <StackPanel Spacing="5">
+                            <TextBlock Classes="body-l" Text="Pair a phone"/>
+                            <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                       Text="In Winnow Deck, open Sync, choose Pair with Winnow and scan the code. Each code works once, for five minutes."/>
+                        </StackPanel>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="24" IsVisible="{Binding PhoneSync.IsPairing}">
+                            <v:QrCodeView Name="PhoneSyncQr" Width="232" Height="232"
+                                          Payload="{Binding PhoneSync.QrPayload}"/>
+                            <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                                <TextBlock Classes="body" Foreground="{StaticResource TextDim}" Text="Pairing code"/>
+                                <SelectableTextBlock Name="PhoneSyncCode" FontFamily="{DynamicResource DataFont}"
+                                                     FontSize="{DynamicResource FontSize16}"
+                                                     Text="{Binding PhoneSync.PairingCode}"/>
+                                <TextBlock Name="PhoneSyncExpiry" Classes="data" Foreground="{StaticResource TextDim}"
+                                           Text="{Binding PhoneSync.PairingExpiry}"/>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Name="PhoneSyncPairingNote" Classes="body" TextWrapping="Wrap"
+                                   IsVisible="{Binding PhoneSync.HasPairingNote}"
+                                   Text="{Binding PhoneSync.PairingNote}" AutomationProperties.LiveSetting="Polite"/>
+                        <WrapPanel>
+                            <Button Name="StartPairingButton" Classes="act" Content="Start pairing" Margin="0,0,8,0"
+                                    Command="{Binding PhoneSync.StartPairingCommand}"
+                                    IsVisible="{Binding !PhoneSync.IsPairing}"/>
+                            <Button Name="NewPairingCodeButton" Classes="act" Content="New code" Margin="0,0,8,0"
+                                    Command="{Binding PhoneSync.StartPairingCommand}"
+                                    IsVisible="{Binding PhoneSync.IsPairing}"/>
+                            <Button Name="StopPairingButton" Classes="act" Content="Stop pairing"
+                                    Command="{Binding PhoneSync.StopPairingCommand}"
+                                    IsVisible="{Binding PhoneSync.IsPairing}"/>
+                        </WrapPanel>
+
+                        <Border Height="1" Background="{StaticResource Line}"/>
+                        <TextBlock Classes="body-l" Text="Paired phones"/>
+                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   IsVisible="{Binding !PhoneSync.HasDevices}"
+                                   Text="No phones are paired."/>
+                        <ItemsControl Name="PairedPhones" ItemsSource="{Binding PhoneSync.Devices}"
+                                      IsVisible="{Binding PhoneSync.HasDevices}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Spacing="10"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PhoneSyncDevice">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                                        <StackPanel Spacing="3" VerticalAlignment="Center">
+                                            <TextBlock Classes="body" Text="{Binding Name}"/>
+                                            <TextBlock Classes="data" Foreground="{StaticResource TextDim}" Text="{Binding Detail}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Classes="act" Content="Remove" VerticalAlignment="Center"
+                                                AutomationProperties.Name="{Binding Name, StringFormat='Remove {0}'}"
+                                                Command="{Binding $parent[ItemsControl].((vm:ApplicationSettingsViewModel)DataContext).PhoneSync.RemoveDeviceCommand}"
+                                                CommandParameter="{Binding}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="para" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   IsVisible="{Binding PhoneSync.HasDevices}"
+                                   Text="A removed phone can no longer sync. Pair it again to bring it back."/>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Classes="label" AutomationProperties.HeadingLevel="2"
                            IsVisible="{Binding HasUpdater}" Text="UPDATES"/>
                 <Border Classes="card" IsVisible="{Binding HasUpdater}"

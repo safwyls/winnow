@@ -43,3 +43,14 @@ public sealed record CompanionDevice(string Id, string Name, DateTime PairedAt, 
 public sealed record CompanionPairing(string Code, DateTime ExpiresAt, string QrPayload);
 
 public sealed record SetCompanionEnabled(bool Enabled);
+
+/// <summary>Phone sync control shared by both presentation paths.</summary>
+public interface ICompanionSettingsService
+{
+    Task<CompanionStatus> StatusAsync(CancellationToken ct = default);
+    Task<CompanionStatus> SetEnabledAsync(bool enabled, CancellationToken ct = default);
+    /// <summary>Fails with a conflict while phone sync is off.</summary>
+    Task<CompanionStatus> OpenPairingAsync(CancellationToken ct = default);
+    Task<CompanionStatus> ClosePairingAsync(CancellationToken ct = default);
+    Task RemoveDeviceAsync(string id, CancellationToken ct = default);
+}

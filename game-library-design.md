@@ -2070,6 +2070,14 @@ can neither pair nor read. The snapshot is read-only; phones cannot change Winno
 whose PC changes address must pair again, because discovery is by the addresses in the QR
 code only.
 
+**Settings.** Desktop and fullscreen Application settings share `PhoneSyncViewModel`, which
+reads `GET /api/v1/companion` and sends the loopback commands for the switch, the pairing
+window and revocation (`ICompanionSettingsService`). Each command publishes
+`companion.changed`, as does a phone pairing, so every frontend refreshes its phone list and
+pairing state. A phone's sync time is recorded without an event and appears on the next
+refresh. The countdown runs locally against the expiry the backend returned; on expiry the
+frontend drops the code and rereads the status.
+
 ---
 
 ## 8. Sources of silence and failure
