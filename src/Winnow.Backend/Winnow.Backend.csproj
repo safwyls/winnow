@@ -2,6 +2,7 @@
   <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
     <ProjectReference Include="../Winnow.Api.Contracts/Winnow.Api.Contracts.csproj" />
     <ProjectReference Include="../Winnow.Application/Winnow.Application.csproj" />
   </ItemGroup>

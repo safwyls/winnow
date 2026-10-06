@@ -63,6 +63,7 @@ The main capability groups are:
 | Accounts, credentials and plugins | `connections/*` and typed plugin commands |
 | Launching and installing | `entries/{ownershipId}/actions` |
 | Background operations | Progress and operation status queries |
+| Phone sync control | `companion`, `companion/enabled`, `companion/pairing`, `companion/devices/{id}` |
 
 The small library snapshot is suitable for a new frontend; `library/workspace` supplies the
 bulk facts needed for Avalonia's richer tile projection. Backend bucket/grouping results are
@@ -148,7 +149,9 @@ console.log(library);
 ## Verification
 
 `Winnow.Backend.Tests` exercises real loopback HTTP, authorization, multi-client commits,
-conflicts, restart/replay, artwork and launch deduplication. `Winnow.Application.Tests`
+conflicts, restart/replay, artwork and launch deduplication. `CompanionTests` covers the
+separate phone-sync listener: enabling and disabling, certificate pinning, pairing and
+lockout, revocation, refused routes and the snapshot contract (build spec §7.1). `Winnow.Application.Tests`
 checks use cases against temporary SQLite databases. `Winnow.Api.Client.Tests` checks the
 external transport. Frontend composition and headless tests cover desktop and fullscreen;
 assembly-reference checks reject backend implementations in Avalonia and Avalonia in the

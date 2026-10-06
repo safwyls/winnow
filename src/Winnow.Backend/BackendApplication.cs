@@ -66,6 +66,13 @@ public static class BackendApplication
         builder.Services.AddSingleton<Winnow.Ingest.Epic.Web.Auth.EpicInteractiveSignIn>();
         builder.Services.AddSingleton(new BackendRunOptions(backgroundEnabled));
         builder.Services.AddHostedService<BackendStartupService>();
+        builder.Services.AddSingleton<ICompanionSecretProtector, DpapiCompanionSecretProtector>();
+        builder.Services.AddSingleton<CompanionCertificate>();
+        builder.Services.AddSingleton<Winnow.Application.Companion.CompanionDevices>();
+        builder.Services.AddSingleton<Winnow.Application.Companion.CompanionPairingWindow>();
+        builder.Services.AddSingleton<Winnow.Application.Companion.CompanionSnapshotBuilder>();
+        builder.Services.AddSingleton<CompanionLanHost>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<CompanionLanHost>());
         configureServices?.Invoke(builder.Services);
         var app = builder.Build();
         try
@@ -135,7 +142,7 @@ public static class BackendApplication
             }
         });
         app.MapGet("/api/v1/health", () => new BackendHealth("1", events.Epoch, events.Sequence));
-        app.MapGet("/api/v1/capabilities", () => new BackendCapabilities("1", ["events", "feed", "connections", "presentation-preferences", "library", "lists", "manual-games", "identity", "library-preferences"]));
+        app.MapGet("/api/v1/capabilities", () => new BackendCapabilities("1", ["events", "feed", "connections", "presentation-preferences", "library", "lists", "manual-games", "identity", "library-preferences", "companion"]));
         app.MapGet("/api/v1/events", async (HttpContext context) =>
         {
             using var connectionLifetime = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, app.Lifetime.ApplicationStopping);
@@ -182,6 +189,7 @@ public static class BackendApplication
         app.MapIdentityEndpoints();
         app.MapArtworkApi();
         app.MapOperationApi();
+        app.MapCompanionApi();
         app.MapOpenApi("/api/v1/openapi.json");
         return app;
         }

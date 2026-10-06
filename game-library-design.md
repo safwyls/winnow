@@ -2028,6 +2028,48 @@ counts distinct ownerships, which may have several account rows. Dates are UTC, 
 zero. Prices carry no currency because the source schema does not record one. CSV uses UTF-8,
 quoted values and CRLF records, preserving commas, quotes and newlines in titles.
 
+### 7.1 Phone sync
+
+Winnow Deck, the phone companion, reads a read-only library snapshot from Winnow over the
+local network. The loopback API stays loopback-only. Phone sync is a separate HTTPS listener
+that the backend runs only while Settings has phone sync on (`companion.enabled`); turning
+it off closes the listener. It binds all IPv4 interfaces on port 47630 (`companion.port`).
+Windows Firewall asks the first time; allow private networks only.
+
+**Certificate.** A self-signed ECDSA P-256 certificate, valid for ten years, is created on
+first use. Its PKCS#12 copy is stored in settings (`companion.certificate.v1`) encrypted with
+DPAPI for the current user. Where DPAPI is unavailable, phone sync stays off and says why;
+the key is never stored in the clear. Phones trust the certificate by the SHA-256
+fingerprint they receive in the pairing QR code, not by a certificate authority. The same
+certificate is reused across restarts so a paired phone's pin stays valid.
+
+**Pairing.** Settings opens a pairing window: one 16-character code from a 32-letter
+alphabet, valid for five minutes and redeemable once. Five wrong codes close the window.
+The QR code carries
+`winnow-deck://pair?v=1&h=<private IPv4 addresses>&p=<port>&f=<fingerprint>&c=<code>&n=<computer name>`.
+`POST /companion/v1/pair` with the code and a device name returns a device ID and a random
+256-bit token. Winnow stores only the token's SHA-256 (`companion.devices.v1`) and compares
+in constant time. Revoking a phone deletes its record, and its token fails on the next
+request.
+
+**Snapshot.** `GET /companion/v1/snapshot` with `Authorization: Bearer <device token>`
+returns schema version 1 (`Winnow.Api.Contracts.Companion`). It contains the visible library
+under the user's current visibility preferences. Each game is a resolved work with its title,
+IGDB ID, first release year, summary, cover URL, bucket, playtime and last played. Each entry
+has its release, store, edition note, IGDB version ID, platform, store IDs (`steam`, `gog`,
+`epic`), playtime, last played and acquisition date. Manual lists come as ordered release
+IDs; live lists are left out because their filters need Winnow's facets. Account
+references, install and executable paths, prices and credentials never appear. A strong
+ETag over the library lets an unchanged snapshot answer 304. Version 1 is additive-only,
+and phones ignore unknown fields.
+
+**Limits.** Every other path on the listener is 404, whatever the token. The listener logs
+no requests, because a request log could record codes or tokens. Anyone on the network can
+reach the port while phone sync is on, but without a current code or a device token they
+can neither pair nor read. The snapshot is read-only; phones cannot change Winnow. A phone
+whose PC changes address must pair again, because discovery is by the addresses in the QR
+code only.
+
 ---
 
 ## 8. Sources of silence and failure
