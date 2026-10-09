@@ -41,6 +41,28 @@ export function GameCard({
   preview = 'inline',
 }: ThemeGameCardProps) {
   const interaction = useRef<HTMLButtonElement>(null)
+  const caption = (preview === 'inline' || preview === 'overlay') && (
+    <div className="card-content">
+      <div className="card-topline">
+        <span>{game.entries[0]?.store ?? 'Library'}</span>
+        <ArrowUpRight size={15} />
+      </div>
+      <h3 title={game.title}>{game.title}</h3>
+      <p>{reason ?? bucketLabel(game.bucket)}</p>
+      <div className="game-facts">
+        <span>
+          <Clock3 size={12} />
+          {hours(game.playtimeMinutes)}
+        </span>
+        {game.entries.some((entry) => entry.installed) && (
+          <span>
+            <HardDrive size={12} />
+            Installed
+          </span>
+        )}
+      </div>
+    </div>
+  )
   return (
     <GamePreview game={game} reason={reason} disabled={preview !== 'flyout'}>
       <button
@@ -54,29 +76,9 @@ export function GameCard({
       >
         <ArtworkEffects interactionRef={interaction} effects={presentation === 'record' ? false : effects}>
           <Artwork workId={game.headerWorkId ?? game.workId} />
+          {preview === 'overlay' && caption}
         </ArtworkEffects>
-        {(preview === 'inline' || preview === 'overlay') && (
-          <div className="card-content">
-            <div className="card-topline">
-              <span>{game.entries[0]?.store ?? 'Library'}</span>
-              <ArrowUpRight size={15} />
-            </div>
-            <h3 title={game.title}>{game.title}</h3>
-            <p>{reason ?? bucketLabel(game.bucket)}</p>
-            <div className="game-facts">
-              <span>
-                <Clock3 size={12} />
-                {hours(game.playtimeMinutes)}
-              </span>
-              {game.entries.some((entry) => entry.installed) && (
-                <span>
-                  <HardDrive size={12} />
-                  Installed
-                </span>
-              )}
-            </div>
-          </div>
-        )}
+        {preview === 'inline' && caption}
       </button>
     </GamePreview>
   )
