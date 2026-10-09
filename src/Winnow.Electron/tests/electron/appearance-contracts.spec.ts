@@ -1,4 +1,4 @@
-import { chooseOption } from './choice-test-utils'
+import { choosePalette, paletteSwatch } from './choice-test-utils'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import electronPath from 'electron'
 import { access, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -94,12 +94,13 @@ for (const surface of ['desktop', 'fullscreen'] as const)
     await expect(warnings.locator('..')).toHaveAttribute('open', '')
     await warnings.click()
     await expect(warnings.locator('..')).not.toHaveAttribute('open')
-    const choice = page.getByRole('button', { name: /^Avalon palette/ })
-    await choice.click()
-    await expect(page.getByRole('menuitemradio', { name: 'Rosé Pine Dawn', exact: true })).toBeVisible()
-    await expect(page.getByRole('menuitemradio', { name: 'SilkCircuit Dawn', exact: true })).toBeVisible()
-    await page.keyboard.press('Escape')
-    await chooseOption(choice, 'rose-pine-dawn')
+    const selectedPalette = page
+      .getByRole('group', { name: 'Palette', exact: true })
+      .locator('button[aria-pressed=true]')
+    await paletteSwatch(page, 'rose-pine-dawn').scrollIntoViewIfNeeded()
+    await expect(paletteSwatch(page, 'rose-pine-dawn')).toBeVisible()
+    await expect(paletteSwatch(page, 'silkcircuit-dawn')).toBeVisible()
+    await choosePalette(page, 'rose-pine-dawn')
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'light')
     await expect(page.getByRole('slider', { name: 'Transparency', exact: true })).toHaveValue('0')
     await expect(warnings.locator('..')).not.toHaveAttribute('open')
@@ -115,13 +116,13 @@ for (const surface of ['desktop', 'fullscreen'] as const)
     await mkdir(join(directory, 'themes'), { recursive: true })
     await writeFile(join(directory, 'themes/native-authored.json'), JSON.stringify(authored))
     await page.getByRole('button', { name: 'Reload authored palettes', exact: true }).click()
-    await chooseOption(choice, 'native-authored')
+    await choosePalette(page, 'native-authored')
     await expect.poll(async () => (await saved()).profile?.settings?.avalon?.palette).toBe('native-authored')
     await page.reload()
     await expect(page.locator('.avalon-shell')).toBeVisible()
     await mode(surface === 'fullscreen')
     await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
-    await expect(choice).toHaveJSProperty('value', 'native-authored')
+    await expect(selectedPalette).toHaveJSProperty('value', 'native-authored')
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'light')
     await expect(page.getByRole('button', { name: 'Backdrop', exact: true })).toHaveJSProperty(
       'value',

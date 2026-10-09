@@ -28,6 +28,7 @@ import { useLibrary } from '../api/hooks'
 import { Artwork } from '../components/Artwork'
 import { ChoiceMenu } from '../components/ChoiceMenu'
 import { PortalSurface } from '../components/portal-effects'
+import { avalonPalettes } from '../themes/avalon-palettes'
 import { AvalonTypographyControls } from '../themes/avalon-typography'
 import { AvalonAppearanceControls } from '../themes/avalon-appearance'
 import { AvalonJsonControls } from '../themes/avalon-json-controls'
@@ -124,6 +125,43 @@ function ColorControl({
   )
 }
 
+function PaletteSwatches({
+  label = 'Palette',
+  options,
+  selected,
+  onChange,
+}: {
+  label?: string
+  options: { id: string; name: string; colors: string[] }[]
+  selected: string
+  onChange(id: string): void
+}) {
+  return (
+    <fieldset className="studio-fieldset">
+      <legend>{label}</legend>
+      <div className="studio-palettes">
+        {options.map(({ id, name, colors }) => (
+          <button
+            type="button"
+            key={id}
+            value={id}
+            aria-pressed={selected === id}
+            onClick={() => onChange(id)}
+          >
+            <span className="studio-swatches" aria-hidden="true">
+              {colors.map((color, index) => (
+                <i key={index} style={{ background: color }} />
+              ))}
+            </span>
+            <span>{name}</span>
+            {selected === id && <Check size={14} aria-hidden="true" />}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  )
+}
+
 export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
   const { profile, setProfile, theme } = runtime
   const { appearance, layout } = profile
@@ -162,6 +200,9 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
   }
   const layoutChange = (patch: Partial<ThemeProfile['layout']>) =>
     setProfile((current) => ({ ...current, layout: { ...current.layout, ...patch } }))
+  // Avalon exposes palette choices with the shared Atmosphere swatches.
+  // Keep its setting contract intact for saved profiles and authored catalogs.
+  const extraSettings = theme.settings?.filter((field) => theme.id !== 'avalon' || field.id !== 'palette')
   const themeSettings = themeSettingValues(theme, profile)
   const settingChange = (id: string, value: ThemeSettingValue) =>
     setProfile((current) => ({
@@ -276,36 +317,38 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               <Palette size={18} />
               <h2 id="studio-appearance">Atmosphere</h2>
             </div>
+            {theme.id === 'avalon' && (
+              <PaletteSwatches
+                options={[
+                  ...avalonPalettes().map(({ id, name, colors }) => ({
+                    id,
+                    name,
+                    colors: [colors['--bg'], colors['--surface'], colors['--text'], colors['--accent']],
+                  })),
+                  {
+                    id: 'profile',
+                    name: 'Studio colors',
+                    colors: [colors.background, colors.surface, colors.text, colors.accent],
+                  },
+                ]}
+                selected={avalonPaletteId(profile)}
+                onChange={(id) => settingChange('palette', id)}
+              />
+            )}
             {studioColors && (
-              <fieldset className="studio-fieldset">
-                <legend>Palette</legend>
-                <div className="studio-palettes">
-                  {Object.entries(PALETTES).map(([id, colors]) => (
-                    <button
-                      type="button"
-                      key={id}
-                      aria-pressed={appearance.palette === id}
-                      onClick={() =>
-                        appearanceChange({
-                          palette: id as ThemeProfile['appearance']['palette'],
-                          accent: colors.accent,
-                          colors: undefined,
-                        })
-                      }
-                    >
-                      <span className="studio-swatches" aria-hidden="true">
-                        {[colors.background, colors.surface, colors.text, colors.accent].map(
-                          (color, index) => (
-                            <i key={index} style={{ background: color }} />
-                          ),
-                        )}
-                      </span>
-                      <span>{colors.name}</span>
-                      {appearance.palette === id && <Check size={14} />}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
+              <PaletteSwatches
+                label={theme.id === 'avalon' ? 'Studio color preset' : 'Palette'}
+                options={Object.entries(PALETTES).map(([id, colors]) => ({
+                  id,
+                  name: colors.name,
+                  colors: [colors.background, colors.surface, colors.text, colors.accent],
+                }))}
+                selected={appearance.palette}
+                onChange={(id) => {
+                  const palette = id as ThemeProfile['appearance']['palette']
+                  appearanceChange({ palette, accent: PALETTES[palette].accent, colors: undefined })
+                }}
+              />
             )}
             <div className="studio-field-grid">
               {studioColors && (
@@ -720,12 +763,12 @@ export function ThemeStudio({ runtime }: { runtime: ThemeRuntime }) {
               onChange={(typography) => appearanceChange({ typography })}
             />
           )}
-          {!!theme.settings?.length && (
+          {!!extraSettings?.length && (
             <section className="studio-panel" aria-labelledby="studio-extra">
               <h2 id="studio-extra">{theme.name} details</h2>
               {theme.id === 'rift' && reducedMotion && <p>Reduced motion keeps the portal edge still.</p>}
               <div className="studio-field-grid">
-                {theme.settings.map((field) => (
+                {extraSettings.map((field) => (
                   <label
                     className={field.type === 'toggle' ? 'studio-toggle' : 'studio-field'}
                     key={field.id}

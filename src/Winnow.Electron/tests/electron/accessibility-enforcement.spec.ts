@@ -1,4 +1,4 @@
-import { chooseOption } from './choice-test-utils'
+import { choosePalette } from './choice-test-utils'
 import {
   test,
   expect,
@@ -135,7 +135,7 @@ async function navigate(name: string) {
 }
 async function authored() {
   await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
-  await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'native-accessibility')
+  await choosePalette(page, 'native-accessibility')
   await expect(page.locator('html')).toHaveCSS('color-scheme', 'light')
   const numericValue = page
     .getByRole('slider', { name: 'Theme text size', exact: true })
@@ -625,11 +625,11 @@ for (const surface of ['desktop', 'fullscreen'] as const) {
       await expect(page.locator('html')).toHaveClass(/reduced-motion/)
       await page.getByRole('button', { name: 'Theme Studio', exact: true }).click()
       await expect(page.getByRole('checkbox', { name: /^Reduce motion/ })).not.toBeChecked()
-      await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'winnow')
+      await choosePalette(page, 'winnow')
       await page.getByRole('textbox', { name: 'Interface font', exact: true }).fill('IBM Plex Mono')
       await page.getByRole('textbox', { name: 'Interface font', exact: true }).press('Tab')
       await expect(page.locator('html')).toHaveClass(/reduced-motion/)
-      await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'native-accessibility')
+      await choosePalette(page, 'native-accessibility')
       await page.getByRole('button', { name: 'Winnow home', exact: true }).click()
       evidence.fullscreenSavedAfterThemeEdit = await motionSnapshot(page.locator('.avalon-shell'))
       expect(evidence.fullscreenSavedAfterThemeEdit).toEqual({ moving: [], animations: 0 })

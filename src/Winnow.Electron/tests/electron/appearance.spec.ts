@@ -1,4 +1,4 @@
-import { chooseOption } from './choice-test-utils'
+import { chooseOption, choosePalette, paletteSwatch } from './choice-test-utils'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { access, mkdtemp, readFile } from 'node:fs/promises'
@@ -226,7 +226,7 @@ test('the native caption follows every composition and an Avalon light palette w
     expect(overlay.width).toBeGreaterThan(0)
     expect(overlay.width).toBeLessThan(overlay.viewport)
   }
-  await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'rose-pine-dawn')
+  await choosePalette(page, 'rose-pine-dawn')
   await expect
     .poll(() =>
       application.evaluate(
@@ -285,6 +285,23 @@ for (const fullscreen of [false, true]) {
         composition !== 'Avalon' ? 1 : 0,
       )
       const atmosphere = page.getByRole('region', { name: 'Atmosphere', exact: true })
+      const palettes = atmosphere.getByRole('group', { name: 'Palette', exact: true })
+      if (composition === 'Avalon') {
+        await expect.poll(() => palettes.getByRole('button').count()).toBeGreaterThanOrEqual(10)
+      } else {
+        await expect(palettes.getByRole('button')).toHaveCount(5)
+      }
+      await expect(page.getByRole('button', { name: /^Avalon palette/ })).toHaveCount(0)
+      if (composition === 'Avalon') {
+        const night = paletteSwatch(page, 'nightshift')
+        await night.scrollIntoViewIfNeeded()
+        await night.focus()
+        await page.keyboard.press('Space')
+        await expect(night).toBeFocused()
+        await expect(night).toHaveAttribute('aria-pressed', 'true')
+        await expect(page.locator('html')).toHaveCSS('--bg', '#070A10')
+        await choosePalette(page, 'winnow')
+      }
       await atmosphere.scrollIntoViewIfNeeded()
       await atmosphere.screenshot({
         path: test.info().outputPath(`${composition.toLowerCase()}-atmosphere.png`),

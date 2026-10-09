@@ -1,4 +1,4 @@
-import { chooseOption } from './choice-test-utils'
+import { choosePalette } from './choice-test-utils'
 import { closeFixture } from './fixture-cleanup'
 import { fillLibrarySearch, libraryField, returnToLibrary, setLibrarySort } from './library-controls'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
@@ -838,7 +838,7 @@ for (const [width, height] of [
     })
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await page.getByRole('banner').getByRole('button', { name: 'Theme Studio', exact: true }).click()
-    await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'bottle-green')
+    await choosePalette(page, 'bottle-green')
     await page
       .getByRole('navigation', { name: 'Main navigation' })
       .getByRole('button', { name: 'For you', exact: true })

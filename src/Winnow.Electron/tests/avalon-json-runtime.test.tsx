@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { type WinnowBridge } from '../src/shared/bridge'
 import { type AvalonThemeCatalogue, type AvalonThemeDocument } from '../src/shared/avalonThemeDocument'
@@ -245,4 +245,31 @@ it('omits the authored folder controls without a configured theme store and repo
   expect(screen.queryByRole('heading', { name: 'Authored palettes' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Open themes folder' })).toBeNull()
   expect(screen.queryByRole('alert')).toBeNull()
+})
+
+it('keeps Atmosphere swatches in sync with authored palette reloads and removal', async () => {
+  function Studio() {
+    const runtime = useThemeRuntime(builtins)
+    return runtime.loading ? null : <ThemeStudio runtime={runtime} />
+  }
+  render(<Studio />)
+  const palettes = within(await screen.findByRole('group', { name: 'Palette' }))
+  const selected = palettes.getByRole('button', { name: custom.name })
+  expect(selected.getAttribute('aria-pressed')).toBe('true')
+  expect(selected.querySelector('i')!.style.background).toBe('rgb(19, 16, 24)')
+  catalogue.themes[0].document = {
+    ...custom,
+    name: 'Updated palette',
+    seeds: { ...custom.seeds, ground: '#212030' },
+  }
+  act(() => changed())
+  const updated = await palettes.findByRole('button', { name: 'Updated palette' })
+  expect(updated.getAttribute('aria-pressed')).toBe('true')
+  expect(updated.querySelector('i')!.style.background).toBe('rgb(33, 32, 48)')
+  catalogue.themes = []
+  act(() => changed())
+  await waitFor(() => expect(palettes.queryByRole('button', { name: 'Updated palette' })).toBeNull())
+  await waitFor(() =>
+    expect(palettes.getByRole('button', { name: 'Winnow' }).getAttribute('aria-pressed')).toBe('true'),
+  )
 })

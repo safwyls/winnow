@@ -5,6 +5,8 @@ dark by default with optional light themes, and the retained Avalonia reference 
 
 Electron also offers Afterglow, Rift and Catalogue as alternative compositions. Its appearance
 controls and replaceable-screen contract are in [Electron themes](docs/electron-themes.md).
+Every composition selects colors from **Atmosphere → Palette** swatches on desktop and fullscreen;
+Avalon includes its original and authored palettes, plus Studio colors for custom editing.
 Appearance menus show only controls used by the selected composition, without empty group
 headings. Switching compositions retains hidden choices; Avalon-only role typography and
 ultrawide fit are hidden in the other compositions on desktop, fullscreen and during setup.

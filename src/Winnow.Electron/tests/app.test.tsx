@@ -1340,7 +1340,11 @@ describe('integrated frontend', () => {
     await changeSurface(true)
     for (const palette of AVALON_PALETTES) {
       fireEvent.click(screen.getByRole('button', { name: 'Theme Studio' }))
-      chooseOption(await screen.findByRole('button', { name: /^Avalon palette/ }), palette.id)
+      fireEvent.click(
+        within(await screen.findByRole('group', { name: 'Palette' })).getByRole('button', {
+          name: palette.name,
+        }),
+      )
       fireEvent.click(screen.getByRole('button', { name: 'For you' }))
       const first = await screen.findByRole('button', { name: 'View A real API title' })
       first.focus()

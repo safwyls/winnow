@@ -38,7 +38,7 @@
       },
       {
         "file": "tests/electron/backdrop.spec.ts",
-        "case": "fullscreen Home crossfades independent source geometry, keeps visible art while loading, and releases replaced URLs"
+        "case": "fullscreen Home crossfades independent source geometry, keeps visible art while loading, and retires replaced images"
       }
     ],
     "reason": "Native BGRA samples cover all four source combinations: cinematic false/true at 1920 and 2520. White 384x 124 hero and 160x 90 landscape fixtures verify full crop below 21:9, centered scaled hero at 2520, Ground-only masked areas, independent old/new geometry and simultaneous half-opacity frames. Retained component evidence verifies scheduled-frame cleanup and release."

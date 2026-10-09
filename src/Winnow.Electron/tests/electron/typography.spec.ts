@@ -1,4 +1,4 @@
-import { chooseOption } from './choice-test-utils'
+import { chooseOption, choosePalette, paletteSwatch } from './choice-test-utils'
 import { closeFixture } from './fixture-cleanup'
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { access, mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -128,12 +128,12 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
     await page.getByRole('textbox', { name: 'Interface font', exact: true }).fill('Bricolage Grotesque')
     await page.getByRole('textbox', { name: 'Data font', exact: true }).fill('Plus Jakarta Sans')
     await textSize(115)
-    await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'nightshift')
+    await choosePalette(page, 'nightshift')
     await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveJSProperty(
       'value',
       '100',
     )
-    await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'winnow')
+    await choosePalette(page, 'winnow')
     await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveJSProperty(
       'value',
       '115',
@@ -178,12 +178,12 @@ for (const mode of ['desktop', 'fullscreen'] as const) {
       await page.locator('.avalon-brand').evaluate((element) => getComputedStyle(element).fontFamily),
     ).toContain('Avalon Data')
     await studio()
-    await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'nightshift')
+    await choosePalette(page, 'nightshift')
     await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveJSProperty(
       'value',
       '100',
     )
-    await chooseOption(page.getByRole('button', { name: /^Avalon palette/ }), 'winnow')
+    await choosePalette(page, 'winnow')
     await expect(page.getByRole('slider', { name: 'Theme text size', exact: true })).toHaveJSProperty(
       'value',
       '120',
@@ -394,10 +394,8 @@ test('desktop maximum theme size keeps every control inside its scroller and key
   await writeFile(join(directory, 'themes/typography-authored.json'), JSON.stringify(authored))
   await studio()
   await page.getByRole('button', { name: 'Reload authored palettes', exact: true }).click()
-  const palette = page.getByRole('button', { name: /^Avalon palette/ })
-  await palette.click()
-  await expect(page.getByRole('menu').locator('[value="typography-authored"]')).toHaveCount(1)
-  await chooseOption(palette, 'typography-authored')
+  await expect(paletteSwatch(page, 'typography-authored')).toHaveCount(1)
+  await choosePalette(page, 'typography-authored')
   await expect(page.getByRole('textbox', { name: 'Heading font', exact: true })).toHaveJSProperty(
     'value',
     'IBM Plex Mono',
@@ -454,7 +452,7 @@ test('desktop maximum theme size keeps every control inside its scroller and key
     body: JSON.stringify({ authored: authored.typography, bounds }),
     contentType: 'application/json',
   })
-  await chooseOption(palette, 'winnow')
+  await choosePalette(page, 'winnow')
 })
 
 test('fullscreen Theme Studio and Settings Appearance separately retain TV typography font selection and keyboard focus', async () => {

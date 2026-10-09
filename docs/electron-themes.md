@@ -18,7 +18,9 @@ themes folder; developer themes and backend provider plugins remain separate.
 Open **Theme Studio** from the palette button. Choose a composition; its controls update
 to show only the options that it uses. Hidden choices stay saved. Available controls include:
 
-- Winnow, Afterglow, Moonstone, Paper trail, or Blue hour colors, plus a custom accent. Expand **Customize every
+- Color swatches under **Atmosphere → Palette** in every composition, on desktop and fullscreen.
+  Avalon offers its original and authored palettes. Other compositions offer Winnow, Afterglow,
+  Moonstone, Paper trail, or Blue hour colors, plus a custom accent. Expand **Customize every
   color** to set background, panels, raised surfaces, text, secondary text, borders, and the
   secondary accent individually, using a picker or a hex value.
 - Editorial, sans serif, or monospace typography using bundled fonts.
@@ -54,12 +56,13 @@ Rift reuses the same card materials and exposes **Portal roundness**, **Portal e
 settings. Zero activity holds the rim still; 40 is the normal pace and 100 is about four
 times faster. The star field draws only on creation or resize; brightness changes opacity.
 
-Avalon's **Avalon palette** setting selects Winnow, Nightshift, Tungsten, Box art, Bottle
+Avalon's **Atmosphere → Palette** swatches select Winnow, Nightshift, Tungsten, Box art, Bottle
 green, SilkCircuit, SilkCircuit Dawn, Rosé Pine or Rosé Pine Dawn. These are the original
 bundled palettes, including the light variants and their derived colors. Fresh profiles and
 missing palette IDs select the complete Winnow palette. Earlier Studio profiles with custom
 colors or a different shared palette retain those choices. **Studio colors**
-reveals and uses the shared color controls; selecting an original palette hides them.
+is a swatch in the same picker. It reveals the shared **Studio color preset**, accent and custom
+color controls; selecting an original palette hides those controls without discarding their values.
 The selected palette applies to the document
 root, so portaled dialogs and native form controls follow it. Avalon keeps the original
 Bricolage Grotesque, Plus Jakarta Sans and IBM Plex Mono typography. **Dim dormant covers**

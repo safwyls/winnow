@@ -18,7 +18,7 @@
       },
       {
         "file": "tests/electron/backdrop.spec.ts",
-        "case": "detaching Home cancels the real named image request and releases retained decoded art"
+        "case": "detaching Home cancels the real named image request and clears detached image sources"
       }
     ],
     "reason": "Metadata runs behind the authenticated HTTP boundary in the separate backend process. Controlled late metadata never starts stale image work, and actual renderer detachment aborts the named IPC image fetch without blocking navigation."
@@ -50,10 +50,10 @@
       },
       {
         "file": "tests/electron/backdrop.spec.ts",
-        "case": "fullscreen Home crossfades independent source geometry, keeps visible art while loading, and releases replaced URLs"
+        "case": "fullscreen Home crossfades independent source geometry, keeps visible art while loading, and retires replaced images"
       }
     ],
-    "reason": "Both motion modes keep ready art during selection, abort superseded work and ignore late pixels. A real compositor frame samples independent current/outgoing layers and object URLs return to one after replacement; detach returns them to zero."
+    "reason": "Both motion modes keep ready art during selection, abort superseded work and ignore late pixels. A real compositor frame samples independent current/outgoing layers. Replaced and detached image elements clear their sources; the bounded shared asset cache can retain decoded pixels for reuse."
   },
   "FullscreenBackdropTests.Failed_landscape_shows_cover_only_after_resolution_and_detach_cancels_pending_art": {
     "status": "ported",
@@ -68,7 +68,7 @@
       },
       {
         "file": "tests/electron/backdrop.spec.ts",
-        "case": "detaching Home cancels the real named image request and releases retained decoded art"
+        "case": "detaching Home cancels the real named image request and clears detached image sources"
       }
     ],
     "reason": "Cover fallback starts only after all landscape attempts fail, has its own decode width, and is released on detach. Pending requests use an owner-scoped cancel ID; late image completion cannot reattach pixels."

@@ -397,9 +397,11 @@ precedence. Saved role fonts and text sizes for bundled and authored palettes al
 from `appearance.typography`. This import does not change Avalonia's palette or typography
 preferences.
 
-Avalon's **Avalon palette** setting includes the nine original bundled palettes: Winnow,
+Avalon's **Atmosphere → Palette** swatches include the nine original bundled palettes: Winnow,
 Nightshift, Tungsten, Box art, Bottle green, SilkCircuit, SilkCircuit Dawn, Rosé Pine and
-Rosé Pine Dawn. **Studio colors** uses the shared palette and custom color controls instead.
+Rosé Pine Dawn, alongside any authored palettes. All compositions use the same swatch picker
+on desktop and fullscreen. The **Studio colors** swatch uses the shared palette and custom
+color controls instead.
 Palette changes include dialogs and the native light/dark control scheme. Avalon bundles
 the original Bricolage Grotesque, Plus Jakarta Sans and IBM Plex Mono static font faces.
 Differing **Heading font**, **Interface font** and **Data font** choices, and the 80–120%

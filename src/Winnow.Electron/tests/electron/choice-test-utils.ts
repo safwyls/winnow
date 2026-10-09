@@ -1,4 +1,4 @@
-import { expect, type Locator } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 /** Exercise the themed popup instead of mutating the selected value directly. */
 export async function chooseOption(control: Locator, value: string) {
@@ -14,4 +14,17 @@ export async function chooseOption(control: Locator, value: string) {
   if (index < 0) throw new Error(`No choice ${JSON.stringify(value)}`)
   await expect(options.nth(index)).toBeEnabled()
   await options.nth(index).click()
+}
+
+/** Palette swatches stay visible in Atmosphere; IDs remain stable when an authored name changes. */
+export function paletteSwatch(page: Page, id: string) {
+  return page
+    .getByRole('region', { name: 'Atmosphere', exact: true })
+    .getByRole('group', { name: 'Palette', exact: true })
+    .locator('button[value=' + JSON.stringify(id) + ']')
+}
+export async function choosePalette(page: Page, id: string) {
+  const swatch = paletteSwatch(page, id)
+  await swatch.click()
+  await expect(swatch).toHaveAttribute('aria-pressed', 'true')
 }

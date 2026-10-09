@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WinnowBridge } from '../src/shared/bridge'
-import { DEFAULT_PROFILE, type ThemeDefinition, type ThemeProfile } from '../src/shared/theme'
+import { DEFAULT_PROFILE, PALETTES, type ThemeDefinition, type ThemeProfile } from '../src/shared/theme'
 import { ThemeStudio } from '../src/renderer/theming/ThemeStudio'
 import { useThemeRuntime } from '../src/renderer/theming/runtime'
+import { AVALON_PALETTES, registerAvalonThemes } from '../src/renderer/themes/avalon-palettes'
 import { chooseOption } from './choice-test-utils'
 
 vi.mock('../src/renderer/api/hooks', () => ({ useLibrary: () => ({ data: undefined }) }))
@@ -52,6 +53,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  registerAvalonThemes([])
   vi.restoreAllMocks()
 })
 
@@ -66,6 +68,11 @@ describe.each(['desktop', 'fullscreen'])('Composition appearance in %s', (mode) 
       ['Catalogue', ['Typography', 'Cover finish', 'Library cards', 'Game details']],
     ] as const) {
       selectComposition(name)
+      const choices = within(screen.getByRole('region', { name: 'Atmosphere' })).getByRole('group', {
+        name: 'Palette',
+      })
+      expect(within(choices).getAllByRole('button').length).toBe(name === 'Avalon' ? 10 : 5)
+      expect(screen.queryByRole('button', { name: 'Avalon palette' })).toBeNull()
       for (const control of [
         'Typography',
         'Spacing',
@@ -117,15 +124,46 @@ describe.each(['desktop', 'fullscreen'])('Composition appearance in %s', (mode) 
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Game details' }).value).toBe('stacked')
   })
 
+  it('previews the original palette colors and remembers its selection across composition switches', async () => {
+    render(<Studio mode={mode} />)
+    const palette = within(await screen.findByRole('group', { name: 'Palette' }))
+    for (const item of AVALON_PALETTES) {
+      const swatch = palette.getByRole('button', { name: item.name })
+      expect([...swatch.querySelectorAll('i')].map((color) => color.style.background)).toEqual(
+        ['--bg', '--surface', '--text', '--accent'].map((key) => {
+          const probe = document.createElement('i')
+          probe.style.background = item.colors[key]
+          return probe.style.background
+        }),
+      )
+    }
+    fireEvent.click(palette.getByRole('button', { name: 'Nightshift' }))
+    expect(palette.getByRole('button', { name: 'Nightshift' }).getAttribute('aria-pressed')).toBe('true')
+    selectComposition('Afterglow')
+    selectComposition('Avalon')
+    expect(screen.getByRole('button', { name: 'Nightshift' }).getAttribute('aria-pressed')).toBe('true')
+    await waitFor(() =>
+      expect(window.winnow.savePreferences).toHaveBeenLastCalledWith(
+        expect.objectContaining({ settings: expect.objectContaining({ avalon: { palette: 'nightshift' } }) }),
+      ),
+    )
+  })
+
   it('shows Avalon custom colors only when Studio colors is selected', async () => {
     render(<Studio mode={mode} />)
-    const palette = await screen.findByRole('button', { name: 'Avalon palette' })
+    const palette = within(await screen.findByRole('group', { name: 'Palette' }))
     expect(screen.queryByRole('textbox', { name: 'Accent color' })).toBeNull()
-    chooseOption(palette, 'profile')
+    fireEvent.click(palette.getByRole('button', { name: 'Studio colors' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Accent color' }), { target: { value: '#123456' } })
-    chooseOption(palette, 'winnow')
+    fireEvent.click(palette.getByRole('button', { name: 'Winnow' }))
     expect(screen.queryByRole('textbox', { name: 'Accent color' })).toBeNull()
-    chooseOption(palette, 'profile')
+    fireEvent.click(palette.getByRole('button', { name: 'Studio colors' }))
     expect(screen.getByRole<HTMLInputElement>('textbox', { name: 'Accent color' }).value).toBe('#123456')
+    const presets = within(screen.getByRole('group', { name: 'Studio color preset' }))
+    fireEvent.click(presets.getByRole('button', { name: 'Paper trail' }))
+    expect(screen.getByRole<HTMLInputElement>('textbox', { name: 'Accent color' }).value).toBe(
+      PALETTES.paper.accent,
+    )
+    expect(palette.getByRole('button', { name: 'Studio colors' }).getAttribute('aria-pressed')).toBe('true')
   })
 })
