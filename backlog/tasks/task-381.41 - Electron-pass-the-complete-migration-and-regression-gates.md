@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-30 18:50'
-updated_date: '2026-10-03 16:14'
+updated_date: '2026-10-22 19:27'
 labels:
   - electron
   - parity
@@ -159,4 +159,6 @@ Store dropdown and tile fold follow-up (2026-10-03): extracted the existing them
 Desktop Library and feed covers now show a contrasting folded underside, diagonal crease and small shadow inside the existing 40px Details target, with three dots replacing the cramped document glyph. SVG dimensions stay fixed; keyboard focus remains triangular. Native verification exposed selection chrome moving the tile between pointer-down and pointer-up; deferred pointer-driven selection until click release while preserving immediate keyboard focus selection. The real Play and repeated Details-open cases now pass. Fullscreen retains its distinct controller cover presentation.
 
 Verification: production typecheck/build and Prettier checks pass; the build retains the existing dependency Zod annotation warnings. All 200 focused component tests pass (shared menus, identity projections, cover interaction, Library workflows and renderer enforcement), including new desktop/fullscreen Store filtering, clearing and nested Escape cases. All 55 native Electron cases pass with one worker and zero retries, covering 108/148/200px covers, feed, launch and Details bridge actions, focus, cancellation, recycling, reduced motion, fullscreen and shared sort menus at 80/100/140 percent zoom. Final visual probe checks Store and fold/focus in Winnow and Rose Pine Dawn at 900/1280px plus both fullscreen Store menus, using disposable data and deterministic artwork. Evidence: .tmp/task38141-store-fold-final, .tmp/task38141-store-fold-visual and .tmp/task38141-store-fold-build.log. Current design/frontend docs updated. This user follow-up is complete locally; the separate complete migration/device gate remains In Progress.
+
+Local re-verification 2026-10-22 on 37905ce3 plus two test fixes: Release build 0 warnings; full .NET run found 3 failures, all environmental: RepositoryHygiene scans walked a linked Claude worktree under .claude/worktrees (walker now prunes nested checkouts holding their own .git), and Covers_dim_with_idle_time_by_default seeded 'Recent' against the fixed 2026-08-23 fixture date while the view model reads the real clock (now seeded relative to DateTime.UtcNow). Winnow.Tests 5002/5002 after the fixes; other assemblies unchanged from the full run (Backend 344, UI 899, Update 111, Recommend 178, Covers 196, Plugins 92, Xbox 104, Psn 130, SteamGridDb 91, Application 23, Api.Client 15, Linux 2 skips). Electron typecheck clean, migration audit 2435/0 pending; test:integration at default workers timed out parity-architecture graph and parity-merge sixty-card cases under load, both pass isolated (128/128) and the full gate at --maxWorkers=2 passes 4600/4600 across 244 files in 214s, JSON .tmp/task38141-local-unit-results-2026-10-22.json. Branch remains 24 commits ahead of origin; push and remote CI still need explicit authorization.
 <!-- SECTION:NOTES:END -->

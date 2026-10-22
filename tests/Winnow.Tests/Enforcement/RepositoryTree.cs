@@ -56,11 +56,23 @@ internal static class RepositoryTree
         while (directories.TryPop(out var directory))
         {
             if (ExcludedDirectory(Relative(directory))) continue;
+            if (directory != start && IsNestedCheckout(directory)) continue;
             files.AddRange(Directory.EnumerateFiles(directory, pattern).Select(Relative));
             foreach (var child in Directory.EnumerateDirectories(directory))
                 directories.Push(child);
         }
         return [.. files.OrderBy(p => p, StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// A directory holding its own <c>.git</c> entry is another checkout (a linked
+    /// worktree under <c>.claude/worktrees/</c>, for example), not this tree's
+    /// source. Its copies of guarded files would otherwise fail the hygiene scans.
+    /// </summary>
+    private static bool IsNestedCheckout(string directory)
+    {
+        var marker = System.IO.Path.Combine(directory, ".git");
+        return File.Exists(marker) || Directory.Exists(marker);
     }
 
     private static bool ExcludedDirectory(string relative)

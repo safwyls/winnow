@@ -943,7 +943,10 @@ public sealed class LibraryViewModelTests
     public async Task Covers_dim_with_idle_time_by_default()
     {
         using var fixture = new LibraryFixture();
-        await fixture.SeedAsync("Recent", minutes: 600, lastPlayed: Now.AddDays(-3));
+        // The view model measures dormancy against the real clock, so "recent"
+        // must be relative to it rather than to the fixed fixture date, which
+        // the ramp would otherwise dim once that date falls months behind.
+        await fixture.SeedAsync("Recent", minutes: 600, lastPlayed: DateTime.UtcNow.AddDays(-3));
         await fixture.SeedAsync("Ancient", minutes: 600, lastPlayed: Now.AddYears(-4));
 
         var library = fixture.CreateViewModel();
