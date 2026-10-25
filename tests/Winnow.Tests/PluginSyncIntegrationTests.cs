@@ -25,7 +25,7 @@ public sealed class PluginSyncIntegrationTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-        Program.ConfigureServices(services, new(database.DatabasePath + "-plugin-data", database.DatabasePath, DataMigrationOutcome.None));
+        Winnow.App.LegacyTestServices.ConfigureServices(services, new(database.DatabasePath + "-plugin-data", database.DatabasePath, DataMigrationOutcome.None));
         services.AddSingleton<Winnow.Data.ISqliteConnectionFactory>(database.Factory);
         await using var provider = services.BuildServiceProvider();
         var catalog = provider.GetRequiredService<PluginCatalog>();
@@ -49,7 +49,7 @@ public sealed class PluginSyncIntegrationTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-        Program.ConfigureServices(services, new(root, database.DatabasePath, DataMigrationOutcome.None));
+        Winnow.App.LegacyTestServices.ConfigureServices(services, new(root, database.DatabasePath, DataMigrationOutcome.None));
         services.AddSingleton<Winnow.Data.ISqliteConnectionFactory>(database.Factory);
         await using var provider = services.BuildServiceProvider();
         var directory = Path.Combine(root, "packages", "fixture");

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Winnow.App;
 
-public partial class App : Application
+public partial class App : Avalonia.Application
 {
     private MainWindow? _mainWindow;
     private ApplicationSettingsViewModel? _applicationSettings;

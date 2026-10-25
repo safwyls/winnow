@@ -61,7 +61,7 @@ public sealed class CoverSelectionTests
         }
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-        Program.ConfigureServices(registrations, new(database.DatabasePath + "-data", database.DatabasePath, DataMigrationOutcome.Overridden));
+        Winnow.App.LegacyTestServices.ConfigureServices(registrations, new(database.DatabasePath + "-data", database.DatabasePath, DataMigrationOutcome.Overridden));
         registrations.AddSingleton<ISqliteConnectionFactory>(database.Factory);
         var leases = new Leases();
         registrations.AddSingleton<ICoverLeases>(leases);

@@ -1,0 +1,104 @@
+{
+  "SingleInstanceActivationTests.Plugin_requests_round_trip_and_queue_with_other_actions": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activation-queue.test.ts",
+        "case": "keeps mixed plugin fullscreen game and show launches in FIFO order"
+      },
+      {
+        "file": "tests/electron/activation.spec.ts",
+        "case": "early handoff restores a background window and queues real second-process launches in order"
+      }
+    ],
+    "reason": "Typed provider/release fields survive real second-process delivery, preserve ordering with fullscreen/game/show requests, and are retained until the renderer drains the queue."
+  },
+  "SingleInstanceActivationTests.Oversized_or_empty_plugin_frame_is_rejected_without_waiting_for_payload": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Activation/SingleInstanceActivation.cs",
+      "src/Winnow.Activation/FrontendActivationHost.cs"
+    ],
+    "reason": "The Windows frontend uses the original bounded binary pipe protocol through a shared native companion in the backend executable. The unchanged source method executes all three empty/oversized length fixtures against the extracted implementation: a header alone earns rejection without waiting for its declared payload, and no activation dispatches. The companion runs before HTTP hosting or database ownership. This retained shared native policy is not an Avalonia-specific mechanism."
+  },
+  "SingleInstanceActivationTests.Listener_accepts_next_launch_while_previous_client_keeps_its_handle_open": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Activation/SingleInstanceActivation.cs",
+      "src/Winnow.Activation/FrontendActivationHost.cs"
+    ],
+    "reason": "The unchanged source test executes against the extracted shared listener used by Electron's Windows companion. It keeps the acknowledged client handle open while the next client connects and activates successfully. The server retires its completed exchange and accepts the next connection independently of the old client handle. The original assertion now covers retained companion behavior rather than a retired frontend transport."
+  },
+  "SingleInstanceActivationTests.Invalid_payload_is_rejected_without_dispatch": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activation.test.ts",
+        "case": "validates structured second-instance messages without interpreting them as arguments"
+      },
+      {
+        "file": "tests/electron/activation.spec.ts",
+        "case": "native dispatch rejects malformed payloads without showing the window and bounds then recovers its queue"
+      }
+    ],
+    "reason": "Node boundary tests retain malformed structured-object rejection. Windows native tests send actual invalid binary opcodes, nonpositive Int64 values and malformed plugin frames through the protected pipe, asserting refusal without restoring the hidden window or entering its queue; subsequent valid requests still succeed. Raw JavaScript objects are no longer accepted as Windows second-instance transport."
+  },
+  "SingleInstanceActivationTests.Startup_queue_is_bounded_and_recovers_after_handler_is_ready": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activation-queue.test.ts",
+        "case": "admits sixty-four distinct requests and recovers after the renderer drains them"
+      },
+      {
+        "file": "tests/electron/activation.spec.ts",
+        "case": "native dispatch rejects malformed payloads without showing the window and bounds then recovers its queue"
+      }
+    ],
+    "reason": "The original 64 admitted/65th refused boundary runs against the production queue and integrated native dispatcher. All 64 ordered requests drain at renderer readiness and subsequent requests succeed. The native helper acknowledges delivery to Node rather than renderer queue admission; the retained C# protocol queue and the renderer-facing queue are verified separately."
+  },
+  "SingleInstanceActivationTests.Shell_arguments_allow_only_one_typed_command": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activation.test.ts",
+        "case": "limits Jump List actions to a single valid local ownership ID or fullscreen"
+      }
+    ],
+    "reason": "Preserves the source accepted fullscreen/game commands and its full rejection matrix: missing ID, zero, negative, store URI, Int64 overflow, unknown command and duplicate commands. Valid ownership IDs across the complete positive Int64 range are preserved without numeric rounding."
+  },
+  "SingleInstanceActivationTests.Launches_queue_until_ready_and_repeated_requests_reach_the_same_session": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activation-queue.test.ts",
+        "case": "coalesces only adjacent identical"
+      },
+      {
+        "file": "tests/electron/activation.spec.ts",
+        "case": "early handoff restores a background window and queues real second-process launches in order"
+      }
+    ],
+    "reason": "Consecutive identical requests coalesce before renderer readiness. Two later real launches dispatch twice to the same session, including a profile path with a trailing separator, while its backend process ID and epoch remain unchanged."
+  },
+  "SingleInstanceActivationTests.Other_directories_and_stopped_sessions_do_not_activate": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/activation.spec.ts",
+        "case": "profile locks isolate active libraries and a stopped profile can become primary again"
+      }
+    ],
+    "reason": "Two live isolated libraries have distinct backend processes and Chromium profiles; requests reach only their named owner. After one frontend/backend pair closes, the same profile starts a new primary and receives requests without activating the other library."
+  },
+  "SingleInstanceActivationTests.Connection_waits_for_listener_startup": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/activation.spec.ts",
+        "case": "a real secondary launch waits while the primary has not registered its listener or become ready"
+      }
+    ],
+    "reason": "A real secondary launch begins while the primary helper output is held before frontend ownership completes, any BrowserWindow is created, or its renderer/backend becomes ready. Electron app.isReady is already true. Once the primary resumes, the secondary exits successfully and its fullscreen request remains queued for renderer readiness. The direct Node pipe adapter retries listener recreation within the original bounded connection deadline."
+  }
+}

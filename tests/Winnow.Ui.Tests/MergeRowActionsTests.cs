@@ -262,6 +262,7 @@ public sealed class MergeRowActionsTests
             .AddSingleton<IOwnershipRepository>(ownership)
             .AddSingleton<IExpansionRefusalRepository>(new ExpansionRefusalRepository(db.Factory))
             .AddSingleton<ILibraryQueryRepository>(new LibraryQueryRepository(db.Factory))
-            .AddSingleton<LibraryExpansionScan>().BuildServiceProvider();
+            .AddSingleton<LibraryExpansionScan>()
+                .AddSingleton<IExpansionReviewScan>(sp => sp.GetRequiredService<LibraryExpansionScan>()).BuildServiceProvider();
     }
 }

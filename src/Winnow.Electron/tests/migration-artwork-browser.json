@@ -1,0 +1,180 @@
+{
+  "ArtworkBrowserTests.Fullscreen_triggers_cycle_artwork_slots_and_preserve_their_browsing_state": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "retains each slot preview source and gallery position and cycles with controller triggers"
+      },
+      {
+        "file": "tests/electron/artwork-browser.spec.ts",
+        "case": "fullscreen artwork preserves controller selection focus during paging"
+      }
+    ],
+    "reason": "Both surfaces retain slot selection/source/scroll. Native fullscreen tests drive real gamepad sampling through six trigger transitions, A selection/save and B return; pending writes prevent trigger changes in the component case."
+  },
+  "ArtworkBrowserTests.Desktop_artwork_source_uses_the_shared_link_router": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "routes source attribution through the shared dispatcher and keeps imports explicit"
+      }
+    ],
+    "reason": "The same named external-link bridge receives the attributed HTTPS source and surfaces its confirmation; no browser is opened during the test."
+  },
+  "ArtworkBrowserTests.Preview_and_back_do_not_write_and_apply_changes_only_the_selected_slot": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "previews without writing, saves only the chosen slot and resets only that slot"
+      },
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "closes its own overlay without writing a preview"
+      },
+      {
+        "file": "tests/electron/artwork-browser.spec.ts",
+        "case": "desktop artwork traps both keyboard directions and Back restores More without writing"
+      }
+    ],
+    "reason": "Both modes preview without writes, apply only the selected slot and reset that slot. Native Back restores Details More without committing."
+  },
+  "ArtworkBrowserTests.Sources_fail_independently_retry_and_page_without_replacing_selection": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "loads retries and pages independently while retaining candidate identity and selection"
+      },
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "keeps a refused save selected and prevents slot changes or duplicate saves while pending"
+      }
+    ],
+    "reason": "Independent provider failure/retry and pagination preserve selection and candidate identity; refusal leaves selection available without a false success."
+  },
+  "ArtworkBrowserTests.Closing_ignores_late_provider_results_and_unsupported_icon_is_explicit": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "ignores a cancelled provider result after immediate reopen and refreshes external current art"
+      },
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "makes unsupported icon sources explicit without querying or hiding them"
+      }
+    ],
+    "reason": "Closing aborts named provider work; a late result cannot populate a reopened browser. IGDB Icon remains visible with its unsupported explanation and no request."
+  },
+  "ArtworkBrowserTests.Rapid_reopen_restarts_loading_and_retains_previews_across_slots": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "ignores a cancelled provider result after immediate reopen and refreshes external current art"
+      },
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "retains each slot preview source and gallery position and cycles with controller triggers"
+      }
+    ],
+    "reason": "Reopening starts a new provider request and reads external Current changes. Slot transitions retain preview and source choices; the prior pending response cannot replace them."
+  },
+  "ArtworkBrowserTests.Commit_refreshes_projection_before_current_and_distinguishes_refresh_failure": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "refreshes the library projection before Current and distinguishes a saved image from refresh failure"
+      }
+    ],
+    "reason": "A successful write refreshes library projections before Current. A later projection failure keeps the explicit saved confirmation and requires refreshing instead of retrying the committed write."
+  },
+  "ArtworkBrowserTests.Each_slot_retains_its_browsing_position": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "retains each slot preview source and gallery position and cycles with controller triggers"
+      }
+    ],
+    "reason": "Both presentation modes restore independent Hero/Cover scrollTop positions, selection and source while cycling in both directions."
+  },
+  "ArtworkBrowserTests.Desktop_details_host_restores_more_focus_on_escape": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/artwork-browser.spec.ts",
+        "case": "keeps preview and actions fixed while only the gallery scrolls"
+      }
+    ],
+    "reason": "All three source desktop dimensions open from Details More; Escape removes the artwork overlay and restores More focus."
+  },
+  "ArtworkBrowserTests.Desktop_artwork_row_restores_its_browse_button_and_unsaved_metadata_draft": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-artwork-browser.test.tsx",
+        "case": "keeps the metadata draft and returns focus to its invoking artwork row"
+      }
+    ],
+    "reason": "Both modes keep the unsaved name draft mounted while the modal Cover browser owns focus. Escape restores the precise Browse control without writes. The existing Details native cases separately verify editor Escape returns to More."
+  },
+  "ArtworkBrowserTests.Desktop_overlay_keeps_preview_and_actions_visible_while_only_gallery_scrolls": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/artwork-browser.spec.ts",
+        "case": "keeps preview and actions fixed while only the gallery scrolls"
+      }
+    ],
+    "reason": "All original 1280×820,1200×640,1920×1080 rows test every slot, revision-checked writes, positive image bounds, stationary preview/actions and gallery scrolling. Hero and Cover aspect ratios are measured; real IPC carries deterministic PNG pixels."
+  },
+  "ArtworkBrowserTests.Desktop_overlay_cycles_keyboard_focus_and_back_restores_details_without_writing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/artwork-browser.spec.ts",
+        "case": "desktop artwork traps both keyboard directions and Back restores More without writing"
+      }
+    ],
+    "reason": "Forward/backward keyboard traversal returns to Back within 60 steps, stays in the modal, visits at least eight controls and closes without writing."
+  },
+  "ArtworkBrowserTests.Fullscreen_controller_can_select_and_preserves_candidate_focus_when_pages_arrive": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/artwork-browser.spec.ts",
+        "case": "fullscreen artwork preserves controller selection focus during paging"
+      }
+    ],
+    "reason": "Native gamepad A selects, page arrival retains that candidate's focus, and A saves; actions remain within bounds at default text and 140% text with reduced motion."
+  },
+  "ArtworkBrowserTests.Metadata_overlay_bounds_fields_and_keeps_navigation_reachable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/metadata-dialog.spec.ts",
+        "case": "bounds fields and keeps navigation reachable"
+      }
+    ],
+    "reason": "Native Electron checks the five original window sizes including 120% text, the 1440px bound and 24px inset, 30 forward/backward Tab moves, all six fields inside the scroll body, a fixed Back button, local year refusal, and an artwork round trip preserving the unsaved title and precise Browse focus."
+  },
+  "ArtworkBrowserTests.Fullscreen_metadata_keeps_field_order_and_validation_navigation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/metadata-dialog.spec.ts",
+        "case": "fullscreen metadata keeps field order, keyboard editing, validation and Back restoration"
+      },
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "orders attributed menu fields and restores the original draft on Back after a validation refusal"
+      }
+    ],
+    "reason": "The native fullscreen menu preserves all six source rows and their source badges. Entering a field focuses Edit value, opens the shared keyboard, validates under the field, and Back restores the original draft and menu-row focus. Artwork rows open the correct slot and return to the same row."
+  }
+}

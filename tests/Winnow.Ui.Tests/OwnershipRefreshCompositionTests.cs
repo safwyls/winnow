@@ -32,7 +32,7 @@ public sealed class OwnershipRefreshCompositionTests
         var registrations = new ServiceCollection();
         registrations.AddLogging();
         registrations.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-        Program.ConfigureServices(registrations, new(db.DatabasePath + "-data", db.DatabasePath, DataMigrationOutcome.Overridden));
+        Winnow.App.LegacyTestServices.ConfigureServices(registrations, new(db.DatabasePath + "-data", db.DatabasePath, DataMigrationOutcome.Overridden));
         registrations.AddSingleton<ISqliteConnectionFactory>(db.Factory);
         await using var services = registrations.BuildServiceProvider();
         Assert.IsType<OwnershipRefreshCoordinator>(services.GetRequiredService<IRemoteOwnershipSync>());

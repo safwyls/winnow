@@ -1,0 +1,23 @@
+.fetch-status {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  margin: 0 20px;
+  white-space: nowrap;
+  pointer-events: none;
+  -webkit-app-region: drag;
+  color: var(--muted);
+  line-height: 1.4;
+  font-size: calc(11px * var(--theme-text-scale, 1));
+}
+.fetch-status-label {
+  font-size: calc(10px * var(--theme-text-scale, 1));
+  letter-spacing: 1px;
+}
+.fetch-status-count {
+  font-size: calc(10px * var(--theme-text-scale, 1));
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}

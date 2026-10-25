@@ -11,8 +11,31 @@ public partial class StatsViewModel : ObservableObject, IDisposable
     public GameplayStatsViewModel Gameplay { get; }
     private bool _active;
     private long _generation;
-    public StatsViewModel(AccountStatsViewModel spending, GameplayStatsViewModel gameplay)
-    { Spending = spending; Gameplay = gameplay; }
+    private readonly LibraryViewModel? _library;
+    private bool _refreshQueued;
+    private Task? _externalRefresh;
+    public StatsViewModel(AccountStatsViewModel spending, GameplayStatsViewModel gameplay, LibraryViewModel? library = null)
+    {
+        Spending = spending; Gameplay = gameplay; _library = library;
+        if (_library is not null) _library.TilesChanged += LibraryChanged;
+    }
+
+    private void LibraryChanged(object? sender, EventArgs args)
+    {
+        if (!_active || !IsSpending) return;
+        _refreshQueued = true;
+        if (_externalRefresh is null || _externalRefresh.IsCompleted) _externalRefresh = RefreshCommittedAsync();
+    }
+
+    private async Task RefreshCommittedAsync()
+    {
+        while (_refreshQueued && _active && IsSpending)
+        {
+            _refreshQueued = false;
+            await PendingRefresh;
+            if (_active && IsSpending) await (PendingRefresh = RefreshSpendingAsync());
+        }
+    }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(GameplaySectionName), nameof(SpendingSectionName))]
     public partial bool IsSpending { get; set; }
@@ -44,5 +67,9 @@ public partial class StatsViewModel : ObservableObject, IDisposable
         catch (Exception) { if (generation == _generation) SpendingProblem = "Couldn't read Steam spending. Try again."; }
         finally { if (generation == _generation) IsSpendingLoading = false; }
     }
-    public void Dispose() { Deactivate(); Gameplay.Dispose(); GC.SuppressFinalize(this); }
+    public void Dispose()
+    {
+        if (_library is not null) _library.TilesChanged -= LibraryChanged;
+        Deactivate(); Gameplay.Dispose(); GC.SuppressFinalize(this);
+    }
 }

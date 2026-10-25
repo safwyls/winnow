@@ -1,0 +1,335 @@
+{
+  "TileActionsTests.Steam_on_disk_plays_and_off_disk_installs": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "dispatches the %s play or install command using its ownership and a unique operation"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+        "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.Gog_on_disk_plays_through_galaxy": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "dispatches the %s play or install command using its ownership and a unique operation"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+        "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.Gog_off_disk_opens_its_install_screen": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "dispatches the %s play or install command using its ownership and a unique operation"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+        "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.Epic_on_disk_plays_through_the_launchers_composite_key": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "dispatches the %s play or install command using its ownership and a unique operation"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+        "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.Epic_off_disk_installs_through_the_launchers_composite_key": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "dispatches the %s play or install command using its ownership and a unique operation"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+        "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "GameDetailsViewModelTests.An_installed_game_offers_a_real_steam_launch": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "dispatches the %s play or install command using its ownership and a unique operation"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+        "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "GameDetailsViewModelTests.An_uninstalled_game_offers_the_download_instead": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "dispatches the %s play or install command using its ownership and a unique operation"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+        "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.Epic_off_disk_without_all_three_ids_draws_no_install_button": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "explains a missing Epic key when installed is %s without inventing an action"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.Epic_off_disk_with_no_launch_key_names_the_id_it_lacks": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "explains a missing Epic key when installed is %s without inventing an action"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.An_epic_copy_on_disk_with_no_launch_key_names_the_id_it_lacks": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "explains a missing Epic key when installed is %s without inventing an action"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.An_epic_tile_with_no_launch_key_offers_no_action_even_when_installed": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "explains a missing Epic key when installed is %s without inventing an action"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.A_store_that_can_be_reached_says_nothing_about_why_it_cannot": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-store-actions.test.ts",
+        "case": "stays quiet when %s already has a way in"
+      },
+      {
+        "file": "tests/parity-store-actions.test.ts",
+        "case": "preserves browsing as a way in even when Steam or GOG install state is unknown"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.An_epic_copy_whose_install_state_nobody_read_is_named_as_that": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-store-actions.test.ts",
+        "case": "names missing Epic identity without pretending its install state is known"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.An_unknown_install_state_is_named_neither_way": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-store-actions.test.ts",
+        "case": "%s plays on disk, installs off disk and never labels an unknown state either way"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.An_unknown_install_state_renders_no_chip_in_the_detail_panel": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "keeps the unknown installation state out of both the action and chip"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.The_kind_of_action_is_carried_by_the_link_not_by_its_label": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+        "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+        "case": "Management_goes_to_the_launcher_without_declaring_a_game_start"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.Gog_gets_the_one_route_that_was_watched_working": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/game-links.test.tsx",
+        "case": "offers GOG browse navigation and omits invented Epic destinations"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.Epic_gets_no_links": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/game-links.test.tsx",
+        "case": "offers GOG browse navigation and omits invented Epic destinations"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "TileActionsTests.Steam_keeps_its_store_page_and_patch_notes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/game-links.test.tsx",
+        "case": "uses the selected game identities and deduplicates copies"
+      },
+      {
+        "file": "tests/game-links.test.tsx",
+        "case": "routes all six details links without dispatching a game action in %s"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "GameDetailsViewModelTests.The_store_page_and_the_patch_notes_hub_are_both_offered": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/game-links.test.tsx",
+        "case": "uses the selected game identities and deduplicates copies"
+      },
+      {
+        "file": "tests/game-links.test.tsx",
+        "case": "routes all six details links without dispatching a game action in %s"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "GameDetailsViewModelTests.Default_action_prefers_viable_copy_to_installed_offline_copy": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "offers the viable copy instead of the installed offline copy"
+      },
+      {
+        "file": "tests/parity-store-actions.test.ts",
+        "case": "prefers a viable uninstalled copy to an installed offline copy and preserves manual launch"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "GameDetailsViewModelTests.Igdb_reference_uses_numeric_identity_not_title_slug": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/game-links.test.tsx",
+        "case": "uses IGDB identity %s as a numeric short reference"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "GameDetailsViewModelTests.Missing_or_invalid_id_does_not_offer_igdb_reference": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/game-links.test.tsx",
+        "case": "omits an invalid IGDB identity: %s"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "GameDetailsViewModelTests.Steam_reference_links_use_grouped_identity_when_playable_copy_is_gog": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/game-links.test.tsx",
+        "case": "retains deduplicated Steam references when the installed copy is from GOG"
+      }
+    ],
+    "reason": "Electron uses the named shared presentation policy and controls; replacement tests preserve the original behavior at the renderer and production HTTP action boundaries."
+  },
+  "GameDetailsViewModelTests.Http_and_steam_targets_are_openable": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Api.Contracts/Actions/GameLink.cs"],
+    "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
+  },
+  "GameDetailsViewModelTests.Everything_else_is_refused_outright": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Api.Contracts/Actions/GameLink.cs"],
+    "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
+  },
+  "GameDetailsViewModelTests.A_target_carrying_control_characters_is_refused": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Api.Contracts/Actions/GameLink.cs"],
+    "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
+  },
+  "GameDetailsViewModelTests.A_link_with_no_label_is_not_a_link": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Api.Contracts/Actions/GameLink.cs"],
+    "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
+  },
+  "GameDetailsViewModelTests.Only_a_plain_number_is_treated_as_an_appid": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Api.Contracts/Actions/GameLink.cs"],
+    "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
+  },
+  "TileActionsTests.The_two_launcher_schemes_are_openable": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Api.Contracts/Actions/GameLink.cs"],
+    "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
+  },
+  "TileActionsTests.Everything_adjacent_to_them_is_still_refused": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Api.Contracts/Actions/GameLink.cs"],
+    "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
+  },
+  "TileActionsTests.A_malformed_gog_product_id_never_reaches_a_url": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Api.Contracts/Actions/StoreActions.cs"],
+    "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
+  },
+  "TileActionsTests.A_malformed_epic_key_is_no_key": {
+    "status": "retained-backend",
+    "implementation": ["src/Winnow.Api.Contracts/Actions/EpicLaunchKey.cs"],
+    "reason": "The original test directly exercises the unchanged public action policy, which the production GameActionApplication still uses before launcher dispatch. No Avalonia view model is constructed by this test."
+  }
+}

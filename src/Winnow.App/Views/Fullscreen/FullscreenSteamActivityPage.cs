@@ -20,7 +20,7 @@ public sealed class FullscreenSteamActivityPage : FullscreenPage
     {
         _ownsModel = model is null;
         _model = model ?? new SteamReportedActivityViewModel(context.Services?.GetService<ISteamPlaytimeObservationRepository>(),
-            Scope(), context.Services?.GetService<ISettingsRepository>());
+            Scope(), context.Services?.GetService<ISettingsRepository>(), context.Services?.GetService<Winnow.Api.Client.WinnowApiClient>());
         _model.Changed += ModelChanged;
         if (_ownsModel) context.Library.TilesChanged += LibraryChanged;
         AttachedToVisualTree += (_, _) => PendingRefresh = _model.RefreshAsync();

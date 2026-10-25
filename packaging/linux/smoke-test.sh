@@ -4,7 +4,7 @@
 set -euo pipefail
 
 usage() {
-    printf 'Usage: %s <package-dir> <version>\n' "${0##*/}" >&2
+    printf 'Usage: %s <package-dir> <version> [previous-deb]\n' "${0##*/}" >&2
     exit 64
 }
 
@@ -13,7 +13,7 @@ fail() {
     exit 1
 }
 
-[[ $# -eq 2 ]] || usage
+[[ $# -eq 2 || $# -eq 3 ]] || usage
 [[ ${GITHUB_ACTIONS:-} == true ]] \
     || fail "this smoke test installs and removes a package and may run only in GitHub Actions"
 
@@ -34,6 +34,12 @@ deb_version=${version/-/\~}
 command -v dpkg-deb >/dev/null || fail "dpkg-deb is required"
 command -v sudo >/dev/null || fail "sudo is required to install the package"
 command -v setsid >/dev/null || fail "setsid is required to isolate the smoke-test process group"
+frontend=$(dpkg-deb --fsys-tarfile "$deb_path" | tar -xOf - ./opt/winnow/release-info.json |
+    python3 -c 'import json,sys; print(json.load(sys.stdin).get("frontend", "avalonia"))')
+if [[ $frontend == electron ]]; then
+    [[ $# -eq 3 ]] || fail 'Electron smoke requires a digest-verified previous released Debian package.'
+    exec bash "$(dirname -- "$0")/smoke-electron.sh" "$package_dir" "$version" "$3"
+fi
 [[ ! -e /usr/bin/winnow ]] || fail "/usr/bin/winnow already exists; refusing to replace it"
 if dpkg-query -W -f='${db:Status-Status}' winnow 2>/dev/null | grep -Fqx installed; then
     fail "the winnow Debian package is already installed; refusing to replace it"
@@ -108,6 +114,12 @@ validate_manifest "$workspace/deb-extract/opt/winnow/release-info.json"
 [[ -f $workspace/deb-extract/opt/winnow/package-managed ]] || fail "Debian update boundary marker is missing"
 [[ ! -e $workspace/tar-extract/$artifact_name/package-managed ]] || fail "portable archive has a package-manager marker"
 [[ -x $workspace/tar-extract/$artifact_name/update-helper/Winnow.Update.Helper ]] || fail "portable update helper is missing"
+
+for package_root in "$workspace/deb-extract/opt/winnow" "$workspace/tar-extract/$artifact_name"; do
+    [[ -x $package_root/backend/Winnow.Backend ]] || fail "backend companion is missing"
+    [[ -f $package_root/backend/Winnow.Backend.runtimeconfig.json ]] || fail "backend runtime configuration is missing"
+    [[ -f $package_root/backend/Microsoft.AspNetCore.dll ]] || fail "self-contained ASP.NET runtime is missing"
+done
 
 # `apt-get install` resolves the package's declared runtime dependencies. The
 # runner is ephemeral, so this never installs Winnow onto a user's computer.

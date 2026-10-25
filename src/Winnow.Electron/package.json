@@ -1,0 +1,129 @@
+{
+  "name": "winnow-electron",
+  "productName": "Winnow",
+  "version": "0.2.0-dev",
+  "private": true,
+  "description": "An extensible Electron frontend for Winnow",
+  "author": "Winnow contributors",
+  "main": "out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev --",
+    "build": "tsc --noEmit && node scripts/check-version.mjs && electron-vite build",
+    "preview": "electron-vite preview --skipBuild --",
+    "test": "vitest run",
+    "test:integration": "node scripts/test-integration.mjs",
+    "test:rendered": "npm run build && playwright test",
+    "test:packaged": "playwright test --config playwright.packaged.config.ts",
+    "test:migration": "node scripts/migration-audit.mjs --require-complete",
+    "migration:report": "node scripts/migration-audit.mjs --write-report",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write src tests scripts examples *.json *.ts README.md",
+    "backend:publish": "node scripts/publish-backend.mjs",
+    "notices": "node scripts/third-party-notices.mjs",
+    "package": "node scripts/package-primary.mjs package",
+    "dist": "node scripts/package-primary.mjs dist",
+    "package:secondary": "npm run build && npm run backend:publish && npm run notices && electron-builder --dir --publish never",
+    "dist:secondary": "npm run build && npm run backend:publish && npm run notices && electron-builder --publish never",
+    "check:version": "node scripts/check-version.mjs",
+    "test:entrypoints": "node --test scripts/entrypoints.test.mjs"
+  },
+  "build": {
+    "appId": "app.winnow.afterglow",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".staging/backend",
+        "to": "backend"
+      },
+      {
+        "from": "resources/icon.ico",
+        "to": "icon.ico"
+      },
+      {
+        "from": ".staging/THIRD-PARTY-NOTICES.md",
+        "to": "THIRD-PARTY-NOTICES.md"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "resources/icon.ico",
+      "signExecutable": false
+    },
+    "linux": {
+      "target": "AppImage",
+      "artifactName": "Winnow-Electron-${version}-linux-${arch}.${ext}",
+      "category": "Game"
+    },
+    "mac": {
+      "target": "dmg",
+      "artifactName": "Winnow-Electron-${version}-mac-${arch}.${ext}"
+    },
+    "nsis": {
+      "artifactName": "Winnow-Electron-${version}-win-${arch}-Setup.${ext}",
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "Winnow-Electron-${version}-win-${arch}-Portable.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "safwyls",
+        "repo": "winnow"
+      }
+    ]
+  },
+  "dependencies": {
+    "@fontsource/dm-sans": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@fontsource/newsreader": "5.3.0",
+    "@radix-ui/react-dialog": "1.1.23",
+    "@tanstack/react-query": "5.104.0",
+    "@tanstack/react-virtual": "3.14.13",
+    "builder-util-runtime": "9.7.0",
+    "electron-updater": "6.8.9",
+    "lucide-react": "1.48.0",
+    "motion": "13.4.4",
+    "pixi.js": "8.21.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@babel/parser": "7.29.9",
+    "@babel/types": "7.29.8",
+    "@electron/asar": "3.4.1",
+    "@playwright/test": "1.63.0",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "26.6.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3",
+    "electron-vite": "5.0.0",
+    "jsdom": "30.1.1",
+    "postcss": "8.5.28",
+    "prettier": "3.9.9",
+    "typescript": "7.0.2",
+    "vite": "7.3.6",
+    "vitest": "5.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "FeedViewModelTests.A_thin_shelf_is_a_finished_shelf_and_states_its_own_count": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-ui.test.tsx",
+        "case": "renders a thin shelf as complete and places its own count beside the desktop heading"
+      }
+    ],
+    "reason": "A three-card shelf renders its actual count beside the desktop heading without a loading state or vacant card placeholders."
+  },
+  "FeedFeedbackTests.Dismissing_again_after_an_undo_is_two_rows_and_a_stamp": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-ui.test.tsx",
+        "case": "retains both verdict attempts and the revocation stamp after dismiss, Undo and dismiss again"
+      }
+    ],
+    "reason": "Both surfaces render the two attempts, the earlier revocation date and exactly one available Undo."
+  },
+  "FeedFeedbackTests.A_service_that_throws_on_a_verdict_is_a_sentence_and_not_a_crash": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-model.test.ts",
+        "case": "a thrown verdict failure becomes a retryable card error without claiming a saved receipt"
+      }
+    ],
+    "reason": "A rejected write produces a card error with no saved receipt; retry saves the intended verdict and clears the error."
+  },
+  "FeedFeedbackTests.The_header_states_the_count_only_once_there_is_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-ui.test.tsx",
+        "case": "states the history count only after responses exist and stays quiet for recent play alone"
+      }
+    ],
+    "reason": "Desktop and fullscreen avoid empty history counts and scoring claims for the unscored recent-play shelf; the history count updates after a saved response."
+  },
+  "FeedViewModelTests.Recently_played_only_feed_does_not_claim_scoring_confidence": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-ui.test.tsx",
+        "case": "states the history count only after responses exist and stays quiet for recent play alone"
+      }
+    ],
+    "reason": "Desktop and fullscreen avoid empty history counts and scoring claims for the unscored recent-play shelf; the history count updates after a saved response."
+  },
+  "FeedViewModelTests.The_tier_calibrates_the_copy_and_goes_quiet_once_it_is_earned": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-ui.test.tsx",
+        "case": "calibrates desktop confidence copy for tier %s and shows the candidate count once known"
+      }
+    ],
+    "reason": "The desktop summary shows a nonzero candidate count, changes its note for early/settling confidence, and omits the note at established confidence. Fullscreen keeps its original hero presentation without this desktop summary."
+  },
+  "FeedViewModelTests.The_candidate_count_is_stated_only_once_there_is_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-ui.test.tsx",
+        "case": "calibrates desktop confidence copy for tier %s and shows the candidate count once known"
+      }
+    ],
+    "reason": "The desktop summary shows a nonzero candidate count, changes its note for early/settling confidence, and omits the note at established confidence. Fullscreen keeps its original hero presentation without this desktop summary."
+  }
+}

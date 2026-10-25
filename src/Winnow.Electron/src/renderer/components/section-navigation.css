@@ -1,0 +1,47 @@
+@layer components {
+  .fullscreen-section-navigation {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+  .fullscreen-section-navigation > :not(.section-trigger) {
+    min-width: 0;
+    flex: 0 1 auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .section-trigger {
+    flex: 0 0 auto;
+    width: calc(clamp(28px, 2.1vw, 40px) * var(--theme-text-scale, 1));
+    height: calc(clamp(28px, 2.1vw, 40px) * var(--theme-text-scale, 1));
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .section-trigger svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .section-trigger path {
+    fill: currentColor;
+  }
+  .section-label {
+    display: inline-grid;
+  }
+  .section-label > span,
+  .section-label::after {
+    grid-area: 1 / 1;
+  }
+  .section-label::after {
+    content: attr(data-label);
+    font-weight: 700;
+    visibility: hidden;
+  }
+  .journal-page.mode-fullscreen > .fullscreen-section-navigation button[aria-pressed='true'] {
+    font-weight: 700;
+    border-bottom-color: var(--muted);
+  }
+}

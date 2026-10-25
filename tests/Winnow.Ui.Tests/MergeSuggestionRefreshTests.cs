@@ -249,7 +249,8 @@ public sealed class MergeSuggestionRefreshTests
                 .AddSingleton<ILibraryQueryRepository>(new LibraryQueryRepository(_db.Factory))
                 .AddSingleton<IResolveStateRepository>(new ResolveStateRepository(_db.Factory))
                 .AddSingleton<IMergeSuggestionRefresh>(Refresh)
-                .AddSingleton<LibraryExpansionScan>().BuildServiceProvider();
+                .AddSingleton<LibraryExpansionScan>()
+                .AddSingleton<IExpansionReviewScan>(sp => sp.GetRequiredService<LibraryExpansionScan>()).BuildServiceProvider();
         }
         public LibraryViewModel CreateLibrary() => new(Services.GetRequiredService<ILibraryQueryRepository>(),
             Services.GetRequiredService<IOwnershipRepository>(), Services.GetRequiredService<IReleaseRepository>(),

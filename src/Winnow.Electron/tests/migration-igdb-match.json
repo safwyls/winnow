@@ -1,0 +1,298 @@
+{
+  "IgdbMatchViewModelTests.A_search_lists_candidates_with_cover_year_and_platform": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "shows cover year and platforms with a tooltip and no empty detail line for sparse rows"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_candidate_with_no_year_and_no_platform_draws_no_detail_line": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "shows cover year and platforms with a tooltip and no empty detail line for sparse rows"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_search_that_matched_nothing_says_so_and_is_not_a_problem": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "announces a pending search in words and removes its status when an empty result arrives"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.The_status_field_is_cleared_when_the_search_returns": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "announces a pending search in words and removes its status when an empty result arrives"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_blank_title_is_not_searchable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "starts with the library title and refuses blank searches without sending a request"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.The_field_opens_on_the_title_the_library_shows": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "starts with the library title and refuses blank searches without sending a request"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.Choosing_a_candidate_pins_it_and_reopens_the_modal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "pins a chosen entry with the searched revision and carries its title through a library and artwork refresh"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "returns from %s to refreshed Details with a carried confirmation"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_refusal_is_stated_and_nothing_is_pinned": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "keeps %s as its own refusal without pinning or refreshing the library"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.Each_refusal_has_its_own_sentence": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "keeps %s as its own refusal without pinning or refreshing the library"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_claimed_entry_offers_to_link_and_names_the_holder": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "offers a named holder with cover and year and clears the collision alert"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.Accepting_the_offer_links_under_the_holder_and_pins_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "links under the holder using the review revision without pinning the child"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "returns from %s to refreshed Details with a carried confirmation"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.Declining_the_offer_writes_nothing_and_restores_the_refusal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "declines without a write and restores the refusal while keeping candidates"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_collision_with_nothing_to_offer_stays_a_plain_refusal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "keeps the collision refusal when the backend has no identity review capability"
+      },
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "keeps %s as its own refusal without pinning or refreshing the library"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_holder_that_is_this_same_work_offers_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "refuses a holder that is the same work without offering an invalid link"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_link_that_did_not_land_keeps_the_offer": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "keeps a refused link offer for retry and reports the failure with no success callback"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.The_offer_has_copy_of_its_own": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "gives the claim its own accessible copy and announces linking until the write settles"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_work_on_automatic_resolution_offers_nothing_to_clear": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "offers no clear control for automatic matching"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_pinned_work_can_be_returned_to_automatic_resolution": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "returns a pin to automatic matching and refreshes its artwork with a carried confirmation"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "returns from %s to refreshed Details with a carried confirmation"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_clear_that_did_not_land_keeps_the_control": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "keeps a refused clear pinned and available with an alert and no refresh"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.The_search_is_folded_away_until_it_is_asked_for": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps the game match menu face and query while its own Back control folds the editor"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.The_menu_row_keeps_one_face": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps the game match menu face and query while its own Back control folds the editor"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.The_section_closes_itself": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps the game match menu face and query while its own Back control folds the editor"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.Choosing_an_open_row_again_keeps_the_section_and_what_stands_in_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "preserves the query candidates and claim when the existing editor is entered again"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.An_id_match_leads_the_list_and_is_marked_as_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "prepends one marked ID hit for %s while retaining title results and their details"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.An_id_match_draws_the_same_detail_line_as_a_title_result": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "prepends one marked ID hit for %s while retaining title results and their details"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.An_id_match_is_not_repeated_by_the_title_search": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "prepends one marked ID hit for %s while retaining title results and their details"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.A_title_that_starts_with_digits_never_reaches_the_id_lookup": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "uses only title lookup for %s"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  },
+  "IgdbMatchViewModelTests.An_id_that_matches_nothing_says_so_beside_the_title_results": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-match.test.tsx",
+        "case": "reports an ID miss beside the surviving title results without presenting a failure"
+      }
+    ],
+    "reason": "Source assertions are exercised through the shared production IGDB editor. Both Avalon modes use it; successful writes refresh the retained Details view and carry the confirmation instead of rebuilding the Avalonia modal."
+  }
+}

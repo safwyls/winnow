@@ -1,0 +1,136 @@
+{
+  "FilterPanelViewModelTests.Two_options_in_one_group_widen_the_result": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-filter-contracts.test.ts",
+        "case": "widens one selected genre to the union of two genres"
+      }
+    ],
+    "reason": "The production filter policy returns the union of selected genres and excludes the third genre."
+  },
+  "FilterPanelViewModelTests.Two_groups_narrow_the_result": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-filter-contracts.test.ts",
+        "case": "narrows independent genre and player-mode groups and includes the rail as another AND term"
+      }
+    ],
+    "reason": "Independent genre and player-mode selections intersect instead of widening the result."
+  },
+  "FilterPanelViewModelTests.The_rail_bucket_is_one_more_and_term": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-filter-contracts.test.ts",
+        "case": "narrows independent genre and player-mode groups and includes the rail as another AND term"
+      }
+    ],
+    "reason": "A bucket narrows two genre matches to the one game in that bucket."
+  },
+  "FilterPanelViewModelTests.The_year_range_excludes_a_release_whose_year_is_unknown": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-filter-contracts.test.ts",
+        "case": "excludes undated games only while a release-year bound is active"
+      }
+    ],
+    "reason": "The original dated/undated fixture excludes only the unknown year under an active range and restores it when bounds are removed."
+  },
+  "FilterPanelViewModelTests.A_count_is_what_the_option_would_leave_you_with": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-filter-contracts.test.ts",
+        "case": "counts the result each option would leave while lifting only its own selected group"
+      }
+    ],
+    "reason": "The original cooperative/solo matrix changes RPG counts from two to one and keeps the single-player shooter count at one."
+  },
+  "FilterPanelViewModelTests.A_groups_own_selection_does_not_zero_its_siblings": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-filter-contracts.test.ts",
+        "case": "counts the result each option would leave while lifting only its own selected group"
+      }
+    ],
+    "reason": "Selected and sibling genre counts remain one while a different group stays active; selecting both widens the actual result."
+  },
+  "FilterPanelViewModelTests.An_option_that_would_empty_the_grid_says_so_and_stops_being_a_target": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "keeps a checked zero-count option enabled so a restored empty cut can be widened"
+      },
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "freezes common-first ordering while residual zero options disable"
+      }
+    ],
+    "reason": "Both real filter panels retain an enabled checked zero-count option, and removing it restores matching games. The companion test disables unchecked zero-count choices."
+  },
+  "FilterPanelViewModelTests.A_dimension_with_no_data_draws_no_group": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "hides empty metadata and a universal store then exposes the arriving %s provider"
+      }
+    ],
+    "reason": "Both panels hide empty descriptor/year groups and a universal store, while retaining the installation filter."
+  },
+  "FilterPanelViewModelTests.A_store_group_appears_as_soon_as_a_second_store_does": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-filters.test.tsx",
+        "case": "hides empty metadata and a universal store then exposes the arriving %s provider"
+      }
+    ],
+    "reason": "Both panels rerender when GOG or plugin:xbox arrives, preserve friendly names and residual Steam count, and emit the original provider ID to select only its game."
+  },
+  "FilterPanelViewModelTests.The_cut_bar_states_the_library_and_what_is_left_of_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "states total and remaining games and removes every bucket and genre rule independently"
+      }
+    ],
+    "reason": "Both actual Library surfaces change from an absent cut bar to 3 → 1 and show the original ordered bucket and genre chips."
+  },
+  "FilterPanelViewModelTests.Every_rule_is_a_chip_and_every_chip_takes_itself_off": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "states total and remaining games and removes every bucket and genre rule independently"
+      }
+    ],
+    "reason": "Started/BUCKET precedes RPG/GENRE, removing RPG restores two games, and removing Started restores all three and removes the cut bar on both surfaces."
+  },
+  "FilterPanelViewModelTests.Clearing_the_panel_leaves_the_rail_where_it_was": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "clears the current bucket and panel rules through the controls for each surface"
+      }
+    ],
+    "reason": "The desktop panel clears the genre while preserving the Started bucket and its two matching games. The distinct fullscreen draft Clear filters action also clears its collection, matching FullscreenBrowseFiltersPage."
+  },
+  "FilterPanelViewModelTests.An_empty_result_from_a_filter_is_a_direction": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-library-workflows.test.tsx",
+        "case": "explains an empty saved facet cut and restores matching games by dropping one rule"
+      }
+    ],
+    "reason": "Both Library surfaces render the original empty-result instruction for an empty restored cut and restore a matching game when its conflicting rule is removed."
+  }
+}

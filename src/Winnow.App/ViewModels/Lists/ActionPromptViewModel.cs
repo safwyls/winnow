@@ -117,6 +117,10 @@ public partial class ActionPromptViewModel : ObservableObject
             await action();
             IsCompleted = Problem is null;
         }
+        catch (Winnow.Api.Client.BackendApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            Problem = GameListsCopy.Conflict;
+        }
         catch (Exception)
         {
             Problem = "Couldn't complete that. Try again.";

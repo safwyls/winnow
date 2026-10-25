@@ -1,3 +1,5 @@
+using System.Security.AccessControl;
+using System.Security.Principal;
 using Winnow.App;
 using Winnow.App.Services;
 using Winnow.Covers;
@@ -142,7 +144,7 @@ public sealed class DataDirectoryOverrideTests : IDisposable
 
         var services = new ServiceCollection();
         services.AddLogging(b => b.SetMinimumLevel(LogLevel.Warning));
-        Program.ConfigureServices(services, location);
+        Winnow.App.LegacyTestServices.ConfigureServices(services, location);
 
         using var provider = services.BuildServiceProvider();
 
@@ -257,15 +259,70 @@ public sealed class DataDirectoryOverrideTests : IDisposable
     [Fact]
     public void A_directory_that_exists_but_cannot_be_written_to_is_refused()
     {
-        // The one shape creating the directory cannot detect: it is already
-        // there, and a write into it fails. Blocking the write probe is how that
-        // is staged without an ACL — the branch under test is the probe, not the
-        // particular reason the write did not work.
-        Directory.CreateDirectory(Path.Combine(Scratch, ".winnow-write-probe"));
+        var directory = Directory.CreateDirectory(Scratch);
+        if (OperatingSystem.IsWindows())
+        {
+            using var current = WindowsIdentity.GetCurrent();
+            var original = directory.GetAccessControl();
+            var denied = directory.GetAccessControl();
+            denied.AddAccessRule(new FileSystemAccessRule(current.User!, FileSystemRights.CreateFiles,
+                InheritanceFlags.None, PropagationFlags.None, AccessControlType.Deny));
+            try { directory.SetAccessControl(denied); AssertRefused(); }
+            finally { directory.SetAccessControl(original); }
+        }
+        else
+        {
+            var original = File.GetUnixFileMode(Scratch);
+            try
+            {
+                File.SetUnixFileMode(Scratch, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+                AssertRefused();
+            }
+            finally { File.SetUnixFileMode(Scratch, original); }
+        }
 
-        var refused = Assert.Throws<DataDirectoryOverrideException>(
-            () => WinnowDataLocation.ResolveFrom(["--data-dir", Scratch]));
-
-        Assert.Contains(Scratch, refused.Message, StringComparison.OrdinalIgnoreCase);
+        void AssertRefused()
+        {
+            var refused = Assert.Throws<DataDirectoryOverrideException>(
+                () => WinnowDataLocation.ResolveFrom(["--data-dir", Scratch]));
+            Assert.Contains(Scratch, refused.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.IsType<UnauthorizedAccessException>(refused.InnerException);
+        }
+        Assert.Empty(Directory.GetFiles(Scratch, ".winnow-write-probe-*"));
     }
+
+    [Fact]
+    public void An_unrelated_locked_legacy_probe_is_preserved_byte_for_byte()
+    {
+        Directory.CreateDirectory(Scratch);
+        var probe = Path.Combine(Scratch, ".winnow-write-probe");
+        var bytes = "unrelated fixture data"u8.ToArray();
+        File.WriteAllBytes(probe, bytes);
+        using (var held = new FileStream(probe, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var location = WinnowDataLocation.ResolveOverride(Scratch);
+            Assert.Equal(Scratch, location.Root);
+            Assert.Equal(DataMigrationOutcome.Overridden, location.Outcome);
+            Assert.Empty(Directory.GetFiles(Scratch, ".winnow-write-probe-*"));
+        }
+        Assert.Equal(bytes, File.ReadAllBytes(probe));
+    }
+
+    [Fact]
+    public void Concurrent_override_checks_own_their_probes_even_through_directory_aliases()
+    {
+        Directory.CreateDirectory(Scratch);
+        var aliases = new List<string> { Scratch, Scratch + Path.DirectorySeparatorChar,
+            Path.GetRelativePath(Environment.CurrentDirectory, Scratch) };
+        if (OperatingSystem.IsWindows()) aliases.Add(Scratch.ToUpperInvariant());
+        Parallel.For(0, 128, index =>
+        {
+            var alias = aliases[index % aliases.Count];
+            var location = WinnowDataLocation.ResolveOverride(alias);
+            Assert.Equal(Path.GetFullPath(alias), location.Root);
+            Assert.Equal(DataMigrationOutcome.Overridden, location.Outcome);
+        });
+        Assert.Empty(Directory.GetFiles(Scratch, ".winnow-write-probe-*"));
+    }
+
 }

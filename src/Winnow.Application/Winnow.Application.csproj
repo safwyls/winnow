@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <ProjectReference Include="..\Winnow.Core\Winnow.Core.csproj" />
+    <ProjectReference Include="..\Winnow.Plugins\Winnow.Plugins.csproj" />
+    <ProjectReference Include="..\Winnow.Data\Winnow.Data.csproj" />
+    <ProjectReference Include="..\Winnow.Api.Contracts\Winnow.Api.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Winnow.Update\Winnow.Update.csproj" />
+    <ProjectReference Include="..\Winnow.Covers\Winnow.Covers.csproj" />
+    <ProjectReference Include="..\Winnow.Covers.Igdb\Winnow.Covers.Igdb.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.GamesDb\Winnow.Enrich.GamesDb.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.Igdb\Winnow.Enrich.Igdb.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.Steam\Winnow.Enrich.Steam.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.Stores\Winnow.Enrich.Stores.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.SteamWeb\Winnow.Enrich.SteamWeb.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.Updates\Winnow.Enrich.Updates.csproj" />
+    <ProjectReference Include="..\Winnow.Ingest.Epic\Winnow.Ingest.Epic.csproj" />
+    <ProjectReference Include="..\Winnow.Ingest.Gog\Winnow.Ingest.Gog.csproj" />
+    <ProjectReference Include="..\Winnow.Ingest.Steam\Winnow.Ingest.Steam.csproj" />
+    <ProjectReference Include="..\Winnow.Monitor\Winnow.Monitor.csproj" />
+    <ProjectReference Include="..\Winnow.Recommend\Winnow.Recommend.csproj" />
+    <ProjectReference Include="..\Winnow.Resolve\Winnow.Resolve.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <InternalsVisibleTo Include="Winnow" />
+    <InternalsVisibleTo Include="Winnow.Backend" />
+    <InternalsVisibleTo Include="Winnow.Tests" />
+    <InternalsVisibleTo Include="Winnow.Ui.Tests" />
+  </ItemGroup>
+<ItemGroup><ProjectReference Include="../Winnow.Diagnostics/Winnow.Diagnostics.csproj" /><ProjectReference Include="../Winnow.Presentation/Winnow.Presentation.csproj" /></ItemGroup>
+</Project>

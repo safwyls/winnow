@@ -9,6 +9,8 @@ using Avalonia.VisualTree;
 using Dapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Data.Sqlite;
+using System.Data;
 using Winnow.App;
 using Winnow.App.Services;
 using Winnow.App.ViewModels;
@@ -16,6 +18,7 @@ using Winnow.App.Views;
 using Winnow.Core.Domain;
 using Winnow.Core.Lifecycle;
 using Winnow.Core.Queries;
+using Winnow.Core.Repositories;
 using Winnow.Data;
 using Winnow.Data.Repositories;
 using Winnow.Tests;
@@ -25,6 +28,29 @@ namespace Winnow.Ui.Tests;
 
 public sealed class LibraryMultiSelectionTests
 {
+    [Theory]
+    [InlineData("open")]
+    [InlineData("lease")]
+    [InlineData("transaction")]
+    public async Task Fixture_database_drain_waits_for_a_live_connection_and_refuses_new_work(string kind)
+    {
+        using var database = new TempDatabase();
+        var factory = new DrainingConnections(database.Factory);
+        using IDisposable connection = kind switch
+        {
+            "open" => factory.Open(),
+            "lease" => factory.Lease(),
+            _ => factory.Begin(),
+        };
+        var drain = factory.StopAndDrainAsync();
+        Assert.False(drain.IsCompleted);
+        Assert.Throws<ObjectDisposedException>(() => factory.Open());
+        Assert.Throws<ObjectDisposedException>(() => factory.Lease());
+        Assert.Throws<ObjectDisposedException>(() => factory.Begin());
+        connection.Dispose();
+        await drain.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
     [AvaloniaTheory]
     [InlineData(true)]
     [InlineData(false)]
@@ -117,7 +143,7 @@ public sealed class LibraryMultiSelectionTests
         Assert.Equal(3, Assert.Single(fixture.Library.VisibleTiles).Game.ResolvedWorkId);
     }
 
-    private sealed class Fixture(TempDatabase database, ServiceProvider services, MainWindow window,
+    private sealed class Fixture(TempDatabase database, DrainingConnections connections, ServiceProvider services, MainWindow window,
         LibraryViewModel library) : IAsyncDisposable
     {
         public LibraryViewModel Library { get; } = library;
@@ -154,8 +180,9 @@ public sealed class LibraryMultiSelectionTests
             var collection = new ServiceCollection();
             collection.AddLogging();
             collection.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-            Program.ConfigureServices(collection, new(database.DatabasePath + "-data", database.DatabasePath, DataMigrationOutcome.Overridden));
-            collection.AddSingleton<ISqliteConnectionFactory>(database.Factory);
+            Winnow.App.LegacyTestServices.ConfigureServices(collection, new(database.DatabasePath + "-data", database.DatabasePath, DataMigrationOutcome.Overridden));
+            var connections = new DrainingConnections(database.Factory);
+            collection.AddSingleton<ISqliteConnectionFactory>(connections);
             var services = collection.BuildServiceProvider();
             var shell = services.GetRequiredService<MainWindowViewModel>();
             var library = shell.Library;
@@ -170,7 +197,7 @@ public sealed class LibraryMultiSelectionTests
             else library.ShowListViewCommand.Execute(null);
             Dispatcher.UIThread.RunJobs();
             Assert.Equal(3, library.VisibleTiles.Count);
-            return new(database, services, window, library);
+            return new(database, connections, services, window, library);
         }
 
         public void Click(long id, bool control = false, bool right = false)
@@ -215,7 +242,85 @@ public sealed class LibraryMultiSelectionTests
             await feed.Backfilling;
             await feed.AdditionalShelvesLoading;
             await services.DisposeAsync();
+            // Closing a hover preview cancels its reads; their connections may still be unwinding.
+            await connections.StopAndDrainAsync().WaitAsync(TimeSpan.FromSeconds(10));
             database.Dispose();
+        }
+    }
+
+    private sealed class DrainingConnections(ISqliteConnectionFactory inner) : ISqliteConnectionFactory
+    {
+        private readonly object _gate = new();
+        private readonly HashSet<SqliteConnection> _active = new(ReferenceEqualityComparer.Instance);
+        private readonly TaskCompletionSource _drained = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private bool _stopping;
+        public string DatabasePath => inner.DatabasePath;
+        public string ConnectionString => inner.ConnectionString;
+        public void ReleasePooledConnections() => inner.ReleasePooledConnections();
+
+        public SqliteConnection Open()
+        {
+            lock (_gate)
+            {
+                ObjectDisposedException.ThrowIf(_stopping, this);
+                var connection = inner.Open();
+                Track(connection);
+                return connection;
+            }
+        }
+
+        public DbLease Lease()
+        {
+            lock (_gate)
+            {
+                ObjectDisposedException.ThrowIf(_stopping, this);
+                var lease = inner.Lease();
+                Track(lease.Connection);
+                return lease;
+            }
+        }
+
+        public IUnitOfWork Begin() => Begin(read: false);
+
+        public IUnitOfWork BeginRead() => Begin(read: true);
+
+        private IUnitOfWork Begin(bool read)
+        {
+            lock (_gate)
+            {
+                ObjectDisposedException.ThrowIf(_stopping, this);
+                var scope = read ? inner.BeginRead() : inner.Begin();
+                using var lease = inner.Lease();
+                Track(lease.Connection);
+                return scope;
+            }
+        }
+
+        private void Track(SqliteConnection connection)
+        {
+            if (_active.Add(connection)) connection.StateChange += Closed;
+        }
+
+        private void Closed(object? sender, StateChangeEventArgs args)
+        {
+            if (args.CurrentState != ConnectionState.Closed) return;
+            var connection = (SqliteConnection)sender!;
+            lock (_gate)
+            {
+                connection.StateChange -= Closed;
+                _active.Remove(connection);
+                if (_stopping && _active.Count == 0) _drained.TrySetResult();
+            }
+        }
+
+        public Task StopAndDrainAsync()
+        {
+            lock (_gate)
+            {
+                _stopping = true;
+                if (_active.Count == 0) _drained.TrySetResult();
+                return _drained.Task;
+            }
         }
     }
 }

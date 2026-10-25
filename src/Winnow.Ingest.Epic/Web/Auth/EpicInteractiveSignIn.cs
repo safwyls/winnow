@@ -171,7 +171,7 @@ public sealed class EpicInteractiveSignIn
     }
 
     /// <summary>Builds the prompt request with start and harvest URLs and all capture routes armed.</summary>
-    private AuthPromptRequest BuildRequest(string clientId)
+    public AuthPromptRequest BuildRequest(string clientId)
     {
         var redirect = _options.LauncherRedirectUrl;
 

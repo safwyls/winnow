@@ -3,6 +3,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
+using Winnow.Api.Client;
+using Winnow.Api.Contracts.Details;
 
 namespace Winnow.App.ViewModels;
 
@@ -20,6 +22,7 @@ public partial class GameplayStatsViewModel : ObservableObject, IDisposable
     private const int WeeklyRangeDays = 90;
     private const int TargetLongRangeBars = 26;
     private readonly IGameplayStatsRepository _repository;
+    private readonly WinnowApiClient? _api;
     private readonly LibraryViewModel _library;
     private readonly TimeProvider _clock;
     private readonly TimeZoneInfo _zone;
@@ -36,6 +39,10 @@ public partial class GameplayStatsViewModel : ObservableObject, IDisposable
         _library.TilesChanged += LibraryChanged;
         RebuildStores();
     }
+    public GameplayStatsViewModel(WinnowApiClient api, LibraryViewModel library,
+        TimeProvider? clock = null, TimeZoneInfo? timeZone = null)
+        : this(new GameplayStatsUnavailableRepository(), library, clock, timeZone) => _api = api;
+
     private DateTime LocalNow => TimeZoneInfo.ConvertTime(_clock.GetUtcNow(), _zone).DateTime;
     public IReadOnlyList<string> PeriodOptions { get; } = ["30 days", "90 days", "Custom"];
     [ObservableProperty] public partial IReadOnlyList<StatsStoreOption> StoreOptions { get; set; } = [];
@@ -120,7 +127,9 @@ public partial class GameplayStatsViewModel : ObservableObject, IDisposable
     {
         try
         {
-            var result = await Task.Run(() => _repository.GetAsync(request, ct), ct);
+            var result = _api is null ? await Task.Run(() => _repository.GetAsync(request, ct), ct)
+                : await new DetailsClient(_api).GetGameplayStatsAsync(new(request.FromUtc, request.UntilUtc,
+                    request.AsOfUtc, request.TimeBins, request.Store), ct);
             if (_disposed || ct.IsCancellationRequested || generation != _generation) return;
             HoursText = Hours(result.RecordedSeconds); GamesText = result.GamesPlayedCount.ToString("N0");
             MedianText = result.MedianSessionSeconds is { } seconds ? Duration(seconds) : "No completed sessions";

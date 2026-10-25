@@ -1,0 +1,65 @@
+---
+id: TASK-381.40
+title: 'Electron: verify physical controller and fullscreen device behavior'
+status: In Progress
+assignee:
+  - '@codex'
+created_date: '2026-09-30 18:50'
+updated_date: '2026-10-02 08:10'
+labels:
+  - electron
+  - parity
+  - review-checkpoint
+dependencies:
+  - TASK-381.2
+  - TASK-381.3
+  - TASK-381.4
+  - TASK-381.5
+  - TASK-381.37
+  - TASK-381.38
+references:
+  - docs/spikes/2026-09-28-electron-parity/test-inventory.json
+documentation:
+  - src/Winnow.Electron/README.md
+  - design-system.md
+parent_task_id: TASK-381
+priority: high
+type: task
+ordinal: 458000
+---
+
+## Description
+
+<!-- SECTION:DESCRIPTION:BEGIN -->
+Synthetic gamepads and fixed-size windows do not establish physical controllers, native fullscreen switching or TV-distance legibility. These limits must be reviewed explicitly before completion claims.
+
+This task owns a remaining delivery/validation gate beyond the source-method inventory. It does not reassign contracts from the feature tasks.
+
+Review boundary: work on this task only after the user prompts continuation from the previous checkpoint. Keep one implementation task active. On completion, report the changes, checks, limitations and next task, then stop until the user prompts continuation. Do not automatically begin a dependency or the next task.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Available supported physical controller/native fullscreen configurations are exercised for input mapping, held-button suppression, reconnect, battery status, focus and cursor recovery.
+- [ ] #2 TV/small/ultrawide legibility, native window restoration and platform material/accessibility fallbacks have recorded device/environment-specific evidence.
+- [ ] #3 Any unavailable hardware or OS matrix is named with a concrete unverified behavior; completion requires user agreement on each exception rather than treating simulated tests as physical proof.
+<!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [ ] #1 Record a reviewable milestone commit and verification summary. Stop at this task boundary and wait for the user to prompt continuation before beginning another task.
+<!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+Use the fresh primary Windows package and only disposable data to exercise attached ultrawide and both portrait displays. Record actual OS/native display, fullscreen/window bounds, focus/cursor recovery, route/selection/keyboard and visible controller/keyboard hints. Verify real Windows material requests and capture own-window compositor evidence where technically available without changing user OS preferences or wallpaper. Keep fixed-layout/synthetic tests separate from physical evidence. Record accepted physical-controller exceptions; TV viewing/overscan, physical small device and native Linux compositor remain pending explicit user agreement. Do not equate CI Xvfb or renderer screenshots with unavailable physical checks.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+User explicitly accepted these controller hardware exceptions in the active six-task batch: physical button mapping, held-button suppression, reconnect and battery reporting remain unverified because no physical controller is connected; automated controller evidence remains separately identified. This does not approve the pending display/platform exception question. Available attached-display/native fullscreen checks still need execution.
+
+Available-device implementation and verification are complete: three real displays passed exact F11 bounds/restore, all six origin-focus returns and all three minimize/restore target checks. Twelve guarded native material captures passed solid/Acrylic/Mica/fullscreen/restoration with unchanged opaque covers. Cleanup202, no owned processes, package hashes unchanged. Checkpoint95 records environment, methods and limits. Task remains open only for explicit unavailable-matrix agreement; independent regression work in the already-authorized six-task batch can proceed while that review is pending.
+<!-- SECTION:NOTES:END -->

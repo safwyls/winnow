@@ -42,12 +42,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// </summary>
     public const string AllGamesKey = "all_games";
 
-    private readonly ILibraryQueryRepository _libraryQueries;
+    private readonly ILibraryQueryRepository? _libraryQueries;
     private readonly IGroupHeaderPreferenceRepository? _groupHeaders;
-    private readonly IOwnershipRepository _ownerships;
-    private readonly IReleaseRepository _releases;
-    private readonly IWorkRepository _works;
-    private readonly IUpdateEventRepository _updateEvents;
+    private readonly IOwnershipRepository? _ownerships;
+    private readonly IUpdateEventRepository? _updateEvents;
     private readonly Services.IUpdateFlagService? _updateFlags;
     private readonly ILifecycleRepository? _lifecycle;
     private readonly IAccountAcquisitionReader? _acquisitionReader;
@@ -60,7 +58,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private readonly ISessionRepository? _sessions;
     private readonly ISteamPlaytimeObservationRepository? _steamObservations;
     private readonly ISettingsRepository? _activitySettings;
-    private readonly PluginGameActionService? _pluginActions;
+    private readonly IPluginEntryActions? _pluginActions;
     private readonly IArtworkChoiceRepository? _artworkChoices;
     private readonly IArtworkBrowserService? _artworkBrowser;
 
@@ -104,7 +102,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// registered the Play button is inert rather than absent, and the library
     /// still loads.
     /// </summary>
-    private readonly Services.GameLaunchService? _launcher;
+    private readonly Services.IGameLaunchService? _launcher;
 
     /// <summary>
     /// Identity links (migration 0018). Optional for the reason every seam
@@ -128,6 +126,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// which is the same degradation every other seam on this type takes.
     /// </summary>
     private readonly IHiddenGameRepository? _hidden;
+    private readonly Winnow.Api.Client.WinnowApiClient? _api;
 
     /// <summary>
     /// Embedded patch-notes reader, handed down to the details modal. Optional:
@@ -180,6 +179,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// different type and cannot reach any number from here.
     /// </summary>
     private SameGameResolution _resolution = SameGameResolution.Empty;
+    private IReadOnlyDictionary<long, long> _liveLinkIds = new Dictionary<long, long>();
 
     /// <summary>
     /// The live expansion map, read from the same snapshot.
@@ -216,17 +216,17 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private int _suspended;
 
     public LibraryViewModel(
-        ILibraryQueryRepository libraryQueries,
-        IOwnershipRepository ownerships,
-        IReleaseRepository releases,
-        IWorkRepository works,
-        IUpdateEventRepository updateEvents,
+        ILibraryQueryRepository? libraryQueries = null,
+        IOwnershipRepository? ownerships = null,
+        IReleaseRepository? releases = null,
+        IWorkRepository? works = null,
+        IUpdateEventRepository? updateEvents = null,
         DormancyRamp? ramp = null,
         IPlaytimeSnapshotRepository? snapshots = null,
         IFacetRepository? facets = null,
         IGameListRepository? lists = null,
         Services.IEpicLaunchKeys? epicLaunchKeys = null,
-        Services.GameLaunchService? launcher = null,
+        Services.IGameLaunchService? launcher = null,
         LaunchStatusViewModel? launchStatus = null,
         JournalPromptViewModel? journal = null,
         ICoverLeases? leases = null,
@@ -249,11 +249,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Services.IGameLinkRouter? linkRouter = null,
         ISteamPlaytimeObservationRepository? steamObservations = null,
         ISettingsRepository? activitySettings = null,
-        PluginGameActionService? pluginActions = null,
+        IPluginEntryActions? pluginActions = null,
         IArtworkChoiceRepository? artworkChoices = null,
         IArtworkBrowserService? artworkBrowser = null,
-        ILifecycleRepository? lifecycle = null)
+        ILifecycleRepository? lifecycle = null,
+        Winnow.Api.Client.WinnowApiClient? api = null)
     {
+        _api = api;
         _storefrontCache = storefrontCache;
         _artworkChoices = artworkChoices;
         _artworkBrowser = artworkBrowser;
@@ -272,8 +274,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         _hidden = hidden;
         _libraryQueries = libraryQueries;
         _ownerships = ownerships;
-        _releases = releases;
-        _works = works;
         _updateEvents = updateEvents;
         _updateFlags = updateFlags;
         _acquisitionReader = acquisitionReader;
@@ -302,7 +302,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Journal.TitleFor = TitleForOwnership;
 
         Filters = new FilterPanelViewModel(ApplyFilter);
-        Lists = new ListsViewModel(lists);
+        Lists = new ListsViewModel(lists, api);
         Lists.MembershipChanged += (_, _) => ApplyFilter();
 
         Ramp = ramp ?? new DormancyRamp();
@@ -701,7 +701,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     public bool HasSelection => SelectedTiles.Count > 0;
 
-    public bool CanRemoveSelectionFromDerelict => _lifecycle is not null
+    public bool CanRemoveSelectionFromDerelict => (_lifecycle is not null || _api is not null)
         && SelectedBucket?.Key == LibraryBuckets.Derelict
         && SelectedTiles.Any(tile => tile.Game.Bucket == LibraryBuckets.Derelict);
 
@@ -720,7 +720,12 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         DerelictProblem = null;
         try
         {
-            await _lifecycle!.ExemptFromDerelictAsync(releaseIds, ct);
+            if (_api is not null)
+                await _api.SendAsync(HttpMethod.Post, "library/derelict-exemptions",
+                    new Winnow.Api.Contracts.Details.DerelictExemptionRequest(SelectedTiles
+                        .Where(tile => tile.Game.Bucket == LibraryBuckets.Derelict)
+                        .Select(tile => tile.Game.ResolvedWorkId).Distinct().ToArray()), ct);
+            else await _lifecycle!.ExemptFromDerelictAsync(releaseIds, ct);
         }
         catch (OperationCanceledException) { throw; }
         catch
@@ -737,7 +742,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         catch { DerelictProblem = "Your choice was saved, but the library couldn't refresh. Try refreshing it."; }
     }
 
-    public bool CanMarkSelectionAsRead => _updateFlags is not null
+    public bool CanMarkSelectionAsRead => (_updateFlags is not null || _api is not null)
         && SelectedBucket?.Key == LibraryBuckets.StaleButPatched
         && SelectedTiles.Any(tile => tile.HasUnread);
 
@@ -758,23 +763,44 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var visited = new HashSet<long>();
         foreach (var tile in targets)
         {
+            Winnow.Api.Contracts.Details.GameDetailsResponse? remoteDetails = null;
+            if (_api is not null)
+            {
+                try { remoteDetails = await ReadApiDetailsAsync(tile.Game.ResolvedWorkId, ct); }
+                catch (OperationCanceledException) { throw; }
+                catch { failed = true; continue; }
+            }
             foreach (var releaseId in tile.ReleaseIds.Where(visited.Add))
             {
                 try
                 {
-                    var events = await Task.Run(() => _updateEvents.GetByReleaseAsync(releaseId, ct), ct);
+                    var events = remoteDetails is not null
+                        ? remoteDetails.Events.Where(e => e.ReleaseId == releaseId).ToArray()
+                        : await Task.Run(() => _updateEvents!.GetByReleaseAsync(releaseId, ct), ct);
                     // The tile's watermark bounds the action to patches represented by
                     // the selection, even if enrichment has written a newer push.
                     var shown = events.Where(e => e.Kind != UpdateEventKinds.BuildPush
                         || (tile.Game.MajorUpdateAt is { } displayed
                             && UpdateReading.AsUtc(e.OccurredAt) <= UpdateReading.AsUtc(displayed))).ToArray();
-                    var standing = await _updateFlags!.GetStandingAsync(releaseId, ct);
+                    DateTime? standing = remoteDetails is not null
+                        ? remoteDetails.Acknowledgements.TryGetValue(releaseId, out var watermark) ? watermark : null
+                        : await _updateFlags!.GetStandingAsync(releaseId, ct);
                     if (!UpdateReading.CorrelatedPushes(shown, BucketThresholds.Default.UpdateCorrelationWindowDays)
                         .Any(push => UpdateReading.SincePlay(push.OccurredAt, tile.LastPlayedUtc, tile.PlaytimeMinutes)
                             && UpdateReading.AfterWatermark(push.OccurredAt, standing))) continue;
-                    var outcome = await _updateFlags.DismissAsync(releaseId, shown, ct);
-                    if (outcome.Saved) saved++;
-                    else failed = true;
+                    if (_api is not null)
+                    {
+                        var outcome = await new Winnow.Api.Client.DetailsClient(_api).AcknowledgeUpdatesAsync(
+                            releaseId, new(shown.Select(e => e.Id).ToArray()), ct);
+                        if (outcome.Result == "Stored") saved++;
+                        else failed = true;
+                    }
+                    else
+                    {
+                        var outcome = await _updateFlags!.DismissAsync(releaseId, shown, ct);
+                        if (outcome.Saved) saved++;
+                        else failed = true;
+                    }
                 }
                 catch (OperationCanceledException) { throw; }
                 catch { failed = true; }
@@ -973,8 +999,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         };
         // Microsoft.Data.Sqlite executes synchronously even through async APIs.
         // Read on a worker; only publish models after returning to the UI context.
+        Winnow.Api.Contracts.Library.LibraryWorkspaceResponse? remoteWorkspace = null;
         var loaded = await Task.Run(async () =>
         {
+            if (_api is not null)
+            {
+                remoteWorkspace = await _api.GetWorkspaceAsync(new(ShowNonGameEntries, ShowExplicitContent, BucketThresholds.FormatMaturityCap(MaturityCap)), ct);
+                return Api.LibraryWorkspaceMapping.Map(remoteWorkspace);
+            }
+            if (_libraryQueries is null) throw new InvalidOperationException("A library API client is required.");
             var snapshot = await _libraryQueries.GetSnapshotAsync(thresholds, ct);
             var identity = _identityLinks is null ? IdentityResolution.Empty : await _identityLinks.GetResolutionAsync(ct);
             var facets = _facetRepository is null ? FacetSnapshot.Empty : await _facetRepository.GetSnapshotAsync(ct);
@@ -1263,11 +1296,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             {
                 BackgroundUrl = savedHero?.AssetKey ?? display?.BackgroundUrl,
                 IconKey = ArtKeys.Resolve(savedIcon?.AssetKey),
-                LoadRatings = _workRatings is { } ratingsRepository
+                LoadRatings = _api is not null
+                    ? async ct => (await _api.GetAsync<Winnow.Api.Contracts.Details.GameDetailsResponse>($"games/{resolvedWorkId}/details", ct)).Ratings
+                    : _workRatings is { } ratingsRepository
                     ? ct => ratingsRepository.GetForWorkAsync(resolvedWorkId, ct)
                     : null,
                 BackdropPreferences = _artworkPreferences,
-                LoadBackdropImages = _workImages is { } imageRepository
+                LoadBackdropImages = _api is not null
+                    ? async ct => (await _api.GetAsync<Winnow.Api.Contracts.Details.GameDetailsResponse>($"games/{resolvedWorkId}/details", ct)).Images
+                    : _workImages is { } imageRepository
                     ? ct => BackdropImages.LoadAsync(imageRepository, resolvedWorkId,
                         entries.Select(entry => entry.WorkId), ct)
                     : null,
@@ -1366,9 +1403,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         }
 
         var details = Details;
+        var liveLinkIds = remoteWorkspace?.IdentityLinks.ToDictionary(x => x.ChildWorkId, x => x.Id);
         var refreshed = details is null ? null : tiles.FirstOrDefault(tile => tile.Covers(details.Tile.OwnershipId));
         var detailSnapshot = refreshed is null ? null : await ReadDetailsSnapshotAsync(refreshed,
-            new LibraryDetailsContext(coverage, resolution, expansions, workById), ct);
+            new LibraryDetailsContext(coverage, resolution, expansions, workById, liveLinkIds), ct);
         if (_disposed || ct.IsCancellationRequested || generation != Volatile.Read(ref _loadGeneration)) return;
         if (listRevision != Lists.Revision || Lists.IsBusy)
         {
@@ -1380,6 +1418,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         _publishedGeneration = generation;
         _coverage = coverage;
         _resolution = resolution;
+        _liveLinkIds = liveLinkIds ?? new Dictionary<long, long>();
         _expansions = expansions;
         _workById = workById;
         _facets = facets;
@@ -1403,7 +1442,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         // Rebuild filter options; selections survive by key across reloads.
         Filters.Rebuild(_allTiles, _facets);
 
-        Lists.ApplySnapshot(loaded.snapshot.Lists, loaded.snapshot.ListItems);
+        if (remoteWorkspace is not null) Lists.ApplyApiSnapshot(remoteWorkspace.ListVersions);
+        else Lists.ApplySnapshot(loaded.snapshot.Lists, loaded.snapshot.ListItems);
 
         // Re-derive rail selection marks after list objects are replaced.
         MarkRailSelection();
@@ -1534,7 +1574,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             var snapshot = await ReadDetailsSnapshotAsync(target, ct: ct);
             ct.ThrowIfCancellationRequested();
             var artworkBrowser = _artworkBrowser is not null && GameWorkIdFor(target) is { } artworkWorkId
-                ? new ArtworkBrowserViewModel(new DisplayedArtworkBrowserService(_artworkBrowser,
+                ? new ArtworkBrowserViewModel(new DisplayedArtworkBrowserService(_artworkBrowser.CreateSession(),
                     () => TileForOwnership(target.OwnershipId)?.CoverKey), artworkWorkId, target.Title, _leases, _imagePicker, AfterMetadataArtChangeAsync)
                 : null;
             var details = new GameDetailsViewModel(
@@ -1547,12 +1587,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 igdbMatch: await BuildIgdbMatchAsync(target, ct), metadataEditor: BuildMetadataEditor(target, artworkBrowser),
                 hideGame: HideGameCommand, ratings: snapshot.Ratings, images: snapshot.Images,
                 ownerships: snapshot.Ownerships, refetch: BuildRefetch(GameWorkIdFor(target)), lightbox: Lightbox,
-                journal: _sessions is null ? null : new GameJournalViewModel(snapshot.JournalEntries, Journal.PromptEnabled, _sessions),
+                journal: _api is not null ? new GameJournalViewModel(snapshot.JournalEntries, Journal.PromptEnabled, _api)
+                    : _sessions is null ? null : new GameJournalViewModel(snapshot.JournalEntries, Journal.PromptEnabled, _sessions),
                 addToList: new RelayCommand(() => BeginAddToListFor([Details?.Tile ?? target])),
                 sessions: snapshot.Sessions, backgroundUrl: snapshot.BackgroundUrl, artworkPreferences: _artworkPreferences,
                 linkRouter: _linkRouter,
                 steamActivity: new SteamReportedActivityViewModel(_steamObservations,
-                    target.OwnershipIds.ToDictionary(id => id, _ => target.Title), _activitySettings), artworkBrowser: artworkBrowser);
+                    target.OwnershipIds.ToDictionary(id => id, _ => target.Title), _activitySettings, api: _api), artworkBrowser: artworkBrowser);
             if (_disposed || ct.IsCancellationRequested || generation != Volatile.Read(ref _detailsGeneration)) { details.Dispose(); return; }
             if (libraryGeneration == _publishedGeneration) { Details = details; return; }
 
@@ -1567,15 +1608,33 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private Task<GameDetailsSnapshot> ReadDetailsSnapshotAsync(GameTileViewModel target,
         LibraryDetailsContext? context = null, CancellationToken ct = default)
     {
-        context ??= new LibraryDetailsContext(_coverage, _resolution, _expansions, _workById);
+        context ??= new LibraryDetailsContext(_coverage, _resolution, _expansions, _workById, _liveLinkIds);
         // SQLite's async API performs synchronous native reads. Capture the
         // published identity context here, then read history off the dispatcher.
         return Task.Run(() => ReadDetailsSnapshotCoreAsync(target, context, ct), ct);
     }
 
+    private Task<Winnow.Api.Contracts.Details.GameDetailsResponse> ReadApiDetailsAsync(long workId, CancellationToken ct)
+        => _api!.SendAsync<Winnow.Api.Contracts.Library.LibraryPreferences, Winnow.Api.Contracts.Details.GameDetailsResponse>(
+            HttpMethod.Post, $"games/{workId}/details",
+            new(ShowNonGameEntries, ShowExplicitContent, BucketThresholds.FormatMaturityCap(MaturityCap)), ct: ct);
+
     private async Task<GameDetailsSnapshot> ReadDetailsSnapshotCoreAsync(GameTileViewModel target,
         LibraryDetailsContext context, CancellationToken ct)
     {
+        if (_api is not null)
+        {
+            var detail = await ReadApiDetailsAsync(target.Game.ResolvedWorkId, ct);
+            var projectedUpdates = detail.Events.OrderByDescending(e => e.OccurredAt).ThenByDescending(e => e.Id)
+                .Select(e => UpdateEventViewModel.Create(e, target.LastPlayedUtc, target.PlaytimeMinutes)).ToArray();
+            return new GameDetailsSnapshot(target, BucketLabelFor(target.Bucket), detail.ReadAtUtc,
+                detail.Events, projectedUpdates, detail.Acknowledgements,
+                detail.History.GetValueOrDefault(target.OwnershipId) ?? [],
+                detail.Sessions.GetValueOrDefault(target.OwnershipId) ?? [], detail.Ratings, detail.Images,
+                detail.Ownerships, detail.JournalEntries, detail.ListMemberships,
+                await BuildCoverageAsync(target, context, ct, detail.Achievements), BuildExpansions(target, context),
+                target.BackgroundUrl);
+        }
 
         // Every entry's updates, not just the primary's. The unread badge
         // is the game's bucket, computed from the latest patch anywhere in
@@ -1585,7 +1644,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var events = new List<Core.Domain.UpdateEvent>();
         foreach (var releaseId in target.ReleaseIds)
         {
-            events.AddRange(await _updateEvents.GetByReleaseAsync(releaseId, ct));
+            events.AddRange(await _updateEvents!.GetByReleaseAsync(releaseId, ct));
         }
 
         // Newest first; each row knows whether it landed after last play -- the
@@ -1658,7 +1717,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var rows = new List<Ownership>();
         foreach (var ownershipId in target.OwnershipIds)
         {
-            if (await _ownerships.GetAsync(ownershipId, ct) is { } ownership)
+            if (await _ownerships!.GetAsync(ownershipId, ct) is { } ownership)
             {
                 rows.Add(ownership);
             }
@@ -1703,16 +1762,18 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
         var note = _igdbNote;
         _igdbNote = null;
+        // Each open editor owns the state it observed, including an unpinned work.
+        var assignmentService = _api is null ? _igdb : new ApiIgdbAssignmentService(_api);
 
         return new GameIgdbMatchViewModel(
-            _igdb,
+            assignmentService,
             workId,
             target.Title,
-            pin: await Task.Run(() => _igdb.GetPinAsync(workId, ct), ct),
+            pin: await Task.Run(() => assignmentService.GetPinAsync(workId, ct), ct),
             covers: _leases,
             afterChange: AfterIgdbChangeAsync,
             note: note,
-            linkSameGame: _identityLinks is null
+            linkSameGame: _identityLinks is null && _api is null
                 ? null
                 : parentWorkId => LinkIgdbClaimAsync(parentWorkId, workId));
     }
@@ -1782,14 +1843,22 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// </summary>
     private async Task<bool> LinkIgdbClaimAsync(long parentWorkId, long childWorkId)
     {
-        if (_identityLinks is null || parentWorkId == childWorkId)
+        if ((_identityLinks is null && _api is null) || parentWorkId == childWorkId)
         {
             return false;
         }
 
         try
         {
-            await _identityLinks.LinkAsync(new IdentityLinkRequest
+            if (_api is not null)
+            {
+                await _api.LinkGamesAsync(new(parentWorkId, [childWorkId], new Dictionary<long, long>
+                {
+                    [parentWorkId] = _resolution.Resolve(parentWorkId),
+                    [childWorkId] = _resolution.Resolve(childWorkId)
+                }), _lifetime.Token);
+            }
+            else await _identityLinks!.LinkAsync(new IdentityLinkRequest
             {
                 ParentWorkId = parentWorkId,
                 ChildWorkIds = [childWorkId],
@@ -1798,6 +1867,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             });
         }
         catch (IdentityLinkRefusedException)
+        {
+            return false;
+        }
+        catch (Winnow.Api.Client.BackendApiException exception) when (exception.StatusCode == System.Net.HttpStatusCode.Conflict)
         {
             return false;
         }
@@ -1975,7 +2048,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
         return rows.Count == 0 && extends is null
             ? null
-            : new GameExpansionsViewModel(rows, extends, UngroupAsync);
+            : new GameExpansionsViewModel(rows, extends, id => SeparateAsync(id, context.LinkIds));
 
         ExpansionRowViewModel? RowFor(long workId, long childWorkId)
         {
@@ -2021,21 +2094,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     /// <summary>
-    /// Retracts one expansion link from the details modal
-    /// and reloads, reopening the modal on the same entry so the user sees the
-    /// result where they asked for it. The same call the coverage section's
-    /// Separate makes, because a link is a link: nothing is deleted, and
-    /// grouping again is an ordinary act.
-    /// </summary>
-    private Task UngroupAsync(long childWorkId) => SeparateAsync(childWorkId);
-
-    /// <summary>
     /// Builds the ALSO COVERS section. Derived from the rows this load
     /// already read, so it costs no library-wide query and cannot report an
     /// entry the grid does not show. Achievements are read per release for
     /// the group's releases and stay per release (§6.2).
     /// </summary>
-    private async Task<GameCoverageViewModel?> BuildCoverageAsync(GameTileViewModel target, LibraryDetailsContext context, CancellationToken ct)
+    private async Task<GameCoverageViewModel?> BuildCoverageAsync(GameTileViewModel target, LibraryDetailsContext context, CancellationToken ct,
+        IReadOnlyList<ReleaseAchievementSummary>? remoteAchievements = null)
     {
         var entry = context.Coverage.FirstOrDefault(e => e.OwnershipId == target.OwnershipId);
         if (entry is null)
@@ -2055,7 +2120,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         }
 
         var summaries = new Dictionary<long, ReleaseAchievementSummary>();
-        if (_achievements is not null)
+        if (remoteAchievements is not null)
+        {
+            foreach (var summary in remoteAchievements) summaries[summary.ReleaseId] = summary;
+        }
+        else if (_achievements is not null)
         {
             var releaseIds = coverage.OwnEntries
                 .Concat(coverage.CoveredEntries)
@@ -2069,7 +2138,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             }
         }
 
-        return new GameCoverageViewModel(coverage, titleByWork, summaries, SeparateAsync);
+        return new GameCoverageViewModel(coverage, titleByWork, summaries, id => SeparateAsync(id, context.LinkIds));
     }
 
     /// <summary>
@@ -2078,14 +2147,16 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// asked for it. Nothing is deleted — the link row is stamped, so
     /// linking again is an ordinary act.
     /// </summary>
-    private async Task SeparateAsync(long childWorkId)
+    private async Task SeparateAsync(long childWorkId, IReadOnlyDictionary<long, long>? observedLinkIds)
     {
-        if (_identityLinks is null)
+        if (_identityLinks is null && _api is null)
         {
             return;
         }
 
-        await _identityLinks.RetractLinkAsync(childWorkId);
+        if (_api is not null) await _api.SeparateGameAsync(childWorkId,
+            new(observedLinkIds?.GetValueOrDefault(childWorkId) ?? 0), _lifetime.Token);
+        else await _identityLinks!.RetractLinkAsync(childWorkId);
         await ReopenDetailsAsync();
     }
 
@@ -2124,12 +2195,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private async Task HideGameAsync(GameTileViewModel? tile)
     {
         var target = tile ?? SelectedTile;
-        if (_hidden is null || target is null)
+        if ((_hidden is null && _api is null) || target is null)
         {
             return;
         }
 
-        await _hidden.HideAsync(target.Game.ResolvedWorkId);
+        if (_api is not null)
+            await _api.SetHiddenAsync(new([target.Game.ResolvedWorkId], true), _lifetime.Token);
+        else
+            await _hidden!.HideAsync(target.Game.ResolvedWorkId);
         await AfterHidingAsync();
     }
 
@@ -2142,14 +2216,17 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     [RelayCommand(CanExecute = nameof(HasSelection))]
     private async Task HideSelectionAsync()
     {
-        if (_hidden is null)
+        if (_hidden is null && _api is null)
         {
             return;
         }
 
-        foreach (var workId in SelectedTiles.Select(t => t.Game.ResolvedWorkId).Distinct())
+        var workIds = SelectedTiles.Select(t => t.Game.ResolvedWorkId).Distinct().ToArray();
+        if (_api is not null)
+            await _api.SetHiddenAsync(new(workIds, true), _lifetime.Token);
+        else foreach (var workId in workIds)
         {
-            await _hidden.HideAsync(workId);
+            await _hidden!.HideAsync(workId);
         }
 
         await AfterHidingAsync();

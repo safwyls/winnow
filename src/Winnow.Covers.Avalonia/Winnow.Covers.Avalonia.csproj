@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Winnow.Covers</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.20" />
+    <ProjectReference Include="..\Winnow.Covers\Winnow.Covers.csproj" />
+    <InternalsVisibleTo Include="Winnow.Covers.Tests" />
+    <InternalsVisibleTo Include="Winnow.Ui.Tests" />
+  </ItemGroup>
+</Project>

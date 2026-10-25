@@ -1,0 +1,197 @@
+@layer themes {
+  .metadata-dialog-scrim {
+    z-index: 70;
+    background: #0009;
+  }
+  .metadata-dialog {
+    position: fixed;
+    inset: 24px;
+    z-index: 71;
+    width: min(1440px, calc(100vw - 48px));
+    height: min(1000px, calc(100dvh - 48px));
+    max-width: none;
+    max-height: none;
+    margin: auto;
+    padding: 24px;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 20px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 24px 90px #0009;
+    overflow: hidden;
+    container-type: inline-size;
+  }
+  .metadata-dialog-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-width: 0;
+  }
+  .metadata-dialog-header button {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .metadata-dialog-header h2 {
+    margin: 0;
+    font-size: 1.25em;
+    overflow-wrap: anywhere;
+  }
+  .metadata-dialog-body {
+    overflow-y: auto;
+    min-height: 0;
+    scrollbar-gutter: stable;
+    padding-right: 12px;
+  }
+  .metadata-dialog .metadata-editor {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .metadata-dialog .metadata-editor > h2 {
+    display: none;
+  }
+  .metadata-dialog .metadata-editor > .muted {
+    margin: 0 0 20px;
+  }
+  .metadata-dialog .metadata-fields-grid.all-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-areas: 'name cover' 'first_release_year cover' 'publisher background' 'summary background';
+    gap: 24px;
+    align-items: start;
+  }
+  .metadata-dialog .editor-form {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .metadata-dialog .feature-heading {
+    margin: 0 0 8px;
+    align-items: baseline;
+  }
+  .metadata-dialog .feature-heading h3 {
+    margin: 0;
+    font-size: inherit;
+  }
+  .metadata-dialog .field {
+    margin: 8px 0 12px;
+    font-size: inherit;
+  }
+  .metadata-dialog .feature-panel .error-message {
+    color: var(--avalon-amber-foreground, #ffb63d);
+  }
+  .metadata-dialog.mode-fullscreen .feature-panel p {
+    font-size: inherit;
+  }
+  .metadata-dialog .metadata-fields-grid.all-fields [data-metadata-field='name'] {
+    grid-area: name;
+  }
+  .metadata-dialog .metadata-fields-grid.all-fields [data-metadata-field='first_release_year'] {
+    grid-area: first_release_year;
+  }
+  .metadata-dialog .metadata-fields-grid.all-fields [data-metadata-field='publisher'] {
+    grid-area: publisher;
+  }
+  .metadata-dialog .metadata-fields-grid.all-fields [data-metadata-field='summary'] {
+    grid-area: summary;
+  }
+  .metadata-dialog .metadata-fields-grid.all-fields [data-metadata-field='cover_url'] {
+    grid-area: cover;
+  }
+  .metadata-dialog .metadata-fields-grid.all-fields [data-metadata-field='background_url'] {
+    grid-area: background;
+  }
+  .metadata-dialog .field {
+    min-width: 0;
+  }
+  .metadata-dialog input,
+  .metadata-dialog textarea {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+  }
+  .metadata-dialog textarea {
+    resize: vertical;
+    overflow-wrap: anywhere;
+  }
+  .metadata-dialog [data-metadata-field='first_release_year'] input {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .metadata-dialog .metadata-art-preview {
+    width: 140px;
+    height: auto;
+    max-width: 100%;
+    max-height: none;
+    aspect-ratio: 2 / 3;
+    filter: none;
+  }
+  .metadata-dialog [data-metadata-field='background_url'] .metadata-art-preview {
+    width: 320px;
+    aspect-ratio: 16 / 9;
+  }
+  .metadata-dialog .metadata-art-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: none;
+  }
+  .metadata-dialog .form-actions {
+    flex-wrap: wrap;
+  }
+  .metadata-dialog .form-actions button {
+    white-space: normal;
+  }
+  .metadata-dialog .notice {
+    overflow-wrap: anywhere;
+  }
+  .metadata-dialog [hidden] {
+    display: none;
+  }
+  .metadata-dialog.mode-fullscreen {
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    padding: 4vh 5vw;
+    font-size: calc(18px * var(--fullscreen-text-scale, 1));
+  }
+  .metadata-field-menu {
+    display: grid;
+    gap: 12px;
+    max-width: 900px;
+  }
+  .metadata-field-menu > button {
+    min-height: 54px;
+    text-align: left;
+    font-size: inherit;
+  }
+  .metadata-dialog .field-page {
+    max-width: 1000px;
+  }
+  .metadata-dialog.mode-fullscreen button,
+  .metadata-dialog.mode-fullscreen input,
+  .metadata-dialog.mode-fullscreen textarea {
+    font-size: inherit;
+  }
+  .metadata-confirm-overlay {
+    z-index: 74;
+  }
+  .metadata-confirm {
+    z-index: 75;
+  }
+  @container (max-width: 770px) {
+    .metadata-dialog .metadata-fields-grid.all-fields {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: 'name' 'first_release_year' 'publisher' 'summary' 'cover' 'background';
+    }
+  }
+}

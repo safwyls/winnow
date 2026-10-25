@@ -1,0 +1,31 @@
+@layer themes {
+  .avalon-ambient-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    opacity: 0.38;
+  }
+  .avalon-ambient-backdrop svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .avalon-ambient-backdrop [data-fill='SurfaceRaised'] {
+    fill: var(--raised);
+  }
+  .avalon-ambient-backdrop [data-fill='Line'] {
+    fill: var(--line);
+  }
+  .avalon-ambient-backdrop [data-stroke='TextDim'] {
+    stroke: var(--muted);
+  }
+  .avalon-ambient-backdrop [data-stroke='Line'] {
+    stroke: var(--line);
+  }
+  .avalon-shell.fullscreen:has(> .avalon-ambient-backdrop) > .avalon-content {
+    position: relative;
+    z-index: 1;
+  }
+}

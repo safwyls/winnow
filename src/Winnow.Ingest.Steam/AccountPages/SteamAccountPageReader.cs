@@ -23,7 +23,9 @@ public static class SteamAccountPageReader
     private static SteamLicensesPageResult ReadLicenses(SteamAccountPages pages)
     {
         var first = SteamLicensesPageParser.Parse(pages.LicensesHtml);
-        if (pages.Source != SteamAccountPageSource.SavedFile) return first;
+        // Embedded frontends may retain pagination as separate documents. Apply
+        // the same coverage checks as saved pages before declaring them complete.
+        if (pages.Source != SteamAccountPageSource.SavedFile && pages.AdditionalLicensesHtml.Count == 0) return first;
         var parsed = new[] { first }.Concat(pages.AdditionalLicensesHtml.Select(SteamLicensesPageParser.Parse)).ToArray();
         if (first.Outcome != SteamAccountPageParseOutcome.Parsed) return first;
         var rows = parsed.SelectMany(p => p.Rows)

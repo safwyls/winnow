@@ -1,0 +1,102 @@
+{
+  "ManualGameFromExecutableTests.The_file_description_names_the_game": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-executable-facts.test.ts",
+        "case": "The_file_description_names_the_game"
+      }
+    ],
+    "reason": "Exercises the source title-proposal contract with the same inputs and assertions; file-resource cases use the read-only native Windows inspector."
+  },
+  "ManualGameFromExecutableTests.The_product_name_answers_when_there_is_no_description": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-executable-facts.test.ts",
+        "case": "The_product_name_answers_when_there_is_no_description"
+      }
+    ],
+    "reason": "Exercises the source title-proposal contract with the same inputs and assertions; file-resource cases use the read-only native Windows inspector."
+  },
+  "ManualGameFromExecutableTests.A_stub_description_falls_through_to_the_folder": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-executable-facts.test.ts",
+        "case": "A_stub_description_falls_through_to_the_folder"
+      }
+    ],
+    "reason": "Exercises the source title-proposal contract with the same inputs and assertions; file-resource cases use the read-only native Windows inspector."
+  },
+  "ManualGameFromExecutableTests.A_shipping_binary_walks_up_past_its_build_folders": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-executable-facts.test.ts",
+        "case": "A_shipping_binary_walks_up_past_its_build_folders"
+      }
+    ],
+    "reason": "Exercises the source title-proposal contract with the same inputs and assertions; file-resource cases use the read-only native Windows inspector."
+  },
+  "ManualGameFromExecutableTests.An_engine_name_is_not_a_game_title": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-executable-facts.test.ts",
+        "case": "An_engine_name_is_not_a_game_title"
+      }
+    ],
+    "reason": "Exercises the source title-proposal contract with the same inputs and assertions; file-resource cases use the read-only native Windows inspector."
+  },
+  "ManualGameFromExecutableTests.Underscores_and_build_suffixes_are_cleaned_off": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-executable-facts.test.ts",
+        "case": "Underscores_and_build_suffixes_are_cleaned_off"
+      }
+    ],
+    "reason": "Exercises the source title-proposal contract with the same inputs and assertions; file-resource cases use the read-only native Windows inspector."
+  },
+  "ManualGameFromExecutableTests.An_executable_that_says_nothing_proposes_no_title": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-executable-facts.test.ts",
+        "case": "An_executable_that_says_nothing_proposes_no_title"
+      }
+    ],
+    "reason": "Exercises the source title-proposal contract with the same inputs and assertions; file-resource cases use the read-only native Windows inspector."
+  },
+  "ManualGameFromExecutableTests.An_unset_company_is_not_a_publisher": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-executable-facts.test.ts",
+        "case": "An_unset_company_is_not_a_publisher"
+      }
+    ],
+    "reason": "Exercises the source title-proposal contract with the same inputs and assertions; file-resource cases use the read-only native Windows inspector."
+  },
+  "ManualGameFromExecutableTests.A_file_that_is_not_a_program_still_yields_the_path": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-executable-facts.test.ts",
+        "case": "A_file_that_is_not_a_program_still_yields_the_path"
+      }
+    ],
+    "reason": "Exercises the source title-proposal contract with the same inputs and assertions; file-resource cases use the read-only native Windows inspector."
+  },
+  "ManualGameFromExecutableTests.A_missing_file_does_not_throw": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-executable-facts.test.ts",
+        "case": "A_missing_file_does_not_throw"
+      }
+    ],
+    "reason": "Exercises the source title-proposal contract with the same inputs and assertions; file-resource cases use the read-only native Windows inspector."
+  }
+}

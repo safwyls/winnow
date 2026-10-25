@@ -1,0 +1,150 @@
+@layer themes {
+  .avalon-record-header,
+  .avalon-library .avalon-record {
+    --library-columns: 32px minmax(100px, 2fr) 136px minmax(80px, 1fr) 104px 92px;
+    display: grid;
+    grid-template-columns: var(--library-columns);
+    gap: 0;
+    align-items: center;
+    padding: 0 8px;
+  }
+  .avalon-record-header {
+    flex: none;
+    min-height: 36px;
+    margin: 0 0 0 4px;
+    color: var(--muted);
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    font-size: calc(10px * var(--theme-text-scale, 1));
+    text-transform: uppercase;
+  }
+  .avalon-record-header button {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: flex-start;
+    min-width: 0;
+    padding: 8px 0;
+    border: 0;
+    background: transparent;
+    border-radius: 0;
+    color: inherit;
+    font-size: inherit;
+    text-transform: inherit;
+  }
+  .avalon-record-header button[aria-pressed='true'] svg {
+    color: var(--accent-foreground, var(--accent));
+  }
+  .avalon-record-header button:nth-last-child(-n + 2),
+  .avalon-record > span:nth-last-child(-n + 2) {
+    justify-content: flex-end;
+    text-align: right;
+  }
+  .avalon-library .avalon-record {
+    height: 44px;
+  }
+  .avalon-library .avalon-record > .artwork {
+    width: 24px;
+    height: 36px;
+    margin: 0 4px;
+  }
+  .avalon-library .avalon-record .art-placeholder span {
+    display: none;
+  }
+  .avalon-record > strong,
+  .avalon-record > span {
+    padding-right: 12px;
+  }
+  .avalon-record > span:last-child {
+    padding-right: 0;
+  }
+  .avalon-record > .avalon-record-stores {
+    display: flex;
+    gap: 4px;
+    padding-right: 8px;
+  }
+  .avalon-store-chip {
+    flex: none;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font: calc(9px * var(--theme-text-scale, 1))/1.2 var(--font-mono);
+    text-transform: uppercase;
+  }
+  .avalon-cut-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 10px 0;
+  }
+  .avalon-cut-chips,
+  .avalon-cut-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .avalon-cut-chips button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-color: var(--accent-foreground, var(--accent));
+    padding: 5px 8px;
+  }
+  .avalon-cut-chips button[data-filter-origin='list'],
+  .avalon-cut-chips button[data-filter-origin='context'] {
+    border-color: var(--line);
+    color: var(--muted);
+  }
+  .avalon-cut-chips small {
+    font: calc(9px * var(--theme-text-scale, 1)) var(--font-mono);
+  }
+  .avalon-cut-count {
+    margin-left: auto;
+    white-space: nowrap;
+    font: calc(11px * var(--theme-text-scale, 1)) var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+  .avalon-cut-count strong {
+    color: var(--accent-foreground, var(--accent));
+    font-weight: 500;
+  }
+  .avalon-cut-actions .avalon-applied-filters {
+    padding: 0;
+    gap: 8px;
+  }
+  .avalon-cut-actions button {
+    padding: 6px 10px;
+  }
+  .avalon-buckets button[data-filter-rule='true'] {
+    background: var(--raised);
+  }
+  .avalon-buckets button[data-filter-rule='true']::before {
+    display: none;
+  }
+  @media (max-width: 1000px) {
+    .avalon-record-header,
+    .avalon-library .avalon-record {
+      --library-columns: 32px minmax(100px, 2fr) 100px 80px 68px;
+    }
+    .avalon-record-header > :nth-child(4),
+    .avalon-record > :nth-child(4) {
+      display: none;
+    }
+  }
+  @media (max-width: 700px) {
+    .avalon-record-header,
+    .avalon-library .avalon-record {
+      --library-columns: 32px minmax(70px, 1fr) 60px 54px;
+    }
+    .avalon-record-header > :nth-child(3),
+    .avalon-record > :nth-child(3) {
+      display: none;
+    }
+    .avalon-library .avalon-record > span:nth-last-child(-n + 2) {
+      display: block;
+    }
+  }
+}

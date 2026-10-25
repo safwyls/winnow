@@ -66,6 +66,7 @@ public sealed class GroupHeaderPreferenceUiTests
         services.AddSingleton<ILibraryQueryRepository>(new LibraryQueryRepository(fixture.Db.Factory));
         services.AddSingleton<IGroupHeaderPreferenceRepository>(fixture.Preferences);
         services.AddSingleton(new LibraryExpansionScan(fixture.Releases, fixture.Links, new ExpansionRefusalRepository(fixture.Db.Factory)));
+        services.AddSingleton<IExpansionReviewScan>(sp => sp.GetRequiredService<LibraryExpansionScan>());
         services.AddSingleton(library);
         using var provider = services.BuildServiceProvider();
         using var context = new FullscreenContext(library, PreviewData.Feed, PreviewData.Shell, provider);

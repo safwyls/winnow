@@ -1,0 +1,167 @@
+{
+  "FirstRunSetupDesktopTests.Skipping_IGDB_clears_the_masked_draft_without_saving_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "discards an unsaved masked secret on skip and on presentation change"
+      }
+    ],
+    "reason": "Both presentation modes discard unsaved secret fields when skipping or switching presentation, without calling the credential save endpoint."
+  },
+  "FirstRunSetupDesktopTests.Application_settings_exposes_the_shared_replay_command": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "reopens setup from Application without resetting preferences"
+      }
+    ],
+    "reason": "Both settings surfaces reopen the shared saved setup cursor at Welcome and preserve preferences."
+  },
+  "FirstRunSetupDesktopTests.Platform_consent_traps_focus_and_escape_closes_only_that_layer": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "closes Steam consent before navigating the wizard and traps the active layer"
+      }
+    ],
+    "reason": "The nested consent dialog owns focus and Escape closes consent without changing setup progress on either surface."
+  },
+  "FirstRunSetupDesktopTests.Tab_cycles_inside_setup_and_skip_all_restores_the_invoking_control": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/setup-parity.spec.ts",
+        "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+      },
+      {
+        "file": "tests/parity-setup-recovery.test.tsx",
+        "case": "restores the replay control even when its pending write removed focus before setup opened"
+      }
+    ],
+    "reason": "Both native presentations cycle Tab and Shift+Tab inside Welcome, whose two buttons are verified by the component test, then Skip setup restores the real replay button. Regression covers native disabling/blur before the replay progress write resolves."
+  },
+  "FirstRunSetupFullscreenTests.Application_settings_replay_opens_setup_instead_of_leaving_settings_stack_active": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/setup-parity.spec.ts",
+        "case": "setup keeps navigation visible, traps consent, resumes provider handoff and restores replay focus"
+      }
+    ],
+    "reason": "The production fullscreen Settings Application replay opens Welcome as a modal; Tab stays in setup and completing it restores its invoking settings control. Native rendering uses the saved backend cursor."
+  },
+  "IgdbSettingsInteractionTests.Presentation_switches_clear_unsaved_secret": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-setup.test.tsx",
+        "case": "discards an unsaved masked secret on skip and on presentation change"
+      }
+    ],
+    "reason": "Secret-bearing controls remount when presentation changes and never persist the discarded draft."
+  },
+  "IgdbSettingsInteractionTests.Desktop_binds_masked_input_and_reports_missing_fields_without_exposing_secret": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-igdb-settings.test.tsx",
+        "case": "rejects missing fields locally without writing: %j"
+      },
+      {
+        "file": "tests/electron/igdb-settings.spec.ts",
+        "case": "IGDB settings preserve protected credentials masked drafts controller input and save focus at text"
+      }
+    ],
+    "reason": "Both forms bind masked inputs, reject incomplete fields without writing and acknowledge accepted saves. Native desktop checks verify actual protected storage, clear the secret after save and removal, and discard the draft on departure and return."
+  },
+  "IgdbSettingsInteractionTests.Fullscreen_controller_opens_masked_editor_and_keeps_shared_values": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/igdb-settings.spec.ts",
+        "case": "IGDB settings preserve protected credentials masked drafts controller input and save focus at text"
+      }
+    ],
+    "reason": "Real fullscreen Chromium at 100% and 140% text uses controller A to open the masked editor and save the shared credential pair. Tests verify the production backend state, empty secret after save/removal/departure, original feedback, retained action focus and complete feedback visibility."
+  },
+  "FullscreenSettingsTests.Reset_opens_confirmation_without_mutating_preferences": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-settings.test.tsx",
+        "case": "requires confirmation before resetting fullscreen appearance and preserves desktop settings"
+      }
+    ],
+    "reason": "Opening or cancelling confirmation writes nothing. Confirming resets only the five named fullscreen appearance preferences."
+  },
+  "FullscreenSettingsTests.Cover_art_setting_tracks_shared_preference_and_controller_input": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fullscreen-settings.test.tsx",
+        "case": "reflects the current shared cover crop and uses either direction or accept to change it"
+      },
+      {
+        "file": "tests/electron/fullscreen-settings.spec.ts",
+        "case": "fullscreen Appearance keeps source adjustment switch reset and shared cover behavior"
+      }
+    ],
+    "reason": "The row follows external preference changes and Left, Right and A toggle Fit/Fill. Real fullscreen Chromium verifies saved state, cover rendering policy, retained controller focus and preservation across fullscreen reset."
+  },
+  "FullscreenSettingsTests.Shared_visibility_change_refreshes_the_independent_fullscreen_library": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fullscreen-shared-settings.test.tsx",
+        "case": "refreshes an independent Library and preserves the newest other visibility preferences"
+      }
+    ],
+    "reason": "The fullscreen visibility switch updates a separately mounted production Library query observer and its visible titles. The whole-object write first reads the latest shared values, preserving another client's explicit-content and maturity choices."
+  },
+  "JournalNotificationTests.Activation_or_fallback_uses_the_finished_session_and_only_save_writes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "uses the exact finished session, deduplicates events and writes only on Save"
+      },
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "opens only the current native notification and never resurrects dismissed sessions"
+      },
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "falls back without taking focus when the native notification fails"
+      }
+    ],
+    "reason": "Native activation and in-window fallback both target the completed session, preserve an edited prompt against another session, and save only through explicit user action."
+  },
+  "JournalNotificationTests.Ignored_superseded_or_dismissed_notifications_do_not_reopen_an_old_session": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "opens only the current native notification and never resurrects dismissed sessions"
+      }
+    ],
+    "reason": "Old notification activation is ignored after replacement or dismissal."
+  },
+  "JournalNotificationTests.Bundled_dragon_decodes_to_an_owned_native_notification_icon": {
+    "status": "framework-specific",
+    "tests": [],
+    "reason": "This test owns and releases a Win32 HICON through the removed Avalonia notification adapter. Electron owns native Notification icon lifetime; its packaged icon requires separate packaging verification."
+  },
+  "SessionWatcherDiagnosticsTests.Both_shells_show_background_failure_without_taking_focus_and_clear_on_recovery": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "shows a quiet tracking failure, opens logs, and clears only after full recovery"
+      }
+    ],
+    "reason": "Both modes render a quiet failure notice, preserve focus, open logs and keep the notice until every outstanding backend failure has cleared."
+  }
+}

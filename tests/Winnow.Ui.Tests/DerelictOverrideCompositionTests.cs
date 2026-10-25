@@ -26,6 +26,8 @@ namespace Winnow.Ui.Tests;
 
 public sealed class DerelictOverrideCompositionTests
 {
+    private static readonly DateTimeOffset FixtureNow = new(2026, 9, 2, 0, 0, 0, TimeSpan.Zero);
+
     [AvaloniaFact]
     public async Task Desktop_context_menu_removes_selected_group_only_in_Derelict()
     {
@@ -161,9 +163,9 @@ public sealed class DerelictOverrideCompositionTests
 
         var lifecycle = new LifecycleRepository(db.Factory);
         foreach (var releaseId in new long[] { 1, 2 })
-            await lifecycle.AppendAsync(Shutdown(releaseId, DateTime.UtcNow));
+            await lifecycle.AppendAsync(Shutdown(releaseId, FixtureNow.AddDays(1).UtcDateTime));
 
-        await using var reopened = Services(db);
+        await using var reopened = Services(db, FixtureNow.AddDays(2));
         var reloaded = reopened.GetRequiredService<LibraryViewModel>();
         await reloaded.LoadCommand.ExecuteAsync(null);
         SelectDerelict(reloaded);
@@ -203,14 +205,20 @@ public sealed class DerelictOverrideCompositionTests
         }
     }
 
-    private static ServiceProvider Services(TempDatabase db)
+    private static ServiceProvider Services(TempDatabase db, DateTimeOffset? now = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-        Program.ConfigureServices(services, new(db.DatabasePath + "-data", db.DatabasePath, DataMigrationOutcome.Overridden));
+        Winnow.App.LegacyTestServices.ConfigureServices(services, new(db.DatabasePath + "-data", db.DatabasePath, DataMigrationOutcome.Overridden));
         services.AddSingleton<ISqliteConnectionFactory>(db.Factory);
+        services.AddSingleton<TimeProvider>(new FixtureClock(now ?? FixtureNow));
         return services.BuildServiceProvider();
+    }
+
+    private sealed class FixtureClock(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
     }
 
     private static async Task SeedAsync(TempDatabase db)
@@ -223,7 +231,7 @@ public sealed class DerelictOverrideCompositionTests
                 """);
         var lifecycle = new LifecycleRepository(db.Factory);
         foreach (var releaseId in new long[] { 1, 2, 3 })
-            await lifecycle.AppendAsync(Shutdown(releaseId, new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc)));
+            await lifecycle.AppendAsync(Shutdown(releaseId, FixtureNow.AddDays(-1).UtcDateTime));
     }
 
     private static LifecycleObservation Shutdown(long releaseId, DateTime observedAt) => new()

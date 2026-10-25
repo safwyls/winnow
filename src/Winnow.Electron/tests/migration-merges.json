@@ -1,0 +1,450 @@
+{
+  "MergeQueueViewModelTests.The_header_defaults_to_the_ladders_primary": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "uses IGDB, named title, release count and added-first ladder for the default header"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "writes a promoted three-member card as one act with two children and restores the same slot for four Undo cycles"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Four_link_undo_cycles_preserve_two_child_direction_and_one_act_then_link_again"
+      }
+    ],
+    "reason": "The original IGDB/named-title/release-count/added-first ladder is covered directly. The three-member renderer case asserts the initial header, both nested row marks, title, and all child IDs before promotion; HTTP coverage verifies actual two-child direction."
+  },
+  "MergeQueueViewModelTests.Promoting_a_row_moves_the_header_and_the_direction_of_the_link": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "merges all selected groups under their chosen parents with sequential revisions and one bulk Undo"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "writes a promoted three-member card as one act with two children and restores the same slot for four Undo cycles"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Four_link_undo_cycles_preserve_two_child_direction_and_one_act_then_link_again"
+      }
+    ],
+    "reason": "The selected member becomes the displayed header on both surfaces and the recorded act uses that work as parent with the displaced header among its children. Repeated HTTP cycles preserve that direction without deleting entities."
+  },
+  "MergeQueueViewModelTests.Promoting_a_row_from_another_card_is_refused": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "promotes a group member, reincludes it, rejects foreign rows and protects expansion parents"
+      }
+    ],
+    "reason": "A work outside the current group throws without changing the selected parent."
+  },
+  "MergeQueueViewModelTests.Rows_on_an_expansion_card_cannot_be_promoted": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "promotes a group member, reincludes it, rejects foreign rows and protects expansion parents"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps expansion parents fixed and leaves member details independently available"
+      }
+    ],
+    "reason": "The model refuses expansion promotion; desktop omits its radios and fullscreen omits Make header, while both surfaces retain the independent member Details action."
+  },
+  "MergeQueueViewModelTests.A_non_same_game_child_is_not_offered_as_a_same_game_parent": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "does not offer an expansion or variant child as a same-game parent"
+      }
+    ],
+    "reason": "Both expansion_of and variant_of links exclude the child from pending same-game proposals using current identity history."
+  },
+  "MergeQueueViewModelTests.Same_game_writes_one_act_under_the_header_and_leaves_a_strip_in_place": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "accepts only exact cross-store groups and one Undo retracts precisely that saved act"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "writes a promoted three-member card as one act with two children and restores the same slot for four Undo cycles"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Four_link_undo_cycles_preserve_two_child_direction_and_one_act_then_link_again"
+      }
+    ],
+    "reason": "Both modes retain the exact article DOM instance and position while a three-member card becomes one two-child act. The source individual dock wording is asserted; an unrelated pending card remains. Real HTTP proves the act and unchanged work/release/ownership records."
+  },
+  "MergeQueueViewModelTests.Consecutive_dismissals_share_one_dock_and_one_undo_restores_them_in_place": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "restores consecutive dismissed groups to their original slots with one Undo"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "accumulates consecutive dismissals and restores their candidate IDs in one Undo"
+      }
+    ],
+    "reason": "Consecutive refusals accumulate candidate IDs and the latest revision in one Undo; restoration uses the original visual slot order on both surfaces."
+  },
+  "MergeQueueViewModelTests.Undo_after_same_game_retracts_the_act_and_closes_the_dock": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "accepts only exact cross-store groups and one Undo retracts precisely that saved act"
+      },
+      {
+        "file": "tests/electron/library-details.spec.ts",
+        "case": "reviews grouped proposals, merges selected groups and retracts their exact acts through one Undo"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "writes a promoted three-member card as one act with two children and restores the same slot for four Undo cycles"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Four_link_undo_cycles_preserve_two_child_direction_and_one_act_then_link_again"
+      }
+    ],
+    "reason": "Both modes retract the exact saved act, close the dock and restore the same card DOM instance and chosen direction. The original CLR object-identity assertion is represented by retained rendered identity, while the actual HTTP test proves link retraction."
+  },
+  "MergeQueueViewModelTests.Link_undo_and_link_again_ends_where_linking_once_ends": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retracts a standing group from its act and can link the restored proposal again"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "writes a promoted three-member card as one act with two children and restores the same slot for four Undo cycles"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Four_link_undo_cycles_preserve_two_child_direction_and_one_act_then_link_again"
+      }
+    ],
+    "reason": "Four full link/Undo cycles followed by a fifth link preserve the same two-child direction, one act per answer, all source records and all DOM slots; both renderer modes and real SQLite/HTTP exercise the matrix."
+  },
+  "MergeQueueViewModelTests.The_dock_closes_by_itself_after_seven_seconds_and_undo_is_then_gone": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "expires the undo dock after seven seconds and lets Dismiss close it early without another write"
+      },
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "accumulates consecutive dismissals in a seven-second undo run but starts fresh for merges or expired runs"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "the undo dock keeps its six-second boundary and never retracts saved links after closing (dismiss=%s)"
+      }
+    ],
+    "reason": "Controlled-clock tests on both surfaces assert the dock remains at six seconds and is gone at eight, with no Undo request and the saved links unchanged. Its deadline also survives remount."
+  },
+  "MergeQueueViewModelTests.Dismissing_the_dock_closes_it_early_and_forgets_the_undo": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "expires the undo dock after seven seconds and lets Dismiss close it early without another write"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "the undo dock keeps its six-second boundary and never retracts saved links after closing (dismiss=%s)"
+      }
+    ],
+    "reason": "Both surfaces dismiss the dock before its deadline, advance through the expiry and verify no Undo request or changed saved links."
+  },
+  "MergeQueueViewModelTests.Merge_selected_links_every_checked_card_under_its_own_header_and_one_undo_retracts_them_all": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "merges all selected groups under their chosen parents with sequential revisions and one bulk Undo"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retains only completed bulk acts for Undo when a later group conflicts"
+      },
+      {
+        "file": "tests/electron/library-details.spec.ts",
+        "case": "reviews grouped proposals, merges selected groups and retracts their exact acts through one Undo"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "merges the first and third of three selected cards in place, keeps the middle pending, and undoes both acts"
+      }
+    ],
+    "reason": "The first and third of three cards are linked in visual order under their chosen headers; the middle stays pending. Both modes preserve all three DOM instances, clear selection, assert source dock title/note and retract both acts together. Existing native bulk coverage verifies actual saved acts."
+  },
+  "MergeQueueViewModelTests.Accept_exact_links_only_exact_cross_store_cards_and_its_label_counts_live": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "accepts only exact cross-store groups and one Undo retracts precisely that saved act"
+      },
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "requires unchanged storefront spelling and priority evidence for exact cross-store acceptance"
+      },
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "splits expansions, episodes and demos with fixed base parents and directional refusals"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "accepts two exact cross-store cards but leaves same-store and likely cards pending and disables repeat acceptance"
+      }
+    ],
+    "reason": "Both surfaces exercise the original two exact cross-store, one exact same-store and one likely cross-store matrix. Only two acts are submitted; the label disables after acceptance, repeat activation writes nothing, and the source exact-match dock is shown."
+  },
+  "MergeQueueViewModelTests.The_accept_exact_label_is_singular_at_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "accepts only exact cross-store groups and one Undo retracts precisely that saved act"
+      }
+    ],
+    "reason": "Both presentation modes identify the single eligible action as Accept 1 exact match."
+  },
+  "MergeQueueViewModelTests.Strongest_match_orders_exact_before_likely_before_worth_a_look": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "orders all three source confidence bands, summed playtime and titles and identifies the selected sort"
+      }
+    ],
+    "reason": "The source Stanley/Witcher/Prey fixture checks all three bands, 0/60/600 minute totals, title order and selected menu/combobox state on both surfaces."
+  },
+  "MergeQueueViewModelTests.Playtime_at_stake_orders_by_summed_minutes_descending": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "orders all three source confidence bands, summed playtime and titles and identifies the selected sort"
+      }
+    ],
+    "reason": "The source Stanley/Witcher/Prey fixture checks all three bands, 0/60/600 minute totals, title order and selected menu/combobox state on both surfaces."
+  },
+  "MergeQueueViewModelTests.Title_orders_by_the_header_title": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "orders all three source confidence bands, summed playtime and titles and identifies the selected sort"
+      }
+    ],
+    "reason": "The source Stanley/Witcher/Prey fixture checks all three bands, 0/60/600 minute totals, title order and selected menu/combobox state on both surfaces."
+  },
+  "MergeQueueViewModelTests.Resolved_strips_sit_after_pending_cards_after_a_resort": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps an answered card in its original slot, separates in place, and puts saved strips last only after sorting"
+      },
+      {
+        "file": "tests/electron/merge-contracts.spec.ts",
+        "case": "keeps a real answered slot through separation and opens keyboard sort actions"
+      }
+    ],
+    "reason": "A presentation-only act-to-slot key preserves the same DOM card through answer and separation; explicit sorting moves resolved strips behind pending cards. API history remains authoritative."
+  },
+  "MergeQueueViewModelTests.A_played_row_reads_its_hours_and_idle_time_from_the_library": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "reads played and unplayed row hours and idle facts from workspace and rolls them up"
+      }
+    ],
+    "reason": "The source 300-minute/100-day matrix produces 5h, 3mo, no unread marker and the same rollup; the unplayed member produces 0h, never and never-opened details from the actual workspace shape."
+  },
+  "MergeQueueViewModelTests.The_earliest_ownership_year_appears_in_the_rollup": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "retains the earliest ownership year and patched row count while excluding only played totals"
+      }
+    ],
+    "reason": "The same 2021 and 2019 acquisition dates select owned since 2019 and exclude 2021 from rollup text."
+  },
+  "MergeQueueViewModelTests.Focus_walks_rows_across_cards_and_clamps_at_both_ends": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop keyboard promotion keeps the cursor and row movement asks the viewport to follow"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
+      }
+    ],
+    "reason": "Space promotes the focused member without moving its cursor. Up/Down row navigation clamps and calls scrollIntoView; direct DOM focus does not echo a scroll request."
+  },
+  "MergeQueueViewModelTests.Answering_the_focused_card_moves_the_cursor_to_the_card_that_took_its_place": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "advances focus to the row taking an answered card’s place and keeps focus when a write fails"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop answers successive focused cards, falls back from the final card, and clears the cursor when none remain"
+      }
+    ],
+    "reason": "Successful answers follow the next pending row, fall back to the preceding final row, and leave no action cursor when only saved strips remain. Existing fullscreen success/failure and native return tests cover its separate proposal focus path."
+  },
+  "MergeQueueViewModelTests.A_base_game_and_its_packs_are_one_card": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "splits expansions, episodes and demos with fixed base parents and directional refusals"
+      },
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "groups both scanned packs under one fixed base with pack marks, likely evidence and two refusal directions"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "presents %s members under a fixed base in %s and persists the relation label"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Leaving_one_pack_out_refuses_only_that_direction_and_undo_restores_the_scanned_group"
+      }
+    ],
+    "reason": "The real scan emits a base with two packs. Projection asserts a single fixed-parent, likely expansion card with pack marks, evidence and two refusal directions; both surfaces show and save both children in one act."
+  },
+  "MergeQueueViewModelTests.A_demo_lands_in_TEST_BUILDS_as_a_variant": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "splits expansions, episodes and demos with fixed base parents and directional refusals"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "presents %s members under a fixed base in %s and persists the relation label"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Demo_scan_and_answer_preserve_variant_kind_and_demo_relation_label"
+      }
+    ],
+    "reason": "Both surfaces display the demo proposal in Test builds with fixed base and submit variant_of plus the demo label. The production scan and HTTP answer persist that exact kind/label pair."
+  },
+  "MergeQueueViewModelTests.A_row_left_out_is_not_linked_and_its_proposals_are_recorded": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "rejects only edges crossing into excluded rows and leaves outside-to-outside proposals unanswered"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "leaves one triangle member out, records both crossing rejections and restores the same excluded choice on Undo"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Excluding_one_triangle_member_records_only_crossing_rejections_and_undo_restores_them"
+      }
+    ],
+    "reason": "Both modes exclude one triangle member, submit one child and exactly its two crossing rejections, display the original exclusion dock note and Undo the act/rejections while retaining the excluded choice. Actual HTTP/SQLite verifies all candidate statuses and restored records."
+  },
+  "MergeQueueViewModelTests.Same_game_is_refused_while_every_other_row_is_left_out": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "leaving every child out disables grouping and making it the header restores inclusion"
+      }
+    ],
+    "reason": "Both surfaces disable the action and issue no identity link when every other row is excluded; promoting the excluded member restores inclusion and eligibility."
+  },
+  "MergeQueueViewModelTests.Making_a_left_out_row_the_header_brings_it_back_in": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "promotes a group member, reincludes it, rejects foreign rows and protects expansion parents"
+      }
+    ],
+    "reason": "Promoting an excluded member makes it the parent and restores its inclusion."
+  },
+  "MergeQueueViewModelTests.Leaving_a_pack_out_refuses_only_that_pair": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-model.test.ts",
+        "case": "splits expansions, episodes and demos with fixed base parents and directional refusals"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "leaving one of two packs out preserves only its directional refusal through refresh and reverses it with the saved act"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Leaving_one_pack_out_refuses_only_that_direction_and_undo_restores_the_scanned_group"
+      }
+    ],
+    "reason": "Both modes leave one of two packs out and write only that directional refusal beside the included expansion act. Refresh keeps both answered paths hidden; Undo restores both packs. The real scan/HTTP test verifies the exact refusal and subsequent scan."
+  },
+  "MergeQueueViewModelTests.Preferred_platform_survives_reload_allows_override_and_can_be_cleared": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "applies a saved preferred platform to pending groups and saves None without changing the current header"
+      },
+      {
+        "file": "tests/electron/merge-contracts.spec.ts",
+        "case": "persists a preferred platform through reload while keeping an override until the preference is cleared"
+      }
+    ],
+    "reason": "Both native surfaces create a real cross-store proposal through manual ownership plus the production resolver, persist the platform preference through a full renderer reload, override the header, retain that choice through tools reentry, clear the preference without changing the override, then verify the cleared setting after another full reload. No identity act is written by choosing a preference."
+  },
+  "MergeQueueViewModelTests.A_click_on_a_row_asks_for_its_details_and_takes_the_cursor": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop Details establishes the member cursor before notifying navigation without changing its header"
+      },
+      {
+        "file": "tests/electron/library-details.spec.ts",
+        "case": "keeps long merge members and independent actions inside the pane with correct focus hierarchy"
+      }
+    ],
+    "reason": "Desktop establishes the exact member cursor and actual focus before invoking navigation, without changing its header. The native long-member matrix verifies desktop retained-modal return and fullscreen remount return to the original row/proposal."
+  }
+}

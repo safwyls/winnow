@@ -1,4 +1,5 @@
 using System.Globalization;
+using Dapper;
 using Microsoft.Data.Sqlite;
 using Winnow.Data;
 using Xunit;
@@ -23,6 +24,54 @@ public sealed class SqliteConnectionFactoryTests : IDisposable
         {
             File.Delete(_path);
         }
+    }
+
+    [Fact]
+    public void Read_scope_keeps_one_snapshot_while_an_independent_writer_and_reader_proceed()
+    {
+        using var database = new TempDatabase();
+        var reader = database.Factory;
+        var independent = new SqliteConnectionFactory(database.DatabasePath, pooling: false);
+        using (var setup = reader.Open())
+            setup.Execute("CREATE TABLE snapshot_probe(value INTEGER); INSERT INTO snapshot_probe VALUES(1)");
+
+        using var snapshot = reader.BeginRead();
+        Assert.Equal(1, Read(reader));
+        using (var write = independent.Begin())
+        {
+            using var lease = independent.Lease();
+            lease.Connection.Execute("UPDATE snapshot_probe SET value=2", transaction: lease.Transaction);
+            write.Commit();
+        }
+        using (var current = independent.BeginRead())
+        {
+            Assert.Equal(2, Read(independent));
+            current.Commit();
+        }
+        Assert.Equal(1, Read(reader));
+        snapshot.Commit();
+        Assert.Equal(2, Read(reader));
+
+        static int Read(SqliteConnectionFactory factory)
+        {
+            using var lease = factory.Lease();
+            return lease.Connection.ExecuteScalar<int>("SELECT value FROM snapshot_probe", transaction: lease.Transaction);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Read_and_write_scopes_reject_nesting_and_release_the_ambient_scope(bool read)
+    {
+        using var database = new TempDatabase();
+        using (var scope = read ? database.Factory.BeginRead() : database.Factory.Begin())
+        {
+            Assert.Throws<InvalidOperationException>(() => database.Factory.Begin());
+            Assert.Throws<InvalidOperationException>(() => database.Factory.BeginRead());
+        }
+        using var next = database.Factory.Begin();
+        next.Commit();
     }
 
     [Fact]

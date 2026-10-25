@@ -1,0 +1,196 @@
+{
+  "ActivityTimelineSeriesTests.Consecutive_months_preserve_known_zero_and_leave_missing_month_unknown": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "preserves known zero between consecutive month ends and leaves missing months unknown"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Monthly_history_wins_overlap_but_individual_sessions_remain_available": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "prefers imported monthly history while keeping individual sessions available"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Session_crossing_month_boundary_is_split_without_losing_duration": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "splits sessions over UTC month boundaries without losing duration"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Reset_and_conflicting_endpoint_are_unknown_not_zero": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "treats counter resets and conflicting endpoints as unknown rather than zero"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Independent_ownership_counters_are_not_combined": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "never combines independent ownership counters"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Future_incomplete_and_invalid_sessions_are_omitted": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "omits future, incomplete, negative and impossible sessions"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.No_temporal_evidence_does_not_invent_a_release_date": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "does not invent a release date when temporal evidence is absent"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Acquisition_cannot_clip_earlier_play_and_future_dates_are_ignored": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "keeps play earlier than acquisition and ignores a future last-played date"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Tracked_range_keeps_older_sessions_and_gives_recent_sessions_room": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "retains older sessions while giving recent sessions thirty days of space"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Tracked_summary_describes_sessions_instead_of_acquisition": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "describes tracked sessions instead of acquisition and keeps an honest empty state"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityTimelineSeriesTests.Baseline_summary_states_dated_counter_without_inventing_when_play_happened": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "dates the baseline counter without inventing when play happened"
+      }
+    ],
+    "reason": "Equivalent pure TypeScript projection assertions preserve the original counter, time, duration and unknown-evidence rules."
+  },
+  "ActivityRecoveryInteractionTests.A_library_refresh_while_the_note_editor_is_open_keeps_its_unsaved_text": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "keeps unsaved text through a library refresh and removes hidden games from history"
+      }
+    ],
+    "reason": "The shared editor remains mounted and preserves unsaved text when the visible library snapshot changes."
+  },
+  "ActivityTrackerInteractionTests.Grouped_updates_do_not_hide_history_when_no_sessions_exist": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "keeps grouped updates reachable when there are no sessions"
+      }
+    ],
+    "reason": "Activating grouped updates preserves Lifetime when no tracked sessions exist and exposes every update in the selected detail."
+  },
+  "ActivityTrackerInteractionTests.Sparse_tracker_keeps_an_honest_session_empty_state": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "shows honest sparse history without inventing monthly or session records"
+      }
+    ],
+    "reason": "Absent evidence does not invent a chart, unknown last-played remains explicit, and tracked empty state has no recorded-hours disclosure."
+  },
+  "FullscreenActivityTests.Missing_activity_repository_is_an_unavailable_state_not_an_empty_history_claim": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "distinguishes unavailable activity from empty history and names prompt-off journal state"
+      }
+    ],
+    "reason": "Unavailable API response produces explicit unavailable history with retry and no false empty-history claim."
+  },
+  "JournalDetailsInteractionTests.Details_modal_names_the_prompt_off_empty_state": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "exposes separate Steam history and a prompt-off empty journal in details"
+      }
+    ],
+    "reason": "Both mode Details paths read the journal preference and display the prompt-off empty state."
+  },
+  "SessionNoteParityTests.A_save_finishing_after_the_editor_is_disposed_cannot_navigate": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "does not navigate when a save completes after the editor is disposed"
+      }
+    ],
+    "reason": "Late save completion invokes only a currently mounted shared editor; a disposed editor cannot navigate. The existing remount test verifies completion can still close the replacement editor."
+  },
+  "SteamReportedActivityTests.Desktop_details_activity_hosts_the_separate_projection": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "exposes separate Steam history and a prompt-off empty journal in details"
+      }
+    ],
+    "reason": "The Details History tab hosts the separate Steam projection alongside the recorded-session timeline in both presentation modes."
+  },
+  "SteamReportedActivityTests.Failure_retries_and_scope_changes_discard_pending_reads": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "hides non-Steam scope and discards pending observations after a scope change"
+      },
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "retries failed reads and distinguishes missing account confirmation from an empty result"
+      }
+    ],
+    "reason": "A scope replacement removes old observations and obsolete reads cannot repopulate them; a separate test retries an initial failed read."
+  }
+}

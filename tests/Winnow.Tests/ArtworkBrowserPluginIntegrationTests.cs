@@ -116,7 +116,7 @@ public sealed class ArtworkBrowserPluginIntegrationTests
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-            Program.ConfigureServices(services, new(host.Root, host._db.DatabasePath, DataMigrationOutcome.None));
+            Winnow.App.LegacyTestServices.ConfigureServices(services, new(host.Root, host._db.DatabasePath, DataMigrationOutcome.None));
             services.AddSingleton<ISqliteConnectionFactory>(host._db.Factory);
             services.AddSingleton<IPluginContextFactory>(host.Context);
             services.AddSingleton(provider => new PluginHttpClient(new HttpClient(new ImageHandler(host.Context.ImageBytes)),

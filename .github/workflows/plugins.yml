@@ -1,0 +1,43 @@
+name: First-party plugin packages
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  plugins:
+    name: Build and validate first-party plugin packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build and validate all first-party plugins
+        shell: pwsh
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          [xml]$props = Get-Content Version.props
+          $version = if ($env:REQUESTED_VERSION) { $env:REQUESTED_VERSION } else { "$($props.Project.PropertyGroup.VersionPrefix)-ci.$env:GITHUB_RUN_NUMBER" }
+          ./packaging/New-PluginRelease.ps1 -Version $version -OutputDirectory artifacts/plugin-packages
+          ./packaging/Test-PluginRelease.ps1 -PackageDirectory artifacts/plugin-packages -Version $version
+      - name: Keep plugin packages and catalogue
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: packages-plugins
+          path: artifacts/plugin-packages/*
+          if-no-files-found: error
+          retention-days: 14

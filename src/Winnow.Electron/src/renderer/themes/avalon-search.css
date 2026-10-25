@@ -1,0 +1,76 @@
+@layer themes {
+  .avalon-content > .screen-search {
+    height: 100%;
+    min-height: 0;
+  }
+  .avalon-shell.fullscreen:has(.avalon-search-page) {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .avalon-shell.fullscreen:has(.avalon-search-page) > .avalon-footer {
+    display: none;
+  }
+  .avalon-search-page {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    padding: 12px 0;
+  }
+  .avalon-search-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .avalon-search-heading h1 {
+    margin: 0 0 20px;
+  }
+  .avalon-search-page button:not(.avalon-cover) {
+    background: transparent;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    min-height: clamp(42px, 3.34vw, 64px);
+    padding: 12px 24px;
+    color: var(--text);
+    font-size: calc(clamp(18px, 1.46vw, 28px) * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+  }
+  .avalon-search-page button:not(.avalon-cover):focus-visible {
+    outline: none;
+    border-bottom-color: var(--accent-foreground, var(--accent));
+    color: var(--accent-foreground, var(--accent));
+  }
+  .avalon-search-inputs {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 24px;
+    align-items: center;
+  }
+  .avalon-search-inputs input {
+    width: 100%;
+    min-width: 0;
+    font-size: calc(clamp(22px, 1.67vw, 32px) * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+    line-height: 1.4;
+  }
+  .avalon-search-count {
+    color: var(--muted);
+    font-family: var(--font-body);
+    margin: 16px 0;
+  }
+  .avalon-search-results {
+    container-type: size;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .avalon-search-empty {
+    color: var(--muted);
+  }
+  .avalon-search-hints {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    padding-top: 16px;
+    color: var(--muted);
+    font-size: calc(clamp(13px, 1.15vw, 22px) * var(--theme-text-scale, 1));
+  }
+}

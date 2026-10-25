@@ -1,0 +1,118 @@
+{
+  "MergeDormancyTests.Visible_merge_covers_follow_the_display_toggle_without_reloading": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop covers react to the display toggle without reloading review or cover state"
+      },
+      {
+        "file": "tests/electron/library-details.spec.ts",
+        "case": "keeps long merge members and independent actions inside the pane with correct focus hierarchy"
+      }
+    ],
+    "reason": "The existing rows react to DimDormantCovers without repeating identity or artwork-state reads. Native Electron also checks the computed cover filter after preference writes through the real backend. CSS uses the same dormancy policy as Electron library covers."
+  },
+  "MergeRowActionsTests.Fullscreen_keeps_open_game_and_eligible_header_actions_separate": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/library-details.spec.ts",
+        "case": "keeps long merge members and independent actions inside the pane with correct focus hierarchy"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "keeps expansion parents fixed and leaves member details independently available"
+      }
+    ],
+    "reason": "Native 1920px and 1280px windows retain separate Open game and Make header controls for a long title, promote by Enter, and remove Make header from the chosen parent. Fixed expansion members retain Open game without promotion."
+  },
+  "MergeSuggestionRefreshTests.Leaving_fullscreen_cancels_manual_refresh_without_late_page_updates": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-refresh.test.tsx",
+        "case": "leaving the page cancels its named request and a late success cannot reload or move focus"
+      },
+      {
+        "file": "tests/parity-merge-request.test.ts",
+        "case": "registers before dispatch and only the requesting renderer can cancel"
+      }
+    ],
+    "reason": "Unmount aborts the exact page-owned request, forwards its cancellation through the bridge, and prevents a late response from reloading identity data or changing the next page's focus. Main-process ownership isolates cancellation from other renderers."
+  },
+  "MergeQueueViewModelTests.A_pack_row_with_no_playtime_shows_an_em_dash_for_both": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "distinguishes unplayed games from packs without their own playtime"
+      }
+    ],
+    "reason": "An expansion with no separate playtime has em dashes in both columns and the original absence explanation; its unplayed base instead shows 0h and never."
+  },
+  "MergeQueueViewModelTests.An_unplayed_card_rolls_up_zero_hours": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "does not answer a group twice and retains exact zero-hour resolved metadata"
+      },
+      {
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "distinguishes unplayed games from packs without their own playtime"
+      }
+    ],
+    "reason": "Unplayed row formatting and 0h rollup are covered; a saved two-game desktop strip reports 2 entries, 0h and nested/nothing-deleted metadata."
+  },
+  "MergeQueueViewModelTests.A_patch_after_the_last_session_marks_the_row_unread_and_the_card_says_so": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "retains the earliest ownership year and patched row count while excluding only played totals"
+      }
+    ],
+    "reason": "The authoritative patched bucket marks only its row unread, adds the original detail suffix and reports exactly one patched entry in the card rollup. The bucket calculation remains in the shared backend."
+  },
+  "MergeQueueViewModelTests.Each_row_wears_the_stores_it_is_owned_on": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-merge-facts.test.ts",
+        "case": "shows all owned stores and suppresses installation claims for mixed or absent evidence"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retains current group choices across detail navigation, and arrows walk visible rows without wrapping"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "desktop rows show every owned-store chip in source order with distinct member labels"
+      }
+    ],
+    "reason": "Rendered desktop members preserve all owned-store chips in source order with STEAM/GOG versus EPIC copy, and duplicate titles receive distinct store-qualified labels. Fullscreen member sheets use the same distinct labels rather than desktop chips."
+  },
+  "MergeQueueViewModelTests.Answering_reads_nothing_however_long_the_queue_is": {
+    "status": "framework-specific",
+    "tests": [
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "merges all selected groups under their chosen parents with sequential revisions and one bulk Undo"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "retains only completed bulk acts for Undo when a later group conflicts"
+      },
+      {
+        "file": "tests/parity-merge.test.tsx",
+        "case": "answers twenty of sixty cards with one authoritative read per answer and preserves all sixty DOM slots"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MergeDecisionParityTests.cs",
+        "case": "Twenty_answers_in_sixty_cards_use_bounded_http_reads_and_preserve_pending_candidates"
+      }
+    ],
+    "reason": "The literal zero-repository-read counter is specific to retired in-process answering. The mandatory HTTP architecture preserves CAS and uses exactly one authoritative GET after each answer. Both surfaces retain all 60 DOM card instances/positions after 20 answers, leave 40 pending, write 20 acts and no candidate dismissals. The real 60/20 HTTP test preserves all entities/statuses. Dated local Debug measurement: POST mean10.60/max14.81ms, GET mean58.09/max69.67ms, combined max80.54ms; .tmp/merge-decision-results/merge-decision-parity.trx. These are observations, not a CI latency guarantee or a claim of zero-read parity."
+  }
+}

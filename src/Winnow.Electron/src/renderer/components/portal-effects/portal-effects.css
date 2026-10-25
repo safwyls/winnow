@@ -1,0 +1,84 @@
+.winnow-portal-surface {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+.winnow-portal-surface[hidden] {
+  display: none;
+}
+.winnow-portal-reveal {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+/* Cache the reading plane separately from the changing mask. These hints expire
+   with the entrance; keeping every preview promoted would waste layer memory. */
+.winnow-portal-surface[data-portal-expansion='true'][data-portal-opening='true'] .winnow-portal-reveal {
+  will-change: clip-path;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+.winnow-portal-surface[data-portal-expansion='true'][data-portal-opening='true'] .winnow-portal-content {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+.winnow-portal-art-shadow,
+.winnow-portal-art {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.winnow-portal-art-shadow {
+  filter: drop-shadow(0 0 1px var(--portal-fallback-rim, #91d9cc88))
+    drop-shadow(0 0 14px var(--portal-fallback-glow, #859ce41a));
+}
+.winnow-portal-art {
+  overflow: hidden;
+  background: var(--portal-background, #0a101d);
+}
+.winnow-portal-art > *,
+.winnow-portal-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.winnow-portal-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--portal-shade, linear-gradient(180deg, #050b1640, #050b16b8 50%, #050b16ee));
+}
+.winnow-portal-scene {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+}
+.winnow-portal-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.winnow-portal-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.winnow-portal-surface:not([data-portal-ready='true']) {
+  visibility: hidden;
+}
+.winnow-portal-surface[data-portal-expanded='true'] .winnow-portal-art-shadow {
+  filter: none;
+}
+.winnow-portal-surface[data-portal-expansion='true'] .winnow-portal-art-shadow {
+  filter: none;
+}
+.winnow-portal-surface[data-portal-renderer='webgl'] .winnow-portal-art-shadow {
+  filter: none;
+}

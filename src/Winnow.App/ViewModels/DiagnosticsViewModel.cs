@@ -9,10 +9,10 @@ namespace Winnow.App.ViewModels;
 /// <summary>Shared session health and local diagnostic access for both shells.</summary>
 public partial class DiagnosticsViewModel : ObservableObject
 {
-    private readonly SessionWatcherHealth? _health;
+    private readonly ISessionWatcherHealth? _health;
     private readonly Action<string> _openFolder;
 
-    public DiagnosticsViewModel(SessionWatcherHealth? health = null, string? dataDirectory = null,
+    public DiagnosticsViewModel(ISessionWatcherHealth? health = null, string? dataDirectory = null,
         Action<string>? openFolder = null)
     {
         _health = health;

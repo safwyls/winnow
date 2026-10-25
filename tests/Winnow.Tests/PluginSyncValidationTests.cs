@@ -105,7 +105,7 @@ public sealed class PluginSyncValidationTests
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-            Program.ConfigureServices(services, new(host.Root, host.Database.DatabasePath, DataMigrationOutcome.None));
+            Winnow.App.LegacyTestServices.ConfigureServices(services, new(host.Root, host.Database.DatabasePath, DataMigrationOutcome.None));
             services.AddSingleton<ISqliteConnectionFactory>(host.Database.Factory);
             host.Provider = services.BuildServiceProvider();
             var packages = Path.Combine(host.Root, "packages");

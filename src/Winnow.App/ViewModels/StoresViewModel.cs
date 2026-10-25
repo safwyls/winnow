@@ -58,7 +58,7 @@ public partial class StoresViewModel : ObservableObject
     /// has no field for one, and <c>ISteamSessionProvider</c> — which does — stays
     /// out of this constructor deliberately (TASK-55 S3).
     /// </summary>
-    private readonly SteamSignInService? _steamSignIn;
+    private readonly ISteamSignInService? _steamSignIn;
 
     /// <summary>
     /// OS fallback for isolated hosts without the shared link router.
@@ -73,7 +73,7 @@ public partial class StoresViewModel : ObservableObject
         IStoreConnections connections,
         IStoreTitleCounts? counts = null,
         IAccountVisibility? accountVisibility = null,
-        SteamSignInService? steamSignIn = null,
+        ISteamSignInService? steamSignIn = null,
         IUriDispatcher? uris = null,
         SteamAccountImportViewModel? accountImport = null,
         IGameLinkRouter? linkRouter = null)
@@ -220,7 +220,7 @@ public partial class StoresViewModel : ObservableObject
 
     /// <summary>
     /// The stored sign-in session's state, read from the session provider through
-    /// <see cref="SteamSignInService"/> and rendered rather than re-derived.
+    /// <see cref="ISteamSignInService"/> and rendered rather than re-derived.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(

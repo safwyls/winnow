@@ -1,0 +1,81 @@
+@layer components {
+  .winnow-game-preview-anchor {
+    min-width: 0;
+    height: 100%;
+  }
+  .winnow-game-preview {
+    position: fixed;
+    z-index: 800;
+    overflow: auto;
+    overscroll-behavior: contain;
+    color: var(--text);
+    background: var(--preview-background, var(--surface));
+    border: 1px solid var(--preview-border, var(--line));
+    border-radius: var(--preview-radius, var(--radius));
+    box-shadow: 0 18px 60px #0008;
+    font-family: var(--font-body);
+    animation: preview-appear 140ms ease-out;
+    scrollbar-width: thin;
+  }
+  .winnow-game-preview-body {
+    padding: 23px;
+  }
+  .winnow-game-preview h3 {
+    font-family: var(--font-display);
+    font-size: 27px;
+    font-weight: 500;
+    line-height: 1.12;
+    margin: 10px 0 13px;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+  .winnow-game-preview-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .winnow-game-preview-installed {
+    color: var(--accent);
+  }
+  .winnow-game-preview-reason {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--accent);
+    margin: 17px 0 13px;
+  }
+  .winnow-game-preview-description {
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--muted);
+    margin: 16px 0 0;
+    white-space: pre-line;
+  }
+  .winnow-game-preview-hint {
+    border-top: 1px solid var(--line);
+    padding-top: 15px;
+    margin-top: 19px;
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+  @keyframes preview-appear {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .reduced-motion .winnow-game-preview {
+    animation: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .winnow-game-preview {
+      animation: none;
+    }
+  }
+}

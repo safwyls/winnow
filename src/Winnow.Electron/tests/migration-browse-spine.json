@@ -1,0 +1,50 @@
+{
+  "ListBrowsingPositionTests.Alphabet_sections_fold_diacritics_and_group_non_letters": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-browse-spine.test.tsx",
+        "case": "folds source diacritics and groups leading nonletters: %s"
+      }
+    ],
+    "reason": "The original Elan with acute accent, leading-space Zelda, 123 Robots and trademark fixtures are exact cases, with decomposed accents, non-Latin letters, empty titles and multi-character uppercase expansion covered too."
+  },
+  "ListBrowsingPositionTests.Alphabet_spine_switches_to_name_order_and_jumps_the_active_view": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/browse-spine.spec.ts",
+        "case": "spine preserves ordering and selection with source pointer, scrub, halo and keyboard behavior"
+      },
+      {
+        "file": "tests/avalon-browse-spine.test.tsx",
+        "case": "scrubs an unavailable M to P and resolves an equal distance toward the earlier stop"
+      },
+      {
+        "file": "tests/avalon-browse-spine.test.tsx",
+        "case": "interpolates the viewport halo in the displayed order and returns the wave to rest"
+      }
+    ],
+    "reason": "Both native desktop views use the source eight titles and a constrained scroll viewport. Assertions cover 27 notches, half-way proportional drag, transparent rail, fixed 27 letters, unavailable stops, 24px targets, 11px ink, right-edge alignment beside the separate scrollbar, reserved artwork space, hover without scrolling, fractional four-row wave with no reduced-motion transition, pointer halo on unavailable M with the same scroll as keyboard P, unchanged selection/order, descending C activation, viewport halo and wave reset on leave. The obsolete method name mentions switching sort; its source assertions actually preserve each active name-sort direction, as these tests do."
+  },
+  "ListBrowsingPositionTests.Adding_to_a_list_keeps_the_scrolled_library_position": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/browse-spine.spec.ts",
+        "case": "retains scroll after adding to a list and restores it after Details changes the underlying offset"
+      }
+    ],
+    "reason": "Grid and list native tests scroll the source eight-title fixture to 200, select its last alphabetical title without scrolling, add it to an existing list, compare the exact offset and verify the saved release membership through the production API."
+  },
+  "ListBrowsingPositionTests.Closing_details_restores_the_scrolled_library_position": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/browse-spine.spec.ts",
+        "case": "retains scroll after adding to a list and restores it after Details changes the underlying offset"
+      }
+    ],
+    "reason": "Both native desktop views open Details at offset 200, deliberately change the retained Library to zero underneath it, close Details and assert restoration to the exact original offset. Fullscreen retains its independent paged presentation, with a separate assertion that it does not acquire the desktop spine."
+  }
+}

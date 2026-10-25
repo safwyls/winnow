@@ -30,6 +30,18 @@ ChangesAssociations=yes
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+#ifdef ElectronFrontend
+; Remove only the old frontend's known binaries. Backend, providers and selected
+; user data are independent of this frontend transition.
+[InstallDelete]
+Type: files; Name: "{app}\Winnow.dll"
+Type: files; Name: "{app}\Winnow.deps.json"
+Type: files; Name: "{app}\Winnow.runtimeconfig.json"
+Type: files; Name: "{app}\Avalonia*.dll"
+Type: files; Name: "{app}\Winnow.Auth.WebView.dll"
+Type: files; Name: "{app}\Winnow.Covers.Avalonia.dll"
+#endif
+
 [Icons]
 Name: "{autoprograms}\Winnow"; Filename: "{app}\Winnow.exe"; WorkingDir: "{app}"; IconFilename: "{app}\Winnow.exe"
 

@@ -1,0 +1,9 @@
+{
+  "id": "reading-room",
+  "name": "Reading room",
+  "version": "1.0.1",
+  "apiVersion": 1,
+  "description": "An independent reading desk and library index. A small example of complete screen replacement.",
+  "entry": "index.mjs",
+  "css": "style.css"
+}

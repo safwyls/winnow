@@ -1,0 +1,50 @@
+@layer themes {
+  .avalon-shelf-navigation {
+    grid-column: 2;
+    grid-row: 2;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+  }
+  .avalon-shelf-indicator {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 44px;
+    flex-shrink: 0;
+    transform: scale(var(--shelf-indicator-scale, 1));
+  }
+  .avalon-shelf-indicator button {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    flex-shrink: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+  }
+  .avalon-shelf-indicator button:disabled {
+    opacity: 0.3;
+  }
+  .avalon-shelf-indicator button:hover:enabled {
+    opacity: 1;
+    background: transparent;
+  }
+  .avalon-shelf-indicator i {
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--muted);
+    border-radius: 50%;
+  }
+  .avalon-shelf-indicator button[aria-current='true'] i {
+    width: 16px;
+    height: 16px;
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+}

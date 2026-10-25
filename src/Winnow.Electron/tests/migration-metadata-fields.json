@@ -1,0 +1,214 @@
+{
+  "GameMetadataEditorViewModelTests.Saving_one_field_leaves_every_other_fields_source_alone": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "saves only one field, adopts its stored value and preserves other sources and drafts"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.Saving_one_field_leaves_every_other_rows_draft_alone": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "saves only one field, adopts its stored value and preserves other sources and drafts"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.A_field_no_writer_has_claimed_is_on_automatic_rather_than_blank": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "describes an unclaimed field as automatic with a nonempty explanation"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.A_fetch_that_rewrote_every_field_leaves_one_source_on_every_row": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "loads all six fields with attributed sources and draws only two art pickers"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.Only_a_field_the_user_owns_can_be_handed_back_to_automatic": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "returns only the chosen user field to automatic and removes its reset control"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.Handing_a_field_back_to_automatic_drops_its_source_and_disarms_the_control": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "returns only the chosen user field to automatic and removes its reset control"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.A_refused_reset_says_so_and_leaves_the_source_in_place": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "keeps a refused reset user-owned and announces the refusal without a library refresh"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.A_release_year_that_is_not_a_year_is_refused_before_anything_is_written": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "refuses invalid release year %s before writing and keeps its draft"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.A_four_digit_release_year_is_written": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "saves a four-digit release year as a user field"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.The_art_rows_are_cover_and_background_and_nothing_else": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "loads all six fields with attributed sources and draws only two art pickers"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.An_art_row_takes_a_local_file_through_the_picker": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "uploads the chosen local image content and adopts its user source"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.A_dismissed_file_dialog_writes_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "writes nothing when a file picker is dismissed"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.An_art_row_takes_a_url": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "downloads an art URL through the backend and refreshes artwork only after it is applied"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.Every_art_refusal_renders_its_own_message": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "announces art refusal %s distinctly, retains the draft and does not report a save"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.An_empty_url_box_is_refused_rather_than_written": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "does not save or download an empty art URL"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.Opening_the_editor_reads_the_work_and_the_status_field_is_words": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "shows words while reading fields, then clears the loading state"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.A_work_that_cannot_be_read_says_so_and_draws_no_rows": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "draws no field rows when the work cannot be read"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.A_saved_text_field_hands_the_library_the_field_and_its_stored_value": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "saves only one field, adopts its stored value and preserves other sources and drafts"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.A_refused_text_save_hands_the_library_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "does not refresh library state or adopt a text draft after a refused write"
+      }
+    ],
+    "reason": "The shared production metadata editor is exercised through its named API boundary, preserving per-field sources, drafts, revision-aware saves and source-specific refusal states."
+  },
+  "GameMetadataEditorViewModelTests.With_no_picker_registered_the_file_route_is_not_drawn": {
+    "status": "framework-specific",
+    "reason": "The old test checks optional Avalonia IImageFilePicker dependency registration. Electron always provides Chromium's native file input. The production upload path and dismissed-picker no-write behavior are tested in parity-metadata-editor.test.tsx; there is no optional picker service to resolve or omit."
+  },
+  "GameDetailsViewModelTests.The_install_folder_is_offered_only_when_the_game_is_on_disk": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-install-folder.test.tsx",
+        "case": "offers no folder when installed is %s and path is %s"
+      },
+      {
+        "file": "tests/parity-install-folder.test.tsx",
+        "case": "resolves the owned installed copy afresh and opens only its directory"
+      },
+      {
+        "file": "tests/electron/gallery.spec.ts",
+        "case": "both details modes open the installed copy folder through the named ownership bridge"
+      }
+    ],
+    "reason": "The source visibility contract, authoritative ownership/directory validation and native desktop/fullscreen More-menu integration pass. The native test crosses the production preload/main boundary and replaces only shell.openPath, so Explorer is not launched."
+  }
+}

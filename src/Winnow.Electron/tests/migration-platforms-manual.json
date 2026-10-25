@@ -1,0 +1,342 @@
+{
+  "StoresViewModelTests.Steam_states_what_connecting_nothing_costs": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "states which library coverage a saved API key=%s adds"
+      }
+    ],
+    "reason": "Both presentation modes show connection status, liveness, API state and the concrete coverage added by a key."
+  },
+  "StoresViewModelTests.Steam_with_a_key_says_what_the_key_added": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "states which library coverage a saved API key=%s adds"
+      }
+    ],
+    "reason": "Both presentation modes show connection status, liveness, API state and the concrete coverage added by a key."
+  },
+  "StoresViewModelTests.A_saved_key_clears_the_field_and_says_it_is_in_use": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "retains a refused key input and clears it only after a successful protected save"
+      }
+    ],
+    "reason": "Both modes retain refused input with refusal copy, then clear it and show the saved notice only after secure storage succeeds."
+  },
+  "StoresViewModelTests.A_refused_save_says_so_and_keeps_the_input": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "retains a refused key input and clears it only after a successful protected save"
+      }
+    ],
+    "reason": "Both modes retain refused input with refusal copy, then clear it and show the saved notice only after secure storage succeeds."
+  },
+  "StoresViewModelTests.The_settings_segment_reads_platforms": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "opens on Steam and shows exactly one platform card while switching in either direction"
+      }
+    ],
+    "reason": "The actual Settings route is Platforms, opens on Steam, switches each direction with one visible card, and GOG offers no account action."
+  },
+  "StoresViewModelTests.The_platform_tabs_open_on_steam": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "opens on Steam and shows exactly one platform card while switching in either direction"
+      }
+    ],
+    "reason": "The actual Settings route is Platforms, opens on Steam, switches each direction with one visible card, and GOG offers no account action."
+  },
+  "StoresViewModelTests.Exactly_one_platform_card_is_visible_at_a_time": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "opens on Steam and shows exactly one platform card while switching in either direction"
+      }
+    ],
+    "reason": "The actual Settings route is Platforms, opens on Steam, switches each direction with one visible card, and GOG offers no account action."
+  },
+  "StoresViewModelTests.Gog_states_that_there_is_nothing_to_sign_into": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "opens on Steam and shows exactly one platform card while switching in either direction"
+      }
+    ],
+    "reason": "The actual Settings route is Platforms, opens on Steam, switches each direction with one visible card, and GOG offers no account action."
+  },
+  "StoresViewModelTests.The_three_modals_start_closed_and_are_mutually_exclusive": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking"
+      }
+    ],
+    "reason": "Both modes start closed, switch among all four Steam layers with exactly one dialog, retain the account-attribution caveat and leave optional capture unticked without starting sign-in."
+  },
+  "StoresViewModelTests.The_card_button_opens_consent_and_does_not_sign_in": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking"
+      }
+    ],
+    "reason": "Both modes start closed, switch among all four Steam layers with exactly one dialog, retain the account-attribution caveat and leave optional capture unticked without starting sign-in."
+  },
+  "StoresViewModelTests.Opening_consent_leaves_the_purchase_permission_unticked": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking"
+      }
+    ],
+    "reason": "Both modes start closed, switch among all four Steam layers with exactly one dialog, retain the account-attribution caveat and leave optional capture unticked without starting sign-in."
+  },
+  "StoresViewModelTests.The_accounts_caveat_is_reachable_from_the_summary_line": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking"
+      }
+    ],
+    "reason": "Both modes start closed, switch among all four Steam layers with exactly one dialog, retain the account-attribution caveat and leave optional capture unticked without starting sign-in."
+  },
+  "StoresViewModelTests.The_purchase_import_arrives_closed_behind_one_button": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "starts all Steam layers closed and replaces help, purchase, consent and account layers without stacking"
+      }
+    ],
+    "reason": "Both modes start closed, switch among all four Steam layers with exactly one dialog, retain the account-attribution caveat and leave optional capture unticked without starting sign-in."
+  },
+  "StoresViewModelTests.The_two_state_words_say_what_is_on_and_which_credential_carries_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps both methods present with key=%s session=%s and marks the credential carrying API calls"
+      }
+    ],
+    "reason": "All four key/session combinations render local-file state and the API credential marker; a stored key takes precedence when both are usable."
+  },
+  "StoresViewModelTests.The_in_use_marker_names_the_same_credential_the_state_word_does": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "keeps both methods present with key=%s session=%s and marks the credential carrying API calls"
+      }
+    ],
+    "reason": "All four key/session combinations render local-file state and the API credential marker; a stored key takes precedence when both are usable."
+  },
+  "StoresViewModelTests.The_accounts_section_states_the_total_and_the_account_count": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "omits empty counts and uses singular account nouns"
+      },
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "shows formatted whole-library totals and account summary with tabular figure styling"
+      }
+    ],
+    "reason": "Tests cover omitted zero counts and singular nouns, plus the separate 1,247 games across 2 accounts fixture."
+  },
+  "StoresViewModelTests.An_unconfirmed_account_marks_the_section_as_pending": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "composes with an unavailable count source and marks account confirmation pending until confirmed"
+      }
+    ],
+    "reason": "A missing count source draws no figures; unconfirmed identity displays pending state and disables the scope control until the confirmed snapshot arrives."
+  },
+  "StoresViewModelTests.The_panel_composes_without_a_count_source": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "composes with an unavailable count source and marks account confirmation pending until confirmed"
+      }
+    ],
+    "reason": "A missing count source draws no figures; unconfirmed identity displays pending state and disables the scope control until the confirmed snapshot arrives."
+  },
+  "StoresViewModelTests.A_platform_needing_attention_marks_its_tab_from_another_tab": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "keeps lapsed Epic and failing Steam attention visible on other tabs without starting a connection"
+      }
+    ],
+    "reason": "Hidden Epic expiry and failing Steam renewal remain visible on platform tabs; GOG has no attention marker and reading state starts no account operation."
+  },
+  "StoresViewModelTests.The_purchase_import_is_a_section_of_this_panel": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "shows both purchase import explanations before choosing a route, with no saved credential required"
+      }
+    ],
+    "reason": "The Steam purchase section opens one dialog containing both route explanations at the same disclosure level and both available actions without credentials."
+  },
+  "StoresViewModelTests.Neither_import_route_has_its_explanation_hidden_behind_the_other": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "shows both purchase import explanations before choosing a route, with no saved credential required"
+      }
+    ],
+    "reason": "The Steam purchase section opens one dialog containing both route explanations at the same disclosure level and both available actions without credentials."
+  },
+  "StoresViewModelTests.Refreshing_the_panel_refreshes_the_folded_import": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "refreshes folded capture availability and keeps saved files reachable without sign-in or a browser"
+      }
+    ],
+    "reason": "Refreshing and opening the folded section evaluates native capture availability without opening a browser; saved HTML stays enabled without a key, session or capture capability."
+  },
+  "StoresViewModelTests.The_saved_file_import_is_reachable_with_no_sign_in_and_no_key": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "refreshes folded capture availability and keeps saved files reachable without sign-in or a browser"
+      }
+    ],
+    "reason": "Refreshing and opening the folded section evaluates native capture availability without opening a browser; saved HTML stays enabled without a key, session or capture capability."
+  },
+  "StoresViewModelTests.Counts_come_from_the_whole_library_and_render_tabular": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "shows formatted whole-library totals and account summary with tabular figure styling"
+      },
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "counts each grouped title once per store before screen filtering"
+      },
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "uses the shared expansion projection without adding a folded pack store to its base"
+      }
+    ],
+    "reason": "Both modes show the original 1,247/67/14 figures from the full library. Shared projection and per-store distinctness tests guard folding and repeated editions."
+  },
+  "StoresViewModelTests.A_store_with_no_titles_shows_no_count_rather_than_a_zero": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-platforms.test.tsx",
+        "case": "omits empty counts and uses singular account nouns"
+      }
+    ],
+    "reason": "Empty platform figures are absent rather than rendered as zero."
+  },
+  "LibrarySettingsViewModelTests.A_hand_added_game_appears_in_the_library": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/ManualGameParityTests.cs",
+        "case": "Create_edit_and_delete_update_the_library_and_persist_across_restart"
+      }
+    ],
+    "reason": "Real production HTTP creates a manual entry with executable-derived installation state, updates the visible library and verifies both changes after backend restart."
+  },
+  "LibrarySettingsViewModelTests.A_hand_added_game_can_be_edited": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/ManualGameParityTests.cs",
+        "case": "Create_edit_and_delete_update_the_library_and_persist_across_restart"
+      }
+    ],
+    "reason": "Real production HTTP creates a manual entry with executable-derived installation state, updates the visible library and verifies both changes after backend restart."
+  },
+  "LibrarySettingsViewModelTests.A_hand_added_game_is_deleted_only_after_a_confirmation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-manual-form.test.tsx",
+        "case": "names the game in a cancel-first removal prompt and only removes after confirmation"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/ManualGameParityTests.cs",
+        "case": "Create_edit_and_delete_update_the_library_and_persist_across_restart"
+      }
+    ],
+    "reason": "Both modes name the entry, begin on Keep game, preserve it after cancellation and remove only after confirmation. Production HTTP also proves removal from manual entries and library across restart."
+  },
+  "LibrarySettingsViewModelTests.A_conflicting_steam_appid_is_reported_against_its_own_field": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-manual-form.test.tsx",
+        "case": "places an already claimed %s conflict only on the identifier and allows correction"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/ManualGameParityTests.cs",
+        "case": "A_claimed_Steam_identifier_names_its_field_and_creates_no_manual_entry"
+      }
+    ],
+    "reason": "Both modes preserve draft text, place the claimed-ID conflict only on its own field and allow a corrected retry; production HTTP confirms collision with a real Steam entry creates no manual data."
+  },
+  "LibrarySettingsViewModelTests.A_blank_title_is_reported_against_the_title_field": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-manual-form.test.tsx",
+        "case": "reports invalid %s=%s beside that field without writing"
+      }
+    ],
+    "reason": "Both modes cover the original whitespace title, nonnumeric ID, 1899/2201 years, nonpositive IGDB and zero/uint-overflow Steam IDs. Each retains the draft with one accessible field error and no backend write."
+  },
+  "LibrarySettingsViewModelTests.A_non_numeric_id_is_reported_against_its_own_field": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-manual-form.test.tsx",
+        "case": "reports invalid %s=%s beside that field without writing"
+      }
+    ],
+    "reason": "Both modes cover the original whitespace title, nonnumeric ID, 1899/2201 years, nonpositive IGDB and zero/uint-overflow Steam IDs. Each retains the draft with one accessible field error and no backend write."
+  },
+  "LibrarySettingsViewModelTests.Manual_form_uses_the_same_year_and_identifier_bounds_as_the_repository": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-manual-form.test.tsx",
+        "case": "reports invalid %s=%s beside that field without writing"
+      }
+    ],
+    "reason": "Both modes cover the original whitespace title, nonnumeric ID, 1899/2201 years, nonpositive IGDB and zero/uint-overflow Steam IDs. Each retains the draft with one accessible field error and no backend write."
+  }
+}

@@ -1,0 +1,392 @@
+{
+  "SteamAccountImportViewModelTests.Opening_the_screen_asks_what_can_run_here_and_starts_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "Opening_the_screen_asks_what_can_run_here_and_starts_nothing"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.Consent_is_granted_by_the_command_and_by_nothing_else": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "Consent_is_granted_by_the_command_and_by_nothing_else"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.The_saved_file_route_never_asks_the_browser_for_anything": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "Both_routes_converge_on_the_same_importer"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.Both_pages_captured_reports_it_and_runs_the_import": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "imports %s pages automatically after the dedicated capture command consents"
+      }
+    ],
+    "reason": "After the initial dedicated-import consent, complete and partial captures import immediately with their original source/account identity under one busy operation in desktop and fullscreen. Failed imports retain the same pages for an explicit retry."
+  },
+  "SteamAccountImportViewModelTests.One_page_of_two_still_imports_what_arrived": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "imports %s pages automatically after the dedicated capture command consents"
+      }
+    ],
+    "reason": "After the initial dedicated-import consent, complete and partial captures import immediately with their original source/account identity under one busy operation in desktop and fullscreen. Failed imports retain the same pages for an explicit retry."
+  },
+  "SteamAccountImportViewModelTests.Closing_the_window_is_a_fact_and_not_a_problem": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "capture outcome %s is distinct and only failed is a problem"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.Nobody_signing_in_is_a_fact_and_not_a_problem": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "capture outcome %s is distinct and only failed is a problem"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.No_embedded_browser_says_so_and_the_other_route_is_unaffected": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "No_embedded_browser_says_so_and_the_other_route_is_unaffected"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_session_that_produced_nothing_is_the_one_outcome_that_is_a_problem": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "capture outcome %s is distinct and only failed is a problem"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_screen_with_no_harvester_registered_says_the_route_cannot_run": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_screen_with_no_harvester_registered_says_the_route_cannot_run"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_route_in_flight_holds_both_buttons": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_route_in_flight_holds_both_buttons while %s runs"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.Counts_are_grouped_and_in_the_order_the_question_is_asked": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "Counts_are_grouped_and_in_the_order_the_question_is_asked"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_licence_total_Steam_does_not_render_is_shown_beside_the_rows_read": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_licence_total_Steam_does_not_render_is_shown_beside_the_rows_read"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_licence_total_that_matches_the_rows_read_is_not_restated": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_licence_total_that_matches_the_rows_read_is_not_restated"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.Only_the_skip_reasons_that_happened_are_listed": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "Only_the_skip_reasons_that_happened_are_listed"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_pass_that_filled_nothing_says_so_rather_than_showing_bare_zeroes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_pass_that_filled_nothing_says_so_rather_than_showing_bare_zeroes"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.An_unrecognised_page_reports_the_parser_s_reason": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "An_unrecognised_page_reports_the_parser_s_reason"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_saved_history_page_that_stopped_at_the_first_screen_says_so": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_saved_history_page_that_stopped_at_the_first_screen_says_so"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.The_sign_in_route_reports_truncation_without_the_saved_file_remedy": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "The_sign_in_route_reports_truncation_without_the_saved_file_remedy"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_walk_that_ran_to_the_end_outranks_a_parser_claiming_truncation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_walk_that_ran_to_the_end_outranks_a_parser_claiming_truncation"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_witness_silences_only_its_own_page": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_witness_silences_only_its_own_page"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_ceiling_outranks_the_end_of_walk_witness": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_ceiling_outranks_the_end_of_walk_witness"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_stalled_licences_walk_says_the_run_did_not_get_everything": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_stalled_%s_walk_says_the_run_did_not_get_everything"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_licences_walk_that_hit_the_ceiling_says_Winnow_stopped": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_%s_walk_that_hit_the_ceiling_says_Winnow_stopped"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_history_walk_that_hit_the_ceiling_says_Winnow_stopped": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_%s_walk_that_hit_the_ceiling_says_Winnow_stopped"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_stalled_history_walk_says_the_run_did_not_get_everything": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_stalled_%s_walk_says_the_run_did_not_get_everything"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_session_that_walked_both_pages_out_says_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_session_that_walked_both_pages_out_says_nothing"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_licenses_page_the_paginator_calls_partial_says_the_page_paginates": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_licenses_page_the_paginator_calls_partial_says_the_page_paginates"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_licence_count_that_stops_on_the_page_boundary_says_the_page_paginates": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "saved page boundary uses parsed=%s plus skipped=%s to warn=%s"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_full_saved_licences_page_is_caught_at_the_rendered_row_count": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "saved page boundary uses parsed=%s plus skipped=%s to warn=%s"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_short_saved_licences_page_is_not_accused_of_paginating": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "saved page boundary uses parsed=%s plus skipped=%s to warn=%s"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.The_page_boundary_guess_is_never_applied_to_a_walked_session": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "The_page_boundary_guess_is_never_applied_to_a_walked_session"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_licences_page_read_whole_says_nothing_about_pagination": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_licences_page_read_whole_says_nothing_about_pagination"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.Dismissing_the_picker_changes_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "Dismissing_the_picker_changes_nothing"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.Files_that_are_not_account_pages_are_named_and_nothing_is_imported": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "Files_that_are_not_account_pages_are_named_and_nothing_is_imported"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.Different_licence_pages_are_both_reported_loaded": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "Different_licence_pages_are_both_reported_loaded"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.One_file_of_each_kind_raises_no_second_copy_notice": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "One_file_of_each_kind_raises_no_second_copy_notice"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.Both_routes_converge_on_the_same_importer": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "Both_routes_converge_on_the_same_importer"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  },
+  "SteamAccountImportViewModelTests.A_new_attempt_clears_the_previous_report": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-import-report.test.tsx",
+        "case": "A_new_attempt_clears_the_previous_report"
+      }
+    ],
+    "reason": "Equivalent report, source-specific notice, or route-state assertions run for both desktop and fullscreen. The shared report consumes the backend import result; native capture supplies page-specific live-walk witnesses."
+  }
+}

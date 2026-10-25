@@ -366,6 +366,8 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             foreach (var plugin in plugins.ManagedPlugins)
                 Action(plugin.Name, () => Context.Push(new FullscreenPluginSettingsPage(Context, plugin)));
             Action("Open plugins folder", async () => await OpenPluginsFolderAsync(), "Run");
+            var restartLibrary = Action("Restart library service", () => { }, "Run");
+            restartLibrary.Command = plugins.RestartLibraryServiceCommand;
             rows.Children.Add(FullscreenInformation.Text(PluginSettingsViewModel.InstallationNote));
             var pluginStatus = FullscreenInformation.Metadata("");
             pluginStatus.Bind(TextBlock.TextProperty, new Binding(nameof(PluginSettingsViewModel.Status)) { Source = Context.Shared.EnrichmentSettings.Plugins });

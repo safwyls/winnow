@@ -1,0 +1,224 @@
+{
+  "GameplayStatsViewModelTests.Hidden_scope_reload_cancels_and_rejects_an_obsolete_result": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "hidden scope reload cancels and rejects an obsolete cancellation-ignoring result"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "Hidden_scope_rebuilds_real_ownerships_while_an_ignored_cancelled_read_cannot_complete_its_HTTP_client"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "Matching_replacement_reads_share_current_facts_while_nonmatching_and_obsolete_reads_remain_distinct"
+      },
+      {
+        "file": "tests/electron/gameplay-contracts.spec.ts",
+        "case": "source hidden scope cancels the obsolete two-owner read and preserves the current one-hour result"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "History_reads_ending_at_as_of_do_not_consume_dashboard_gates"
+      }
+    ],
+    "reason": "Both surfaces retain the original Game 1/Game 2 ownerships. Hiding work 2 cancels the held two-owner read and publishes 3,600 seconds from ownership 1; releasing the old 999,999-second result cannot replace the displayed one hour. Real SQLite visibility changes and HTTP request ledgers preserve the source scope assertions. Electron snapshot invalidation can issue canceled intermediate reads, so every matching replacement request receives the same current facts while the original read remains held until explicit release. A deferred read transaction preserves the coherent library/statistics snapshot without blocking the hide or replacement read. Native gates distinguish dashboard reads by the fixed as-of clock and an inclusive-date end different from as-of; incidental History reads end at as-of and remain separately recorded. Initial loading assertions prove the held read belongs to Gameplay."
+  },
+  "GameplayStatsViewModelTests.Identity_reload_updates_game_mapping_and_store_removal_resets_selection": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "identity reload retains %s, then removal permanently resets its saved selection"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "Same_game_links_and_removed_store_preserve_the_source_full_ownership_mapping_over_HTTP"
+      },
+      {
+        "file": "tests/electron/gameplay-contracts.spec.ts",
+        "case": "identity reload remaps both owners and resets a removed store"
+      }
+    ],
+    "reason": "The complete GOG and plugin:xbox/Xbox matrix runs on both surfaces. A real same-game link preserves the selected store and maps both ownerships to work 1. Removing ownership 2 resets the saved choice to All stores, sends a null store and retains only ownership 1. Component coverage also verifies reintroducing the removed store does not resurrect its old selection. Native request matching distinguishes the final source scope from canceled intermediate invalidation requests without changing the ledger."
+  },
+  "GameplayStatsViewModelTests.Search_does_not_filter_statistics_and_deactivation_rejects_pending_data": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "search does not filter statistics and deactivation aborts pending data"
+      },
+      {
+        "file": "tests/electron/gameplay-contracts.spec.ts",
+        "case": "source search leaves statistics unfiltered and deactivation rejects late ten-hour data"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "History_reads_ending_at_as_of_do_not_consume_dashboard_gates"
+      }
+    ],
+    "reason": "The exact no matching game search produces no library matches while statistics still receive both original ownerships. Leaving the dashboard cancels its physical request, and the cancellation-ignoring 36,000-second completion cannot publish into the disposed view or query cache. Native shell navigation and the actual backend request ledger complement component state assertions on desktop and fullscreen. Native gates distinguish dashboard reads by the fixed as-of clock and an inclusive-date end different from as-of; incidental History reads end at as-of and remain separately recorded. Initial loading assertions prove the held read belongs to Gameplay."
+  },
+  "GameplayStatsViewModelTests.Custom_local_day_uses_inclusive_calendar_dates_and_real_DST_duration": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "Los Angeles %s spans exactly %d hours in one UTC bin"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "Exact_Los_Angeles_calendar_days_reach_the_repository_as_one_UTC_bin"
+      },
+      {
+        "file": "tests/electron/gameplay-contracts.spec.ts",
+        "case": "inclusive local day sends its real ${duration}-hour UTC interval"
+      }
+    ],
+    "reason": "The fixed December 1, 2026 clock and America/Los_Angeles timezone preserve both original inclusive one-day ranges: March 8 spans 23 hours and November 1 spans 25. Each contains exactly one UTC bin matching the request endpoints. Production renderer date conversion, actual native date controls on both surfaces and HTTP transport all receive the same boundaries; timers remain live."
+  },
+  "GameplayStatsViewModelTests.Invalid_custom_dates_do_not_query_or_retain_obsolete_results": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "invalid dates %s through %s issue no read or obsolete publication"
+      },
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "invalid Apply cancels the current physical read and correction remains actionable"
+      },
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "invalid applied dates survive Spending and reactivation without querying the previous valid range"
+      },
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "accepts exactly 3660 elapsed calendar days plus the inclusive final date"
+      },
+      {
+        "file": "tests/electron/gameplay-contracts.spec.ts",
+        "case": "source five invalid custom date pairs send no query and reject obsolete results"
+      }
+    ],
+    "reason": "All five original invalid pairs remain literal fixtures: malformed, reversed, future, before 1900 and over ten years. Both surfaces report validation without another statistics read or loading/data publication; the late 999,999-second result stays rejected. The component also preserves the original deactivate/reactivate ordering. Actual invalid Apply and Spending/Gameplay navigation retain the invalid request intent instead of reusing a previously valid range, and correction remains actionable."
+  },
+  "GameplayStatsInteractionTests.Xbox_import_updates_open_gameplay_store_choices_and_library_counts": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "Xbox import refreshes ownership counts, store-prefixed dates and the empty median"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "Xbox_import_changes_real_library_store_counts_without_inventing_sessions"
+      },
+      {
+        "file": "tests/electron/gameplay-contracts.spec.ts",
+        "case": "source Xbox post-import reload updates open store choices and real library counts"
+      }
+    ],
+    "reason": "The original two Steam ownerships become Steam 1/Xbox 1 through a real SQLite ownership update and library event while the dashboard stays open. Both surfaces expose the Xbox label and counts, then selecting Xbox yields one library game, only Xbox store entries, an Xbox-prefixed period, 0 h and No completed sessions. Native simulated controller input exercises the fullscreen choice; no session data is invented."
+  },
+  "GameplayStatsInteractionTests.Both_surfaces_scope_dates_switch_sections_and_render_four_charts": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "renders the original eight-game preview figures, four charts and current store composition independent of period"
+      },
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "section controls retain focus and custom scope across the compact Spending toolbar"
+      },
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "renders four selectable charts, scopes dates and stores, and retains state across spending in %s"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "Exact_full_preview_library_and_statistics_formula_cross_the_real_HTTP_projection"
+      },
+      {
+        "file": "tests/electron/gameplay-contracts.spec.ts",
+        "case": "four charts retain store and inclusive custom dates across Gameplay and Spending"
+      }
+    ],
+    "reason": "The complete original preview preserves nine works/ownerships, eight resolved games, the Witcher duplicate, six played games and the source statistics formula. Four charts remain populated; 90 days leaves current library composition unchanged; the selected store reaches the reader; September 1–10 custom dates retain inclusive boundaries. Keyboard/controller date entry and section switching preserve the store and Custom selection, with the exact one-transaction $20 Spending fixture. Native desktop 1200/600×900 and fullscreen 1920/1280×1080, including narrow 140% text, verify all four chart sections, screenshots and horizontal bounds. Component state is independent by surface; Chromium may abbreviate September as Sept instead of the source's Sep."
+  },
+  "GameplayStatsInteractionTests.Desktop_error_retry_and_custom_date_validation_remain_actionable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "failed refresh clears earlier figures and Try again publishes only the new successful read"
+      },
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "invalid Apply cancels the current physical read and correction remains actionable"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "Source_reader_failure_retry_and_cancellation_do_not_replace_a_new_success"
+      },
+      {
+        "file": "tests/electron/gameplay-contracts.spec.ts",
+        "case": "desktop source failed read retries and malformed custom dates remain actionable"
+      }
+    ],
+    "reason": "The original 800×800 desktop preview first fails through the real repository/HTTP boundary, exposes Try again, then succeeds and clears the problem. Malformed custom dates show the YYYY-MM-DD validation and remove obsolete figures. Supplemental component coverage verifies that even a failed refresh of a previously successful query clears earlier figures before retry."
+  },
+  "GameplayStatsInteractionTests.Fullscreen_gameplay_retry_cancel_and_resume_are_controller_actions": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-activity.test.tsx",
+        "case": "retries, cancels and resumes without publishing the canceled result"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "Source_reader_failure_retry_and_cancellation_do_not_replace_a_new_success"
+      },
+      {
+        "file": "tests/electron/gameplay-contracts.spec.ts",
+        "case": "fullscreen source controller retry cancel and resume rejects the canceled empty completion"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "History_reads_ending_at_as_of_do_not_consume_dashboard_gates"
+      }
+    ],
+    "reason": "At 1920×1080 with the original full preview, simulated standard Gamepad API Accept activates Try again, Cancel and Try again. Cancel stops loading with Reading stopped; the replacement succeeds while the old reader remains held, and its later empty completion cannot replace the resumed figures. Repository failure, held completion and actual HTTP cancellation remain separate from the native controller assertion; this does not claim a physical device test. Native gates distinguish dashboard reads by the fixed as-of clock and an inclusive-date end different from as-of; incidental History reads end at as-of and remain separately recorded. Initial loading assertions prove the held read belongs to Gameplay."
+  },
+  "GameplayStatsInteractionTests.Fullscreen_shell_applies_native_section_style_and_real_text_scale": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/gameplay-contracts.spec.ts",
+        "case": "fullscreen source full shell preserves section and chart typography at text ${scale}"
+      }
+    ],
+    "reason": "The real fullscreen shell runs at 1920×1080 with text scales 1 and 1.4. Gameplay is the selected section, with the authored 3 px underline, 28×scale section text and 24×scale Recorded hours caption. Native computed styles distinguish Chromium zoom/raster rounding from authored token values, and overview, hours, library and custom-date captures verify layout without horizontal overflow. The test checks Chromium's computed border against floor(3 × zoom × devicePixelRatio) / (zoom × devicePixelRatio), preserving the source declaration while explicitly accounting for pixel quantization."
+  },
+  "GameplayStatsInteractionTests.Spending_header_keeps_figures_above_the_fold": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-gameplay-contracts.test.tsx",
+        "case": "section controls retain focus and custom scope across the compact Spending toolbar"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameplayStatsParityTests.cs",
+        "case": "Exact_full_preview_library_and_statistics_formula_cross_the_real_HTTP_projection"
+      },
+      {
+        "file": "tests/electron/gameplay-contracts.spec.ts",
+        "case": "Spending header keeps the dashboard above the fold"
+      }
+    ],
+    "reason": "With the original single $20 transaction aggregate, native desktop 1024/600×760 measures the dashboard top within the original 170/220 px limits relative to Stats. The source intro remains visible, the duplicate Steam account heading is absent, and Refresh Steam spending accepts focus. Shared toolbar component checks retain section focus, exports and figure ordering; the fullscreen Spending path is independently exercised by the chart interaction matrix."
+  }
+}

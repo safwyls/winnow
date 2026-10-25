@@ -139,12 +139,13 @@ public partial class GameListEntryViewModel : ObservableObject
                 _committed = wanted;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             _applying = true;
             try { IsMember = _committed; }
             finally { _applying = false; }
-            Problem = GameListsCopy.SaveFailed;
+            Problem = ex is Winnow.Api.Client.BackendApiException { StatusCode: System.Net.HttpStatusCode.Conflict }
+                ? GameListsCopy.Conflict : GameListsCopy.SaveFailed;
         }
         finally
         {

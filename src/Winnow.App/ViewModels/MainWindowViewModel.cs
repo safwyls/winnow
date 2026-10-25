@@ -35,12 +35,13 @@ public partial class MainWindowViewModel : ObservableObject
         LibrarySettingsViewModel librarySettings,
         FetchStatusViewModel? fetch = null,
         ISettingsRepository? settings = null,
-        Services.SessionJournalService? journal = null,
+        Services.ISessionJournalService? journal = null,
         ILibraryQueryRepository? libraryQueries = null,
         ApplicationSettingsViewModel? applicationSettings = null,
         FirstRunSetupViewModel? setup = null,
         EnrichmentSettingsViewModel? enrichmentSettings = null,
-        StatsViewModel? stats = null)
+        StatsViewModel? stats = null,
+        Winnow.Api.Client.WinnowApiClient? api = null)
     {
         Fetch = fetch ?? new FetchStatusViewModel();
         Library = library;
@@ -112,6 +113,7 @@ public partial class MainWindowViewModel : ObservableObject
             settings,
             journal: journal,
             libraryQueries: libraryQueries,
+            api: api,
             reloadLibrary: async () =>
             {
                 library.ShowNonGameEntries = Display!.ShowNonGameEntries;

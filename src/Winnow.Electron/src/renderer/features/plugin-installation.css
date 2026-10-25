@@ -1,0 +1,35 @@
+.plugin-installation progress {
+  display: block;
+  width: 100%;
+  height: 3px;
+  margin-block: 16px;
+  accent-color: var(--accent);
+}
+.mode-fullscreen .plugin-installation-page {
+  width: 100%;
+  max-width: 1320px;
+}
+.mode-fullscreen .plugin-installation-page h2 {
+  font-size: calc(64px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+  line-height: 1.2;
+  margin-bottom: 24px;
+}
+.mode-fullscreen .plugin-installation-page :is(p, button) {
+  font-size: calc(24px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+}
+.mode-fullscreen .plugin-installation-page button {
+  min-height: 64px;
+}
+.mode-fullscreen .plugin-installation-page progress {
+  height: 6px;
+}
+.mode-fullscreen.settings-page:has(.plugin-installation-page, .plugin-installed-page)
+  > :is(header, .fullscreen-section-navigation) {
+  display: none;
+}
+.mode-fullscreen .plugin-installed-page > :is(p, button) {
+  font-size: calc(24px * var(--fullscreen-text-scale, 1) * var(--theme-text-scale, 1));
+}
+.mode-fullscreen .plugin-installed-page > button {
+  min-height: 64px;
+}

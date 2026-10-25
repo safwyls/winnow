@@ -7,6 +7,14 @@ $root = [IO.Path]::GetFullPath($root)
 $pluginDirectory = Join-Path $root 'plugins/steamgriddb'
 $source = Join-Path (Split-Path $PSScriptRoot -Parent) 'plugins/Winnow.Plugin.SteamGridDb/plugin.json'
 $builtAssembly = Join-Path $BuildDirectory 'plugins/steamgriddb/Winnow.Plugin.SteamGridDb.dll'
+$coreAssembly = Join-Path $BuildDirectory 'Winnow.Core.dll'
+$releasePath = Join-Path $BuildDirectory 'release-info.json'
+if (Test-Path -LiteralPath $releasePath -PathType Leaf) {
+    $release = Get-Content -LiteralPath $releasePath -Raw | ConvertFrom-Json
+    if ($release.PSObject.Properties['frontend'] -and $release.frontend -eq 'electron') {
+        $coreAssembly = Join-Path $BuildDirectory 'backend/Winnow.Core.dll'
+    }
+}
 $manifest = Join-Path $pluginDirectory 'plugin.json'
 $assembly = Join-Path $pluginDirectory 'Winnow.Plugin.SteamGridDb.dll'
 New-Item -ItemType Directory -Path $pluginDirectory -Force | Out-Null
@@ -25,7 +33,7 @@ try {
 
     Remove-Item -LiteralPath $assembly
     Assert-Rejected { & "$PSScriptRoot/Verify-BundledPlugin.ps1" -PublishDirectory $root }
-    Copy-Item -LiteralPath (Join-Path $BuildDirectory 'Winnow.Core.dll') -Destination $assembly
+    Copy-Item -LiteralPath $coreAssembly -Destination $assembly
     Assert-Rejected { & "$PSScriptRoot/Verify-BundledPlugin.ps1" -PublishDirectory $root }
     Copy-Item -LiteralPath $builtAssembly -Destination $assembly -Force
 

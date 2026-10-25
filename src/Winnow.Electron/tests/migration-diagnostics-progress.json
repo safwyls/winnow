@@ -1,0 +1,194 @@
+{
+  "DiagnosticLoggingTests.Startup_fault_is_persisted_without_a_host_even_when_its_normal_sink_is_open": {
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "Startup_fault_is_persisted_without_a_host_even_when_its_normal_sink_is_open: %s"
+      },
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "does not treat multiline messages, arbitrary codes or file locations as structured metadata"
+      },
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "writes bounded structured logs inside the selected throwaway directory"
+      },
+      {
+        "file": "tests/electron/startup-boundary.spec.ts",
+        "case": "unloadable renderer startup reports exit three without an unhandled rejection"
+      }
+    ],
+    "reason": "Both original normal-sink states execute through the real frontend fallback file writer with no logger/host dependency. A real missing-file IO error supplies the actual native ENOENT code and numeric errno; its new frontend Error carries the exact unstructured-private-secret message and a named startupIoFault callsite. The log retains type, named callsite, native numeric code, build/commit/run/OS/runtime and excludes that arbitrary message, selected data root and failing file path. The open-sink row retains a real logs/diagnostic.log file handle while the separate electron-startup-failure.log is written. JavaScript has no .NET IOException.HResult: actual Node code/errno is the explicit platform adaptation, never a fabricated HRESULT. Human alert still carries useful scrubbed original fault text separately from the persistent record. Rotation remains bounded at the existing 512 KiB threshold; giant-message and multiline fake-frame tests preserve privacy and finite event size.",
+    "status": "ported"
+  },
+  "DiagnosticLoggingTests.Failure_to_write_startup_diagnostics_preserves_exit_code_and_alert": {
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "Failure_to_write_startup_diagnostics_preserves_exit_code_and_alert with a real file blocking logs"
+      },
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "preserves the exit status when both logging and the alert throw"
+      }
+    ],
+    "reason": "The exact source filesystem failure is preserved: a real ordinary file occupies the selected root's logs path, so mkdir/append cannot create the fallback sink. reportStartupFailure returns 3 and invokes the original-fault alert exactly once; the blocking file remains unchanged. Existing independent logger and surface failure tests retain the original exit status rather than replacing it with reporting failures.",
+    "status": "ported"
+  },
+  "DiagnosticLoggingTests.Startup_cancellation_does_not_write_failure_diagnostics": {
+    "tests": [
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "Startup_cancellation_does_not_write_failure_diagnostics or create the logs directory"
+      },
+      {
+        "file": "tests/parity-startup-failure.test.ts",
+        "case": "treats %s cancellation as a clean shutdown without logging or showing an alert"
+      }
+    ],
+    "reason": "A fresh actual selected directory plus AbortError returns 0, never alerts, and leaves logs nonexistent. The existing AbortError/ABORT_ERR matrix also proves neither the injected log nor alert is called. These are the frontend cancellation representations replacing OperationCanceledException.",
+    "status": "ported"
+  },
+  "ApplicationSettingsViewModelTests.Windows_registration_quotes_the_executable_and_starts_in_background": {
+    "tests": [
+      {
+        "file": "tests/parity-login-options.test.ts",
+        "case": "passes the source executable and background argument separately to Electron for native quoting"
+      },
+      {
+        "file": "tests/parity-login-options.test.ts",
+        "case": "uses identical executable and arguments for reading and writing an isolated registration"
+      },
+      {
+        "file": "tests/parity-login-options.test.ts",
+        "case": "does not turn a resolved default or legacy data root into an explicit isolated launch"
+      },
+      {
+        "file": "tests/electron/diagnostics.spec.ts",
+        "case": "captured Windows autostart reads and writes the same executable and background isolated-root arguments"
+      }
+    ],
+    "reason": "Preserves exact source executable C:\\Program Files\\Winnow\\Winnow.exe and --background. Production supplies Electron's structured path/args API instead of formatting an unused command string. The installed Electron 44.4.5 implementation FormatCommandLineString quotes the executable and each argument; raw path/args therefore produce the source command while avoiding double quoting. The same options now govern getLoginItemSettings and setLoginItemSettings, correcting the read/write mismatch. Explicit isolated roots remain arguments; resolved default/legacy roots are not newly forced into the isolated frontend profile. Unit tests never mutate autorun. Both native surfaces capture the built main handler calling get/set with the same executable and isolated background arguments; no actual autorun entry is mutated.",
+    "platformImplementationReference": "https://github.com/electron/electron/blob/v44.4.5/shell/browser/browser_win.cc#L146",
+    "installedApiReference": "src/Winnow.Electron/node_modules/electron/electron.d.ts:1254 (getLoginItemSettings requires the same path/args as setLoginItemSettings)",
+    "status": "ported"
+  },
+  "FetchStatusTests.A_pass_with_nothing_to_do_shows_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fetch-status.test.ts",
+        "case": "a pass with nothing to do shows nothing"
+      }
+    ],
+    "reason": "The original Begin(0) fixture remains inactive."
+  },
+  "FetchStatusTests.The_field_names_what_is_left_as_a_count": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fetch-status.test.ts",
+        "case": "the field names what is left as a count"
+      }
+    ],
+    "reason": "The original Begin(1247) fixture is active with exact 1,247 count, count in automation name and nonempty label/note."
+  },
+  "FetchStatusTests.The_count_falls_as_the_pass_advances": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fetch-status.test.ts",
+        "case": "the count falls as the pass advances"
+      }
+    ],
+    "reason": "The original Begin(80), Report(40) fixture stays active with exact 40 text."
+  },
+  "FetchStatusTests.The_field_disappears_on_completion": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fetch-status.test.ts",
+        "case": "the field disappears on completion"
+      }
+    ],
+    "reason": "The original Begin(80), Report(0) fixture hides."
+  },
+  "FetchStatusTests.A_report_that_arrives_after_completion_does_not_bring_it_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fetch-status.test.ts",
+        "case": "a report that arrives after completion does not bring it back"
+      }
+    ],
+    "reason": "The original Begin(80), Clear(), Report(40) fixture remains hidden. Separate live reporter tests preserve new-pass initiation and prevent stale HTTP completions from resurrecting completed state."
+  },
+  "FetchStatusTests.The_singular_and_the_plural_are_both_written": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-fetch-status.test.ts",
+        "case": "the singular and the plural are both written"
+      }
+    ],
+    "reason": "The original Begin(1), Report(2) fixture yields distinct exact title left/titles left copy."
+  },
+  "TitleBarFetchStatusTests.Fetch_progress_fits_caption_updates_and_survives_fullscreen_round_trip": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/app.test.tsx",
+        "case": "keeps the passive 997 caption current through fullscreen and completion without refreshing library snapshots"
+      },
+      {
+        "file": "tests/parity-fetch-caption.test.tsx",
+        "case": "reads the initial snapshot, refreshes on reconnect/resync and continues behind dialogs and fullscreen"
+      },
+      {
+        "file": "tests/parity-fetch-caption.test.tsx",
+        "case": "cancels bridge reads superseded by events and refuses their late replies after completion or unmount"
+      },
+      {
+        "file": "tests/parity-fetch-caption.test.tsx",
+        "case": "clears active work on disconnect, cancels its pending read and resumes only on reconnect"
+      },
+      {
+        "file": "tests/electron/diagnostics.spec.ts",
+        "case": "fetch caption preserves exact 997 singular fullscreen round trip and modal input"
+      }
+    ],
+    "reason": "Executed renderer composition preserves hidden initial state, caption in Avalon header, exact Fetching details, 997 titles left accessible name, no focus target, fullscreen hiding with observer retained, Report(1) during fullscreen then singular return, and completion hiding. Count changes use polite/atomic status, exact accessible name and data-item-status. Progress-only events leave primary snapshot read counts unchanged. Dialog editing retains focus/draft. Cancellation, event coalescing, stale/disposed replies and disconnect/reconnect covered. Native Chromium at the original 1200x688 viewport verifies caption/header bounds, natural widths, exact 10/10/11 typography, tabular data face, passive hit testing, unchanged Search focus, fullscreen round trip and modal text input. Progress reads leave Library/feed request counters unchanged. Captured screenshots were inspected; physical screen-reader behavior is not claimed."
+  },
+  "SessionWatcherDiagnosticsTests.Settings_keep_log_access_after_recovery_on_both_surfaces": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "keeps Settings log access after watcher recovery and clears the exact manual path after a successful retry"
+      },
+      {
+        "file": "tests/electron/diagnostics.spec.ts",
+        "case": "watcher recovery retains Settings logs and failed folder open exposes the exact path until successful retry"
+      }
+    ],
+    "reason": "Executed with actual desktop/fullscreen ApplicationPreferences. Watcher failure initially offers notice and Settings actions; full recovery removes only the notice and leaves the named Settings Open logs folder action wired to the named logs bridge. Both surfaces retained. Existing quiet failure test verifies partial recovery does not clear another unresolved operation or move current focus. Native desktop and fullscreen use real backend watcher failure/recovery, retain Settings log access, show the exact selected-root path without Electron IPC transport copy, and clear it only on successful retry; screenshot evidence records both surfaces."
+  },
+  "SessionWatcherDiagnosticsTests.Failed_folder_open_exposes_manual_path_and_retry_clears_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "keeps Settings log access after watcher recovery and clears the exact manual path after a successful retry"
+      },
+      {
+        "file": "tests/parity-settings-notifications.test.tsx",
+        "case": "keeps diagnostics current while a dialog suspends the notice and retries its exact logs failure without moving focus"
+      },
+      {
+        "file": "tests/electron/diagnostics.spec.ts",
+        "case": "watcher recovery retains Settings logs and failed folder open exposes the exact path until successful retry"
+      }
+    ],
+    "reason": "Executed both desktop/fullscreen Settings and session-notice paths. Named native logs bridge failure carries the exact manual path, remains readable, and successful retry clears only its own error. Renderer does not reconstruct the backend root. Diagnostics subscription stays live under suspended notices and shows correct failure/recovery after dialog closure without taking focus. Coordinator/host-owned tests prove mkdir/shell failures return the actual resolved backend path. Native desktop and fullscreen use real backend watcher failure/recovery, retain Settings log access, show the exact selected-root path without Electron IPC transport copy, and clear it only on successful retry; screenshot evidence records both surfaces."
+  }
+}

@@ -2,12 +2,19 @@
 
 Winnow loads optional local .NET plugins for library imports, metadata, artwork and recommendation
 feeds. SteamGridDB is the bundled reference plugin in `plugins/Winnow.Plugin.SteamGridDb`.
-It references the public SDK alone; the application supplies storage and HTTP services.
+It references the public SDK alone; the independent backend supplies storage and HTTP services.
+All frontends connected to that backend share the loaded providers and their configuration.
 
 For an explanation of the design with a SteamGridDB trace and a buildable example, read
 [Building Winnow's plugin system, from the inside out](plugin-system-walkthrough.md).
 
 ## Install and configure
+
+A plugin restart means restarting the **backend**, which stays running after frontend windows
+close. In desktop or fullscreen, open **Settings → Plugins → Manage plugins** and choose
+**Restart library service**. Winnow waits for the backend to exit, starts it again, and reconnects
+the open windows. This reloads providers for every connected frontend. Wait for pending plugin
+saves or installations to finish before restarting.
 
 Desktop and fullscreen Plugins settings give each plugin loaded in the current session its
 own tab. Left and right arrows appear when the tabs exceed the available width. Pending enable
@@ -22,6 +29,12 @@ PlayStation providers with downloads from published GitHub releases. **Install i
 opens the app, installs and enables a new package, then opens its settings. Desktop and
 fullscreen show progress, the result and a retry action on failure. Complete any required
 account connection or API-key setup there. SteamGridDB already ships with Winnow.
+
+Electron keeps desktop progress in Plugins settings and uses a separate fullscreen
+installation page. Leaving the page keeps installation running. Its result remains in
+Plugins settings; fullscreen exposes **Plugin installation** under **Manage plugins**.
+Completion opens the provider's settings only while the installation flow is still active.
+If setup was open, **Resume setup** returns to its saved step without marking it complete.
 
 Windows installers and Linux packages register the `winnow:` browser handoff. Update Winnow
 if the browser cannot open it. Portable installations can use the ZIP download below or
@@ -42,11 +55,11 @@ local ZIPs. New packages load immediately; existing assemblies are never replace
 1. Open **Settings → Plugins → Open plugins folder**. The folder is `plugins`
    inside Winnow's data directory, including when using `--data-dir`. Winnow creates it
    during startup if it is missing.
-2. Drop a plugin `.zip` into that folder and restart Winnow. The archive must contain
+2. Drop a plugin `.zip` into that folder, then choose **Restart library service**. The archive must contain
    `plugin.json`, the entry DLL and any private dependencies, either at its root or inside
    one enclosing folder. Winnow unpacks it into a directory named for the plugin ID.
    You can also copy an already extracted package into its own subdirectory.
-3. Enable the plugin in the same settings tab, then restart to activate it. Third-party
+3. Enable the plugin in the same settings tab, then choose **Restart library service** to activate it. Third-party
    packages start disabled. Enabling a plugin authorizes its code to run on your device.
 4. Enter its declared settings and credentials. Saving queues a background refresh;
    **Refresh** queues another pass. Artwork providers appear in the source-order controls.
@@ -59,9 +72,9 @@ links, conflicting filenames and invalid packages are rejected before installati
 An interrupted extraction is not discovered as a plugin.
 
 Desktop and fullscreen expose the same configuration through their own controls. ZIP imports
-never overwrite existing packages or replace a bundled plugin. To update a user plugin, close
-Winnow and replace its package files, or remove its directory before dropping in the replacement
-ZIP. To uninstall, close Winnow and remove the plugin directory.
+never overwrite existing packages or replace a bundled plugin. To update a user plugin, stop
+the backend and replace its package files, or remove its directory before dropping in the replacement
+ZIP. To uninstall, stop the backend and remove the plugin directory.
 Disabling or uninstalling retains imported library facts and cached metadata. It stops future
 provider execution after restart. The website installer is limited to Winnow's own providers;
 third-party packages use the local installation flow. Automatic plugin updates and reloading
@@ -69,7 +82,7 @@ existing assemblies are not supported.
 
 ## Trust and lifecycle
 
-Plugins execute as **trusted code inside Winnow's process**. They can exercise the operating
+Plugins execute as **trusted code inside Winnow.Backend's process**. They can exercise the operating
 system permissions of Winnow. Declared hosts and scoped services constrain calls made through
 the SDK; they cannot constrain a DLL that directly uses .NET filesystem or network APIs.
 An `AssemblyLoadContext` separates dependency resolution, not security permissions.

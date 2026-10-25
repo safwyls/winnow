@@ -80,7 +80,7 @@ public sealed class RepositoryHygieneTests
             "docs/decisions.md",                                  // holds the rename's history
             "design-system.md",                                   // three deliberate uses of the noun
             "src/Winnow.App/Views/ActionBarView.axaml",           // the fourth
-            "src/Winnow.App/Services/WinnowDataLocation.cs",      // moves %LOCALAPPDATA%\Hoard, renames hoard.db
+            "src/Winnow.Application/Services/WinnowDataLocation.cs", // moves %LOCALAPPDATA%\Hoard, renames hoard.db
             "src/Winnow.Data/DatabaseInitializer.cs",             // re-points the Hoard.Data.Migrations journal
             "src/Winnow.Data/SqliteDatabaseCheck.cs",             // the hoard.db sidecar rename
         ];

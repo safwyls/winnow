@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+case "$1" in
+    remove|purge)
+        if command -v aa-enabled >/dev/null 2>&1 && aa-enabled --quiet &&
+           [ -r /etc/apparmor.d/winnow-electron ] &&
+           grep -q '^winnow-electron ' /sys/kernel/security/apparmor/profiles; then
+            apparmor_parser --remove /etc/apparmor.d/winnow-electron
+        fi
+        ;;
+esac
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications
+fi

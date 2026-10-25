@@ -1,0 +1,1257 @@
+{
+  "CrossJobPlaytimeSeriesTests.A_later_local_date_with_lower_minutes_advances_recency_without_moving_the_series": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise real local and remote synchronization, monotonic playtime history, independent recency and current installation evidence. The same backend sync services and repositories remain active; no renderer state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/PlaytimeSnapshotRepository.cs",
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs"
+    ]
+  },
+  "CrossJobPlaytimeSeriesTests.A_local_tick_after_a_remote_backfill_does_not_saw_the_series": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise real local and remote synchronization, monotonic playtime history, independent recency and current installation evidence. The same backend sync services and repositories remain active; no renderer state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/PlaytimeSnapshotRepository.cs",
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs"
+    ]
+  },
+  "CrossJobPlaytimeSeriesTests.An_unconfigured_backfill_does_not_scan_or_resolve": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise real local and remote synchronization, monotonic playtime history, independent recency and current installation evidence. The same backend sync services and repositories remain active; no renderer state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/PlaytimeSnapshotRepository.cs",
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs"
+    ]
+  },
+  "CrossJobPlaytimeSeriesTests.Genuine_local_progress_past_the_backfill_still_advances_the_series": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise real local and remote synchronization, monotonic playtime history, independent recency and current installation evidence. The same backend sync services and repositories remain active; no renderer state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/PlaytimeSnapshotRepository.cs",
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs"
+    ]
+  },
+  "CrossJobPlaytimeSeriesTests.Startup_backfill_cannot_restore_a_manifest_deleted_after_the_reusable_scan": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise real local and remote synchronization, monotonic playtime history, independent recency and current installation evidence. The same backend sync services and repositories remain active; no renderer state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/PlaytimeSnapshotRepository.cs",
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs"
+    ]
+  },
+  "CrossJobPlaytimeSeriesTests.Startup_backfill_rereads_install_state_but_an_offline_library_preserves_the_stored_installation": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise real local and remote synchronization, monotonic playtime history, independent recency and current installation evidence. The same backend sync services and repositories remain active; no renderer state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/PlaytimeSnapshotRepository.cs",
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs"
+    ]
+  },
+  "DiagnosticLoggingTests.Every_event_identifies_the_build_and_run_even_after_rotation": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the shared production diagnostic sink, redaction, rotation or event context. BackendApplication configures this same implementation. The three source methods invoking the Avalonia StartupFailure boundary are excluded.",
+    "implementation": [
+      "src/Winnow.Diagnostics/DiagnosticLogging.cs"
+    ]
+  },
+  "DiagnosticLoggingTests.Host_logging_persists_under_the_selected_data_directory_and_flushes_each_event": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the shared production diagnostic sink, redaction, rotation or event context. BackendApplication configures this same implementation. The three source methods invoking the Avalonia StartupFailure boundary are excluded.",
+    "implementation": [
+      "src/Winnow.Diagnostics/DiagnosticLogging.cs"
+    ]
+  },
+  "DiagnosticLoggingTests.New_run_retains_previous_diagnostics": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the shared production diagnostic sink, redaction, rotation or event context. BackendApplication configures this same implementation. The three source methods invoking the Avalonia StartupFailure boundary are excluded.",
+    "implementation": [
+      "src/Winnow.Diagnostics/DiagnosticLogging.cs"
+    ]
+  },
+  "DiagnosticLoggingTests.Rotation_bounds_file_count_and_bytes_even_for_giant_events_and_restart": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the shared production diagnostic sink, redaction, rotation or event context. BackendApplication configures this same implementation. The three source methods invoking the Avalonia StartupFailure boundary are excluded.",
+    "implementation": [
+      "src/Winnow.Diagnostics/DiagnosticLogging.cs"
+    ]
+  },
+  "DiagnosticLoggingTests.Structured_values_scopes_and_exception_messages_never_reach_disk": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the shared production diagnostic sink, redaction, rotation or event context. BackendApplication configures this same implementation. The three source methods invoking the Avalonia StartupFailure boundary are excluded.",
+    "implementation": [
+      "src/Winnow.Diagnostics/DiagnosticLogging.cs"
+    ]
+  },
+  "DiagnosticLoggingTests.Unstructured_text_is_scrubbed": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the shared production diagnostic sink, redaction, rotation or event context. BackendApplication configures this same implementation. The three source methods invoking the Avalonia StartupFailure boundary are excluded.",
+    "implementation": [
+      "src/Winnow.Diagnostics/DiagnosticLogging.cs"
+    ]
+  },
+  "DiagnosticLoggingTests.Watcher_operation_is_identifiable_without_allowing_arbitrary_operation_strings": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the shared production diagnostic sink, redaction, rotation or event context. BackendApplication configures this same implementation. The three source methods invoking the Avalonia StartupFailure boundary are excluded.",
+    "implementation": [
+      "src/Winnow.Diagnostics/DiagnosticLogging.cs"
+    ]
+  },
+  "EpicInstallRefreshTests.A_failed_publish_reconciles_even_when_files_return_to_the_last_applied_state": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained Epic manifest completeness, stable polling, failed synchronization, cancellation and publication through the production install watcher and local sync service. No frontend controls are instantiated.",
+    "implementation": [
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs"
+    ]
+  },
+  "EpicInstallRefreshTests.Completion_refreshes_real_ownership_only_after_stable_explicit_completion": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained Epic manifest completeness, stable polling, failed synchronization, cancellation and publication through the production install watcher and local sync service. No frontend controls are instantiated.",
+    "implementation": [
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs"
+    ]
+  },
+  "EpicInstallRefreshTests.Disabled_service_never_reads_or_writes": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained Epic manifest completeness, stable polling, failed synchronization, cancellation and publication through the production install watcher and local sync service. No frontend controls are instantiated.",
+    "implementation": [
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs"
+    ]
+  },
+  "EpicInstallRefreshTests.Failed_sync_is_retried_and_change_during_sync_is_not_published": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained Epic manifest completeness, stable polling, failed synchronization, cancellation and publication through the production install watcher and local sync service. No frontend controls are instantiated.",
+    "implementation": [
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs"
+    ]
+  },
+  "EpicInstallRefreshTests.Host_shutdown_cancels_pending_sync_and_does_not_publish": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained Epic manifest completeness, stable polling, failed synchronization, cancellation and publication through the production install watcher and local sync service. No frontend controls are instantiated.",
+    "implementation": [
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs"
+    ]
+  },
+  "EpicInstallRefreshTests.Missing_or_invalid_completion_field_never_means_installed": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained Epic manifest completeness, stable polling, failed synchronization, cancellation and publication through the production install watcher and local sync service. No frontend controls are instantiated.",
+    "implementation": [
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs"
+    ]
+  },
+  "EpicInstallRefreshTests.Pending_files_are_ignored_and_unreadable_directory_is_not_an_empty_snapshot": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained Epic manifest completeness, stable polling, failed synchronization, cancellation and publication through the production install watcher and local sync service. No frontend controls are instantiated.",
+    "implementation": [
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs"
+    ]
+  },
+  "EpicInstallRefreshTests.Read_failure_and_mutating_snapshot_restart_stability_window": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained Epic manifest completeness, stable polling, failed synchronization, cancellation and publication through the production install watcher and local sync service. No frontend controls are instantiated.",
+    "implementation": [
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs"
+    ]
+  },
+  "EpicLibraryIsolationTests.A_delayed_cache_lookup_cannot_publish_after_an_account_switch": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production Epic account-scoped durable caches, sign-out, credential generations and delayed-response isolation. Backend Epic ingestion retains the same account client and cache implementation.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs"
+    ]
+  },
+  "EpicLibraryIsolationTests.A_delayed_page_is_discarded_after_sign_out_even_if_the_same_account_signs_back_in": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production Epic account-scoped durable caches, sign-out, credential generations and delayed-response isolation. Backend Epic ingestion retains the same account client and cache implementation.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs"
+    ]
+  },
+  "EpicLibraryIsolationTests.Legacy_global_payload_and_misfiled_account_payload_are_not_evidence_for_a_new_account": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production Epic account-scoped durable caches, sign-out, credential generations and delayed-response isolation. Backend Epic ingestion retains the same account client and cache implementation.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs"
+    ]
+  },
+  "EpicLibraryIsolationTests.Normal_token_renewal_preserves_the_operation_generation": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production Epic account-scoped durable caches, sign-out, credential generations and delayed-response isolation. Backend Epic ingestion retains the same account client and cache implementation.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs"
+    ]
+  },
+  "EpicLibraryIsolationTests.Offline_refresh_of_an_expired_token_can_use_only_the_same_accounts_stale_payload": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production Epic account-scoped durable caches, sign-out, credential generations and delayed-response isolation. Backend Epic ingestion retains the same account client and cache implementation.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs"
+    ]
+  },
+  "EpicLibraryIsolationTests.Sign_out_prevents_a_warm_cache_from_emitting_candidates": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production Epic account-scoped durable caches, sign-out, credential generations and delayed-response isolation. Backend Epic ingestion retains the same account client and cache implementation.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs"
+    ]
+  },
+  "EpicLibraryIsolationTests.Switching_accounts_after_restart_cannot_reuse_another_accounts_durable_library": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production Epic account-scoped durable caches, sign-out, credential generations and delayed-response isolation. Backend Epic ingestion retains the same account client and cache implementation.",
+    "implementation": [
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs"
+    ]
+  },
+  "FacetSyncServiceTests.A_second_run_writes_nothing": {
+    "status": "retained-backend",
+    "reason": "The original tests derive and persist facets from cached IGDB and Steam metadata through the production FacetSyncService and real repositories, including source isolation and warm-run idempotency. The backend metadata pipeline retains this service.",
+    "implementation": [
+      "src/Winnow.Application/Services/FacetSyncService.cs",
+      "src/Winnow.Data/Repositories/FacetRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "FacetSyncServiceTests.A_work_with_no_cached_metadata_contributes_nothing_and_is_not_lost": {
+    "status": "retained-backend",
+    "reason": "The original tests derive and persist facets from cached IGDB and Steam metadata through the production FacetSyncService and real repositories, including source isolation and warm-run idempotency. The backend metadata pipeline retains this service.",
+    "implementation": [
+      "src/Winnow.Application/Services/FacetSyncService.cs",
+      "src/Winnow.Data/Repositories/FacetRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "FacetSyncServiceTests.An_empty_library_is_a_no_op": {
+    "status": "retained-backend",
+    "reason": "The original tests derive and persist facets from cached IGDB and Steam metadata through the production FacetSyncService and real repositories, including source isolation and warm-run idempotency. The backend metadata pipeline retains this service.",
+    "implementation": [
+      "src/Winnow.Application/Services/FacetSyncService.cs",
+      "src/Winnow.Data/Repositories/FacetRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "FacetSyncServiceTests.An_older_cached_payload_without_game_modes_still_yields_its_genres": {
+    "status": "retained-backend",
+    "reason": "The original tests derive and persist facets from cached IGDB and Steam metadata through the production FacetSyncService and real repositories, including source isolation and warm-run idempotency. The backend metadata pipeline retains this service.",
+    "implementation": [
+      "src/Winnow.Application/Services/FacetSyncService.cs",
+      "src/Winnow.Data/Repositories/FacetRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "FacetSyncServiceTests.Both_sources_land_at_their_own_layer": {
+    "status": "retained-backend",
+    "reason": "The original tests derive and persist facets from cached IGDB and Steam metadata through the production FacetSyncService and real repositories, including source isolation and warm-run idempotency. The backend metadata pipeline retains this service.",
+    "implementation": [
+      "src/Winnow.Application/Services/FacetSyncService.cs",
+      "src/Winnow.Data/Repositories/FacetRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "FacetSyncServiceTests.Reads_game_modes_and_perspectives_from_a_newer_cached_payload": {
+    "status": "retained-backend",
+    "reason": "The original tests derive and persist facets from cached IGDB and Steam metadata through the production FacetSyncService and real repositories, including source isolation and warm-run idempotency. The backend metadata pipeline retains this service.",
+    "implementation": [
+      "src/Winnow.Application/Services/FacetSyncService.cs",
+      "src/Winnow.Data/Repositories/FacetRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "FacetSyncServiceTests.Reads_genres_and_themes_out_of_the_cache_with_no_network": {
+    "status": "retained-backend",
+    "reason": "The original tests derive and persist facets from cached IGDB and Steam metadata through the production FacetSyncService and real repositories, including source isolation and warm-run idempotency. The backend metadata pipeline retains this service.",
+    "implementation": [
+      "src/Winnow.Application/Services/FacetSyncService.cs",
+      "src/Winnow.Data/Repositories/FacetRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "FacetSyncServiceTests.Reads_tags_and_categories_out_of_the_captured_store_body": {
+    "status": "retained-backend",
+    "reason": "The original tests derive and persist facets from cached IGDB and Steam metadata through the production FacetSyncService and real repositories, including source isolation and warm-run idempotency. The backend metadata pipeline retains this service.",
+    "implementation": [
+      "src/Winnow.Application/Services/FacetSyncService.cs",
+      "src/Winnow.Data/Repositories/FacetRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "FacetSyncServiceTests.Without_a_store_vocabulary_the_steam_half_is_left_untouched": {
+    "status": "retained-backend",
+    "reason": "The original tests derive and persist facets from cached IGDB and Steam metadata through the production FacetSyncService and real repositories, including source isolation and warm-run idempotency. The backend metadata pipeline retains this service.",
+    "implementation": [
+      "src/Winnow.Application/Services/FacetSyncService.cs",
+      "src/Winnow.Data/Repositories/FacetRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "GameLaunchTests.A_refused_dispatch_withdraws_the_intent_and_does_not_throw": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the production backend launch service, URI dispatch refusal, install policy or launch-intent ordering. The source methods asserting Avalonia library selection or LaunchStatusViewModel strips are excluded.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameLaunchService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs",
+      "src/Winnow.Monitor/LaunchIntents.cs"
+    ]
+  },
+  "GameLaunchTests.A_second_click_while_the_first_launch_is_in_flight_fires_nothing": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the production backend launch service, URI dispatch refusal, install policy or launch-intent ordering. The source methods asserting Avalonia library selection or LaunchStatusViewModel strips are excluded.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameLaunchService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs",
+      "src/Winnow.Monitor/LaunchIntents.cs"
+    ]
+  },
+  "GameLaunchTests.A_throwing_dispatcher_is_a_refusal_not_a_crash": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the production backend launch service, URI dispatch refusal, install policy or launch-intent ordering. The source methods asserting Avalonia library selection or LaunchStatusViewModel strips are excluded.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameLaunchService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs",
+      "src/Winnow.Monitor/LaunchIntents.cs"
+    ]
+  },
+  "GameLaunchTests.An_install_dispatches_and_declares_nothing": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the production backend launch service, URI dispatch refusal, install policy or launch-intent ordering. The source methods asserting Avalonia library selection or LaunchStatusViewModel strips are excluded.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameLaunchService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs",
+      "src/Winnow.Monitor/LaunchIntents.cs"
+    ]
+  },
+  "GameLaunchTests.Play_declares_the_intent_before_it_fires_the_uri": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the production backend launch service, URI dispatch refusal, install policy or launch-intent ordering. The source methods asserting Avalonia library selection or LaunchStatusViewModel strips are excluded.",
+    "implementation": [
+      "src/Winnow.Application/Services/GameLaunchService.cs",
+      "src/Winnow.Api.Contracts/Actions/StoreActions.cs",
+      "src/Winnow.Monitor/LaunchIntents.cs"
+    ]
+  },
+  "GogInstallReconciliationTests.A_caught_batch_failure_rolls_back_provenance_before_the_caller_commits": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production read-only GOG registry inventory and transactional install reconciliation, including incomplete scans, restart, old remote snapshots and rollback. The backend retains the reader, sync service and install-state repository.",
+    "implementation": [
+      "src/Winnow.Ingest.Gog/GogInstalledGameRegistry.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Data/Repositories/GogInstallStateRepository.cs"
+    ]
+  },
+  "GogInstallReconciliationTests.A_positive_partial_inventory_updates_install_path_without_clearing_other_installs": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production read-only GOG registry inventory and transactional install reconciliation, including incomplete scans, restart, old remote snapshots and rollback. The backend retains the reader, sync service and install-state repository.",
+    "implementation": [
+      "src/Winnow.Ingest.Gog/GogInstalledGameRegistry.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Data/Repositories/GogInstallStateRepository.cs"
+    ]
+  },
+  "GogInstallReconciliationTests.An_empty_readable_inventory_is_complete": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production read-only GOG registry inventory and transactional install reconciliation, including incomplete scans, restart, old remote snapshots and rollback. The backend retains the reader, sync service and install-state repository.",
+    "implementation": [
+      "src/Winnow.Ingest.Gog/GogInstalledGameRegistry.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Data/Repositories/GogInstallStateRepository.cs"
+    ]
+  },
+  "GogInstallReconciliationTests.Current_Galaxy_installs_survive_registry_absence_but_old_remote_Galaxy_cannot_restore_them": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production read-only GOG registry inventory and transactional install reconciliation, including incomplete scans, restart, old remote snapshots and rollback. The backend retains the reader, sync service and install-state repository.",
+    "implementation": [
+      "src/Winnow.Ingest.Gog/GogInstalledGameRegistry.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Data/Repositories/GogInstallStateRepository.cs"
+    ]
+  },
+  "GogInstallReconciliationTests.Failed_registry_reads_preserve_readable_positives_and_withhold_absence": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production read-only GOG registry inventory and transactional install reconciliation, including incomplete scans, restart, old remote snapshots and rollback. The backend retains the reader, sync service and install-state repository.",
+    "implementation": [
+      "src/Winnow.Ingest.Gog/GogInstalledGameRegistry.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Data/Repositories/GogInstallStateRepository.cs"
+    ]
+  },
+  "GogInstallReconciliationTests.Legacy_installations_with_unknown_provenance_are_not_inferred_to_be_registry_owned": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production read-only GOG registry inventory and transactional install reconciliation, including incomplete scans, restart, old remote snapshots and rollback. The backend retains the reader, sync service and install-state repository.",
+    "implementation": [
+      "src/Winnow.Ingest.Gog/GogInstalledGameRegistry.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Data/Repositories/GogInstallStateRepository.cs"
+    ]
+  },
+  "GogInstallReconciliationTests.Reconciliation_enlists_in_an_existing_transaction": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production read-only GOG registry inventory and transactional install reconciliation, including incomplete scans, restart, old remote snapshots and rollback. The backend retains the reader, sync service and install-state repository.",
+    "implementation": [
+      "src/Winnow.Ingest.Gog/GogInstalledGameRegistry.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Data/Repositories/GogInstallStateRepository.cs"
+    ]
+  },
+  "GogInstallReconciliationTests.Registry_only_uninstall_survives_restart_and_an_old_remote_snapshot": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production read-only GOG registry inventory and transactional install reconciliation, including incomplete scans, restart, old remote snapshots and rollback. The backend retains the reader, sync service and install-state repository.",
+    "implementation": [
+      "src/Winnow.Ingest.Gog/GogInstalledGameRegistry.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Data/Repositories/GogInstallStateRepository.cs"
+    ]
+  },
+  "IdentityReadModelTests.A_linked_group_resolves_to_one_game_where_it_resolved_to_two": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained identity resolution, transactional relationships, coverage calculations, enrichment targets or SQL query behavior without constructing a frontend view model. The seven source methods asserting Avalonia library/details projections are excluded.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs",
+      "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+      "src/Winnow.Data/Repositories/WorkRepository.cs",
+      "src/Winnow.Core/Identity/IdentityCoverage.cs",
+      "src/Winnow.Core/Identity/IdentityResolution.cs"
+    ]
+  },
+  "IdentityReadModelTests.An_expansion_link_moves_nothing": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained identity resolution, transactional relationships, coverage calculations, enrichment targets or SQL query behavior without constructing a frontend view model. The seven source methods asserting Avalonia library/details projections are excluded.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs",
+      "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+      "src/Winnow.Data/Repositories/WorkRepository.cs",
+      "src/Winnow.Core/Identity/IdentityCoverage.cs",
+      "src/Winnow.Core/Identity/IdentityResolution.cs"
+    ]
+  },
+  "IdentityReadModelTests.Enrichment_still_targets_a_linked_child": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained identity resolution, transactional relationships, coverage calculations, enrichment targets or SQL query behavior without constructing a frontend view model. The seven source methods asserting Avalonia library/details projections are excluded.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs",
+      "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+      "src/Winnow.Data/Repositories/WorkRepository.cs",
+      "src/Winnow.Core/Identity/IdentityCoverage.cs",
+      "src/Winnow.Core/Identity/IdentityResolution.cs"
+    ]
+  },
+  "IdentityReadModelTests.Separate_and_link_again_is_repeatable": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained identity resolution, transactional relationships, coverage calculations, enrichment targets or SQL query behavior without constructing a frontend view model. The seven source methods asserting Avalonia library/details projections are excluded.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs",
+      "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+      "src/Winnow.Data/Repositories/WorkRepository.cs",
+      "src/Winnow.Core/Identity/IdentityCoverage.cs",
+      "src/Winnow.Core/Identity/IdentityResolution.cs"
+    ]
+  },
+  "IdentityReadModelTests.The_resolved_join_stays_cheap_on_a_realistic_library": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained identity resolution, transactional relationships, coverage calculations, enrichment targets or SQL query behavior without constructing a frontend view model. The seven source methods asserting Avalonia library/details projections are excluded.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs",
+      "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+      "src/Winnow.Data/Repositories/WorkRepository.cs",
+      "src/Winnow.Core/Identity/IdentityCoverage.cs",
+      "src/Winnow.Core/Identity/IdentityResolution.cs"
+    ]
+  },
+  "IdentityReadModelTests.The_summed_playtime_never_pairs_with_a_foreign_last_played": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained identity resolution, transactional relationships, coverage calculations, enrichment targets or SQL query behavior without constructing a frontend view model. The seven source methods asserting Avalonia library/details projections are excluded.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs",
+      "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+      "src/Winnow.Data/Repositories/WorkRepository.cs",
+      "src/Winnow.Core/Identity/IdentityCoverage.cs",
+      "src/Winnow.Core/Identity/IdentityResolution.cs"
+    ]
+  },
+  "IdentityReadModelTests.With_nothing_linked_every_work_resolves_to_itself": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained identity resolution, transactional relationships, coverage calculations, enrichment targets or SQL query behavior without constructing a frontend view model. The seven source methods asserting Avalonia library/details projections are excluded.",
+    "implementation": [
+      "src/Winnow.Data/Repositories/LibraryQueryRepository.cs",
+      "src/Winnow.Data/Repositories/IdentityLinkRepository.cs",
+      "src/Winnow.Data/Repositories/WorkRepository.cs",
+      "src/Winnow.Core/Identity/IdentityCoverage.cs",
+      "src/Winnow.Core/Identity/IdentityResolution.cs"
+    ]
+  },
+  "LibraryScanCoalescingTests.A_change_after_the_launch_read_is_settled_publishes_normally": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production scan baselines, install watcher coordination and reusable local-scan state with isolated launcher fixtures. Backend startup and install watchers use these same implementations.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibraryScanBaseline.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs"
+    ]
+  },
+  "LibraryScanCoalescingTests.A_first_stable_read_a_completed_pass_already_covered_starts_no_scan": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production scan baselines, install watcher coordination and reusable local-scan state with isolated launcher fixtures. Backend startup and install watchers use these same implementations.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibraryScanBaseline.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs"
+    ]
+  },
+  "LibraryScanCoalescingTests.A_manifest_that_moved_since_the_covered_pass_still_publishes": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production scan baselines, install watcher coordination and reusable local-scan state with isolated launcher fixtures. Backend startup and install watchers use these same implementations.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibraryScanBaseline.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs"
+    ]
+  },
+  "LibraryScanCoalescingTests.A_null_fingerprint_is_never_covered": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production scan baselines, install watcher coordination and reusable local-scan state with isolated launcher fixtures. Backend startup and install watchers use these same implementations.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibraryScanBaseline.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs"
+    ]
+  },
+  "LibraryScanCoalescingTests.A_pass_that_failed_before_publishing_leaves_the_watcher_to_scan": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production scan baselines, install watcher coordination and reusable local-scan state with isolated launcher fixtures. Backend startup and install watchers use these same implementations.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibraryScanBaseline.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs"
+    ]
+  },
+  "LibraryScanCoalescingTests.A_watcher_holds_its_first_read_while_a_pass_is_still_expected": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production scan baselines, install watcher coordination and reusable local-scan state with isolated launcher fixtures. Backend startup and install watchers use these same implementations.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibraryScanBaseline.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs"
+    ]
+  },
+  "LibraryScanCoalescingTests.An_unmoved_launcher_state_is_not_re_read_for_the_backfill": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production scan baselines, install watcher coordination and reusable local-scan state with isolated launcher fixtures. Backend startup and install watchers use these same implementations.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibraryScanBaseline.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs"
+    ]
+  },
+  "LibraryScanCoalescingTests.Expectations_nest_and_dispose_idempotently": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production scan baselines, install watcher coordination and reusable local-scan state with isolated launcher fixtures. Backend startup and install watchers use these same implementations.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibraryScanBaseline.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs"
+    ]
+  },
+  "LibraryScanCoalescingTests.Nothing_is_covered_before_a_pass_publishes": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production scan baselines, install watcher coordination and reusable local-scan state with isolated launcher fixtures. Backend startup and install watchers use these same implementations.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibraryScanBaseline.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Application/Services/EpicInstallRefreshService.cs"
+    ]
+  },
+  "ManualMetadataSyncServiceTests.Cancelled_stage_does_not_publish_and_releases_gate": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production manual metadata synchronization, credential refusal, metadata-only stage selection, partial failures, serialized execution and cancellation. ConnectionOperations uses the same backend service and pipeline.",
+    "implementation": [
+      "src/Winnow.Application/Services/ManualMetadataSyncService.cs",
+      "src/Winnow.Application/Services/LibraryRefreshPipeline.cs",
+      "src/Winnow.Application/Connections/ConnectionOperations.cs"
+    ]
+  },
+  "ManualMetadataSyncServiceTests.Failed_publication_is_not_reported_as_success": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production manual metadata synchronization, credential refusal, metadata-only stage selection, partial failures, serialized execution and cancellation. ConnectionOperations uses the same backend service and pipeline.",
+    "implementation": [
+      "src/Winnow.Application/Services/ManualMetadataSyncService.cs",
+      "src/Winnow.Application/Services/LibraryRefreshPipeline.cs",
+      "src/Winnow.Application/Connections/ConnectionOperations.cs"
+    ]
+  },
+  "ManualMetadataSyncServiceTests.Failed_stage_continues_and_returns_partial_failure": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production manual metadata synchronization, credential refusal, metadata-only stage selection, partial failures, serialized execution and cancellation. ConnectionOperations uses the same backend service and pipeline.",
+    "implementation": [
+      "src/Winnow.Application/Services/ManualMetadataSyncService.cs",
+      "src/Winnow.Application/Services/LibraryRefreshPipeline.cs",
+      "src/Winnow.Application/Connections/ConnectionOperations.cs"
+    ]
+  },
+  "ManualMetadataSyncServiceTests.Manual_sync_selects_only_metadata_and_reports_progress_before_publication": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production manual metadata synchronization, credential refusal, metadata-only stage selection, partial failures, serialized execution and cancellation. ConnectionOperations uses the same backend service and pipeline.",
+    "implementation": [
+      "src/Winnow.Application/Services/ManualMetadataSyncService.cs",
+      "src/Winnow.Application/Services/LibraryRefreshPipeline.cs",
+      "src/Winnow.Application/Connections/ConnectionOperations.cs"
+    ]
+  },
+  "ManualMetadataSyncServiceTests.Manual_sync_waits_for_existing_pipeline_and_cancelled_waiter_never_runs": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production manual metadata synchronization, credential refusal, metadata-only stage selection, partial failures, serialized execution and cancellation. ConnectionOperations uses the same backend service and pipeline.",
+    "implementation": [
+      "src/Winnow.Application/Services/ManualMetadataSyncService.cs",
+      "src/Winnow.Application/Services/LibraryRefreshPipeline.cs",
+      "src/Winnow.Application/Connections/ConnectionOperations.cs"
+    ]
+  },
+  "ManualMetadataSyncServiceTests.Missing_credentials_runs_no_steps_or_publication": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production manual metadata synchronization, credential refusal, metadata-only stage selection, partial failures, serialized execution and cancellation. ConnectionOperations uses the same backend service and pipeline.",
+    "implementation": [
+      "src/Winnow.Application/Services/ManualMetadataSyncService.cs",
+      "src/Winnow.Application/Services/LibraryRefreshPipeline.cs",
+      "src/Winnow.Application/Connections/ConnectionOperations.cs"
+    ]
+  },
+  "OwnedAccountDisclosureRefetchTests.A_changed_key_reads_fresh_rather_than_from_the_previous_keys_cache": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the retained Steam playtime backfill disclosure, credential identity or completion-marker policy. The source method that additionally asserts StoresViewModel toggle state is excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs"
+    ]
+  },
+  "OwnedAccountDisclosureRefetchTests.A_finished_account_recovers_its_ref_from_a_completed_year": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the retained Steam playtime backfill disclosure, credential identity or completion-marker policy. The source method that additionally asserts StoresViewModel toggle state is excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs"
+    ]
+  },
+  "OwnedAccountDisclosureRefetchTests.An_account_that_never_confirmed_retries_history_without_bypassing_confirmation": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the retained Steam playtime backfill disclosure, credential identity or completion-marker policy. The source method that additionally asserts StoresViewModel toggle state is excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs"
+    ]
+  },
+  "OwnedAccountDisclosureRefetchTests.Nothing_is_refetched_once_the_ref_is_known": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the retained Steam playtime backfill disclosure, credential identity or completion-marker policy. The source method that additionally asserts StoresViewModel toggle state is excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs"
+    ]
+  },
+  "OwnedAccountDisclosureRefetchTests.Recovering_a_missing_confirmation_requires_fresh_disclosure_even_for_an_unchanged_key": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the retained Steam playtime backfill disclosure, credential identity or completion-marker policy. The source method that additionally asserts StoresViewModel toggle state is excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs"
+    ]
+  },
+  "OwnedAccountDisclosureRefetchTests.The_disclosure_refetch_imports_nothing": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the retained Steam playtime backfill disclosure, credential identity or completion-marker policy. The source method that additionally asserts StoresViewModel toggle state is excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs"
+    ]
+  },
+  "OwnedAccountDisclosureRefetchTests.The_fingerprint_clear_runs_before_any_disclosure_refetch": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the retained Steam playtime backfill disclosure, credential identity or completion-marker policy. The source method that additionally asserts StoresViewModel toggle state is excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs"
+    ]
+  },
+  "OwnedAccountDisclosureRefetchTests.The_games_figure_is_read_out_of_a_completion_marker": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises the retained Steam playtime backfill disclosure, credential identity or completion-marker policy. The source method that additionally asserts StoresViewModel toggle state is excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs"
+    ]
+  },
+  "OwnershipRefreshCoordinatorTests.Cancellation_after_ownership_prevents_any_publication_or_metadata": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise publication of committed ownership before enrichment, phase failure handling, selective metadata refresh and cancellation across serialized passes. The backend registers the same ownership coordinator and refresh pipeline.",
+    "implementation": [
+      "src/Winnow.Application/Services/OwnershipRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/LibraryRefreshPipeline.cs"
+    ]
+  },
+  "OwnershipRefreshCoordinatorTests.Committed_ownership_is_published_before_metadata_even_when_a_later_ownership_operation_failed": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise publication of committed ownership before enrichment, phase failure handling, selective metadata refresh and cancellation across serialized passes. The backend registers the same ownership coordinator and refresh pipeline.",
+    "implementation": [
+      "src/Winnow.Application/Services/OwnershipRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/LibraryRefreshPipeline.cs"
+    ]
+  },
+  "OwnershipRefreshCoordinatorTests.Concurrent_entry_points_serialize_the_entire_pass_and_cancelled_waiters_do_not_start": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise publication of committed ownership before enrichment, phase failure handling, selective metadata refresh and cancellation across serialized passes. The backend registers the same ownership coordinator and refresh pipeline.",
+    "implementation": [
+      "src/Winnow.Application/Services/OwnershipRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/LibraryRefreshPipeline.cs"
+    ]
+  },
+  "OwnershipRefreshCoordinatorTests.Credential_refresh_selects_the_same_IGDB_steps_without_running_unrelated_services": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise publication of committed ownership before enrichment, phase failure handling, selective metadata refresh and cancellation across serialized passes. The backend registers the same ownership coordinator and refresh pipeline.",
+    "implementation": [
+      "src/Winnow.Application/Services/OwnershipRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/LibraryRefreshPipeline.cs"
+    ]
+  },
+  "OwnershipRefreshCoordinatorTests.Independent_phase_failure_and_failed_publication_do_not_hide_later_commits": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise publication of committed ownership before enrichment, phase failure handling, selective metadata refresh and cancellation across serialized passes. The backend registers the same ownership coordinator and refresh pipeline.",
+    "implementation": [
+      "src/Winnow.Application/Services/OwnershipRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/LibraryRefreshPipeline.cs"
+    ]
+  },
+  "PluginRefreshCoordinatorTests.Imported_rows_publish_before_enrichment_and_account_changes_do_not_wait_for_the_sweep": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained plugin import, publication, enrichment and suggestion queue ordering, failure recovery and shutdown. BackendStartupService directly constructs this same coordinator.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/CredentialMetadataRefresh.cs"
+    ]
+  },
+  "PluginRefreshCoordinatorTests.Imported_rows_publish_before_matching_and_more_imports_do_not_wait_for_matching_or_artwork": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained plugin import, publication, enrichment and suggestion queue ordering, failure recovery and shutdown. BackendStartupService directly constructs this same coordinator.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/CredentialMetadataRefresh.cs"
+    ]
+  },
+  "PluginRefreshCoordinatorTests.Later_builtin_startup_enriches_its_new_works_without_delaying_the_initial_plugin_import": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained plugin import, publication, enrichment and suggestion queue ordering, failure recovery and shutdown. BackendStartupService directly constructs this same coordinator.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/CredentialMetadataRefresh.cs"
+    ]
+  },
+  "PluginRefreshCoordinatorTests.Matching_failure_preserves_imports_and_the_next_refresh_recovers": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained plugin import, publication, enrichment and suggestion queue ordering, failure recovery and shutdown. BackendStartupService directly constructs this same coordinator.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/CredentialMetadataRefresh.cs"
+    ]
+  },
+  "PluginRefreshCoordinatorTests.Partial_import_failure_still_publishes_and_a_later_request_recovers": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained plugin import, publication, enrichment and suggestion queue ordering, failure recovery and shutdown. BackendStartupService directly constructs this same coordinator.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/CredentialMetadataRefresh.cs"
+    ]
+  },
+  "PluginRefreshCoordinatorTests.Shutdown_cancels_all_queues_while_discovery_is_pending": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained plugin import, publication, enrichment and suggestion queue ordering, failure recovery and shutdown. BackendStartupService directly constructs this same coordinator.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/CredentialMetadataRefresh.cs"
+    ]
+  },
+  "PluginRefreshCoordinatorTests.Startup_completion_requests_another_match_for_original_stores_that_arrived_later": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained plugin import, publication, enrichment and suggestion queue ordering, failure recovery and shutdown. BackendStartupService directly constructs this same coordinator.",
+    "implementation": [
+      "src/Winnow.Application/Services/PluginRefreshCoordinator.cs",
+      "src/Winnow.Application/Services/CredentialMetadataRefresh.cs"
+    ]
+  },
+  "RemoteOwnershipSyncConvergenceTests.A_second_sync_over_unchanged_sources_writes_no_play_records": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the retained local and remote ownership synchronization over real temporary repositories, including repeated imports, overlapping evidence and session observations. Backend ownership refresh uses the same resolver and sync services.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/PlayRecordRepository.cs"
+    ]
+  },
+  "RemoteOwnershipSyncConvergenceTests.A_session_between_syncs_still_appends_exactly_one_record": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the retained local and remote ownership synchronization over real temporary repositories, including repeated imports, overlapping evidence and session observations. Backend ownership refresh uses the same resolver and sync services.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/PlayRecordRepository.cs"
+    ]
+  },
+  "RemoteOwnershipSyncConvergenceTests.Merging_the_overlap_does_not_shrink_the_library": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the retained local and remote ownership synchronization over real temporary repositories, including repeated imports, overlapping evidence and session observations. Backend ownership refresh uses the same resolver and sync services.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/PlayRecordRepository.cs"
+    ]
+  },
+  "RemoteOwnershipSyncConvergenceTests.The_86400_placeholder_never_reaches_the_database_as_a_1970_date": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the retained local and remote ownership synchronization over real temporary repositories, including repeated imports, overlapping evidence and session observations. Backend ownership refresh uses the same resolver and sync services.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/PlayRecordRepository.cs"
+    ]
+  },
+  "RemoteOwnershipSyncConvergenceTests.The_appid_both_sources_see_settles_on_a_single_record": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the retained local and remote ownership synchronization over real temporary repositories, including repeated imports, overlapping evidence and session observations. Backend ownership refresh uses the same resolver and sync services.",
+    "implementation": [
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Resolve/ExternalIdResolver.cs",
+      "src/Winnow.Data/Repositories/PlayRecordRepository.cs"
+    ]
+  },
+  "SnapshotSchedulerServiceTests.A_failing_tick_costs_one_data_point_not_the_schedule": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production snapshot scheduler cadence, startup policy, non-overlap, cancellation and recovery with a controlled clock. The backend registers this same scheduler; no frontend state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/SnapshotSchedulerOptions.cs"
+    ]
+  },
+  "SnapshotSchedulerServiceTests.A_non_positive_interval_stands_the_scheduler_down_instead_of_taking_the_host_with_it": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production snapshot scheduler cadence, startup policy, non-overlap, cancellation and recovery with a controlled clock. The backend registers this same scheduler; no frontend state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/SnapshotSchedulerOptions.cs"
+    ]
+  },
+  "SnapshotSchedulerServiceTests.Disabled_scheduler_never_scans": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production snapshot scheduler cadence, startup policy, non-overlap, cancellation and recovery with a controlled clock. The backend registers this same scheduler; no frontend state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/SnapshotSchedulerOptions.cs"
+    ]
+  },
+  "SnapshotSchedulerServiceTests.Failed_or_cancelled_scan_does_not_refresh": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production snapshot scheduler cadence, startup policy, non-overlap, cancellation and recovery with a controlled clock. The backend registers this same scheduler; no frontend state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/SnapshotSchedulerOptions.cs"
+    ]
+  },
+  "SnapshotSchedulerServiceTests.First_tick_lands_a_full_interval_out_so_it_never_doubles_the_startup_sync": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production snapshot scheduler cadence, startup policy, non-overlap, cancellation and recovery with a controlled clock. The backend registers this same scheduler; no frontend state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/SnapshotSchedulerOptions.cs"
+    ]
+  },
+  "SnapshotSchedulerServiceTests.Run_on_startup_scans_immediately_when_the_scheduler_owns_the_startup_path": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production snapshot scheduler cadence, startup policy, non-overlap, cancellation and recovery with a controlled clock. The backend registers this same scheduler; no frontend state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/SnapshotSchedulerOptions.cs"
+    ]
+  },
+  "SnapshotSchedulerServiceTests.Stopping_cancels_an_in_flight_scan_and_no_tick_runs_afterwards": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production snapshot scheduler cadence, startup policy, non-overlap, cancellation and recovery with a controlled clock. The backend registers this same scheduler; no frontend state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/SnapshotSchedulerOptions.cs"
+    ]
+  },
+  "SnapshotSchedulerServiceTests.Successful_scan_refreshes_even_when_history_counters_are_zero": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production snapshot scheduler cadence, startup policy, non-overlap, cancellation and recovery with a controlled clock. The backend registers this same scheduler; no frontend state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/SnapshotSchedulerOptions.cs"
+    ]
+  },
+  "SnapshotSchedulerServiceTests.Ticks_never_overlap_when_a_scan_overruns_its_interval": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production snapshot scheduler cadence, startup policy, non-overlap, cancellation and recovery with a controlled clock. The backend registers this same scheduler; no frontend state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/SnapshotSchedulerOptions.cs"
+    ]
+  },
+  "SnapshotSchedulerServiceTests.Ticks_repeat_on_the_interval_for_as_long_as_the_app_runs": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise the production snapshot scheduler cadence, startup policy, non-overlap, cancellation and recovery with a controlled clock. The backend registers this same scheduler; no frontend state is asserted.",
+    "implementation": [
+      "src/Winnow.Application/Services/SnapshotSchedulerService.cs",
+      "src/Winnow.Application/Services/SnapshotSchedulerOptions.cs"
+    ]
+  },
+  "SteamHistoryProvenanceTests.A_delayed_response_cannot_publish_after_its_credential_is_replaced": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained credential-scoped Steam history caching, stale response rejection and account confirmation during playtime backfill. The backend uses these same clients and services independently of the frontend.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamHistoryClient.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs"
+    ]
+  },
+  "SteamHistoryProvenanceTests.A_key_change_between_Replay_and_anchor_writes_no_history_or_confirmation": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained credential-scoped Steam history caching, stale response rejection and account confirmation during playtime backfill. The backend uses these same clients and services independently of the frontend.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamHistoryClient.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs"
+    ]
+  },
+  "SteamHistoryProvenanceTests.Cached_Replay_can_support_history_but_cannot_recreate_a_missing_confirmation": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained credential-scoped Steam history caching, stale response rejection and account confirmation during playtime backfill. The backend uses these same clients and services independently of the frontend.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamHistoryClient.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs"
+    ]
+  },
+  "SteamHistoryProvenanceTests.Confirmation_rejects_evidence_from_a_replaced_key_without_recording_its_account": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained credential-scoped Steam history caching, stale response rejection and account confirmation during playtime backfill. The backend uses these same clients and services independently of the frontend.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamHistoryClient.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs"
+    ]
+  },
+  "SteamHistoryProvenanceTests.Different_key_and_session_accounts_have_separate_history_cache_scopes": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained credential-scoped Steam history caching, stale response rejection and account confirmation during playtime backfill. The backend uses these same clients and services independently of the frontend.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamHistoryClient.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs"
+    ]
+  },
+  "SteamHistoryProvenanceTests.Durable_history_cache_survives_restart_only_for_the_credential_that_fetched_it": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained credential-scoped Steam history caching, stale response rejection and account confirmation during playtime backfill. The backend uses these same clients and services independently of the frontend.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamHistoryClient.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs"
+    ]
+  },
+  "SteamHistoryProvenanceTests.Unscoped_legacy_payloads_cannot_supply_history_or_disclosure": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise retained credential-scoped Steam history caching, stale response rejection and account confirmation during playtime backfill. The backend uses these same clients and services independently of the frontend.",
+    "implementation": [
+      "src/Winnow.Enrich.SteamWeb/SteamHistoryClient.cs",
+      "src/Winnow.Application/Services/SteamPlaytimeBackfillService.cs",
+      "src/Winnow.Application/Services/SteamAccountConfirmation.cs"
+    ]
+  },
+  "StorefrontTests.Cancellation_is_not_swallowed": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Definitive_missing_response_is_negatively_cached": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Epic_fetch_is_shared_cached_and_projects_only_valid_slugs": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Forbidden_preserves_prior_data_and_suppresses_repeated_requests": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Gog_fetch_supplies_store_page_and_safe_readable_notes": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Graphql_errors_do_not_replace_a_stale_mapping": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Invalid_product_ids_make_no_request": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Malformed_namespace_envelopes_are_rejected": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Malformed_responses_preserve_stale_cache": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Namespace_lookup_caches_confirmed_absence": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Namespace_lookup_fills_a_bulk_map_miss_without_guessing_from_the_title": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Namespace_mapping_requires_one_valid_product_home": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Network_failure_keeps_stale_response": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Polly_retries_429_with_retry_after_and_rate_limits_each_attempt": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Sync_uses_persisted_namespaces_for_bulk_map_misses": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Untrusted_product_links_are_not_drawn": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "StorefrontTests.Wrong_product_response_is_not_cached": {
+    "status": "retained-backend",
+    "reason": "This reviewed method exercises retained storefront fetching, parsing, caching, safe links or transport policy through production services. The two methods in this source file that also assert Avalonia library/details projections are excluded from this backend classification.",
+    "implementation": [
+      "src/Winnow.Enrich.Stores/StorefrontClient.cs",
+      "src/Winnow.Enrich.Stores/StorefrontCache.cs",
+      "src/Winnow.Enrich.Stores/ServiceCollectionExtensions.cs",
+      "src/Winnow.Application/Services/StorefrontSyncService.cs"
+    ]
+  },
+  "WorkReceptionTests.A_figure_with_no_ratings_behind_it_is_not_stored": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production reception and image writes, absent values, independent sources, idempotency and cascading deletion on temporary SQLite databases. Backend enrichment and refetch retain these writers and repositories.",
+    "implementation": [
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "WorkReceptionTests.A_game_with_no_screenshots_gets_no_row_rather_than_an_empty_one": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production reception and image writes, absent values, independent sources, idempotency and cascading deletion on temporary SQLite databases. Backend enrichment and refetch retain these writers and repositories.",
+    "implementation": [
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "WorkReceptionTests.A_moved_figure_is_written_again": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production reception and image writes, absent values, independent sources, idempotency and cascading deletion on temporary SQLite databases. Backend enrichment and refetch retain these writers and repositories.",
+    "implementation": [
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "WorkReceptionTests.Deleting_a_work_takes_its_reception_rows_with_it": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production reception and image writes, absent values, independent sources, idempotency and cascading deletion on temporary SQLite databases. Backend enrichment and refetch retain these writers and repositories.",
+    "implementation": [
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "WorkReceptionTests.One_source_never_clobbers_another": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production reception and image writes, absent values, independent sources, idempotency and cascading deletion on temporary SQLite databases. Backend enrichment and refetch retain these writers and repositories.",
+    "implementation": [
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "WorkReceptionTests.Screenshots_and_artworks_round_trip_in_the_order_igdb_gave_them": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production reception and image writes, absent values, independent sources, idempotency and cascading deletion on temporary SQLite databases. Backend enrichment and refetch retain these writers and repositories.",
+    "implementation": [
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "WorkReceptionTests.Screenshots_igdb_has_withdrawn_are_removed_rather_than_left_stale": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production reception and image writes, absent values, independent sources, idempotency and cascading deletion on temporary SQLite databases. Backend enrichment and refetch retain these writers and repositories.",
+    "implementation": [
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "WorkReceptionTests.Steam_stores_its_own_label_beside_the_percentage_and_the_count": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production reception and image writes, absent values, independent sources, idempotency and cascading deletion on temporary SQLite databases. Backend enrichment and refetch retain these writers and repositories.",
+    "implementation": [
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "WorkReceptionTests.The_two_igdb_figures_are_stored_apart_each_with_its_count": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production reception and image writes, absent values, independent sources, idempotency and cascading deletion on temporary SQLite databases. Backend enrichment and refetch retain these writers and repositories.",
+    "implementation": [
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  },
+  "WorkReceptionTests.Writing_the_same_answer_twice_changes_nothing": {
+    "status": "retained-backend",
+    "reason": "The original tests exercise production reception and image writes, absent values, independent sources, idempotency and cascading deletion on temporary SQLite databases. Backend enrichment and refetch retain these writers and repositories.",
+    "implementation": [
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs"
+    ]
+  }
+}

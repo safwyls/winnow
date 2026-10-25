@@ -42,6 +42,9 @@ internal sealed class FakeIgdbClient : IIgdbClient
     /// <summary>Thrown from the next resolve, once, when set — a transport failure.</summary>
     public Exception? FailWith { get; set; }
 
+    /// <summary>Optional controlled delay for shared-request cancellation tests.</summary>
+    public Func<CancellationToken, Task>? BeforeResolve { get; set; }
+
     /// <summary>Binds a Steam appid to an IGDB cover url, in IGDB's own t_cover_big form.</summary>
     public void AddCover(string appId, string imageId)
         => _covers[appId] = $"https://images.igdb.com/igdb/image/upload/t_cover_big/{imageId}.jpg";
@@ -52,7 +55,7 @@ internal sealed class FakeIgdbClient : IIgdbClient
     public ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
         => ValueTask.FromResult(Configured);
 
-    public Task<IReadOnlyDictionary<string, IgdbExternalMatch>> ResolveBySteamAppIdsAsync(
+    public async Task<IReadOnlyDictionary<string, IgdbExternalMatch>> ResolveBySteamAppIdsAsync(
         IEnumerable<string> appIds, TimeSpan? cacheTtl = null, CancellationToken ct = default)
     {
         var batch = appIds.ToArray();
@@ -63,7 +66,12 @@ internal sealed class FakeIgdbClient : IIgdbClient
 
         if (FailWith is { } boom)
         {
-            return Task.FromException<IReadOnlyDictionary<string, IgdbExternalMatch>>(boom);
+            throw boom;
+        }
+
+        if (BeforeResolve is { } beforeResolve)
+        {
+            await beforeResolve(ct).ConfigureAwait(false);
         }
 
         var results = new Dictionary<string, IgdbExternalMatch>(StringComparer.Ordinal);
@@ -75,7 +83,7 @@ internal sealed class FakeIgdbClient : IIgdbClient
             }
         }
 
-        return Task.FromResult<IReadOnlyDictionary<string, IgdbExternalMatch>>(results);
+        return results;
     }
 
     /// <summary>

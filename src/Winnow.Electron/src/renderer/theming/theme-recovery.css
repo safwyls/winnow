@@ -1,0 +1,31 @@
+@layer themes {
+  .avalon-footer .avalon-footer-identity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .avalon-footer .theme-recovery-button {
+    flex: none;
+    padding: 4px;
+    min-width: 24px;
+    min-height: 24px;
+    border: 0;
+    color: var(--muted);
+    background: transparent;
+  }
+  .avalon-footer .theme-recovery-button:hover,
+  .avalon-footer .theme-recovery-button:focus-visible {
+    color: var(--text);
+    background: var(--raised);
+  }
+  .avalon-shell.fullscreen .avalon-footer .theme-recovery-button {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 8px;
+  }
+  .avalon-shell.fullscreen .avalon-footer .theme-recovery-button svg {
+    width: 24px;
+    height: 24px;
+  }
+}

@@ -207,15 +207,24 @@ public sealed class FullscreenBackdrop : Panel
         IReadOnlyList<WorkImages> rows = [];
         try
         {
-            // SQLite's async methods still execute synchronously. Capture presentation
-            // identity above, then perform metadata reads away from focus and animation.
-            await Task.Run(async () =>
+            if (_context.Services?.GetService<Winnow.Api.Client.WinnowApiClient>() is { } api)
             {
-                if (works is not null)
-                    backgroundUrl = (await works.GetAsync(workId, ct).ConfigureAwait(false))?.BackgroundUrl;
-                if (images is not null)
-                    rows = await BackdropImages.LoadAsync(images, workId, memberWorkIds, ct).ConfigureAwait(false);
-            }, ct);
+                var details = await api.GetAsync<Winnow.Api.Contracts.Details.GameDetailsResponse>(
+                    $"games/{workId}/details", ct);
+                backgroundUrl = tile.BackgroundUrl;
+                rows = details.Images;
+            }
+            else
+            {
+                // Repository fixtures preserve the legacy presentation test seam.
+                await Task.Run(async () =>
+                {
+                    if (works is not null)
+                        backgroundUrl = (await works.GetAsync(workId, ct).ConfigureAwait(false))?.BackgroundUrl;
+                    if (images is not null)
+                        rows = await BackdropImages.LoadAsync(images, workId, memberWorkIds, ct).ConfigureAwait(false);
+                }, ct);
+            }
         }
         catch (Exception) { /* Missing metadata uses available art, then the selected game's cover. */ }
         if (!_attached || generation != _generation) return;

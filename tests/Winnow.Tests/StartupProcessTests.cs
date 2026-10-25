@@ -137,6 +137,7 @@ public sealed class StartupProcessTests
             await process.WaitForExitAsync();
             throw new TimeoutException("The isolated startup failure did not exit within 30 seconds.");
         }
+        fixture.StopBackend();
         await output;
         return (process.ExitCode, await error);
     }
@@ -178,8 +179,30 @@ public sealed class StartupProcessTests
             return factory;
         }
 
+        public void StopBackend()
+        {
+            var discoveryPath = Path.Combine(Data, "backend", "endpoint.json");
+            if (File.Exists(discoveryPath))
+            {
+                using var discovery = System.Text.Json.JsonDocument.Parse(File.ReadAllText(discoveryPath));
+                var address = discovery.RootElement.GetProperty("address").GetString()!;
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+                    "Bearer", discovery.RootElement.GetProperty("token").GetString());
+                try
+                {
+                    using var backend = Process.GetProcessById(discovery.RootElement.GetProperty("processId").GetInt32());
+                    using var response = client.PostAsync(address.TrimEnd('/') + "/api/v1/lifecycle/shutdown", null).GetAwaiter().GetResult();
+                    response.EnsureSuccessStatusCode();
+                    Assert.True(backend.WaitForExit(30_000), "The isolated backend did not stop after its frontend test.");
+                }
+                catch (ArgumentException) { } // A killed native test tree may leave stale discovery.
+            }
+        }
+
         public void Dispose()
         {
+            StopBackend();
             // Native process teardown can release SQLite handles shortly after exit is signalled.
             for (var attempt = 0; ; attempt++)
             {

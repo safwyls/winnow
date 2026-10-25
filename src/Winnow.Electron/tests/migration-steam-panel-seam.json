@@ -1,0 +1,256 @@
+{
+  "SteamConnectionPanelTests.The_permission_is_unticked_and_a_declined_sign_in_still_succeeds": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "The_permission_is_unticked_and_a_declined_sign_in_still_succeeds"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.Only_the_permission_control_sets_the_capture_flag": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "Only_the_permission_control_sets_the_capture_flag"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.The_save_command_refuses_an_empty_field": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "The_save_command_refuses_an_empty_field"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.A_key_from_the_environment_cannot_be_cleared_here_and_says_so": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "A_key_from_the_environment_cannot_be_cleared_here_and_says_so"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.Every_credential_combination_shows_each_methods_state_and_control": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "Every_credential_combination_shows_each_methods_state_and_control"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.A_session_that_cannot_renew_surfaces_at_the_top_level": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "A_session_that_cannot_renew_surfaces_at_the_top_level"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.The_disclosures_still_carry_everything_that_left_the_top_level": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "The_disclosures_still_carry_everything_that_left_the_top_level"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.The_terse_state_lines_are_one_per_state": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "The_terse_state_lines_are_one_per_state"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.The_both_credentials_sentence_names_the_key_and_the_reason": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "Renewal_copy_states_automatic_renewal_and_names_its_limits and Each_method_states_what_it_gives_up"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.Renewal_copy_states_automatic_renewal_and_names_its_limits": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "Renewal_copy_states_automatic_renewal_and_names_its_limits and Each_method_states_what_it_gives_up"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.Each_method_states_what_it_gives_up": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "Renewal_copy_states_automatic_renewal_and_names_its_limits and Each_method_states_what_it_gives_up"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.The_environment_key_sentence_names_the_variable_and_both_consequences": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "A_key_from_the_environment_cannot_be_cleared_here_and_says_so"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.The_permission_says_that_declining_is_a_complete_answer": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "The_permission_is_unticked_and_a_declined_sign_in_still_succeeds"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.The_three_disclosures_start_shut_and_open_on_their_own_command": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-panel-contracts.test.tsx",
+        "case": "The_disclosures_still_carry_everything_that_left_the_top_level"
+      }
+    ],
+    "reason": "Both desktop and fullscreen exercise the real connection controls and copy through the named preload API. The assertions preserve the original state and consent contract."
+  },
+  "SteamConnectionPanelTests.The_three_blocked_branches_are_distinct": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "explains unconfirmed identity with key=%s session=%s"
+      }
+    ],
+    "reason": "Each credential state has its own blocked-identity explanation and disables the unconfirmed account scope."
+  },
+  "SteamConnectionPanelTests.Cancelling_a_running_sign_in_ends_it_and_stores_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-steam-connections.test.tsx",
+        "case": "allows cancelling a running native sign-in without presenting cancellation as a failure"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Refused_or_cancelled_sign_in_changes_no_session_and_requests_no_refresh"
+      }
+    ],
+    "reason": "Renderer cancellation is neutral; the production HTTP fixture separately proves a canceled attempt stores no session and requests no refresh."
+  },
+  "SteamConnectionSeamTests.Only_successful_key_changes_request_background_ownership_refresh_after_reconciliation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+        "case": "Only_successful_key_changes_request_background_ownership_refresh_after_reconciliation"
+      }
+    ],
+    "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
+  },
+  "SteamConnectionSeamTests.Saving_a_key_writes_it_and_invalidates_the_credential_provider": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+        "case": "Saving_a_key_writes_it_and_invalidates_the_credential_provider"
+      }
+    ],
+    "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
+  },
+  "SteamConnectionSeamTests.A_host_that_cannot_encrypt_refuses_rather_than_writing_plaintext": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+        "case": "A_host_that_cannot_encrypt_refuses_rather_than_writing_plaintext"
+      }
+    ],
+    "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
+  },
+  "SteamConnectionSeamTests.Clearing_a_key_empties_the_row_and_invalidates": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+        "case": "Clearing_or_saving_a_blank_field_empties_both_rows_and_invalidates"
+      }
+    ],
+    "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
+  },
+  "SteamConnectionSeamTests.Saving_a_blank_field_clears_rather_than_storing_whitespace": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+        "case": "Clearing_or_saving_a_blank_field_empties_both_rows_and_invalidates"
+      }
+    ],
+    "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
+  },
+  "SteamConnectionSeamTests.A_key_from_the_settings_table_is_the_one_this_screen_owns": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+        "case": "A_configuration_key_is_not_owned_and_saved_settings_take_precedence_until_cleared"
+      }
+    ],
+    "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
+  },
+  "SteamConnectionSeamTests.A_key_from_configuration_is_not": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamKeyParityTests.cs",
+        "case": "A_configuration_key_is_not_owned_and_saved_settings_take_precedence_until_cleared"
+      }
+    ],
+    "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
+  },
+  "SteamConnectionSeamTests.A_signed_in_keyless_user_reads_as_configured": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Minted_session_reaches_the_real_selector_and_survives_backend_restart"
+      }
+    ],
+    "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
+  },
+  "SteamConnectionSeamTests.An_expired_session_is_present_but_not_usable": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/SteamSessionParityTests.cs",
+        "case": "Token_only_session_is_kept_explained_live_then_expired_and_can_reconnect"
+      }
+    ],
+    "reason": "The replacement runs authenticated production HTTP against temporary real storage and the production credential selector/reconciliation services. It preserves the asserted state and write behavior without the retired in-process frontend seam."
+  }
+}

@@ -60,7 +60,7 @@ public sealed class FeedShelfVisualTests
         {
             window.Show(); Dispatcher.UIThread.RunJobs();
             var cards = view.GetVisualDescendants().OfType<FeedCardView>().ToArray();
-            Assert.Equal(12, cards.Length);
+            Assert.Equal(10, cards.Length);
             Save("shelves");
             var card = cards[3].FindControl<Button>("Card")!;
             window.MouseMove(card.TranslatePoint(new Point(40, 40), window)!.Value);

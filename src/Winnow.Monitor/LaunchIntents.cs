@@ -7,7 +7,6 @@ namespace Winnow.Monitor;
 /// <summary>A launch Winnow started that the watcher has now seen running.</summary>
 /// <param name="OwnershipId">The ownership the user clicked Play on.</param>
 /// <param name="ObservedAtUtc">When the watcher attached to the first process.</param>
-public readonly record struct LaunchObserved(long OwnershipId, DateTime ObservedAtUtc);
 
 /// <summary>
 /// M3b attribution seam: records launches Winnow started so the watcher can
@@ -15,7 +14,7 @@ public readonly record struct LaunchObserved(long OwnershipId, DateTime Observed
 /// processes that already look like the declared game (by install root or
 /// executable name); it never makes an unknown process into a game. Thread-safe.
 /// </summary>
-public sealed class LaunchIntents
+public sealed class LaunchIntents : ILaunchObservations
 {
     private readonly Lock _gate = new();
 

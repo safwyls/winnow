@@ -49,11 +49,11 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     private string? _preferredPlatform;
 
     private readonly IMergeCandidateRepository _candidates;
-    private readonly IReleaseRepository _releases;
-    private readonly IWorkRepository _works;
+    private readonly Winnow.Api.Client.IdentityReviewClient? _api;
+    private string _apiRevision = "";
+    private IReadOnlyList<long>? _apiPinnedWorkIds;
     private readonly IIdentityLinkRepository _links;
-    private readonly IOwnershipRepository _ownership;
-    private readonly LibraryExpansionScan _expansions;
+    private readonly IExpansionReviewScan _expansions;
     private readonly IExpansionRefusalRepository _expansionRefusals;
     private readonly ILibraryQueryRepository _libraryQueries;
     private readonly ICoverLeases? _covers;
@@ -101,14 +101,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     /// hours or whose answers quietly write nothing.
     /// </summary>
     public MergeQueueViewModel(
-        IMergeCandidateRepository candidates,
-        IReleaseRepository releases,
-        IWorkRepository works,
-        IIdentityLinkRepository links,
-        IOwnershipRepository ownership,
-        LibraryExpansionScan expansions,
-        IExpansionRefusalRepository expansionRefusals,
-        ILibraryQueryRepository libraryQueries,
+        IMergeCandidateRepository? candidates = null,
+        IReleaseRepository? releases = null,
+        IWorkRepository? works = null,
+        IIdentityLinkRepository? links = null,
+        IOwnershipRepository? ownership = null,
+        IExpansionReviewScan? expansions = null,
+        IExpansionRefusalRepository? expansionRefusals = null,
+        ILibraryQueryRepository? libraryQueries = null,
         ICoverLeases? covers = null,
         IResolveStateRepository? resolveState = null,
         Services.IIgdbAssignmentService? igdb = null,
@@ -119,21 +119,26 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         Services.ArtworkPreferences? artworkPreferences = null,
         IGroupHeaderPreferenceRepository? groupHeaders = null,
         LibraryViewModel? library = null,
-        Services.IMergeSuggestionRefresh? suggestionRefresh = null)
+        Services.IMergeSuggestionRefresh? suggestionRefresh = null,
+        Winnow.Api.Client.WinnowApiClient? api = null)
     {
-        _candidates = candidates;
+        _api = api is null ? null : new(api);
+        if (api is null)
+        {
+            if (links is null) throw new InvalidOperationException("Register IIdentityLinkRepository or WinnowApiClient for identity review.");
+            if (candidates is null || expansions is null || expansionRefusals is null || libraryQueries is null)
+                throw new InvalidOperationException("Register identity review repositories and IExpansionReviewScan, or WinnowApiClient.");
+        }
+        _candidates = candidates!;
         _settings = settings;
         _groupHeaders = groupHeaders;
         _library = library;
         _ramp = ramp ?? new Services.DormancyRamp();
         _ramp.PropertyChanged += OnRampChanged;
-        _releases = releases;
-        _works = works;
-        _links = links;
-        _ownership = ownership;
-        _expansions = expansions;
-        _expansionRefusals = expansionRefusals;
-        _libraryQueries = libraryQueries;
+        _links = links!;
+        _expansions = expansions!;
+        _expansionRefusals = expansionRefusals!;
+        _libraryQueries = libraryQueries!;
         _covers = covers;
         _artworkPreferences = artworkPreferences;
         _resolveState = resolveState;
@@ -533,6 +538,16 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
         CloseDock(forget: true);
 
+        if (_api is not null)
+        {
+            var result = await _api.UndoAsync(new(_apiRevision,
+                run.Linked.Select(link => link.ActId).ToArray(),
+                run.Linked.SelectMany(link => link.RejectedCandidateIds).Concat(run.Dismissed.SelectMany(item => item.Card.CandidateIds)).Distinct().ToArray(),
+                run.Linked.SelectMany(link => link.RefusedPairs).Concat(run.Dismissed.SelectMany(item => item.Card.RefusalPairs)).Distinct().ToArray()), ct);
+            _apiRevision = result.Revision;
+        }
+        else
+        {
         foreach (var linked in run.Linked)
         {
             await _links.RetractActAsync(linked.ActId, null, ct);
@@ -560,6 +575,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
                 await _expansionRefusals.RetractAsync(card.RefusalPairs, ct);
             }
 
+        }
         }
 
         // Refresh can replace the cards while the dock is open. Read the undone state
@@ -683,6 +699,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     /// </summary>
     public async Task NoteQueueMayHaveMovedAsync(CancellationToken ct = default)
     {
+        if (_api is not null)
+        {
+            _stale = true;
+            if (IsPaneVisible) await LoadAsync(ct);
+            return;
+        }
         var pending = await _candidates.CountPendingAsync(ct);
         if (_disposed) return;
         if (_loaded && !_stale && pending == _pendingAtLoad && HasCompletedSweep
@@ -709,16 +731,18 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         var revision = _suggestionRefresh?.Revision ?? 0;
         var loaded = await Task.Run(async () =>
         {
+            var remote = _api is null ? null : await _api.GetAsync(ct);
+            if (remote is not null) _apiPinnedWorkIds = remote.Workspace.PinnedWorkIds;
             // Must be read before the queue so an empty section knows if the matcher has run.
-            var hasCompletedSweep = _resolveState is not null
-                && await _resolveState.GetLastSoftMatchSweepAsync(ct) is not null;
+            var hasCompletedSweep = remote?.HasCompletedSweep ?? (_resolveState is not null
+                && await _resolveState.GetLastSoftMatchSweepAsync(ct) is not null);
 
-            var pending = await _candidates.GetPendingAsync(ct);
-            var resolution = await _links.GetResolutionAsync(ct);
-            var scan = await _expansions.ScanAsync(ct);
-            var history = await _links.GetHistoryAsync(null, ct);
-            var acts = await _links.GetActsAsync(ct);
-            var snapshot = await _libraryQueries.GetSnapshotAsync(
+            var pending = remote?.Candidates ?? await _candidates.GetPendingAsync(ct);
+            var resolution = remote is not null ? IdentityResolution.FromLiveLinks(remote.History.Where(link => link.IsLive)) : await _links.GetResolutionAsync(ct);
+            var scan = remote is not null ? MapScan(remote.Expansions) : await _expansions.ScanAsync(ct);
+            var history = remote?.History ?? await _links.GetHistoryAsync(null, ct);
+            var acts = remote?.Acts ?? await _links.GetActsAsync(ct);
+            var snapshot = remote is not null ? Api.LibraryWorkspaceMapping.Map(remote.Workspace).snapshot : await _libraryQueries.GetSnapshotAsync(
                 BucketThresholds.Default with { ShowNonGameEntries = true }, ct);
             var releasesByWork = snapshot.Releases.ToLookup(release => release.WorkId);
 
@@ -760,11 +784,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             cards.AddRange(await BuildSameGameCardsAsync(pending, library, resolution, now, ct));
             cards.AddRange(await BuildExpansionCardsAsync(scan, library, now, ct));
             cards.AddRange(await BuildStandingCardsAsync(standing, releasesOfWork, library, now, ct));
-            var headers = _groupHeaders is null ? new Dictionary<long, string?>() : await _groupHeaders.GetAllAsync(ct);
-            return (hasCompletedSweep, cards, pendingCount: pending.Count, snapshot, resolution, headers);
+            var headers = remote?.Workspace.PreferredHeaderStores ?? (_groupHeaders is null ? new Dictionary<long, string?>() : await _groupHeaders.GetAllAsync(ct));
+            return (hasCompletedSweep, cards, pendingCount: pending.Count, snapshot, resolution, headers, apiRevision: remote?.Revision);
         }, ct);
 
         if (_disposed || generation != _loadGeneration) return;
+        if (loaded.apiRevision is not null) _apiRevision = loaded.apiRevision;
         await ReadPreferredPlatformAsync(ct);
         if (_disposed || generation != _loadGeneration) return;
         HasCompletedSweep = loaded.hasCompletedSweep;
@@ -778,6 +803,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
         Focus(VisibleRows().FirstOrDefault());
         RequestCovers(_coverWidthPixels);
+    }
+
+    private static ExpansionScanReport MapScan(IReadOnlyList<Winnow.Api.Contracts.Identity.ExpansionGroupResponse> groups)
+    {
+        static ExpansionCandidateWork Work(Winnow.Api.Contracts.Identity.ExpansionWorkResponse work) => new(work.WorkId, work.Title, work.ReleaseIds);
+        return new(0, 0, groups.Select(group => new ExpansionProposalGroup(Work(group.Base),
+            group.Members.Select(member => new ExpansionProposalMember(Work(member.Work), member.Evidence)
+            { Kind = member.Kind, RelationLabel = member.RelationLabel, FromMetadata = member.FromMetadata }).ToArray())).ToArray(), TimeSpan.Zero);
     }
 
     private void Place(IReadOnlyList<MergeCardViewModel> cards)
@@ -940,7 +973,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
     public async Task SetGroupHeaderAsync(MergeCardViewModel card, GroupHeaderOption option, CancellationToken ct = default)
     {
-        if (_groupHeaders is null || !card.CanChooseHeaderStore || card.IsSavingHeader
+        if ((_groupHeaders is null && _api is null) || !card.CanChooseHeaderStore || card.IsSavingHeader
             || !_sectionOfCard.ContainsKey(card) || !card.HeaderStoreOptions.Contains(option)
             || card.SelectedHeaderStore?.Store == option.Store) return;
 
@@ -948,7 +981,15 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         card.HeaderStoreProblem = null;
         try
         {
-            if (!await _groupHeaders.SetAsync(card.HeaderGroupWorkId, option.Store, ct))
+            bool changed;
+            if (_api is not null)
+            {
+                var result = await _api.SetHeaderAsync(new(_apiRevision, card.HeaderGroupWorkId, option.Store), ct);
+                _apiRevision = result.Revision;
+                changed = result.Changed;
+            }
+            else changed = await _groupHeaders!.SetAsync(card.HeaderGroupWorkId, option.Store, ct);
+            if (!changed)
                 card.HeaderStoreProblem = MergeCopy.GroupHeaderChanged;
             else
             {
@@ -957,6 +998,10 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Winnow.Api.Client.BackendApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            card.HeaderStoreProblem = "This group changed in another window. Refresh possible matches before choosing its header again.";
+        }
         catch (Exception)
         {
             card.HeaderStoreProblem = MergeCopy.GroupHeaderSaveFailed;
@@ -966,6 +1011,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
     private async Task RefreshGroupHeadersAsync(CancellationToken ct)
     {
+        if (_api is not null)
+        {
+            var response = await _api.GetAsync(ct);
+            // Keep the queue revision tied to the displayed cards. A separate client's decision requires a reload.
+            var mapped = Api.LibraryWorkspaceMapping.Map(response.Workspace);
+            ConfigureGroupHeaders(_sectionOfCard.Keys, mapped.snapshot, mapped.identity.SameGame, mapped.headers);
+            return;
+        }
         if (_groupHeaders is null) return;
         var snapshot = await _libraryQueries.GetSnapshotAsync(BucketThresholds.Default with { ShowNonGameEntries = true }, ct);
         var resolution = (await _links.GetResolutionAsync(ct)).SameGame;
@@ -975,7 +1028,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     private void ConfigureGroupHeaders(IEnumerable<MergeCardViewModel> cards, Winnow.Core.Queries.LibrarySnapshot snapshot,
         SameGameResolution resolution, IReadOnlyDictionary<long, string?> preferences)
     {
-        if (_groupHeaders is null) return;
+        if (_groupHeaders is null && _api is null) return;
         var workByRelease = snapshot.Releases.ToDictionary(release => release.Id, release => release.WorkId);
         var works = snapshot.Works.ToDictionary(work => work.Id);
         foreach (var card in cards.Where(card => card.IsResolved && card.LinkKind == IdentityLinkKinds.SameGame))
@@ -1010,6 +1063,17 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         }
 
         card.IsDecided = true;
+        if (_api is not null)
+        {
+            try
+            {
+                var result = await _api.DismissAsync(new(_apiRevision, card.CandidateIds, card.RefusalPairs), ct);
+                _apiRevision = result.Revision;
+            }
+            catch { card.IsDecided = false; throw; }
+        }
+        else
+        {
         foreach (var candidateId in card.CandidateIds)
         {
             await _candidates.SetStatusAsync(candidateId, MergeCandidateStatuses.Rejected, ct);
@@ -1018,6 +1082,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         if (card.RefusalPairs.Count > 0)
         {
             await _expansionRefusals.RefuseAsync(card.RefusalPairs, null, ct);
+        }
         }
 
         var index = section.IndexOf(card);
@@ -1055,7 +1120,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await _links.RetractActAsync(actId, null, ct);
+        if (_api is not null)
+        {
+            var result = await _api.UndoAsync(new(_apiRevision, [actId], [], []), ct);
+            _apiRevision = result.Revision;
+        }
+        else await _links.RetractActAsync(actId, null, ct);
 
         if (card.IsFromHistory)
         {
@@ -1170,6 +1240,11 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         {
             return null;
         }
+        catch (Winnow.Api.Client.BackendApiException exception) when (exception.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            _stale = true;
+            return null;
+        }
     }
 
     private void RemoveRefusedCard(MergeCardViewModel card)
@@ -1195,6 +1270,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     // remembered so one Undo reverses the whole answer.
     private async Task<LinkedAct> LinkAsync(MergeCardViewModel card, CancellationToken ct)
     {
+        if (_api is not null)
+        {
+            var result = await _api.LinkAsync(new(_apiRevision, card.ParentWorkId, card.ChildWorkIds, card.LinkKind,
+                card.RelationLabel, card.RejectedCandidateIds, card.RefusedPairs), ct);
+            _apiRevision = result.Revision;
+            return new LinkedAct(card, result.ActId ?? throw new InvalidDataException("The backend did not return a link act."),
+                card.RejectedCandidateIds, card.RefusedPairs);
+        }
         var actId = await _links.LinkAsync(
             new IdentityLinkRequest
             {
@@ -2123,9 +2206,9 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         // Every work carrying a live pin, in one read rather than one per
         // work — the same pattern the library load uses. An empty set is
         // both a normal answer and what a failed read degrades into.
-        var pinnedWorkIds = _igdb is null
+        var pinnedWorkIds = _apiPinnedWorkIds?.ToHashSet() ?? (_igdb is null
             ? new HashSet<long>()
-            : await _igdb.GetLivePinnedWorkIdsAsync(ct);
+            : await _igdb.GetLivePinnedWorkIdsAsync(ct));
 
         // The read model the grid draws from, so a row's hours, idle time and
         // unread dot agree with its tile. Read once per load, every entry,

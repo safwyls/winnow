@@ -115,7 +115,12 @@ public sealed class SqliteConnectionFactory : ISqliteConnectionFactory
     /// the rest of the caller's flow, and SQLite's BeginTransaction does no I/O
     /// worth awaiting anyway.
     /// </summary>
-    public IUnitOfWork Begin()
+    public IUnitOfWork Begin() => Begin(deferred: false);
+
+    /// <summary>Defers the transaction until its first read so independent writers can proceed.</summary>
+    public IUnitOfWork BeginRead() => Begin(deferred: true);
+
+    private IUnitOfWork Begin(bool deferred)
     {
         if (_ambient.Value is { IsOpen: true })
         {
@@ -128,7 +133,7 @@ public sealed class SqliteConnectionFactory : ISqliteConnectionFactory
         SqliteUnitOfWork unitOfWork;
         try
         {
-            unitOfWork = new SqliteUnitOfWork(this, connection, connection.BeginTransaction());
+            unitOfWork = new SqliteUnitOfWork(this, connection, connection.BeginTransaction(deferred));
         }
         catch
         {

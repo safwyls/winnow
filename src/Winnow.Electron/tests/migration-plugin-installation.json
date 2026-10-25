@@ -1,0 +1,40 @@
+{
+  "PluginInstallViewModelTests.Browser_request_waits_for_manual_retry_instead_of_being_dropped": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/plugin-installation.test.ts",
+        "case": "Browser_request_waits_for_manual_retry_instead_of_being_dropped"
+      },
+      {
+        "file": "tests/electron/plugin-installation.spec.ts",
+        "case": "${mode} a browser request waits for a manual retry and then installs its own provider"
+      }
+    ],
+    "reason": "Website requests serialize behind a manual retry; each completed provider opens its own settings. Native desktop and fullscreen tests exercise the shared controller through production main, preload and renderer with isolated package responses."
+  },
+  "PluginInstallViewModelTests.Cancellation_clears_busy_state_and_offers_retry": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/plugin-installation.test.ts",
+        "case": "Cancellation_clears_busy_state_and_offers_retry"
+      },
+      {
+        "file": "tests/electron/plugin-installation.spec.ts",
+        "case": "${mode} cancellation clears progress, offers retry and unlocks backend restart"
+      }
+    ],
+    "reason": "Cancellation reaches the backend operation, clears busy state and progress, publishes the source retry message and unlocks service restart on both surfaces. Late operation acceptance retains cancellation identity."
+  },
+  "PluginInstallInteractionTests.Installation_reports_progress_retries_from_input_and_opens_settings": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/plugin-installation.spec.ts",
+        "case": "${mode} website installation reports progress, retries from native input and opens settings for outcome ${outcome}"
+      }
+    ],
+    "reason": "All four original mode/outcome combinations exercise live polite progress, failure, native Enter/controller A retry, successful plugin settings, version and field visibility, and absence of Retry after completion. Only newly installed packages refresh. Fullscreen uses the source dedicated progress and installed-provider pages. Package transport is intercepted; package verification remains in the shared backend tests."
+  }
+}

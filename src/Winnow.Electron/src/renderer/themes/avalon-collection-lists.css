@@ -1,0 +1,64 @@
+@layer themes {
+  .avalon-list-sections {
+    margin-top: 18px;
+  }
+  .avalon-list-sections section + section {
+    margin-top: 14px;
+  }
+  .avalon-list-sections .avalon-list-heading {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    justify-content: flex-start;
+    padding: 8px 10px;
+    gap: 6px;
+    color: var(--muted);
+    font-size: calc(11px * var(--theme-text-scale, 1));
+    letter-spacing: 0.04em;
+  }
+  .avalon-list-sections .avalon-list-row {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 12px;
+    text-align: left;
+    font-family: var(--font-body);
+    font-weight: 400;
+    transition: background-color 120ms;
+  }
+  .avalon-list-row > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .avalon-list-row > small {
+    flex: none;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .avalon-list-sections .avalon-list-row:hover,
+  .avalon-list-sections .avalon-list-row[aria-pressed='true'] {
+    background: var(--avalon-chrome-raised, var(--raised));
+  }
+  .avalon-list-row[aria-pressed='true']::before {
+    content: '';
+    position: absolute;
+    inset: 4px auto 4px 0;
+    width: 2px;
+    background: var(--accent);
+  }
+  .avalon-shell[data-reduced-motion='true'] .avalon-list-row {
+    transition: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .avalon-list-row {
+      transition: none;
+    }
+  }
+}

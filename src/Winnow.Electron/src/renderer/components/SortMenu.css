@@ -1,0 +1,98 @@
+@layer components {
+  .shared-sort-trigger {
+    min-height: 30px;
+    padding: 5px 9px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    gap: 7px;
+    font-size: calc(12px * var(--theme-text-scale, 1));
+  }
+  .shared-sort-trigger:hover,
+  .shared-sort-trigger[aria-expanded='true'] {
+    background: var(--raised);
+    color: var(--text);
+  }
+  .shared-choice-trigger {
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+    gap: 16px;
+    min-width: 0;
+    max-width: 100%;
+    justify-content: space-between;
+    text-align: left;
+  }
+  .shared-choice-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .shared-sort-trigger > svg {
+    flex: none;
+  }
+  :is(.field, .studio-field) > .shared-choice-trigger {
+    width: 100%;
+    min-height: 40px;
+    font: inherit;
+  }
+  .shared-choice-trigger:disabled,
+  .shared-sort-menu button:disabled {
+    cursor: default;
+  }
+  :root[data-mode='fullscreen'] .shared-choice-trigger,
+  :root[data-mode='fullscreen'] .shared-choice-menu button {
+    min-height: 44px;
+    font-size: calc(16px * var(--theme-text-scale, 1));
+  }
+  .shared-sort-menu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    z-index: 200;
+    min-width: 176px;
+    width: max-content;
+    overflow: auto;
+    padding: 4px;
+    background: var(--raised);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-size: calc(12px * var(--theme-text-scale, 1));
+  }
+  .shared-sort-menu button {
+    display: flex;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 30px;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    gap: 8px;
+    transition: none;
+    transform: none;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .shared-sort-menu button:enabled:hover,
+  .shared-sort-menu button:enabled:focus-visible {
+    background: var(--surface);
+    outline: none;
+  }
+  .shared-sort-dot {
+    width: 6px;
+    height: 6px;
+    flex: none;
+    border-radius: 50%;
+    background: transparent;
+  }
+  .shared-sort-menu [aria-checked='true'] .shared-sort-dot {
+    background: var(--accent-foreground, var(--accent));
+  }
+}

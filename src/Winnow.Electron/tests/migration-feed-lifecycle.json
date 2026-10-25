@@ -1,0 +1,140 @@
+{
+  "FeedViewModelTests.Recently_played_keeps_order_and_capacity_without_feedback": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-data.test.ts",
+        "case": "preserves source shelf order, pitches, reasons and recent capacity with fullscreen=%s"
+      },
+      {
+        "file": "tests/parity-feed-model.test.ts",
+        "case": "never writes a verdict or starts replacement for an unscored recent shelf"
+      },
+      {
+        "file": "tests/parity-feed-impressions.test.ts",
+        "case": "never records an unscored recent-play shelf or an invalid release"
+      }
+    ],
+    "reason": "Both presentation capacities, source order and reasons are preserved. Unscored shelves reject feedback at the model boundary and never register impressions."
+  },
+  "FeedViewModelTests.Optional_shelves_append_without_replacing_existing_cards_or_recording_impressions": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-model.test.ts",
+        "case": "appends optional shelves without replacing the existing shelf or card objects"
+      },
+      {
+        "file": "tests/parity-feed-query.test.tsx",
+        "case": "publishes primary recommendations without waiting for an optional provider"
+      }
+    ],
+    "reason": "Optional providers append after the primary pass while the existing shelf and card objects retain identity. Displayed cards are recorded only by the separately tested viewport observer."
+  },
+  "FeedViewModelTests.Disposing_a_feed_releases_cards_and_detaches_library_reload": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-model.test.ts",
+        "case": "releases cards on disposal and ignores late reads, incoming snapshots and old card actions"
+      },
+      {
+        "file": "tests/parity-feed-query.test.tsx",
+        "case": "cancels an unfinished %s on disposal and ignores its late result"
+      }
+    ],
+    "reason": "Disposal releases model rows/listeners, refuses incoming snapshots and commands, and aborts unobserved primary/optional reads through the native cancellation bridge."
+  },
+  "FeedViewModelTests.A_load_finishing_after_disposal_cannot_restore_feed_cards": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-query.test.tsx",
+        "case": "cancels an unfinished %s on disposal and ignores its late result"
+      },
+      {
+        "file": "tests/parity-feed-model.test.ts",
+        "case": "releases cards on disposal and ignores late reads, incoming snapshots and old card actions"
+      }
+    ],
+    "reason": "Neither a late primary/optional query result nor a late reserve read can repopulate a disposed feed."
+  },
+  "FeedViewModelTests.Every_card_carries_the_engines_sentence_verbatim": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-data.test.ts",
+        "case": "preserves source shelf order, pitches, reasons and recent capacity with fullscreen=%s"
+      },
+      {
+        "file": "tests/parity-feed-ui.test.tsx",
+        "case": "states a snooze date, keeps the original card and restores controls through Undo"
+      }
+    ],
+    "reason": "Data projection retains every original reason without adding generic copy, and both surfaces retain the selected reason across a verdict and Undo."
+  },
+  "FeedViewModelTests.An_omitted_shelf_is_absent_rather_than_empty": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/avalon-data.test.ts",
+        "case": "keeps omitted or empty shelves absent even when the library has recent play"
+      }
+    ],
+    "reason": "A completed snapshot renders only supplied nonempty shelves, without fabricating a local recently-played shelf."
+  },
+  "FeedViewModelTests.A_library_reload_rescores_the_feed_without_blanking_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-query.test.tsx",
+        "case": "keeps completed primary and optional cards on screen while a replacement primary pass is in flight"
+      }
+    ],
+    "reason": "A refetch leaves primary and optional cards on screen with the same DOM identity until the replacement pass finishes."
+  },
+  "FeedReserveTests.The_card_that_leaves_stops_reaching_the_screen": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-model.test.ts",
+        "case": "detaches the departing card from history refreshes and ignores stale swaps"
+      }
+    ],
+    "reason": "An outgoing row can no longer write Undo, trigger history changes, or replace the live slot after its receipt has been replaced."
+  },
+  "FeedReserveTests.A_swap_from_a_pass_the_feed_has_replaced_is_discarded": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-feed-model.test.ts",
+        "case": "an old mutation cannot change a replaced library generation"
+      },
+      {
+        "file": "tests/parity-feed-model.test.ts",
+        "case": "an old backfill cannot add cards after explicit reload or disposal"
+      }
+    ],
+    "reason": "Generation checks discard late actions and reserve results after a replacement pass; stale rows are not live action targets."
+  },
+  "FeedImpressionTests.Only_cards_intersecting_the_live_viewport_are_recorded_and_scroll_records_new_cards": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/feed.spec.ts",
+        "case": "records only exposed cards and waits for an opaque modal and scroll clipping"
+      }
+    ],
+    "reason": "Actual Electron desktop/fullscreen tests assert the isolated backend database remains empty under an opaque modal, excludes clipped cards and records them after scrolling into view."
+  },
+  "FeedImpressionTests.A_modal_covering_the_feed_suppresses_impressions_until_it_closes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/feed.spec.ts",
+        "case": "records only exposed cards and waits for an opaque modal and scroll clipping"
+      }
+    ],
+    "reason": "Actual Electron desktop/fullscreen tests assert the isolated backend database remains empty under an opaque modal, excludes clipped cards and records them after scrolling into view."
+  }
+}

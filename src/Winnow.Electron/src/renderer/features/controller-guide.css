@@ -1,0 +1,112 @@
+.fullscreen-controller-guide {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 20px;
+  padding: 12px 0;
+  color: var(--text);
+}
+.controller-guide-diagram {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 24px;
+  min-height: 0;
+  align-items: center;
+}
+.controller-guide-art {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+}
+.controller-guide-art > div {
+  height: 100%;
+}
+.controller-guide-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.controller-guide-art [data-fill='Surface'] {
+  fill: var(--surface);
+}
+.controller-guide-art [data-fill='SurfaceRaised'] {
+  fill: var(--raised);
+}
+.controller-guide-art [data-stroke='TextDim'] {
+  stroke: var(--muted);
+}
+.controller-guide-face-buttons {
+  position: absolute;
+  inset: 0;
+}
+.controller-guide-face-buttons circle {
+  fill: var(--raised);
+  stroke: var(--muted);
+  stroke-width: 0.25;
+}
+.controller-guide-face-buttons text {
+  fill: var(--text);
+  font: 2.4px var(--font-body);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.controller-guide-mappings {
+  display: grid;
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  gap: clamp(12px, 1.25vw, 24px);
+  margin: 0;
+  min-height: 0;
+}
+.controller-guide-mappings > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding-bottom: clamp(6px, 0.625vw, 12px);
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.controller-guide-mappings dt {
+  margin: 0;
+}
+.controller-guide-mappings dd {
+  margin: 0;
+  font: calc(clamp(18.67px, 1.458vw, 28px) * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1))/1.3
+    var(--font-body);
+  overflow-wrap: anywhere;
+}
+.controller-guide-glyph {
+  font: calc(clamp(14.67px, 1.146vw, 22px) * var(--theme-text-scale, 1))/1.3 var(--font-mono);
+  white-space: nowrap;
+}
+.fullscreen-controller-guide > p {
+  margin: 0;
+  color: var(--muted);
+  font: calc(clamp(16px, 1.25vw, 24px) * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1))/1.4
+    var(--font-body);
+}
+@media (max-height: 800px) {
+  .fullscreen-controller-page > .feature-heading {
+    margin-bottom: 12px;
+  }
+  .fullscreen-controller-page > .fullscreen-section-navigation > .tabs {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+  }
+  .fullscreen-controller-guide {
+    gap: 12px;
+    padding-block: 4px;
+  }
+  .controller-guide-diagram {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 16px;
+  }
+  .controller-guide-mappings {
+    gap: 2px;
+  }
+  .controller-guide-mappings > div {
+    gap: 10px;
+    padding-bottom: 2px;
+  }
+}

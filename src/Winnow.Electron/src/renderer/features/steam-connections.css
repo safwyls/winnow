@@ -1,0 +1,45 @@
+.steam-connections > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.steam-connections h3 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+.steam-connections h3 small {
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  color: var(--muted);
+}
+.steam-connections details {
+  margin: 12px 0;
+}
+.steam-connections summary {
+  cursor: pointer;
+  color: var(--text);
+  padding: 0.5rem 0;
+}
+.steam-connections section {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.connection-state,
+.connection-account span {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.connection-state {
+  font-size: 0.8em;
+  letter-spacing: 0.05em;
+}
+.connection-state[data-tone='attention'],
+.connection-warning {
+  color: var(--warning, #e7b974);
+}
+.connection-state[data-tone='live'] {
+  color: var(--success, #a8bf9a);
+}

@@ -9,6 +9,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '../Stop-SmokeBackend.ps1')
+. (Join-Path $PSScriptRoot 'Test-ElectronPackageLayout.ps1')
+. (Join-Path $PSScriptRoot 'Smoke-Application.ps1')
+. (Join-Path $PSScriptRoot 'Installer-SmokeEvidence.ps1')
 
 function Invoke-SilentProcess {
     param(
@@ -65,37 +69,63 @@ $databasePath = Join-Path $dataDirectory 'winnow.db'
 $applicationProcess = $null
 $lockedFile = $null
 $helper = $null
+$shortcutPath = Join-Path ([Environment]::GetFolderPath('Programs')) 'Winnow.lnk'
+$diagnosticsDirectory = Join-Path $PSScriptRoot '../../artifacts/windows-smoke-logs'
 
-# Hidden CI windows are not returned by Process.MainWindowHandle. Send the same
-# WM_CLOSE to the test process's titled top-level window without making it visible.
-Add-Type @'
-using System;
-using System.Runtime.InteropServices;
-using System.Text;
-public static class WinnowSmokeWindow {
-    private delegate bool Enumerate(IntPtr window, IntPtr state);
-    [DllImport("user32.dll")] private static extern bool EnumWindows(Enumerate callback, IntPtr state);
-    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
-    [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetWindowText(IntPtr window, StringBuilder text, int count);
-    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr window, uint message, IntPtr wparam, IntPtr lparam);
-    public static bool Close(uint process) {
-        bool sent = false;
-        EnumWindows((window, state) => {
-            GetWindowThreadProcessId(window, out uint owner);
-            if (owner != process) return true;
-            var title = new StringBuilder(512);
-            GetWindowText(window, title, title.Capacity);
-            if (!title.ToString().StartsWith("Winnow", StringComparison.Ordinal)) return true;
-            sent = PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero);
-            return !sent;
-        }, IntPtr.Zero);
-        return sent;
-    }
+function Save-SmokeDiagnostics {
+    $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
+    if (-not (Test-Path -LiteralPath $smokeRoot -PathType Container)) { return }
+    Get-ChildItem -LiteralPath $smokeRoot -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Name -in @('failure.txt', 'complete', 'restarted.json') -or
+            ($_.Extension -eq '.log' -and ($_.DirectoryName -eq $smokeRoot -or
+                $_.Directory.Parent.FullName -eq $smokeRoot -or $_.Directory.Name -eq 'logs'))
+        } |
+        ForEach-Object {
+            if ($_.Name -eq 'failure.txt') { Write-Host (Get-Content -LiteralPath $_.FullName -Raw) }
+            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $diagnosticsDirectory ($_.Directory.Name + '-' + $_.Name)) -ErrorAction Continue
+        }
 }
-'@
-function Close-SmokeApplication($Process) {
-    if (-not $Process.CloseMainWindow() -and -not [WinnowSmokeWindow]::Close($Process.Id)) {
-        throw "No Winnow window accepted a close request for process $($Process.Id)."
+
+function Stop-InstallerSmokeBackend {
+    $cleanup = [ordered]@{ discoveryPresent = (Test-Path -LiteralPath (Join-Path $dataDirectory 'backend/endpoint.json')); shutdownReturned = $false; authenticatedFailureType = $null; processes = @(); failureType = $null }
+    try {
+        try {
+            Stop-SmokeBackend $dataDirectory
+            $cleanup.shutdownReturned = $true
+        } catch {
+            $cleanup.authenticatedFailureType = $_.Exception.GetType().FullName
+            Write-Warning 'Authenticated isolated backend shutdown failed; collecting exact owned processes for cleanup.'
+        }
+        # A frontend killed during early startup can leave a backend before endpoint.json
+        # is published. Cleanup must find that exact isolated child as well. This forced
+        # fallback is only in finally, never evidence that the readiness/close checks passed.
+        $expectedBackend = Join-Path $installDirectory 'backend/Winnow.Backend.exe'
+        $directoryArgument = '(?i)(?:^|\s)--data-dir(?:=|\s+)(?:"' + [regex]::Escape($dataDirectory) + '"|' + [regex]::Escape($dataDirectory) + ')(?=\s|$)'
+        $owned = @(Get-CimInstance Win32_Process -Filter "Name = 'Winnow.Backend.exe'" |
+            Where-Object { $_.ExecutablePath -ieq $expectedBackend -and $_.CommandLine -match $directoryArgument })
+        foreach ($candidate in $owned) {
+            $process = Get-Process -Id $candidate.ProcessId -ErrorAction SilentlyContinue
+            if ($null -eq $process) { continue }
+            if ($process.Path -ine $expectedBackend -or
+                [Math]::Abs(($process.StartTime.ToUniversalTime() - $candidate.CreationDate.ToUniversalTime()).TotalSeconds) -gt 1) {
+                throw 'The isolated backend cleanup process identity changed.'
+            }
+            $entry = [ordered]@{ processId = $process.Id; processStartTicks = $process.StartTime.ToUniversalTime().Ticks.ToString(); executable = $process.Path; forced = $false; exited = $false }
+            if (-not $process.WaitForExit(2000)) {
+                Stop-Process -Id $process.Id -Force
+                $entry.forced = $true
+            }
+            $entry.exited = $process.WaitForExit(10000)
+            $cleanup.processes += $entry
+        }
+        if (@($cleanup.processes | Where-Object { -not $_.exited }).Count -gt 0) { throw 'An isolated smoke backend survived cleanup.' }
+    } catch {
+        $cleanup.failureType = $_.Exception.GetType().FullName
+        throw
+    } finally {
+        $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
+        $cleanup | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $diagnosticsDirectory 'backend-cleanup.json') -Encoding utf8
     }
 }
 
@@ -116,7 +146,7 @@ try {
     }
 
     $applicationArguments = '--no-sync --data-dir "{0}"' -f $dataDirectory
-    $applicationProcess = Start-Process -FilePath $applicationPath -ArgumentList ($applicationArguments + ' --seed-sample') -WindowStyle Hidden -PassThru
+    $applicationProcess = Start-Process -FilePath $applicationPath -ArgumentList ($applicationArguments + ' --seed-sample') -WindowStyle Normal -PassThru
     for ($attempt = 0; $attempt -lt 40; $attempt++) {
         if (Test-Path -LiteralPath $databasePath -PathType Leaf) {
             break
@@ -138,6 +168,11 @@ try {
         throw 'Winnow did not stop after the isolated startup check.'
     }
     $applicationProcess = $null
+    Stop-SmokeBackend $dataDirectory
+    Initialize-InstalledSmokeLibrary $databasePath
+    $libraryBefore = Read-InstalledLibraryEvidence $databasePath
+    $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
+    $libraryBefore | Set-Content -LiteralPath (Join-Path $diagnosticsDirectory 'library-before.json') -Encoding utf8
 
     $sentinelPath = Join-Path $dataDirectory 'preserve-after-uninstall.txt'
     [System.IO.File]::WriteAllText($sentinelPath, 'keep this user data')
@@ -149,12 +184,17 @@ try {
     }
 
     $helperScript = Join-Path $PSScriptRoot '../../src/Winnow.App/Services/Install-Update.ps1'
+    # Successful upgrades must use the helper actually shipped in the installed release.
+    # Replacing the application cannot replace the old helper that is already running.
+    $previousHelperScript = Join-Path $smokeRoot 'previous-release-update-helper.ps1'
+    Export-InstalledUpdateHelper $installDirectory $previousHelperScript |
+        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $diagnosticsDirectory 'previous-helper.json') -Encoding utf8
     $previousBinaryDigest = (Get-FileHash -LiteralPath $applicationPath -Algorithm SHA256).Hash
     foreach ($scenario in @('bad-digest', 'cancelled', 'shutdown-timeout', 'locked-file', 'upgrade')) {
         Write-Host "Updater smoke scenario: $scenario"
         $scenarioDirectory = Join-Path $smokeRoot $scenario
         $null = New-Item -ItemType Directory -Path $scenarioDirectory
-        $applicationProcess = Start-Process -FilePath $applicationPath -ArgumentList $applicationArguments -WindowStyle Hidden -PassThru
+        $applicationProcess = Start-Process -FilePath $applicationPath -ArgumentList $applicationArguments -WindowStyle Normal -PassThru
         Start-Sleep -Seconds 3
         if ($applicationProcess.HasExited) { throw 'Winnow could not start for the updater smoke test.' }
         $manifest = @{
@@ -176,8 +216,9 @@ try {
             [IO.File]::WriteAllText($lockedPath, 'locked binary fixture')
             $lockedFile = [IO.File]::Open($lockedPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
         }
+        $scenarioHelper = if ($scenario -eq 'upgrade') { $previousHelperScript } else { $helperScript }
         $helper = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @(
-            '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $helperScript), '-ManifestPath', ('"{0}"' -f $manifestPath)
+            '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f $scenarioHelper), '-ManifestPath', ('"{0}"' -f $manifestPath)
         ) -WindowStyle Hidden -PassThru
         if ($scenario -in @('upgrade', 'locked-file')) {
             for ($attempt = 0; $attempt -lt 200 -and -not (Test-Path -LiteralPath (Join-Path $scenarioDirectory 'ready')); $attempt++) {
@@ -186,8 +227,9 @@ try {
             }
             if (-not (Test-Path -LiteralPath (Join-Path $scenarioDirectory 'ready'))) { throw 'Update helper was not ready.' }
             Set-Content -LiteralPath (Join-Path $scenarioDirectory 'proceed') -Value 'ready'
+            Stop-SmokeBackend $dataDirectory
             # The production app requests its normal shutdown after the same handshake.
-            Close-SmokeApplication $applicationProcess
+            Close-SmokeApplication $applicationProcess -Report (Join-Path $diagnosticsDirectory "$scenario-before-upgrade-window.json")
             if (-not $applicationProcess.WaitForExit(60000)) { throw 'Winnow did not close normally for the upgrade.' }
         }
         if (-not $helper.WaitForExit(180000)) { throw 'Update helper did not finish.' }
@@ -201,7 +243,7 @@ try {
                 Remove-Item -LiteralPath $lockedPath
             }
             if (-not $applicationProcess.HasExited) {
-                Close-SmokeApplication $applicationProcess
+                Close-SmokeApplication $applicationProcess -Report (Join-Path $diagnosticsDirectory "$scenario-window.json")
                 if (-not $applicationProcess.WaitForExit(60000)) { throw 'Winnow did not close after failure smoke test.' }
             }
         } else {
@@ -213,10 +255,17 @@ try {
             if ($applicationProcess.Path -ine $applicationPath) { throw 'The helper relaunched a different app.' }
             $commandLine = (Get-CimInstance Win32_Process -Filter "ProcessId = $restartedId").CommandLine
             if (-not $commandLine.Contains($dataDirectory) -or -not $commandLine.Contains('--no-sync')) { throw 'Restart arguments lost the selected data directory or no-sync.' }
-            Close-SmokeApplication $applicationProcess
+            $restartManifest = Get-Content -LiteralPath (Join-Path $installDirectory 'release-info.json') -Raw | ConvertFrom-Json
+            Close-SmokeApplication $applicationProcess -Report (Join-Path $diagnosticsDirectory 'upgrade-restarted-window.json') `
+                -Electron:(Test-WinnowElectronManifest $restartManifest) -DataDirectory $dataDirectory `
+                -BackendExecutable (Join-Path $installDirectory 'backend/Winnow.Backend.exe')
             if (-not $applicationProcess.WaitForExit(60000)) { throw 'Updated Winnow did not close.' }
         }
         $applicationProcess = $null
+        Stop-SmokeBackend $dataDirectory
+        $libraryAfter = Read-InstalledLibraryEvidence $databasePath
+        $libraryAfter | Set-Content -LiteralPath (Join-Path $diagnosticsDirectory "$scenario-library.json") -Encoding utf8
+        if ($libraryAfter -cne $libraryBefore) { throw "The $scenario scenario changed seeded library identities or ownership facts." }
         if ((Get-Content -LiteralPath $sentinelPath -Raw) -cne 'keep this user data') { throw 'Upgrade changed user data.' }
         foreach ($relativePath in $preservedFiles) {
             if ((Get-Content -LiteralPath (Join-Path $dataDirectory $relativePath) -Raw) -cne 'preserve these user-owned bytes') {
@@ -228,12 +277,38 @@ try {
     if (-not (Test-Path -LiteralPath $applicationPath -PathType Leaf)) {
         throw 'The silent reinstall did not preserve the selected install location.'
     }
+    $installedManifest = Get-Content -LiteralPath (Join-Path $installDirectory 'release-info.json') -Raw | ConvertFrom-Json
+    if (Test-WinnowElectronManifest $installedManifest) {
+        Assert-WinnowWindowsDirectory $installDirectory
+        Assert-WinnowPackagedHashes $installDirectory
+        foreach ($legacy in @('Winnow.dll', 'Winnow.deps.json', 'Winnow.runtimeconfig.json', 'Winnow.Auth.WebView.dll', 'Winnow.Covers.Avalonia.dll')) {
+            if (Test-Path -LiteralPath (Join-Path $installDirectory $legacy)) { throw "Upgrade left obsolete frontend file $legacy." }
+        }
+        if (@(Get-ChildItem -LiteralPath $installDirectory -Filter 'Avalonia*.dll' -File).Count -ne 0) {
+            throw 'Upgrade left obsolete Avalonia frontend assemblies.'
+        }
+        $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
+        foreach ($mode in @('desktop', 'fullscreen')) {
+            Invoke-WinnowPackagedProbe $applicationPath $dataDirectory (Join-Path $diagnosticsDirectory "installed-$mode.json") $mode
+        }
+    }
+    foreach ($required in @('backend/Winnow.Backend.exe', 'backend/Winnow.Backend.runtimeconfig.json', 'backend/Microsoft.AspNetCore.dll')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $installDirectory $required) -PathType Leaf)) { throw "Installed backend is missing $required." }
+    }
     $protocolKey = Get-Item -LiteralPath 'HKCU:\Software\Classes\winnow'
     $protocolCommand = (Get-Item -LiteralPath 'HKCU:\Software\Classes\winnow\shell\open\command').GetValue('')
     if ($protocolKey.GetValue('URL Protocol', $null) -cne '' -or
         $protocolCommand -cne ('"{0}" --uri "%1"' -f $applicationPath)) {
         throw 'The installer did not register the quoted per-user Winnow URI command for this installation.'
     }
+    if (-not (Test-Path -LiteralPath $shortcutPath -PathType Leaf)) { throw 'The Start menu shortcut is missing.' }
+    $shell = New-Object -ComObject WScript.Shell
+    try {
+        $shortcut = $shell.CreateShortcut($shortcutPath)
+        if ($shortcut.TargetPath -ine $applicationPath -or $shortcut.WorkingDirectory -ine $installDirectory -or $shortcut.Arguments) {
+            throw 'The Start menu shortcut does not target this installed Winnow without extra arguments.'
+        }
+    } finally { $null = [Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }
 
     if (-not (Test-Path -LiteralPath $uninstallerPath -PathType Leaf)) {
         throw "The install did not create its uninstaller: $uninstallerPath"
@@ -246,35 +321,39 @@ try {
     if (Test-Path -LiteralPath 'HKCU:\Software\Classes\winnow') {
         throw 'The silent uninstall left the Winnow URI registration behind.'
     }
+    if (Test-Path -LiteralPath $shortcutPath) { throw 'The silent uninstall left its Start menu shortcut behind.' }
+    foreach ($removed in @('resources/app.asar', 'backend/Winnow.Backend.exe', 'update-helper/Winnow.Update.Helper.exe')) {
+        if (Test-Path -LiteralPath (Join-Path $installDirectory $removed)) { throw "The silent uninstall left packaged file $removed." }
+    }
     if (-not (Test-Path -LiteralPath $databasePath -PathType Leaf) -or
         -not (Test-Path -LiteralPath $sentinelPath -PathType Leaf)) {
         throw 'The uninstall removed user data outside the install directory.'
     }
+    $libraryAfter = Read-InstalledLibraryEvidence $databasePath
+    $libraryAfter | Set-Content -LiteralPath (Join-Path $diagnosticsDirectory 'uninstalled-library.json') -Encoding utf8
+    if ($libraryAfter -cne $libraryBefore) { throw 'Uninstall changed seeded library identities or ownership facts.' }
 
     Write-Host "Windows installer smoke test passed: $installerPath"
 }
 catch {
     Write-Host "Windows updater smoke failed: $($_.Exception.Message)"
-    $diagnosticsDirectory = Join-Path $PSScriptRoot '../../artifacts/windows-smoke-logs'
-    $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
-    Get-ChildItem -LiteralPath $smokeRoot -Recurse -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -eq 'failure.txt' -or $_.Extension -eq '.log' } |
-        ForEach-Object {
-            if ($_.Name -eq 'failure.txt') { Write-Host (Get-Content -LiteralPath $_.FullName -Raw) }
-            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $diagnosticsDirectory ($_.Directory.Name + '-' + $_.Name)) -ErrorAction Continue
-        }
+    Save-SmokeDiagnostics
     throw
 }
 finally {
     if ($null -ne $lockedFile) { $lockedFile.Dispose() }
-    if ($null -ne $helper -and -not $helper.HasExited) {
-        Stop-Process -Id $helper.Id -Force -ErrorAction SilentlyContinue
-        $null = $helper.WaitForExit(10000)
+    $closedProcesses = @()
+    foreach ($owned in @(@{ kind = 'update-helper'; process = $helper }, @{ kind = 'frontend'; process = $applicationProcess })) {
+        $process = $owned.process
+        if ($null -eq $process) { continue }
+        $forced = -not $process.HasExited
+        if ($forced) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
+        $closedProcesses += [ordered]@{ kind = $owned.kind; processId = $process.Id; forced = $forced; exited = $process.WaitForExit(10000) }
     }
-    if ($null -ne $applicationProcess -and -not $applicationProcess.HasExited) {
-        Stop-Process -Id $applicationProcess.Id -Force -ErrorAction SilentlyContinue
-        $null = $applicationProcess.WaitForExit(10000)
-    }
+    $null = New-Item -ItemType Directory -Path $diagnosticsDirectory -Force
+    ConvertTo-Json -InputObject @($closedProcesses) -Depth 4 | Set-Content -LiteralPath (Join-Path $diagnosticsDirectory 'process-cleanup.json') -Encoding utf8
+    try { Stop-InstallerSmokeBackend } catch { Write-Warning "Could not stop the isolated smoke backend ($($_.Exception.GetType().Name))." }
+    Save-SmokeDiagnostics
     try { Remove-VerifiedSmokeRoot -Path $smokeRoot }
     catch { Write-Warning "Disposable smoke directory could not be removed: $($_.Exception.Message)" }
 }

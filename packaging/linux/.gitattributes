@@ -1,1 +1,3 @@
 *.sh text eol=lf
+postinst text eol=lf
+postrm text eol=lf

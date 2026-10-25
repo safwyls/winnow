@@ -24,7 +24,8 @@ public sealed record AccountStatRow
 /// <summary>Projects captured facts without blending currencies or overlapping accounts.</summary>
 public partial class AccountStatsViewModel : ObservableObject
 {
-    private readonly IAccountStatsRepository _repository;
+    private readonly IAccountStatsRepository? _repository;
+    private readonly Winnow.Api.Client.WinnowApiClient? _api;
     private readonly string _source;
 
     /// <summary>The one symbol observed, or empty when there is none or several.</summary>
@@ -53,6 +54,9 @@ public partial class AccountStatsViewModel : ObservableObject
         _repository = repository;
         _source = source;
     }
+
+    public AccountStatsViewModel(Winnow.Api.Client.WinnowApiClient api, string source = AccountFactSources.Steam)
+    { _api = api; _source = source; }
 
     // ══ Copy ════════════════════════════════════════════════════════════════
 
@@ -221,7 +225,8 @@ public partial class AccountStatsViewModel : ObservableObject
     {
         // Microsoft.Data.Sqlite completes its async reads synchronously. The
         // account's lifetime aggregates must not occupy the UI dispatcher.
-        var stats = await Task.Run(() => _repository.GetAsync(_source, ct), ct);
+        var stats = _api is null ? await Task.Run(() => _repository!.GetAsync(_source, ct), ct)
+            : await new Winnow.Api.Client.DetailsClient(_api).GetAccountStatsAsync(_source, ct);
         ct.ThrowIfCancellationRequested();
         Apply(stats);
     }

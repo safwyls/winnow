@@ -118,7 +118,7 @@ public sealed class DawnControlContrastTests
                 window.Background = new SolidColorBrush(theme.Surface);
                 window.FocusManager!.ClearFocus(); window.MouseMove(new Point(2, 2));
                 await Pump(window);
-                Assert.Equal(theme.IsLight ? ThemeVariant.Light : ThemeVariant.Dark, Application.Current!.RequestedThemeVariant);
+                Assert.Equal(theme.IsLight ? ThemeVariant.Light : ThemeVariant.Dark, Avalonia.Application.Current!.RequestedThemeVariant);
                 Assert.Equal(theme.IsLight ? ThemeVariant.Light : ThemeVariant.Dark, input.ActualThemeVariant);
                 var inputBorder = input.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "PART_BorderElement");
                 var inputFill = Composite(ColorOf(inputBorder.Background), theme.Surface);
@@ -246,7 +246,7 @@ public sealed class DawnControlContrastTests
 
     private sealed class RestoreTheme : IDisposable
     {
-        private readonly Application _app = Application.Current!;
+        private readonly Avalonia.Application _app = Avalonia.Application.Current!;
         private readonly ThemeVariant? _variant;
         private readonly Dictionary<object, object?> _direct;
         private readonly List<(SolidColorBrush Brush, Color Color)> _brushes = [];

@@ -1,0 +1,204 @@
+{
+  "UpdateAcknowledgementCompositionTests.Selection_acknowledges_only_patches_visible_before_a_new_push_arrives": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/UpdateAcknowledgementCompositionParityTests.cs",
+        "case": "Captured_event_ids_cannot_acknowledge_the_unpublished_later_push_and_reopen_reads_standing_watermarks"
+      },
+      {
+        "file": "tests/update-acknowledgement-composition.test.tsx",
+        "case": "freezes every selected watermark before waiting and sends a repeated same-turn action only once"
+      },
+      {
+        "file": "tests/avalon-theme.test.tsx",
+        "case": "marks linked releases as read without swallowing pushes newer than the displayed tile"
+      },
+      {
+        "file": "tests/electron/update-acknowledgement.spec.ts",
+        "case": "selected library snapshot excludes a push inserted before acknowledgement without losing the newer unread patch"
+      }
+    ],
+    "reason": "Both surfaces freeze every selected game and its displayed per-release watermark before awaiting Details. Original event IDs and later unpublished push retain exact correlation through the production API; repeated same-turn activation sends one batch and native Library actions preserve the newer unread patch."
+  },
+  "UpdateAcknowledgementCompositionTests.Desktop_context_menu_binds_mark_as_read_only_for_Patched_selection": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/UpdateAcknowledgementCompositionParityTests.cs",
+        "case": "Original_grouped_Details_marks_and_restores_only_its_two_displayed_release_watermarks"
+      },
+      {
+        "file": "tests/update-acknowledgement-composition.test.tsx",
+        "case": "exposes Mark as read through the selected-game action route only in Patched"
+      },
+      {
+        "file": "tests/electron/update-acknowledgement.spec.ts",
+        "case": "Patched-only actions acknowledge grouped and multiple selections leave unselected releases and admit later patches"
+      }
+    ],
+    "reason": "The desktop right-click route opens the existing selected-games action strip. Its Mark as read action is absent outside Patched, enabled for an unread selection inside Patched and disappears after persistence. This preserves command eligibility and activation with an Electron action-strip presentation rather than the Avalonia menu widget."
+  },
+  "UpdateAcknowledgementCompositionTests.Fullscreen_library_options_activate_mark_as_read_for_selected_game": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/UpdateAcknowledgementCompositionParityTests.cs",
+        "case": "Original_grouped_Details_marks_and_restores_only_its_two_displayed_release_watermarks"
+      },
+      {
+        "file": "tests/update-acknowledgement-composition.test.tsx",
+        "case": "exposes Mark as read through the selected-game action route only in Patched"
+      },
+      {
+        "file": "tests/electron/update-acknowledgement.spec.ts",
+        "case": "Patched-only actions acknowledge grouped and multiple selections leave unselected releases and admit later patches"
+      },
+      {
+        "file": "tests/electron/update-acknowledgement.spec.ts",
+        "case": "refused selection preserves unread games and partial retry writes only the remaining release"
+      }
+    ],
+    "reason": "The fullscreen focused game opens the actual Library options dialog through simulated controller Y; A activates Mark as read. Actual per-release persistence removes the grouped game from Patched. This is automated Gamepad API evidence, not physical-device validation."
+  },
+  "UpdateAcknowledgementCompositionTests.Patched_selection_marks_grouped_and_multiple_games_read_leaves_unselected_and_allows_later_patches": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/UpdateAcknowledgementCompositionParityTests.cs",
+        "case": "Original_multiple_selection_reads_grouped_and_second_game_leaves_unselected_and_later_patch_unread"
+      },
+      {
+        "file": "tests/update-acknowledgement-composition.test.tsx",
+        "case": "acknowledges only selected grouped and multiple games, keeps the unselected game and flags later patches"
+      },
+      {
+        "file": "tests/electron/update-acknowledgement.spec.ts",
+        "case": "Patched-only actions acknowledge grouped and multiple selections leave unselected releases and admit later patches"
+      }
+    ],
+    "reason": "Exact original grouped and multiple-selection fixtures preserve work/release IDs, dates and counts. Desktop and fullscreen write only releases 1, 2 and 4, leave unselected work 5 unread, and reintroduce work 1 when a later push arrives. The production API and native rendered collection verify durable state and refresh."
+  },
+  "UpdateAcknowledgementCompositionTests.Mark_selection_as_read_requires_an_unread_selection_in_Patched": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/UpdateAcknowledgementCompositionParityTests.cs",
+        "case": "Original_grouped_Details_marks_and_restores_only_its_two_displayed_release_watermarks"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/UpdateAcknowledgementCompositionParityTests.cs",
+        "case": "Observed_ids_do_not_cross_release_correlation_or_invent_a_watermark_without_a_pair"
+      },
+      {
+        "file": "tests/update-acknowledgement-composition.test.tsx",
+        "case": "exposes Mark as read through the selected-game action route only in Patched"
+      },
+      {
+        "file": "tests/electron/update-acknowledgement.spec.ts",
+        "case": "Patched-only actions acknowledge grouped and multiple selections leave unselected releases and admit later patches"
+      },
+      {
+        "file": "tests/electron/update-acknowledgement.spec.ts",
+        "case": "refused selection preserves unread games and partial retry writes only the remaining release"
+      }
+    ],
+    "reason": "Both surfaces require an unread selection in Patched. Desktop explicitly clears selection; fullscreen uses its focused game as the actionable selection and reaches no-target state when Patched is empty. The handler also enforces eligibility; native actions confirm the actual route and saved outcome."
+  },
+  "UpdateAcknowledgementCompositionTests.Patched_selection_reports_persistence_failure_and_keeps_unread_games": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/UpdateAcknowledgementCompositionParityTests.cs",
+        "case": "Original_SQLite_refusal_returns_NotStored_and_keeps_every_grouped_patch_unread"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/UpdateAcknowledgementCompositionParityTests.cs",
+        "case": "Partial_release_write_survives_a_sibling_failure_and_retry_of_only_failed_release_has_no_duplicate_success"
+      },
+      {
+        "file": "tests/update-acknowledgement-composition.test.tsx",
+        "case": "keeps a refused grouped selection unread and retries only the release left after partial success"
+      },
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "retains partial saves reports failure and retries only the remaining release"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "reports a declined update write without claiming that no flags needed changing"
+      },
+      {
+        "file": "tests/electron/update-acknowledgement.spec.ts",
+        "case": "refused selection preserves unread games and partial retry writes only the remaining release"
+      }
+    ],
+    "reason": "The original SQLite refusal leaves every grouped patch unread and produces visible failure feedback on both surfaces. Supplemental release-specific refusal retains the successful sibling write; retry submits only the still-unread release. Component duplicate activation and native request ledgers verify frontend orchestration without claiming backend deduplication."
+  },
+  "UpdateAcknowledgementCompositionTests.Production_details_marks_and_restores_only_the_displayed_group_releases": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/UpdateAcknowledgementCompositionParityTests.cs",
+        "case": "Original_grouped_Details_marks_and_restores_only_its_two_displayed_release_watermarks"
+      },
+      {
+        "file": "tests/update-acknowledgement-composition.test.tsx",
+        "case": "Details marks and restores only the displayed group and updates its timeline from confirmed watermarks"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "acknowledges each captured update set and restores stored release watermarks"
+      },
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "dismisses the dots offers undo and refreshes the library once while preserving the timeline range"
+      },
+      {
+        "file": "tests/electron/update-acknowledgement.spec.ts",
+        "case": "Details marks and restores displayed releases across timeline library and actual feed refresh"
+      }
+    ],
+    "reason": "Exact original grouped Details saves only release 1 June 1 and release 2 August 1 watermarks; restore clears only those standing watermarks. Both surfaces refresh Details, per-edition timeline, Library and mounted feed cards. Real API feed changes from Patched while away to Worth another look after reading and restores the patched signal after undo."
+  },
+  "UpdateAcknowledgementCompositionTests.A_push_arriving_after_details_open_is_not_acknowledged_and_reopening_reads_its_watermark": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/UpdateAcknowledgementCompositionParityTests.cs",
+        "case": "Captured_event_ids_cannot_acknowledge_the_unpublished_later_push_and_reopen_reads_standing_watermarks"
+      },
+      {
+        "file": "tests/update-acknowledgement-composition.test.tsx",
+        "case": "Details acknowledges its displayed event batch and reads a later push on the next refresh"
+      },
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps a new patch out of a pending acknowledgement batch"
+      },
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "offers dismissal again when a newer push outranks the standing watermark"
+      },
+      {
+        "file": "tests/electron/update-acknowledgement.spec.ts",
+        "case": "Details opening watermark leaves a later push unread and reopening reads only its release"
+      }
+    ],
+    "reason": "A release 1 September push inserted after Details opens is excluded from the displayed acknowledgement batch. Reopening shows its single correlated unread patch, release 2 stays read and only release 1 needs the next write. Native journeys exercise actual Details close/reopen and durable production API state on both surfaces."
+  },
+  "UpdateAcknowledgementCompositionTests.Counts_respect_never_played_unknown_date_and_the_effective_play_boundary": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/UpdateAcknowledgementCompositionParityTests.cs",
+        "case": "Original_count_matrix_reaches_workspace_with_never_played_unknown_date_and_strict_effective_boundary"
+      },
+      {
+        "file": "tests/update-acknowledgement-composition.test.tsx",
+        "case": "exact play boundary: %i minutes, date %s, unread count %i"
+      }
+    ],
+    "reason": "The original Ui.Tests method directly calls LibraryQueryRepository and creates no controls. Its unchanged backend implementation is verified through the replacement production HTTP workspace boundary: the exact original twelve-row seed and four minute/date combinations yield 0, 3, 1 and 1. An executed renderer projection matrix supplements those repository outcomes; the migration audit needs no retained-backend exception."
+  }
+}

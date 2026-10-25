@@ -1,0 +1,182 @@
+{
+  "GameDetailsViewModelTests.A_malformed_appid_never_reaches_a_url": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "withholds every store action and link for a malformed Steam identity"
+      }
+    ],
+    "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
+  },
+  "GameDetailsViewModelTests.An_update_with_no_page_behind_it_says_so": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "retains an update with a hostile URL while offering no open button"
+      }
+    ],
+    "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
+  },
+  "GameDetailsViewModelTests.An_update_with_a_page_behind_it_says_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details-facts.test.tsx",
+        "case": "offers a valid update page without adding an unavailable-page message"
+      }
+    ],
+    "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
+  },
+  "GameDetailsViewModelTests.Year_and_publisher_share_one_line_and_neither_invents_the_other": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "draws year %s and publisher %s without inventing an identity field"
+      }
+    ],
+    "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
+  },
+  "GameDetailsViewModelTests.A_provisional_title_is_named_as_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "names the provisional title only when the workspace declares it provisional %s"
+      }
+    ],
+    "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
+  },
+  "GameDetailsViewModelTests.A_game_that_was_never_opened_gets_a_sentence_instead_of_a_rail": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "distinguishes no play from missing last-session dates for %s minutes"
+      }
+    ],
+    "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
+  },
+  "GameDetailsViewModelTests.Playtime_without_a_date_says_so_rather_than_saying_never": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "distinguishes no play from missing last-session dates for %s minutes"
+      }
+    ],
+    "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
+  },
+  "GameDetailsViewModelTests.The_sparse_case_still_says_something_in_every_band": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps a metadata-poor provisional game readable and installable without inventing a session or folder"
+      }
+    ],
+    "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
+  },
+  "GameDetailsViewModelTests.The_action_band_trigger_keeps_one_face": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "keeps More label and explanatory tooltip unchanged while its menu opens and closes"
+      }
+    ],
+    "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
+  },
+  "GameDetailsViewModelTests.Update_shortcut_selects_the_updates_tab_and_names_its_unread_state": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps refresh in place and routes the unread shortcut to the named Updates tab"
+      }
+    ],
+    "reason": "Both Avalon presentation paths exercise the original source condition through the production Details component and its API facts; absent values remain absent and controls stay actionable."
+  },
+  "GameDetailsViewModelTests.Rail_marks_sit_where_the_update_landed_in_the_gap": {
+    "status": "framework-specific",
+    "reason": "This method asserts the obsolete GameDetailsViewModel RailMarks/GapCaption model. Neither the baseline desktop GameDetailsView.axaml nor fullscreen Details/History pages bind those properties. Current design-system section10.2 and both active views use the activity timeline: calendar/tracked geometry and clustered update marks without a14-mark cap. Electron tests derive unread state from last play plus release watermarks and keep every clustered update selectable. The old normalized gap positions, caption strings and14-mark truncation are not active behavior to reproduce.",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "derives unread marks from correlated pushes and their own release watermarks"
+      },
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "clusters unlimited update marks and requests tracked history on activation"
+      }
+    ]
+  },
+  "GameDetailsViewModelTests.Updates_from_before_the_last_session_are_history_not_marks": {
+    "status": "framework-specific",
+    "reason": "This method asserts the obsolete GameDetailsViewModel RailMarks/GapCaption model. Neither the baseline desktop GameDetailsView.axaml nor fullscreen Details/History pages bind those properties. Current design-system section10.2 and both active views use the activity timeline: calendar/tracked geometry and clustered update marks without a14-mark cap. Electron tests derive unread state from last play plus release watermarks and keep every clustered update selectable. The old normalized gap positions, caption strings and14-mark truncation are not active behavior to reproduce.",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "derives unread marks from correlated pushes and their own release watermarks"
+      },
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "clusters unlimited update marks and requests tracked history on activation"
+      }
+    ]
+  },
+  "GameDetailsViewModelTests.A_missed_update_marks_its_row_and_leaves_the_heading_alone": {
+    "status": "framework-specific",
+    "reason": "This method asserts the obsolete GameDetailsViewModel RailMarks/GapCaption model. Neither the baseline desktop GameDetailsView.axaml nor fullscreen Details/History pages bind those properties. Current design-system section10.2 and both active views use the activity timeline: calendar/tracked geometry and clustered update marks without a14-mark cap. Electron tests derive unread state from last play plus release watermarks and keep every clustered update selectable. The old normalized gap positions, caption strings and14-mark truncation are not active behavior to reproduce.",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "derives unread marks from correlated pushes and their own release watermarks"
+      },
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "clusters unlimited update marks and requests tracked history on activation"
+      }
+    ]
+  },
+  "GameDetailsViewModelTests.Several_missed_updates_are_counted_in_the_plural": {
+    "status": "framework-specific",
+    "reason": "This method asserts the obsolete GameDetailsViewModel RailMarks/GapCaption model. Neither the baseline desktop GameDetailsView.axaml nor fullscreen Details/History pages bind those properties. Current design-system section10.2 and both active views use the activity timeline: calendar/tracked geometry and clustered update marks without a14-mark cap. Electron tests derive unread state from last play plus release watermarks and keep every clustered update selectable. The old normalized gap positions, caption strings and14-mark truncation are not active behavior to reproduce.",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "derives unread marks from correlated pushes and their own release watermarks"
+      },
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "clusters unlimited update marks and requests tracked history on activation"
+      }
+    ]
+  },
+  "GameDetailsViewModelTests.The_rail_caps_its_marks_and_the_list_does_not": {
+    "status": "framework-specific",
+    "reason": "This method asserts the obsolete GameDetailsViewModel RailMarks/GapCaption model. Neither the baseline desktop GameDetailsView.axaml nor fullscreen Details/History pages bind those properties. Current design-system section10.2 and both active views use the activity timeline: calendar/tracked geometry and clustered update marks without a14-mark cap. Electron tests derive unread state from last play plus release watermarks and keep every clustered update selectable. The old normalized gap positions, caption strings and14-mark truncation are not active behavior to reproduce.",
+    "tests": [
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "derives unread marks from correlated pushes and their own release watermarks"
+      },
+      {
+        "file": "tests/parity-activity-timeline.test.tsx",
+        "case": "clusters unlimited update marks and requests tracked history on activation"
+      }
+    ]
+  },
+  "GameDetailsViewModelTests.Hide_is_drawn_only_when_the_library_handed_over_its_command": {
+    "status": "framework-specific",
+    "reason": "The source verifies nullable Avalonia RelayCommand injection into a popup view model (including object reference identity), so the popup can work without a Window ancestor. The independent Electron client always has the authenticated hidden.put API and needs no injected command. Its More-menu Hide/Cancel behavior is covered on both surfaces; the original optional service-registration branch has no Electron counterpart.",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "orders More destinations before management and tools and makes hiding reachable"
+      }
+    ]
+  }
+}

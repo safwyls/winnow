@@ -1,76 +1,45 @@
-using Winnow.Ingest.Epic.Web;
+using Winnow.Api.Contracts.Connections;
+using Winnow.Core.Auth;
 using Winnow.Ingest.Epic.Web.Auth;
-using Microsoft.Extensions.Logging;
 
 namespace Winnow.App.Services;
 
-/// <summary>
-/// App-layer seam for Epic sign-in (§5.1). Answers three questions: is a session
-/// live, start one, end one. Never throws; failures come back as
-/// <see cref="EpicSignInResult"/> with a reason.
-/// </summary>
-public sealed class EpicSignInService
+public sealed class EpicSignInService(IStoreConnectionApi api, IEnumerable<IInteractiveAuthPrompt> prompts)
 {
-    private readonly EpicInteractiveSignIn _signIn;
-    private readonly IEpicAccountClient _client;
-    private readonly ILogger<EpicSignInService> _log;
+    public string? LastCaptureRoute { get; private set; }
+    public async ValueTask<bool> IsSignedInAsync(CancellationToken ct = default) => (await api.GetAsync(ct)).Epic?.IsLive == true;
+    public Task SignOutAsync(CancellationToken ct = default) => api.SignOutEpicAsync(ct);
 
-    public EpicSignInService(
-        EpicInteractiveSignIn signIn, IEpicAccountClient client, ILogger<EpicSignInService> log)
-    {
-        _signIn = signIn;
-        _client = client;
-        _log = log;
-    }
-
-    /// <summary>Which prompt mechanism last captured a code. Null until a sign-in succeeds in this process.</summary>
-    public string? LastCaptureRoute => _signIn.LastCaptureRoute;
-
-    /// <summary>Whether a stored session is still worth trying. No network request.</summary>
-    public ValueTask<bool> IsSignedInAsync(CancellationToken ct = default)
-        => _client.IsSignedInAsync(ct);
-
-    /// <summary>Runs the interactive sign-in (consent, browser, code, encrypted session). Long-running; do not block the UI thread.</summary>
     public async Task<EpicSignInResult> SignInAsync(CancellationToken ct = default)
     {
+        var challenge = await api.BeginEpicAsync(ct);
         try
         {
-            var result = await _signIn.SignInAsync(ct);
-
-            if (result.Succeeded)
+            var failure = EpicSignInFailure.NoInteractivePrompt;
+            foreach (var prompt in prompts)
             {
-                _log.LogInformation(
-                    "Epic sign-in completed ({Route}). The session is {Persistence}.",
-                    _signIn.LastCaptureRoute ?? "route not recorded",
-                    result.Persisted ? "stored encrypted" : "held in memory for this run only");
+                if (!await prompt.IsAvailableAsync(ct)) continue;
+                AuthCodeResult result;
+                try { result = await prompt.RequestCodeAsync(challenge.Request, ct); }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch (Exception) { failure = EpicSignInFailure.UnexpectedResponse; continue; }
+                if (result.Outcome == AuthPromptOutcome.Cancelled) return EpicSignInResult.Failed(EpicSignInFailure.Cancelled);
+                if (result.Outcome == AuthPromptOutcome.Captured && !string.IsNullOrWhiteSpace(result.Code))
+                {
+                    LastCaptureRoute = $"{prompt.Name} via {result.Via}";
+                    return await api.CompleteEpicAsync(challenge, result, ct);
+                }
+                failure = result.Outcome == AuthPromptOutcome.NoSession ? EpicSignInFailure.NoAuthenticatedSession : EpicSignInFailure.NoCodeCaptured;
             }
-
-            return result;
+            return EpicSignInResult.Failed(failure);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        finally
         {
-            // The app is shutting down underneath the sign-in. Not a failure to
-            // report, and not something to swallow into a misleading result.
-            throw;
-        }
-        catch (Exception ex)
-        {
-            // The contract says none of this throws, and this is the belt that
-            // makes it true at the boundary with the UI: an exception surfacing
-            // into a command handler would take down a window over an optional
-            // feature. Type only — a browser or HTTP exception message can quote
-            // a URL, and this flow's URLs carry codes.
-            _log.LogWarning(
-                "Epic sign-in failed unexpectedly ({ExceptionType}). Nothing was changed and the local "
-                + "Epic readers are unaffected.",
-                ex.GetType().Name);
-            return EpicSignInResult.Failed(EpicSignInFailure.UnexpectedResponse);
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            try { await api.CancelAsync(challenge.AttemptId, cleanup.Token); }
+            catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or IOException) { }
         }
     }
-
-    /// <summary>Ends the session and deletes the stored credential. Ownership falls back to local files.</summary>
-    public Task SignOutAsync(CancellationToken ct = default) => _client.SignOutAsync(ct);
-
     /// <summary>Returns a user-facing sentence for a failure, stating the specific remedy.</summary>
     public static string Explain(EpicSignInFailure failure) => failure switch
     {

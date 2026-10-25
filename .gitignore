@@ -42,3 +42,6 @@ gdpr/
 
 # Full-test evidence generated and uploaded by CI.
 ci-evidence/
+
+# Isolated local runtime checks, including backend discovery credentials.
+.tmp/

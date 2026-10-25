@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Afterglow · Artwork &amp; rhythm</title>
+  <link rel="stylesheet" href="mock.css?v=quiet-afterglow">
+  <script src="assets/lucide.min.js" defer></script>
+  <script src="mock.js?v=quiet-afterglow" defer></script>
+</head>
+<body data-mode="desktop" data-size="balanced" data-caption="essential" data-state="normal" data-palette="afterglow">
+  <div class="review-strip">
+    <span><strong>AFTERGLOW</strong><span class="review-label">Quiet collection · design study</span></span>
+    <div class="review-controls">
+      <label><span class="sr-only">Preview surface</span><select id="surface"><option value="desktop">Desktop</option><option value="fullscreen">Fullscreen</option></select></label>
+      <label><span class="sr-only">Artwork sample</span><select id="sample"><option value="normal">Original artwork</option><option value="mixed">Mixed proportions</option><option value="missing">Missing artwork</option><option value="loading">Loading artwork</option></select></label>
+      <span class="sample-note">Local sample · no library writes</span>
+    </div>
+  </div>
+  <header class="app-bar">
+    <button class="brand" data-page="discover" aria-label="Winnow Discover"><span class="dragon"></span><span>winnow<small>AFTERGLOW</small></span></button>
+    <nav aria-label="Main navigation"><button data-page="discover" aria-current="page">Discover</button><button data-page="library">Library</button></nav>
+    <div class="utilities">
+      <button class="icon-button" id="find-game" aria-label="Search library" title="Search library"><i data-lucide="search"></i></button>
+      <button class="icon-button" id="appearance" aria-label="Customize appearance" title="Customize appearance"><i data-lucide="sliders-horizontal"></i></button>
+    </div>
+  </header>
+  <main id="discover" class="page discover-page">
+    <div class="page-heading"><div><span class="eyebrow">A library of possibilities</span><h1>What draws you in?</h1></div><p class="date-note">A little space for something new.<br><span>From your collection</span></p></div>
+    <section class="hero-layout" aria-label="Featured recommendations">
+      <div class="hero">
+        <img class="hero-art" id="hero-art" src="assets/outer-hero.jpg" alt="" fetchpriority="high">
+        <div class="hero-shade"></div>
+        <span class="hero-caption">One more world worth opening.</span>
+        <div class="hero-controls"><button id="hero-prev" aria-label="Previous recommendation"><i data-lucide="chevron-left"></i></button><span id="hero-position">01 / 02</span><button id="hero-next" aria-label="Next recommendation"><i data-lucide="chevron-right"></i></button></div>
+        <div class="hero-copy"><span class="eyebrow" id="hero-kicker">Still waiting for you</span><h2 id="hero-title">Outer Wilds</h2><p id="hero-reason">A solar system full of questions.<br>You already own the first step.</p><div class="hero-actions"><button class="primary" id="hero-view">View game <i data-lucide="arrow-up-right"></i></button><button class="glass" id="hero-skip">Something else <i data-lucide="arrow-right"></i></button></div><div class="hero-meta" id="hero-meta">Steam <span>2019</span> Never played</div></div>
+      </div>
+      <aside class="invitation"><span class="eyebrow">A small invitation</span><h2>There’s more<br><em>in here.</em></h2><p>You already own the beginning of your next adventure.</p><div class="waiting-count"><strong>12</strong><span>worlds to<br>rediscover</span></div><button class="text-link" data-page="library">Explore your collection <i data-lucide="arrow-right"></i></button></aside>
+      <div class="fullscreen-filmstrip"><button data-hero="0" aria-pressed="true"><span>01</span> Outer Wilds</button><button data-hero="1" aria-pressed="false"><span>02</span> Hades</button></div>
+    </section>
+    <section class="returning-section"><div class="section-heading"><div><span class="eyebrow">Still on your mind?</span><h2>Pick up the thread.</h2></div><span class="quiet">Right where you left off.</span></div><div class="returning-grid" id="returning"></div></section>
+    <section class="shelf-section"><div class="section-heading"><div><span class="eyebrow">A little further into your library</span><h2>Worth another look.</h2></div><button class="text-link" data-page="library">View collection <i data-lucide="arrow-right"></i></button></div><div class="poster-grid shelf-grid" id="shelf"></div></section>
+  </main>
+  <main id="library" class="page library-page" hidden>
+    <div class="page-heading"><div><span class="eyebrow">Collected over time</span><h1>Your collection.</h1></div><button class="secondary" id="library-appearance"><i data-lucide="sliders-horizontal"></i> Display options</button></div>
+    <div class="library-toolbar"><label class="search-field"><i data-lucide="search"></i><input id="search" type="search" placeholder="Find a game…" aria-label="Search games"></label><span class="result-count" id="result-count"></span><div class="view-switch" role="group" aria-label="Library view"><button id="grid-view" aria-label="Grid view" aria-pressed="true"><i data-lucide="grid-2x2"></i></button><button id="list-view" aria-label="Compact records" aria-pressed="false"><i data-lucide="list"></i></button></div></div>
+    <div class="library-body"><aside class="library-index"><span class="eyebrow">Browse</span><button data-filter="all" aria-pressed="true">All games <span>12</span></button><button data-filter="unplayed" aria-pressed="false">Never played <span>4</span></button><button data-filter="installed" aria-pressed="false">Installed <span>5</span></button><div class="index-note"><i data-lucide="bookmark"></i><p>A collection<br>worth knowing.</p></div></aside><div class="collection-scroll" id="collection-scroll"><div class="poster-grid collection-grid" id="collection"></div><p class="collection-end">A dozen possibilities. All yours.</p></div></div>
+  </main>
+  <footer class="app-footer"><span><span class="status-dot"></span> Afterglow design preview</span><span class="desktop-hint">Full titles on hover or focus · Select a cover to inspect</span><span class="fullscreen-hint"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> Browse <kbd>Enter</kbd> View game <kbd>Esc</kbd> Back</span><span>12 games <span class="footer-separator">/</span> Sample collection</span></footer>
+  <dialog id="studio" class="studio"><form method="dialog" class="dialog-heading"><div><span class="eyebrow">Make it yours</span><h2>Display options</h2></div><button class="icon-button" aria-label="Close display options"><i data-lucide="x"></i></button></form><p class="studio-intro">A quieter caption. More room for the cover.</p>
+    <fieldset><legend>Cover size</legend><div class="choice-row" id="size-choices"><button data-size="compact">Small</button><button data-size="balanced" aria-pressed="true">Balanced</button><button data-size="large">Large</button></div><p>Changes the number of covers across each shelf.</p></fieldset>
+    <fieldset><legend>Caption overlay</legend><p class="overlay-help">Revealed on hover or keyboard focus. Always visible on touch screens.</p><label class="radio-option"><input type="radio" name="caption" value="essential" checked><span><strong>Essential</strong><small>Title, store, playtime and installed indicator</small></span></label><label class="radio-option"><input type="radio" name="caption" value="quiet"><span><strong>Titles only</strong><small>Let the artwork lead</small></span></label><label class="radio-option"><input type="radio" name="caption" value="context"><span><strong>With context</strong><small>Add a short reason to revisit each game</small></span></label></fieldset>
+    <fieldset><legend>Palette</legend><div class="choice-row"><button data-palette="afterglow" aria-pressed="true"><span class="swatch warm"></span> Afterglow</button><button data-palette="paper"><span class="swatch paper"></span> Paper trail</button></div></fieldset>
+    <div class="fit-note"><i data-lucide="scan"></i><p>Covers fill a consistent 2:3 frame. Different proportions are cropped from the center.</p></div><button class="secondary reset-options" id="reset-options">Restore defaults</button>
+  </dialog>
+  <dialog id="game-dialog" class="game-dialog"><form method="dialog"><button class="icon-button dialog-close" aria-label="Close game preview"><i data-lucide="x"></i></button></form><div id="game-preview"></div></dialog>
+  <div id="live-message" class="sr-only" aria-live="polite"></div>
+</body>
+</html>

@@ -1,10 +1,22 @@
 # Winnow — Design System
 
-**Applies to:** Avalonia desktop and fullscreen interfaces, dark by default with optional light themes.
+**Applies to:** Winnow's default Avalon composition on Electron desktop and fullscreen,
+dark by default with optional light themes, and the retained Avalonia reference interface.
+
+Electron also offers Afterglow, Rift and Catalogue as alternative compositions. Its appearance
+controls and replaceable-screen contract are in [Electron themes](docs/electron-themes.md).
+Every composition selects colors from **Atmosphere → Palette** swatches on desktop and fullscreen;
+Avalon includes its original and authored palettes, plus Studio colors for custom editing.
+Appearance menus show only controls used by the selected composition, without empty group
+headings. Switching compositions retains hidden choices; Avalon-only role typography and
+ultrawide fit are hidden in the other compositions on desktop, fullscreen and during setup.
+Framework-specific XAML, bitmap and automation details below describe the Avalonia reference;
+Electron preserves their user-visible contracts through its renderer and native bridge.
 
 This is the current visual and interaction specification. It owns palette, typography,
 layout, dormancy, components, copy, accessibility, themes and translucency. Numeric resources
-live in [tokens.axaml](src/Winnow.App/Themes/tokens.axaml).
+are retained in [tokens.axaml](src/Winnow.App/Themes/tokens.axaml); Electron's Avalon palette
+and CSS role bindings live in `src/Winnow.Electron/src/renderer/themes/`.
 
 Desktop layout and components are described throughout; §8 describes fullscreen composition
 and controller navigation. Shared feature behavior applies to both surfaces. For a focused
@@ -67,7 +79,7 @@ selection brightens the same colour family while cover art supplies the variety.
 ### Discipline
 
 `Flare` is the rarest colour in the interface and appears **only** on unread-update markers,
-the bucket that counts them, and the gap rail's marks in the detail view (§10.2), which are
+the bucket that counts them, and the activity timeline's unread marks (§10.2), which are
 the same fact plotted in time. The instant it becomes a generic accent, the badge stops
 meaning anything and the product loses its point.
 
@@ -160,6 +172,9 @@ does not govern the Stores panel's 720px, which is a card width holding controls
 ## 4. Layout
 
 **Grid is the default view. List is a toggle**, remembered per-session.
+An empty result replaces either view and the list's column headers. A search with no
+matches names the query; an empty filter cut explains how to widen it. Choosing a desktop
+collection returns to its games from Library management, including identity review.
 
 A slim browse spine appears immediately left of the native scrollbar in both views. Under `Name A–Z`
 or `Name Z–A` it is a `# · A–Z` jump spine in Data S, keeping all 27 stops fixed and dimming
@@ -182,10 +197,30 @@ arrow. When it leaves, the wave returns to rest and the halo again marks the cur
 The spine reverses to
 `Z–A` with the sort so downward motion always moves down the library. Each stop remains a named
 button with the standard visible focus treatment.
+In Electron the spine starts at the top of the results scrollbar, below the filter and
+selection controls, game count and any list column headings. It follows the results
+viewport as those controls wrap or change height; artwork ends before the wave.
+The desktop toolbar groups Display with the grid/list switch on the left, gives Search
+the flexible space, and places Filters on the right beside its panel. Store and Sort stay
+together. Search focus outlines the whole field, including its icon and clear action, on
+desktop and in fullscreen More; the clear button retains its own keyboard focus indicator.
+All Electron single-choice dropdowns use the shared themed `ChoiceMenu`, including Store,
+Sort, filters, settings, setup, activity, journal and Theme Studio fields in every composition.
+The selected choice is marked; disabled choices cannot be selected. Font fields retain typed
+family names and use the same popup for suggestions. Keyboard arrows, Home/End and initials
+move within the menu; choosing or pressing Escape returns focus to the trigger. Controller
+A opens a menu, D-pad moves through its choices and B closes it; closed fields remain
+available to normal D-pad navigation. Popups scroll within the viewport and stay inside
+their owning dialog's focus boundary on both surfaces. Fullscreen filter subpages and
+large choice sheets retain their separate layouts.
+Narrower panes move the Store and Sort group onto a second row,
+and Search takes its own row when the filter panel leaves too little width. The filter panel reserves an inner gutter
+between its fields, facet counts and scrollbars. Selection actions occupy space only
+while at least one visible game is selected.
 
 ```
 ┌──────────────┬────────────────────────────────────────────────────────┐
-│  RAIL 220px  │  search           ▦ ▤   density ──○──   sort ▾         │
+│  RAIL 220px  │  Display ▾ ▦ ▤   search         store  sort ▾ Filters │
 │              ├────────────────────────────────────────────────────────┤
 │  1,247       │   ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐       │
 │              │   │    │● │    │  │▓▓▓▓│  │    │● │▓▓▓▓│  │    │       │
@@ -210,8 +245,9 @@ crops artwork to the card. Both modes retain the same 2:3 geometry and apply imm
 to portrait covers on desktop and fullscreen. Set this in desktop Display or fullscreen
 Settings → Appearance; it persists across launches. Heroes and screenshots keep their
 own presentation. Reset fullscreen appearance leaves this shared preference intact.
-Default 148×222, gutter 16px. The density slider spans 108×162 → 200×300; the grid reflows on
-available width and does not use fixed column counts.
+Default 148×222, gutter 16px. Desktop Display contains the Cover size slider, with labeled
+larger and smaller ends. It spans 108×162 → 200×300; the grid reflows on available width and
+does not use fixed column counts. The control remains available in narrow windows.
 
 Segmented selectors keep every selected, hover and pressed fill inside the enclosing rule.
 The grid/list switch, Settings sections, platform tabs and merge-kind filter use an inner
@@ -219,6 +255,12 @@ The grid/list switch, Settings sections, platform tabs and merge-kind filter use
 2px inside its segment so the group does not clip it;
 selection never changes segment dimensions. Borderless underline tabs on desktop and
 fullscreen keep their own focus treatment.
+
+Desktop feature pages—Merges, Stats, Activity and every Settings section—share a 24px inset
+inside the content frame. Their headings, section navigation and content align to that
+inset. Library tools inherit the Library inset; cover layouts, Details and Theme Studio
+own their spacing. Fullscreen keeps its display safe margins rather than adding the
+desktop inset.
 
 **Radius:** 6px on tiles, 4px on controls, 8px on a floating pane (§15.3). The three rank by
 the size of the object they round.
@@ -310,8 +352,10 @@ the event row. This is the feature that closes the loop: notice → context → 
 Bottom-aligned gradient scrim to `Ground` at 92%. Title in Body L, playtime and idle time in
 Data S. The available primary action (`Play` for an installed game, `Install` otherwise) is a
 32px icon at bottom-right, in the store-chip row. `Details` is the folded top-right corner: a
-40px square hit target whose visible triangle follows the cover edge. The actions appear on
-pointer hover and on Tab or directional focus. Each has a tooltip, an accessible name and the
+40px square hit target whose visible triangle follows the cover edge. Electron shows a
+contrasting folded underside, a diagonal crease and a small shadow; three dots on the
+exposed corner suggest more behind it. The actions appear on pointer hover and on Tab or
+directional focus. Each has a tooltip, an accessible name and the
 standard visible focus treatment from §8.
 
 **Stores are a chip row**, one chip per store the game is owned on, unchanged in appearance for
@@ -324,6 +368,12 @@ the four-fact cap is not breached. The resting mark uses initials because the de
 floor is 108px and a row of word-chips is wider than the tile there; the words are reachable on
 hover, in the modal and in the automation name, which satisfies §8's
 decorative-redundant rule.
+
+In Electron, store initials sit above the lower cover inset without overlapping a fallback
+title. Desktop fades them as the chip overlay appears. Fullscreen retains the initials on
+focus because that presentation keeps cover captions hidden; both surfaces name every
+distinct store in the tile's accessible label. Repeated licences for the same store share
+one mark, matched without regard to case.
 
 **A tile that folded an expansion carries a second resting mark**, bottom-right, in the same pip
 as the store mark and with the same fade: a plus and a count. It is drawn only while the library
@@ -452,7 +502,9 @@ Local-only discovery is an available source, not an unconnected account requirin
 
 **Statistics.** Desktop Stats and fullscreen Activity → Library summary offer Gameplay and
 Spending with independent navigation and filter state on each surface. Gameplay opens first.
-The heading, section choices and Spending refresh share a wrapping toolbar. Desktop Spending
+The heading, section choices and Spending refresh share a wrapping toolbar. Gameplay Refresh
+sits beside the period and store controls, with 16px separating the scope/date line from
+the controls. Desktop Spending
 shows its source and coverage across the available width, without a second account heading;
 absent loading and error messages reserve no space. Fullscreen keeps its readable control
 sizes while sharing the heading row and omitting the repeated library count above the charts.
@@ -468,6 +520,12 @@ can overlap across games; Never played means no recorded play evidence, and Reti
 not mean completed. Changing the period does not change this current composition.
 
 Spending identifies Steam as its supported source. Other stores have no spending importer.
+Opening Spending refreshes the capture, including when returning within the same session.
+Its Refresh Steam spending action reads the latest capture without changing a valid currency
+selection. Desktop and fullscreen retain their own currency selections during the session.
+Capture dates remain the calendar dates on the source page. Missing dates omit their rows;
+undated transactions retain their own count and spending row. Licence acquisition methods
+use readable names such as Steam Store and Retail key.
 Each currency has its own net, gross and refunded
 amounts. Currency selection changes the money charts and detailed breakdowns together;
 amounts in different currencies are never combined or ranked against one another.
@@ -484,8 +542,9 @@ Flare, and carry visible text equivalents so color and pointer hover are not req
 The highest recorded spending year describes captured history, not a complete lifetime.
 Average kept transaction value divides net spend by kept product transactions with recorded
 prices in the selected currency; a bundle counts once, and no per-game price is inferred.
-Desktop keeps detailed tables behind a disclosure; fullscreen retains its reading actions
-and controller-accessible currency choices.
+Desktop keeps detailed tables behind a disclosure; fullscreen opens the selected currency's
+breakdown in a reading panel and restores focus on return. Fullscreen currency choices work
+with directional navigation and Accept.
 
 The refund percentage divides original product rows flagged refunded by all product rows
 with recorded prices. The bundle percentage divides non-refunded product rows with more
@@ -713,6 +772,13 @@ The last one matters: store metadata backfill takes hours, so the interface prom
 browsable library immediately and art later. **Render placeholder tiles with the title set in
 Bricolage on a `Surface` field — never a spinner, never an empty grid.**
 
+Electron's unavailable-artwork surfaces add a static illustration from the active composition:
+Avalon's misted landscape, Afterglow's warm halo, Rift's starfield, or Catalogue's printed index
+cards. Covers retain the game title, and unavailable screenshot or artwork previews retain
+their explanatory labels. The same local illustration appears on desktop, fullscreen and
+portal surfaces, inherits the palette, and needs no download or motion. Loading remains a
+distinct state; a game with no screenshots still has no invented gallery entries.
+
 Connection and credential consent copy names the provider, the information Winnow reads,
 where credentials are stored and the action that grants access. Preserve that disclosure
 when changing a sign-in surface.
@@ -756,8 +822,9 @@ fullscreen setting in fullscreen), a separate soft `Volt` glow trail traces ever
 contour of the dragon, including detached pieces and inner details. Each trail completes
 the full circumference on a repeating 1.8-second circuit and wraps continuously across
 its starting point. The existing vector remains legible beneath
-it; the glow indicates activity, not percentage progress. It runs on the compositor so
-UI-thread layout work cannot pause it. Data readiness does not restart or stop the trace:
+it; the glow indicates activity, not percentage progress. Drawing runs off the UI thread
+(Avalonia's compositor or Electron's canvas worker), so layout work cannot pause the trace.
+Data readiness does not restart or stop the trace:
 keep it moving through the fade, then stop when the presentation closes. Reduced motion
 keeps the mark still and skips the circuit wait and fade, while retaining data and layout
 readiness checks. Hidden desktop preparation does not wait for an invisible animation.
@@ -1011,8 +1078,10 @@ A dark left and top veil protects the title and status text; a vertical fade set
 Ground before the overview content. Prefer the saved game background, then the automatic
 source order from Metadata & artwork settings. The default is high-resolution Steam heroes,
 SteamGridDB, then suitable IGDB landscape artwork or screenshots. Standard Steam heroes and
-a quiet cover remain final fallbacks. Desktop and fullscreen
-share this selection policy. Artwork has its own display-sized lease
+a quiet cover remain final fallbacks. Desktop and fullscreen in Avalon, Afterglow, Rift and Catalogue
+share this selection and fallback policy. An unavailable candidate advances to the next
+source before the composition placeholder is shown; saved choices and source-order changes
+refresh open backgrounds without clearing their current art. Artwork has its own display-sized lease
 and high-resolution cache entry; its source quality remains the upper limit on sharpness.
 The header shows B and the previous page name plus controller status and the clock. The
 root navigation and wordmark return when leaving details.
@@ -1085,7 +1154,8 @@ preserves focus on the section controls or reading actions.
 
 **Steam-reported activity** opens a separate reading page from fullscreen Activity and game
 play history. Desktop game details place the same evidence below the Activity tracker.
-Entries state approximate unmatched minutes, or Steam's reported increase when comparison
+Each entry stacks its game title, duration and explanatory lines with an 8px gap on both
+surfaces. Entries state approximate unmatched minutes, or Steam's reported increase when comparison
 is unavailable, followed by the observation window and uncertainty. They are not editable
 sessions and do not contribute to recorded-session totals. Own-account scope applies to both
 surfaces. Twenty entries form a page with **Previous**, **Next** and **Refresh** actions;
@@ -1152,9 +1222,13 @@ removal, account ownership scope, and the shared sign-in consent with optional p
 capture. Purchase history supports embedded sign-in and selecting several saved HTML pages;
 an explicit Read action starts the latter import and a reading page exposes every reported
 count, skipped item and warning. Acquisition CSV export uses the TV directory and filename
-chooser with overwrite confirmation. Manual game forms offer executable inspection and
-metadata candidates through the shared commands. Identity tools include kind and sort,
-selection and confirmed bulk grouping, with exact matching limited by the shared rules.
+chooser with overwrite confirmation. The fullscreen file chooser keeps visible D-pad
+Browse, A Select and B Cancel glyph hints
+inside its safe margins. Filename entry also shows Y Keyboard; overwrite confirmation
+uses B Back to return to the filename.
+Manual game forms offer executable inspection and metadata candidates through the shared
+commands. Identity tools include kind and sort, selection and confirmed bulk grouping,
+with exact matching limited by the shared rules.
 The identity page also carries the shared `Prefer ·` platform choice in a controller action
 sheet, with the same options and pending-header behavior as desktop Merges (§6).
 `Refresh suggestions` is a separate controller and keyboard row below the platform choice.
@@ -1196,7 +1270,7 @@ sorting, measured text sizes, data provenance or supported device behavior.
   and does not render inside a popup at all. Every focusable control carries a visible ring;
   `Volt` everywhere except on a `Volt` fill, where it is `VoltInk`.
 - Full keyboard grid navigation: arrows, `/` to search, `Enter` to launch.
-- **An accessible name belongs on a control that has an automation peer of its own** — in
+- **In Avalonia, an accessible name belongs on a control that has an automation peer of its own** — in
   practice the `UserControl` root, the `Button`, the `TextBox`, the `CheckBox` — and never on a
   `Border`, a `Panel` or a `Grid`. Avalonia gives those a `NoneAutomationPeer` and Windows
   prunes it from the control view, the tree a screen reader walks; the element's children still
@@ -1204,10 +1278,10 @@ sorting, measured text sizes, data provenance or supported device behavior.
   name to, the element states `AutomationProperties.AccessibilityView="Control"`, which is
   consulted before the peer's own answer and puts it back in that tree with its name intact.
   Verified against Avalonia 11.3.20.
-- **A name on a `TextBlock` is discarded.** `TextBlockAutomationPeer` returns the `Text` and
+- **An Avalonia name on a `TextBlock` is discarded.** `TextBlockAutomationPeer` returns the `Text` and
   never reads `AutomationProperties.Name`, so a `TextBlock` says its `Text` and nothing else.
   Put the words in the `Text`.
-- **A value that changes while its surface is on screen travels on
+- **In Avalonia, a value that changes while its surface is on screen travels on
   `AutomationProperties.ItemStatus`, or on a bound `TextBlock`'s `Text`.** Changing a name at
   runtime raises no UIA event, so the new one is never announced; `ItemStatus` is the one
   attached property that raises one.
@@ -1226,7 +1300,17 @@ sorting, measured text sizes, data provenance or supported device behavior.
   root must be named as well as its content groups. `InteractiveControlNameTests` checks the
   authored controls; `docs/spikes/accessibility-navigation.ps1` exercises the Windows UIA
   provider on an isolated sample library.
+- **Electron names semantic DOM hosts.** Tiles and feed cards name their outer buttons;
+  a labelled container uses the appropriate group, status or image role. Decorative artwork
+  stays hidden from the accessibility tree. Interactive names include changing list names
+  and singular/plural counts. A displayed list or filter choice announces changes through
+  a polite, atomic status beside the control; its initial arrival stays silent.
+  Browser accessibility-tree checks verify exposed names and
+  states separately from source scans; neither proves a particular screen reader's speech.
 - **Reduced motion disables the hover saturation animation** — state snaps instead of fading.
+  Electron preserves the fullscreen motion preference through theme and typography changes.
+  Its JavaScript-driven fades also settle immediately; disabling CSS transitions alone is
+  insufficient for those surfaces.
 - **When the interface cannot state a proportion, it says what it is doing and what it is
   waiting for, in words, in a status field, and offers Cancel when there is one.** This is the
   Stores panel's pattern — a `Volt`-edged status field naming where to look, plus Cancel —
@@ -1263,7 +1347,12 @@ sorting, measured text sizes, data provenance or supported device behavior.
 
 ## 9. Window chrome
 
-The app draws its own title bar. Avalonia's `ExtendClientAreaToDecorationsHint` with
+Electron paints a 32px caption in the active composition's palette on Windows and Linux,
+with native window buttons and a native drag region. Avalon uses the caption and ground
+inks below; other compositions use their surface and text inks. The caption disappears in
+fullscreen. Other platforms retain their system frame.
+
+The reference Avalonia frontend draws its own title bar. `ExtendClientAreaToDecorationsHint` with
 `ExtendClientAreaChromeHints="NoChrome"` puts the client area over the decorations; the caption
 and its three buttons are ordinary controls in the window's own tree.
 
@@ -1426,7 +1515,11 @@ description and Show less restores the preview. The prose keeps `ProseMeasure` (
 automatically.” A game with no screenshots draws no placeholder frames.
 
 **Screenshots sit inside ABOUT.** The horizontal strip uses 120x68 thumbnails and a caption
-naming the count and source. Each thumbnail is a real button with visible focus; selecting
+naming the count and source. In Electron, thumbnail frames reserve their image area during
+loading; loading and unavailable placeholders stay inside each frame. Fullscreen previews
+reserve a 16:9 frame and contain the complete source image. Images arriving must not cover
+or move unrelated Details content, reset its scroll position, or take focus.
+Each thumbnail is a real button with visible focus; selecting
 one opens the existing lightbox (§10.7). Tab brings an offscreen thumbnail into view. Ordinary
 wheel, Shift-wheel and horizontal trackpad input scroll the strip horizontally, and input
 stays with the strip at either edge. The image path remains `CoverKey.IgdbScreenshot` through
@@ -1537,7 +1630,9 @@ no plot when there is no temporal evidence. The tracker always retains calendar 
 use `Flare`, other recorded updates use neutral ink. Nearby marks group into a count instead
 of dropping everything after an arbitrary cap. Selection names the updates and their dates;
 a grouped lifetime mark switches to the closer tracked view when that range exists. The full
-Updates tab remains the route to patch notes and read controls. Acknowledgement refreshes
+Updates tab remains the route to patch notes and read controls. In fullscreen its visible
+count reads **Updates · 2 unread**, so the number's meaning does not depend on the dot.
+Acknowledgement refreshes
 the marks without switching the selected range.
 
 **The chart has one ownership scope.** Cumulative counters for linked copies cannot be joined
@@ -1615,7 +1710,7 @@ the game when no overlay is open.
 it, so the header reads as chrome rather than as the section's own content. The set is IGDB
 MATCH, EDIT DETAILS, JOURNAL, UPDATES, ABOUT, YOUR COPIES, EXTENDS and LISTS.
 Disclosure headers, including EXPANSIONS and Technical facts, use 13px body type in `Text`.
-A label that names a value — PLAYED and SINCE YOU PLAYED on the gap rail, STEAM APPID, ON
+A label that names a value — PLAYED and SINCE LAST PLAYED in Overview, STEAM APPID, ON
 DISK, the coverage total's label, and the per-field labels in the editor — is a different thing
 and is not in that set. The ink is stated at the heading by the class `label section`, declared
 once in `tokens.axaml`, rather than left to `label`'s own default, so a section heading and the
@@ -1636,12 +1731,11 @@ not where it sits. A paragraph the user reads, a sentence standing in a prose sl
 sitting under a heading is prose. A value label, a status line, a landed-act confirmation, or
 metadata beside a value is not.
 
-The reading text takes `Text`: the gap rail's caption and its longitudinal record line, and the same
-record line in the no-rail branch — §10.2 says everything the rail draws is restated in words
-underneath, and §8's decorative-redundant rule makes those words the carrier of the fact; the
-carrier of a fact is primary text. The no-rail sentence itself ("You've never opened this." /
-"Steam has no date for your last session."), which is the whole of what Activity says about history when there
-is no rail. The EXTENDS blurb ("A separate game, grouped for display.") and the EXPANSIONS
+The reading text takes `Text`: the activity timeline's selected-detail sentence and dated
+record — §10.2 keeps every mark available in words, and §8's decorative-redundant rule makes
+those words a carrier of the fact. Overview's missing-date sentence also takes `Text`
+("You've never opened this." / "Steam has no date for your last session."); recorded minutes
+without a date must not read as no play. The EXTENDS blurb ("A separate game, grouped for display.") and the EXPANSIONS
 blurb ("Counted separately. Not added above."), both directly under a section heading — the
 pair that prompted the change. The LISTS empty state ("Choose Add to list above to create a
 list for this game."), a direction the user acts on (§7). The ABOUT summary — the
@@ -1723,7 +1817,11 @@ whose `Text` is bound and which sets no `AutomationProperties.Name` at all.
 
 The folder goes through the launcher's directory entry point as a path, never a `file:` URI.
 
-**Every outbound target is built by `GameLink.Create` and nothing else.** Five schemes are
+**Validate every outbound target before rendering and dispatch.** Avalonia uses
+`GameLink.Create`; Electron shares its reading-link policy in `shared/external-links.ts`
+between the renderer and main process. Electron dispatches Play, Install and other game
+actions through named backend commands bound to library ownership, while reading links
+may open web pages or native store browsing. Five schemes are
 allowed — `https`, `http`, `steam`, `com.epicgames.launcher` and `goggalaxy`, the three
 launcher protocols plus the web — and everything else is refused, including the ones that look
 harmless: `file:`, `javascript:`, `data:`, anything relative, anything carrying a control
@@ -1735,8 +1833,7 @@ dead one, and never a URL the data did not supply.
 
 | Context | Write | Don't write |
 |---|---|---|
-| Rail, updates missed | `2 updates landed while you were away.` | `2 new updates!` |
-| Rail, none recorded | `No updates recorded in that stretch.` | `Nothing has shipped` |
+| Updates, none recorded | `No update signals recorded.` | `Nothing has shipped` |
 | Longitudinal record | `Checked 12 times since 23 Aug 2026 — up 1h 7m.` | `12 snapshots` |
 | Record, one reading | `Checked once, on 23 Aug 2026.` | `Insufficient data` |
 | No last-played date | `Steam has no date for your last session.` | `Unknown` |
@@ -1746,8 +1843,8 @@ dead one, and never a URL the data did not supply.
 | No way in, unknown state | `Winnow has not read this copy's install state yet.` | `Install state unknown` |
 | No way in, no id | `Winnow does not yet hold the identifier this store needs to reach this game.` | `Missing store id` |
 
-Two of those are load-bearing. **"No updates recorded in that stretch"** and not "nothing has
-shipped": update polling is staggered across days, so an empty rail can mean a quiet decade or
+Two of those are load-bearing. **"No update signals recorded"** and not "nothing has
+shipped": update polling is staggered across days, so an empty record can mean a quiet decade or
 a turn that has not come round yet, and the interface may only claim the one it can support.
 **"Checked"** and not "sampled" or "snapshotted": name the thing by what the person recognises,
 not by the table it lives in.
@@ -2514,7 +2611,10 @@ critic scores and Steam's published review label, and an optional four-line summ
 actions. Ratings occupy one subdued `TextDim` line with middle-dot separators; counts and
 Steam's percentage remain in accessible text. Review tooltips appear only in desktop details,
 not on feed tiles or previews. Ratings use shared reception formatting and are
-loaded from local storage while the preview is open; absent sources occupy no space.
+loaded from local storage while the preview is open. Electron reserves the same single-line
+height for **Loading reviews…**, loaded ratings, **No reviews available**, and **Reviews
+unavailable**. Loading does not reshape or reposition the bubble or its summary. Long ratings
+truncate visually while accessible text retains the complete values.
 The recommendation reason stays below the cover rather than
 repeating in the preview.
 
@@ -2719,6 +2819,10 @@ nothing; and it grows to 10% as the pane opens up and there is more under it to 
 **The slider is 0 to 100, stored as a whole percent under `appearance.transparency`.** A stored
 `true` migrates to 25; a stored `false` to 0.
 
+Electron previews pointer and keyboard changes immediately while saving the latest position
+in order. Saving never disables the slider. A failed save restores the last confirmed value
+and exposes the error; an older save cannot overwrite a newer drag or palette default.
+
 **Zero is a real position, not an off state dressed as one.** It is
 bit-for-bit the opaque palette with nothing carrying alpha, and it is the answer for anyone who
 wants §8's floor with no argument — which is why the label under that end of the track is a
@@ -2808,6 +2912,14 @@ genuinely see-through window with nothing behind it. **So the test names the lev
 positively — `== Mica`, `== AcrylicBlur`, `== Blur` — and never "not `None`".** When the answer
 is no, transparency is treated as zero and the settings screen says so in words. The preference
 is remembered either way.
+
+Avalon's Electron path keeps the same palette and two-tier surface arithmetic. It requests
+the selected native material only on Windows 11 22H2 or later, with solid fallback for
+high contrast, reduced transparency, remote sessions and failed requests. Fullscreen is
+solid. Electron exposes no actual-material getter: the bridge reports a supported request,
+not proof of the compositor's visible effect. Native window controls sit over the themed
+caption (§9), and the renderer never lowers whole-window opacity. The material's visible result needs
+native Windows inspection in addition to renderer alpha and layout tests.
 
 ### 14.4 The dormancy ramp over a translucent window
 
@@ -3324,6 +3436,12 @@ override uses. The user picks one, edits the form, or dismisses the proposal and
 hand. Choosing a candidate fills the title, year and IGDB id fields; nothing is written until
 Save. The status field during a search is words, not a spinner (§8). A search that returned
 nothing is not an error and says the form can still be filled by hand.
+
+Browsing again replaces the previous proposed title, but preserves a title the user typed.
+Save waits for file inspection to settle; metadata search does not block a hand-filled save.
+Cancel discards the form and restores the invoking control. Leaving the page preserves
+entered fields. Late inspection or search results cannot repopulate a closed form or
+replace a newer title's results. These rules apply to desktop and fullscreen.
 
 **Deleting a hand-added game asks first, and the question names what survives** — §12.3's
 own rule applied a second time. It removes the ownership, then the release only when no

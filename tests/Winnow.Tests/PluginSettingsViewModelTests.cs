@@ -7,6 +7,42 @@ namespace Winnow.Tests;
 public sealed class PluginSettingsViewModelTests
 {
     [Fact]
+    public async Task ServiceRestartReloadsPluginStateAndDisablesRepeatAction()
+    {
+        var backend = new Backend { Enabled = true, Loaded = false };
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var lifecycle = new Lifecycle(async () => { await completion.Task; backend.Loaded = true; });
+        var model = new PluginSettingsViewModel(backend, lifecycle: lifecycle);
+        await model.LoadAsync();
+        var restart = model.RestartLibraryServiceCommand.ExecuteAsync(null);
+        Assert.True(model.IsRestarting);
+        Assert.False(model.RestartLibraryServiceCommand.CanExecute(null));
+        completion.SetResult();
+        await restart;
+        Assert.True(Assert.Single(model.Plugins).IsLoaded);
+        Assert.Contains("restarted", model.Status);
+        Assert.True(model.RestartLibraryServiceCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task ServiceRestartFailureKeepsPluginsAndOffersRetry()
+    {
+        var model = new PluginSettingsViewModel(new Backend(), lifecycle: new Lifecycle(() => throw new IOException("private detail")));
+        await model.LoadAsync();
+        var existing = Assert.Single(model.Plugins);
+        await model.RestartLibraryServiceCommand.ExecuteAsync(null);
+        Assert.Same(existing, Assert.Single(model.Plugins));
+        Assert.Contains("Try again", model.Status);
+        Assert.DoesNotContain("private detail", model.Status);
+        Assert.True(model.RestartLibraryServiceCommand.CanExecute(null));
+    }
+
+    private sealed class Lifecycle(Func<Task> restart) : ILibraryServiceLifecycle
+    {
+        public Task RestartAsync(CancellationToken ct = default) => restart();
+    }
+
+    [Fact]
     public async Task Plugin_help_links_use_the_shared_destination_instead_of_the_OS_dispatcher()
     {
         var uris = new Uris();
@@ -108,7 +144,7 @@ public sealed class PluginSettingsViewModelTests
         Assert.False(plugin.IsLoaded);
         Assert.True(plugin.RestartRequired);
         Assert.False(plugin.RefreshCommand.CanExecute(null));
-        Assert.Contains("Restart Winnow", plugin.Status);
+        Assert.Contains("Restart library service", plugin.Status);
         backend.Loaded = true;
         await settings.LoadAsync();
         Assert.Same(plugin, Assert.Single(settings.Plugins));

@@ -1,0 +1,126 @@
+{
+  "UpdateFlagTests.The_dots_quiet_at_or_below_the_watermark_and_stay_lit_above_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "quiets dots at and below each watermark while keeping newer dots and timeline marks unread"
+      }
+    ],
+    "reason": "Both surfaces preserve inclusive release watermarks, unread rows and patch counts. The current visual specification retains acknowledged history as neutral timeline marks instead of removing it; only unread marks retain Flare."
+  },
+  "UpdateFlagTests.The_announcement_that_corroborated_a_dismissed_push_quiets_with_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "quiets the later announcement with its dismissed push and preserves the newer pair"
+      }
+    ],
+    "reason": "The shared desktop/fullscreen projection correlates announcements with their own release pushes."
+  },
+  "UpdateFlagTests.A_fully_read_gap_says_so_rather_than_claiming_nothing_shipped": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "describes a fully read gap without claiming that nothing shipped"
+      }
+    ],
+    "reason": "Both surfaces preserve the source caption and extinguish unread dots and timeline Flare; neutral historical marks remain per the current visual specification."
+  },
+  "UpdateFlagTests.An_undismissed_gap_is_unchanged": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "preserves undismissed dots and counts patches rather than their two observations"
+      }
+    ],
+    "reason": "Both surfaces retain the source caption, every unread observation and the correlated patch count."
+  },
+  "UpdateFlagTests.Dismissing_quiets_the_dots_offers_the_undo_and_reloads_the_library": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "dismisses the dots offers undo and refreshes the library once while preserving the timeline range"
+      }
+    ],
+    "reason": "Confirmed acknowledgements update the shared details cache and refresh library queries once for the batch."
+  },
+  "UpdateFlagTests.A_failed_store_shows_no_receipt_and_changes_nothing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "leaves failed writes unread with no receipt no undo and no library refresh"
+      }
+    ],
+    "reason": "A definite NotStored response retains reading state and the source failure copy without a success receipt or library invalidation."
+  },
+  "UpdateFlagTests.A_standing_dismissal_offers_the_undo_and_taking_it_puts_the_flag_back": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "restores a standing dismissal and raises the flag for %s"
+      }
+    ],
+    "reason": "Stored and already-revoked responses clear the standing watermark and restore unread presentation on both surfaces."
+  },
+  "UpdateFlagTests.A_newer_push_over_a_standing_dismissal_offers_the_dismissal_again": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "offers dismissal again when a newer push outranks the standing watermark"
+      }
+    ],
+    "reason": "Unread pushes above a standing acknowledgement offer dismissal without offering the stale undo."
+  },
+  "UpdateFlagTests.With_no_service_the_control_is_not_offered": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "offers no write controls without the named service bridge"
+      }
+    ],
+    "reason": "The Electron equivalent of service availability is its named preload request bridge; a read-only preview without it offers no write control. Production registers the backend flag service."
+  },
+  "UpdateFlagTests.Marketing_and_notes_for_a_push_at_last_play_are_not_unread_patches": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "does not count marketing or notes for a push exactly at last play"
+      }
+    ],
+    "reason": "The source strict last-play boundary and uncorrelated-announcement behavior are asserted in both surfaces."
+  },
+  "UpdateFlagTests.Correlated_notes_do_not_extend_a_watermark_over_a_newer_build": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "does not extend the watermark through shared notes over a newer build"
+      }
+    ],
+    "reason": "One announcement may corroborate two builds without acknowledging the newer one."
+  },
+  "UpdateFlagTests.A_partially_saved_group_reports_the_failure_and_retries_only_the_remaining_release": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-update-flags.test.tsx",
+        "case": "retains partial saves reports failure and retries only the remaining release"
+      },
+      {
+        "file": "tests/electron/update-flags.spec.ts",
+        "case": "update flags retain partial saves retry remaining releases and restore both editions"
+      }
+    ],
+    "reason": "Confirmed release watermarks remain visible after a partial refusal; subsequent acknowledgement captures only the remaining unread release on desktop and fullscreen."
+  }
+}

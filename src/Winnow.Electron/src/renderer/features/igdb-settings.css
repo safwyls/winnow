@@ -1,0 +1,28 @@
+.igdb-settings-form {
+  min-width: 0;
+}
+.igdb-settings-form .form-actions {
+  flex-wrap: wrap;
+}
+.igdb-settings-form.mode-fullscreen {
+  font-size: calc(24px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}
+.igdb-settings-form.mode-fullscreen > p,
+.igdb-settings-form.mode-fullscreen input,
+.igdb-settings-form.mode-fullscreen button {
+  font-size: calc(24px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}
+.igdb-settings-form.mode-fullscreen .field {
+  font-size: calc(32px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}
+.igdb-settings-form.mode-fullscreen .igdb-storage-help,
+.igdb-settings-form.mode-fullscreen .error-message,
+.igdb-settings-form.mode-fullscreen .status-message {
+  font-size: calc(22px * var(--theme-text-scale, 1) * var(--fullscreen-text-scale, 1));
+}
+.igdb-settings-form.mode-fullscreen input {
+  min-height: 72px;
+}
+.igdb-settings-form.mode-fullscreen button {
+  min-height: 56px;
+}

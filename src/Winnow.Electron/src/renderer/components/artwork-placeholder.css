@@ -1,0 +1,126 @@
+@layer themes {
+  .art-placeholder.artwork-placeholder {
+    display: block;
+    overflow: hidden;
+    isolation: isolate;
+    background: var(--surface);
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .artwork-placeholder::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 42%, color-mix(in srgb, var(--bg) 74%, transparent));
+    pointer-events: none;
+  }
+  .art-placeholder.artwork-placeholder .artwork-placeholder-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 1;
+  }
+  .artwork-placeholder-image [data-placeholder-scene] {
+    display: none;
+  }
+  .artwork-placeholder-image [data-placeholder-scene='avalon'] {
+    display: inline;
+  }
+  :root:is([data-theme='afterglow'], [data-theme='rift'], [data-theme='catalogue'])
+    .artwork-placeholder-image
+    [data-placeholder-scene='avalon'] {
+    display: none;
+  }
+  :root[data-theme='afterglow'] .artwork-placeholder-image [data-placeholder-scene='afterglow'],
+  :root[data-theme='rift'] .artwork-placeholder-image [data-placeholder-scene='rift'],
+  :root[data-theme='catalogue'] .artwork-placeholder-image [data-placeholder-scene='catalogue'] {
+    display: inline;
+  }
+  .placeholder-light {
+    fill: var(--accent);
+  }
+  .placeholder-distant {
+    fill: color-mix(in srgb, var(--accent) 15%, var(--surface));
+  }
+  .placeholder-middle {
+    fill: color-mix(in srgb, var(--muted) 13%, var(--surface));
+  }
+  .placeholder-near {
+    fill: color-mix(in srgb, var(--bg) 70%, var(--surface));
+  }
+  .placeholder-mist {
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 8;
+    opacity: 0.09;
+  }
+  .placeholder-halo {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1;
+    opacity: 0.26;
+  }
+  .placeholder-stars {
+    fill: var(--text);
+    color: var(--text);
+  }
+  .placeholder-orbit {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1;
+    opacity: 0.11;
+  }
+  .placeholder-paper {
+    fill: var(--raised);
+    stroke: var(--line);
+    stroke-width: 1;
+  }
+  .placeholder-paper-front {
+    fill: var(--surface);
+    stroke: var(--muted);
+    stroke-width: 1;
+  }
+  .placeholder-print {
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 1.5;
+    opacity: 0.5;
+  }
+  .artwork-placeholder .artwork-placeholder-label {
+    position: absolute;
+    z-index: 1;
+    inset: auto 12px 12px;
+    text-align: center;
+    color: var(--muted);
+    opacity: 1;
+  }
+  .art-placeholder.artwork-placeholder-inline {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: 100%;
+    min-height: 72px;
+  }
+  .art-placeholder.artwork-placeholder-thumbnail {
+    min-height: 0;
+  }
+  .avalon-hover-preview .art-placeholder.artwork-placeholder {
+    display: block;
+  }
+  .merge-cover .artwork-placeholder {
+    display: block;
+  }
+  .merge-cover .merge-cover-fallback {
+    background: transparent;
+  }
+  .merge-cover .artwork-placeholder-label {
+    display: none;
+  }
+  .avalon-backdrop .artwork-placeholder-label {
+    display: none;
+  }
+  .avalon-backdrop:not([data-fullscreen]) .artwork-placeholder {
+    opacity: 0.35;
+  }
+}

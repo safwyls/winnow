@@ -50,13 +50,43 @@ internal static class RepositoryTree
             return [];
         }
 
-        return [.. Directory
-            .EnumerateFiles(start, pattern, SearchOption.AllDirectories)
-            .Select(Relative)
-            .Where(p => !p.StartsWith("artifacts/", StringComparison.Ordinal)
-                     && !p.Contains("/bin/", StringComparison.Ordinal)
-                     && !p.Contains("/obj/", StringComparison.Ordinal))
-            .OrderBy(p => p, StringComparer.Ordinal)];
+        var files = new List<string>();
+        var directories = new Stack<string>();
+        directories.Push(start);
+        while (directories.TryPop(out var directory))
+        {
+            if (ExcludedDirectory(Relative(directory))) continue;
+            if (directory != start && IsNestedCheckout(directory)) continue;
+            files.AddRange(Directory.EnumerateFiles(directory, pattern).Select(Relative));
+            foreach (var child in Directory.EnumerateDirectories(directory))
+                directories.Push(child);
+        }
+        return [.. files.OrderBy(p => p, StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// A directory holding its own <c>.git</c> entry is another checkout (a linked
+    /// worktree under <c>.claude/worktrees/</c>, for example), not this tree's
+    /// source. Its copies of guarded files would otherwise fail the hygiene scans.
+    /// </summary>
+    private static bool IsNestedCheckout(string directory)
+    {
+        var marker = System.IO.Path.Combine(directory, ".git");
+        return File.Exists(marker) || Directory.Exists(marker);
+    }
+
+    private static bool ExcludedDirectory(string relative)
+    {
+        // Prune generated trees before traversal: isolated backend data may deny
+        // directory access, and dependencies/published copies are not source.
+        if (relative.Split('/').Any(part => part is "bin" or "obj")) return true;
+        string[] generatedRoots =
+        [
+            ".git", ".tmp", "artifacts", "TestResults", "ci-evidence", "gdpr",
+            "src/Winnow.Electron/node_modules", "src/Winnow.Electron/out",
+            "src/Winnow.Electron/release", "src/Winnow.Electron/coverage", "src/Winnow.Electron/.staging",
+        ];
+        return generatedRoots.Any(root => relative == root || relative.StartsWith(root + "/", StringComparison.Ordinal));
     }
 
     /// <summary>Reads a repository-relative path.</summary>

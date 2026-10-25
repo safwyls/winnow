@@ -1,0 +1,256 @@
+{
+  "CacheTimestampBoundaryTests.Cache_rejects_unspecified_timestamp_without_inserting_or_overwriting": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/CacheTimestampBoundaryTests.cs",
+        "case": "Cache_rejects_unspecified_timestamp_without_inserting_or_overwriting"
+      }
+    ],
+    "implementation": [
+      "src/Winnow.Data/DapperConfig.cs",
+      "src/Winnow.Data/SqliteConnectionFactory.cs",
+      "src/Winnow.Enrich.SteamWeb/Storage/SqliteSteamWebMetadataCache.cs",
+      "src/Winnow.Enrich.GamesDb/Storage/SqliteGamesDbCache.cs",
+      "src/Winnow.Enrich.Igdb/Storage/SqliteMetadataCache.cs",
+      "src/Winnow.Enrich.Updates/Storage/SqliteUpdateSignalCache.cs",
+      "src/Winnow.Enrich.Steam/Storage/SqliteStoreMetadataCache.cs",
+      "src/Winnow.Application/Services/SqliteEpicCatalogCache.cs",
+      "src/Winnow.Application/Services/SqliteEpicLibraryCache.cs"
+    ],
+    "reason": "All seven original SQLite cache cases pass unchanged: steam-web, gamesdb, igdb, updates, steam-store, epic and epic-library. An unspecified 2026-09-06T12:00 timestamp fails before insertion; a Local timestamp corresponding to UTC plus 1234567 ticks persists the exact UTC value; an unspecified overwrite fails and retains the original payload and single row. The unchanged shared Dapper handler rejects unspecified values before SQL, normalizes Local values and preserves seven fractional digits. These are backend storage contracts with no presentation behavior."
+  },
+  "GameDetailsViewModelTests.Reduced_motion_reaches_the_panel": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "Reduced_motion_reaches_the_panel: saved=%s"
+      },
+      {
+        "file": "tests/avalon-backdrop-renderer.test.tsx",
+        "case": "uses source crop in desktop and respects the saved motion preference in fullscreen %s"
+      },
+      {
+        "file": "tests/avalon-backdrop-renderer.test.tsx",
+        "case": "renders source geometry in independent transition layers with cinematic %s"
+      }
+    ],
+    "reason": "Both saved boolean values reach the real AvalonBackdropController through rendered Details on both surfaces. Fullscreen follows the saved reduced-motion preference; desktop art remains static in both settings. Controlled renderer frames also verify that reduced motion removes the outgoing transition and normal fullscreen motion crossfades. This preserves the source preference-propagation assertion without claiming new native hardware or animation measurements."
+  },
+  "GameMetadataEditorViewModelTests.The_menu_row_keeps_one_face": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "The_menu_row_keeps_one_face"
+      }
+    ],
+    "reason": "Both surfaces preserve the exact Edit details label and Edit each field by hand tooltip before opening and after the editor closes. Fullscreen also exposes that tooltip as its accessible description. The component fixture retains source WorkId 42, Empyrion: Galactic Survival and all six literal field-name-value pairs with IGDB attribution."
+  },
+  "GameMetadataEditorViewModelTests.The_section_closes_itself": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "The_section_closes_itself"
+      }
+    ],
+    "reason": "Using the editor's own Back dismisses its overlay on both surfaces while retaining the same Details DOM and selected Library section, without invoking the outer close or writing metadata. The original WorkId 42, Empyrion snapshot and six IGDB-attributed field values are retained. Overlay dismissal is the React equivalent of the source editor's IsOpen=false assertion."
+  },
+  "GameMetadataEditorViewModelTests.Choosing_an_open_row_again_keeps_the_section_and_the_drafts_in_it": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "Choosing_an_open_row_again_keeps_the_section_and_the_drafts_in_it"
+      }
+    ],
+    "reason": "Both surfaces invoke the actual More/Edit details handler again while the editor is open, matching the source's direct OpenCommand re-entry. The same editor and Name input DOM, exact draft and open state survive without another metadata read or write. The fixture preserves WorkId 42, Empyrion: Galactic Survival and all six IGDB-attributed source values. This verifies command composition; the production modal correctly keeps its underlying menu inert."
+  },
+  "MetadataEditorModalTests.The_editor_writes_the_work_the_tile_resolves_to": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MetadataEditingParityTests.cs",
+        "case": "Prey_exposes_six_fields_and_saves_only_the_named_work_field_and_user_source_over_HTTP"
+      },
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "The_editor_writes_the_work_the_tile_resolves_to"
+      },
+      {
+        "file": "tests/electron/metadata-editing.spec.ts",
+        "case": "exact Prey name write retains the original work identity, six sources, drafts and editor"
+      }
+    ],
+    "reason": "Components, HTTP and native Electron preserve the original Prey/2006/2K Games/Cherokee summary fixture, GOG ownership, 120 minutes, 2024-01-02 last play and 2026-09-01 observation. All six fields initially have no source; saving Prey (2006) writes only name=user to the same work and updates the metadata, library and workspace title. Both surfaces report success without error. Real database readback and a reopened HTTP client verify unchanged remaining fields, releases, ownerships and play facts."
+  },
+  "MetadataEditorModalTests.A_field_can_be_handed_back_to_automatic_from_the_modal": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MetadataEditingParityTests.cs",
+        "case": "Resetting_Preys_publisher_returns_only_that_field_to_automatic_over_HTTP"
+      },
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "A_field_can_be_handed_back_to_automatic_from_the_modal"
+      },
+      {
+        "file": "tests/electron/metadata-editing.spec.ts",
+        "case": "exact Prey publisher saves then returns to automatic without claiming another field"
+      }
+    ],
+    "reason": "The exact Prey fixture saves Human Head Studios as a user-owned publisher and enables its reset action. Both surfaces return that field to automatic; fullscreen uses its explicit confirmation. The publisher and source are removed in the real database, the UI shows AUTO with no reset control or error, and the remaining five fields and owned identity stay unchanged."
+  },
+  "MetadataEditorModalTests.A_saved_name_reaches_the_tile_and_the_headline_without_touching_the_drafts": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MetadataEditingParityTests.cs",
+        "case": "Prey_exposes_six_fields_and_saves_only_the_named_work_field_and_user_source_over_HTTP"
+      },
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "A_saved_name_reaches_the_tile_and_the_headline_without_touching_the_drafts"
+      },
+      {
+        "file": "tests/electron/metadata-editing.spec.ts",
+        "case": "exact Prey name write retains the original work identity, six sources, drafts and editor"
+      }
+    ],
+    "reason": "Saving Prey (2006) immediately updates the tile, Details headline and library projections on both surfaces while retaining Details/editor DOM and the exact A half-written sentence. and Human Head Studios drafts with automatic attribution. Only name becomes user-owned, and every other work column and ownership fact remains unchanged. Fullscreen's pre-existing drafts are staged on desktop before switching to its one-field editor, preserving the original draft setup without treating hidden fields as fullscreen inputs."
+  },
+  "MetadataEditorModalTests.A_saved_name_moves_the_game_in_the_sort_order": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MetadataEditingParityTests.cs",
+        "case": "Renaming_Alpha_Protocol_reorders_the_current_library_after_Zeno_Clash_over_HTTP"
+      },
+      {
+        "file": "tests/electron/metadata-editing.spec.ts",
+        "case": "exact Alpha Protocol rename immediately follows Name ascending order"
+      }
+    ],
+    "reason": "The exact Alpha Protocol and Zeno Clash fixture is sorted by Name ascending. Renaming Alpha Protocol to Zzz Protocol through the production API immediately yields Zeno Clash then Zzz Protocol in the HTTP projection and both native surfaces without changing the active sort. Work and ownership identities are preserved."
+  },
+  "MetadataEditorModalTests.No_service_means_no_editor": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MetadataEditingParityTests.cs",
+        "case": "Optional_metadata_service_availability_preserves_Details_and_refuses_unavailable_writes_over_HTTP"
+      },
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "No_service_means_no_editor: %s"
+      },
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "available=%s retains the metadata editor"
+      },
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "removing the optional metadata service closes only its editor"
+      },
+      {
+        "file": "tests/electron/metadata-editing.spec.ts",
+        "case": "absent service leaves Details readable and removes the metadata action"
+      }
+    ],
+    "reason": "Removing the actual IWorkMetadataEditService leaves production Details and the same owned game readable, with metadata.available=false, empty fields and a stable revision. Both surfaces hide only the metadata action/editor; all four metadata mutation routes return Unavailable without changing the work or field sources. Component coverage also closes an already-open editor when availability disappears and preserves legacy compatibility when the additive flag is omitted or true."
+  },
+  "MetadataEditorModalTests.No_picker_means_the_url_route_only": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "No_picker_means_the_url_route_only"
+      },
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "loads all six fields with attributed sources and draws only two art pickers"
+      },
+      {
+        "file": "tests/parity-metadata-editor.test.tsx",
+        "case": "uploads the chosen local image content and adopts its user source"
+      }
+    ],
+    "reason": "The source optional picker maps to the optional importArtwork preload capability. When it is absent, desktop retains both artwork URL inputs and Save actions but no file inputs; fullscreen opens both real artwork pages with URL input and Import URL but no Choose file action. Positive capability fixtures retain the two art pickers and upload behavior. This is component capability evidence without a native file-dialog claim."
+  },
+  "ReceptionImageRefreshTests.Existing_enriched_library_refreshes_old_image_payload_and_warm_sync_is_a_noop": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/ReceptionImageRefreshTests.cs",
+        "case": "Existing_enriched_library_refreshes_old_image_payload_and_warm_sync_is_a_noop"
+      }
+    ],
+    "implementation": [
+      "src/Winnow.Application/Services/ReceptionSyncService.cs",
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Enrich.Igdb/IgdbClient.cs",
+      "src/Winnow.Enrich.Igdb/Storage/SqliteMetadataCache.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs"
+    ],
+    "reason": "The unchanged original Landscape game 42 fixture starts fully enriched with art42 and a legacy version-4 cached payload. The real IgdbClient and HTTP fixture refresh the same art ID to 3840 by 2160 through ReceptionSyncService and WorkReceptionWriter: one work written, one games request and no Steam requests. The warm run writes zero rows, makes no further games request and preserves ObservedAt. The unchanged version-5 cache guard refetches older compatible payloads while retaining offline fallback. This contract has no presentation assertions."
+  },
+  "WorkImageMetadataWriterTests.Metadata_only_changes_are_saved_and_unchanged_runs_are_noops": {
+    "status": "retained-backend",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Tests/WorkImageMetadataWriterTests.cs",
+        "case": "Metadata_only_changes_are_saved_and_unchanged_runs_are_noops"
+      }
+    ],
+    "implementation": [
+      "src/Winnow.Application/Services/WorkReceptionWriter.cs",
+      "src/Winnow.Data/Repositories/IgdbObservationWriter.cs",
+      "src/Winnow.Data/Repositories/WorkReceptionRepository.cs"
+    ],
+    "reason": "The original Canned game 100440 fixture and unchanged backend writer pass the full sequence: two writes for legacy ar1/sc1 IDs, two for added dimensions/art flags, exact GameImage records, zero writes for unchanged and legacy replays, then one write for the 4096-width correction followed by zero. The production writer compares image IDs and metadata, preserves known dimensions when legacy payloads omit them, and guards the atomic observation write against mapping changes. No renderer behavior is part of this contract."
+  },
+  "DetailsRefreshParityTests.Saving_metadata_refreshes_visible_facts_and_year_rules_without_replacing_other_drafts": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MetadataEditingParityTests.cs",
+        "case": "Saving_source_Game_1_fields_refreshes_library_facts_and_keeps_2006_live_list_rules_over_HTTP"
+      },
+      {
+        "file": "tests/parity-details-refresh.test.tsx",
+        "case": "refreshes saved %s facts and year-filtered lists while preserving another field draft"
+      },
+      {
+        "file": "tests/electron/metadata-editing.spec.ts",
+        "case": "save refreshes facts and 2006 rules while preserving the title draft"
+      }
+    ],
+    "reason": "All six native cases retain the original Game 1/Steam 1/2006 and Game 2/Steam 2/1990 fixture, Original summary/publisher, Try next list, play facts and fixed 2026-09-10 observation facts. Desktop Enter and simulated fullscreen Gamepad A save A saved summary., A saved publisher or 2017 while retaining Details/editor DOM and An unfinished title with automatic attribution. Visible facts refresh, and active 2006-filter tiles plus the 2006 only live-list count remain one for summary/publisher or become zero for year. Real HTTP verifies only the chosen field/source changes and saved 2006/2006 rules stay intact; Electron derives live membership from current workspace facts. The simpler component fixture provides complementary draft and projection coverage."
+  },
+  "DetailsRefreshParityTests.Background_reads_refresh_updates_history_art_and_reception_while_journal_drafts_survive": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "../../tests/Winnow.Backend.Tests/MetadataEditingParityTests.cs",
+        "case": "Background_reads_publish_new_sessions_updates_images_and_reception_without_changing_the_old_journal_note_over_HTTP"
+      },
+      {
+        "file": "tests/electron/metadata-editing.spec.ts",
+        "case": "exact background refresh preserves focused journal and update identities while every read projection advances"
+      },
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "exposes the compact header as one named group while keeping counts in the tooltip"
+      },
+      {
+        "file": "tests/parity-metadata-contracts.test.tsx",
+        "case": "exposes the full figure attribution within the named Reception group"
+      }
+    ],
+    "reason": "Both native surfaces use the original fixed 2026-09-10 fixture: an old session and Old saved note, followed by real SQL and SSE publication of 180 minutes, last play on 2026-09-05, a new session/note, patch evidence, IGDB users 90 from 20 ratings and decoded newshot art. The same Details, journal row and focused textbox retain My unfinished note; no note save occurs and the stored old note remains unchanged. Tracker choice, two notes, current date/play facts and unread count one survive. Chromium exposes the exact 90/20 attribution as a named group; desktop keeps 20 out of visible compact text and in the tooltip. Inserting Newest patch then preserves the original New patch Read button identity/focus, selected Updates section and unread count two. HTTP and component assertions complement the full native publication and accessibility checks."
+  }
+}

@@ -167,6 +167,21 @@ public sealed record BucketThresholds(
 /// </summary>
 public sealed class GameGrouping
 {
+    /// <summary>Restores a grouping already computed by the backend for an external frontend.</summary>
+    public static GameGrouping FromSnapshot(long resolvedWorkId, string bucket, long playtimeMinutes,
+        DateTime? lastPlayedAt, DateTime? majorUpdateAt, int unreadUpdateCount, int entryCount,
+        Winnow.Core.Lifecycle.GameLifecycle? lifecycle = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bucket);
+        ArgumentOutOfRangeException.ThrowIfNegative(playtimeMinutes);
+        ArgumentOutOfRangeException.ThrowIfNegative(unreadUpdateCount);
+        ArgumentOutOfRangeException.ThrowIfLessThan(entryCount, 1);
+        if (majorUpdateAt is null && unreadUpdateCount != 0)
+            throw new ArgumentException("An unread update count requires an update timestamp.", nameof(unreadUpdateCount));
+        return new(resolvedWorkId, bucket, playtimeMinutes, lastPlayedAt, majorUpdateAt, unreadUpdateCount, entryCount)
+        { Lifecycle = lifecycle };
+    }
+
     private GameGrouping(
         long resolvedWorkId,
         string bucket,

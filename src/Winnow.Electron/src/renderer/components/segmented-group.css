@@ -1,0 +1,11 @@
+@layer components {
+  .segmented-clip {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    /* Keep child damage in its own layer: software Chromium otherwise repaints
+       the parent border's antialiased corner during hover and pressed states. */
+    will-change: transform;
+    clip-path: inset(0 round calc(var(--segment-radius, 4px) - var(--segment-border, 1px)));
+  }
+}

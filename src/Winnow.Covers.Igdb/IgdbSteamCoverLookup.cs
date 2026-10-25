@@ -87,7 +87,8 @@ internal sealed class IgdbSteamCoverLookup
 
         if (full is not null)
         {
-            await SendAsync(full).ConfigureAwait(false);
+            // The caller that fills the batch may leave before its shared send finishes too.
+            await SendAsync(full).WaitAsync(ct).ConfigureAwait(false);
         }
 
         // WaitAsync, not a linked token: the batch is shared, and one caller

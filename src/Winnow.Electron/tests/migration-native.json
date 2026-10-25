@@ -1,0 +1,144 @@
+{
+  "StoresAccountContextTests.Consent_explains_scope_and_keeps_purchase_permission_optional": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-settings-capture.test.tsx",
+        "case": "keeps purchase permission off by default and resets an abandoned consent without opening Steam"
+      },
+      {
+        "file": "tests/parity-settings-capture.test.tsx",
+        "case": "reviews separately opted-in sign-in pages and imports only after explicit confirmation"
+      }
+    ],
+    "reason": "Both presentation paths stage purchase permission off by default, explain its scope separately from sign-in, discard abandoned consent, and require a second explicit action before importing captured facts."
+  },
+  "GamepadKeyboardTests.Typing_replaces_selection_and_preserves_two_way_binding_and_length_limit": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "replaces a selection through the input binding without truncating the trailing text at maxlength"
+      },
+      {
+        "file": "tests/parity-controller.test.tsx",
+        "case": "updates a controlled field and backspaces without submitting until Enter"
+      }
+    ],
+    "reason": "The original selected-middle, maxlength and trailing-text case runs through native input events, complemented by a React controlled-input integration test."
+  },
+  "GamepadKeyboardTests.Controller_can_change_case_type_and_backspace_without_a_physical_keyboard": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/controller-keyboard.spec.ts",
+        "case": "controller changes case, types Q and Space, and backspaces from the selected key in ${label}"
+      },
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "starts a fresh edit session when the target changes and edits only the current field"
+      },
+      {
+        "file": "tests/parity-controller.test.tsx",
+        "case": "updates a controlled field and backspaces without submitting until Enter"
+      }
+    ],
+    "reason": "The complete source Down/Down/Case/Up/Q/Up/Up/Done/Right/Space/X sequence runs through the production Gamepad API poller on desktop 1200x640 and fullscreen 1280x720 and 1920x1080. Native assertions verify Q, Q-space and Q in the original bound field, with geometric wrapping and selection retained."
+  },
+  "GamepadKeyboardTests.Backspace_deletes_a_complete_grapheme_and_read_only_fields_cannot_change": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "deletes a complete grapheme and refuses edits after the target becomes read-only"
+      }
+    ],
+    "reason": "The original joined-emoji deletion and dynamic read-only transition are covered without splitting the grapheme or issuing a later edit."
+  },
+  "GamepadKeyboardTests.Back_closes_once_restores_focus_and_stops_editing": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/controller-keyboard.spec.ts",
+        "case": "controller keyboard edits the original search field and Back restores its focus without leaving ${label}"
+      },
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "Back closes once, restores the original field and rejects stale keyboard actions"
+      },
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "closes once and stops editing even if the owner has not removed the keyboard yet"
+      }
+    ],
+    "reason": "Component tests retain the mounted owner after Back, verify one close notification, original-field focus and rejected stale actions. Native simulated controller Back closes only the keyboard and retains search and exact field focus across subsequent frames on both source sizes plus reference fullscreen. Physical-device validation remains separately scoped."
+  },
+  "GamepadKeyboardTests.Enter_submits_single_line_field_after_closing_but_done_only_closes": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "Enter closes before submitting a single-line field while Done only closes"
+      }
+    ],
+    "reason": "The shared keyboard asserts the original ordering and distinction between submitting Enter and non-submitting Done."
+  },
+  "GamepadKeyboardTests.Secure_field_value_is_never_copied_into_keyboard_content": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "retains password masking when the field type changes and never exposes the secret in keyboard content"
+      }
+    ],
+    "reason": "A password remains permanently masked in the active keyboard, including after the original field becomes plain text; no editable duplicate or plaintext is rendered."
+  },
+  "GamepadKeyboardTests.Preview_tracks_external_edits_only_while_attached": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "stops observing when the keyboard unmounts and reads the latest text on reopening"
+      }
+    ],
+    "reason": "Mounted previews observe external edits, unmounted previews stop changing, and reopening reads the current target value."
+  },
+  "GamepadKeyboardTests.Multiline_enter_and_arrow_cluster_preserve_caret_and_edit_original_field": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "moves the multiline caret with the arrow cluster and keeps forward delete distinct from backspace"
+      }
+    ],
+    "reason": "The original multiline Enter, Up, Right, forward Delete, Down and Backspace sequence is asserted against the actual target field and caret."
+  },
+  "GamepadKeyboardTests.Standard_keys_fit_and_arrows_form_an_inverted_T": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/electron/controller-keyboard.spec.ts",
+        "case": "standard keyboard keys fit five rows, expose native names and form an inverted T in ${label}"
+      },
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "moves the multiline caret with the arrow cluster and keeps forward delete distinct from backspace"
+      }
+    ],
+    "reason": "Native geometry checks preserve the full source five-row key inventory, original desktop 1200x640 and fullscreen 1280x720 bounds, reference 1920x1080, aligned Up/Down with Left/Down/Right below, and Space wider than eight Up keys. Every key remains inside the viewport and has a named Chromium AX node. Exact keyboard width assertions and inspected screenshots also catch inherited dialog width caps."
+  },
+  "FullscreenQuickMenuTests.Nested_menu_preserves_the_editor_and_quit_requires_confirmation": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "requires an explicit confirmation before quitting and cancellation preserves the editor"
+      },
+      {
+        "file": "tests/parity-native-keyboard-integration.test.tsx",
+        "case": "preserves the nested editor, hides Settings, and restores the original focus on Resume"
+      }
+    ],
+    "reason": "Nested menus omit Settings, preserve the draft, and require explicit confirmation before invoking native quit; cancelling returns to the same editor."
+  }
+}

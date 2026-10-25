@@ -1,0 +1,27 @@
+{
+  "FullscreenDetailsTests.Single_copy_achievements_remain_visible_without_an_identity_link": {
+    "status": "ported",
+    "tests": [{ "file": "tests/electron/details-contracts.spec.ts", "case": "single-copy achievements remain visible without an identity relationship" }],
+    "reason": "Desktop and fullscreen native Details show the original single-copy 5/20 (25%) achievement progress while the relationship collection is empty. Progress is not gated on an edition group."
+  },
+  "FullscreenDetailsTests.Per_game_history_switches_from_lifetime_to_observed_sessions_with_controller": {
+    "status": "ported",
+    "tests": [{ "file": "tests/electron/details-contracts.spec.ts", "case": "fullscreen history initially focuses Lifetime and controller Right selects the original observed session" }],
+    "reason": "The native fullscreen history opens on Lifetime. Standard-controller Right and Accept activate Tracked sessions; the original one-hour observed session produces one bar and the unchanged observed-sessions coverage note."
+  },
+  "FullscreenDetailsTests.Long_game_title_and_actions_fit_the_hero_without_overlapping_section_navigation": {
+    "status": "ported",
+    "tests": [{ "file": "tests/electron/details-contracts.spec.ts", "case": "fullscreen ten-repeat long title keeps every hero action above section navigation" }],
+    "reason": "The original ten-repeat title wraps beyond one line. Native geometry verifies every header action stays inside its hero and the hero ends above section navigation. The resulting 1920×1080 capture was inspected."
+  },
+  "FullscreenDetailsTests.Reload_replaces_the_underlying_detail_and_preserves_local_section_and_open_editor": {
+    "status": "ported",
+    "tests": [{ "file": "tests/electron/details-contracts.spec.ts", "case": "reload preserves the local Journal section and an open unsaved editor" }],
+    "reason": "A production bridge event reloads the library snapshot from Before to After while a real journal editor stays open with its unsaved draft. Closing the editor returns to the local Journal section; closing Details returns to Library. Both presentations dispatch no write when cancelling."
+  },
+  "FullscreenDetailsTests.Pending_session_prompt_opens_on_attach_and_dismisses_through_the_shared_model": {
+    "status": "ported",
+    "tests": [{ "file": "tests/electron/details-contracts.spec.ts", "case": "a pending desktop journal prompt appears on fullscreen attachment and Back dismisses the shared prompt" }],
+    "reason": "An ended-session event opens the shared prompt on desktop. Attaching fullscreen displays the existing prompt, controller Back dismisses it, and returning to desktop confirms the shared prompt is gone without a journal write."
+  }
+}

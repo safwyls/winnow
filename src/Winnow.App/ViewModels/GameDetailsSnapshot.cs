@@ -26,7 +26,8 @@ internal sealed record LibraryDetailsContext(
     IReadOnlyList<CoverageEntry> Coverage,
     SameGameResolution Resolution,
     ExpansionGrouping Expansions,
-    IReadOnlyDictionary<long, Work> Works)
+    IReadOnlyDictionary<long, Work> Works,
+    IReadOnlyDictionary<long, long>? LinkIds = null)
 {
     public long? WorkIdFor(GameTileViewModel target)
     {

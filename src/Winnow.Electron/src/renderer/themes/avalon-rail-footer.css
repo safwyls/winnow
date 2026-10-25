@@ -1,0 +1,37 @@
+@layer themes {
+  .avalon-rail-footer {
+    flex: none;
+    padding: 10px 12px;
+    border-top: 1px solid var(--line);
+  }
+  .avalon-rail-footer-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .avalon-rail-footer-actions > button {
+    background: transparent;
+    border: 0;
+    padding: 8px;
+  }
+  .avalon-rail-footer-actions > button[aria-current='page'] {
+    color: var(--accent-foreground, var(--accent));
+    background: var(--avalon-chrome-raised, var(--raised));
+  }
+  .avalon-create-list-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 8px;
+  }
+  .avalon-create-list-menu > button {
+    background: transparent;
+    border: 0;
+    justify-content: flex-start;
+    padding: 8px;
+  }
+  .avalon-rail-footer button:hover {
+    background: var(--avalon-chrome-raised, var(--raised));
+  }
+}

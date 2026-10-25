@@ -19,7 +19,7 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
     /// </summary>
     public static readonly TimeSpan Patience = TimeSpan.FromMinutes(2);
 
-    private readonly SessionJournalService? _journal;
+    private readonly ISessionJournalService? _journal;
     private readonly TimeProvider _clock;
     private readonly Action<Action> _post;
     private readonly IJournalNotification? _notifications;
@@ -34,7 +34,7 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
     private bool _disposed;
 
     public JournalPromptViewModel(
-        SessionJournalService? journal = null,
+        ISessionJournalService? journal = null,
         Func<long, string?>? titleFor = null,
         TimeProvider? clock = null,
         Action<Action>? post = null,

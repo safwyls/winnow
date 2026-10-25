@@ -1,0 +1,22 @@
+.steam-import-counts {
+  display: grid;
+  gap: 0.45rem;
+  margin-block: 1rem;
+}
+.steam-import-counts > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: baseline;
+}
+.steam-import-counts dt {
+  color: var(--muted);
+}
+.steam-import-counts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.steam-import-report {
+  min-width: 0;
+}

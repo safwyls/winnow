@@ -103,14 +103,18 @@ public sealed class FullscreenActivityPage : FullscreenPage
         try
         {
             var repository = Context.Services?.GetService<IActivityRepository>();
-            if (repository is null) { _status = "Activity is unavailable. Reopen Winnow to try again."; return; }
+            var api = Context.Services?.GetService<Winnow.Api.Client.WinnowApiClient>();
+            if (repository is null && api is null) { _status = "Activity is unavailable. Reopen Winnow to try again."; return; }
             var tiles = Context.Library.AllTiles.SelectMany(tile => tile.OwnershipIds.Select(id => (id, tile)))
                 .ToDictionary(pair => pair.id, pair => pair.tile);
             var start = WeekStart;
             var section = _section switch { "Updates" => ActivitySection.Updates, "Journal" => ActivitySection.Journal, _ => ActivitySection.Sessions };
             var cursor = append ? _next : null;
-            var page = await Task.Run(() => repository.GetPageAsync(tiles.Keys.ToArray(), start.ToUniversalTime(),
-                start.AddDays(7).ToUniversalTime(), section, cursor, ct: ct), ct);
+            var page = api is not null
+                ? await new Winnow.Api.Client.DetailsClient(api).GetActivityAsync(new(start.ToUniversalTime(),
+                    start.AddDays(7).ToUniversalTime(), section, cursor), ct)
+                : await Task.Run(() => repository!.GetPageAsync(tiles.Keys.ToArray(), start.ToUniversalTime(),
+                    start.AddDays(7).ToUniversalTime(), section, cursor, ct: ct), ct);
             if (_disposed || ct.IsCancellationRequested || revision != _revision) return;
             var rows = page.Rows.Where(row => tiles.ContainsKey(row.OwnershipId))
                 .Select(row => new ActivityEntry(tiles[row.OwnershipId], row.AtUtc, row.Session, row.Note, row.Update, row.Store)).ToArray();
@@ -343,14 +347,17 @@ public sealed class FullscreenSessionNotePage : FullscreenPage
     public override string Title => "Your note";
     public FullscreenSessionNotePage(FullscreenContext context, long sessionId, string title, SessionNote? original, Action<SessionNote> saved) : base(context)
     {
-        if (context.Services?.GetService<ISessionRepository>() is not { } repository)
+        var api = context.Services?.GetService<Winnow.Api.Client.WinnowApiClient>();
+        var repository = context.Services?.GetService<ISessionRepository>();
+        if (repository is null && api is null)
         {
             var back = FullscreenUi.Button("Back", context.Back);
             Content = FullscreenUi.Stack(FullscreenUi.Text("Journal is unavailable."), back);
             SetFocusRows([back]);
             return;
         }
-        _entry = new JournalEntryViewModel(sessionId, original, repository);
+        _entry = api is not null ? new JournalEntryViewModel(sessionId, original, api)
+            : new JournalEntryViewModel(sessionId, original, repository!);
         _entry.EditCommand.Execute(null);
         DataContext = _entry;
         var field = new TextBox { AcceptsReturn = true, FontSize = 24, MinHeight = 180, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
@@ -420,9 +427,13 @@ public sealed class FullscreenLibrarySummaryPage : FullscreenPage
     public override string Hints => "A  Select / edit     LT / RT  Section     B  Back";
     public FullscreenLibrarySummaryPage(FullscreenContext context) : base(context)
     {
-        _model = context.Services?.GetService<IAccountStatsRepository>() is { } repository ? new AccountStatsViewModel(repository) : null;
+        var api = context.Services?.GetService<Winnow.Api.Client.WinnowApiClient>();
+        _model = api is not null ? new AccountStatsViewModel(api)
+            : context.Services?.GetService<IAccountStatsRepository>() is { } repository ? new AccountStatsViewModel(repository) : null;
         _stats = new StatsViewModel(_model ?? new AccountStatsViewModel(new UnavailableSpendingRepository()),
-            new GameplayStatsViewModel(context.Services?.GetService<IGameplayStatsRepository>() ?? new GameplayStatsUnavailableRepository(), context.Library));
+            api is not null ? new GameplayStatsViewModel(api, context.Library)
+            : new GameplayStatsViewModel(context.Services?.GetService<IGameplayStatsRepository>() ?? new GameplayStatsUnavailableRepository(), context.Library),
+            context.Library);
         _stats.PropertyChanged += StatsChanged;
         _stats.Gameplay.PropertyChanged += GameplayChanged;
         Render();

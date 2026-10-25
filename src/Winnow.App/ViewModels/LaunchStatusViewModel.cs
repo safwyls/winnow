@@ -24,7 +24,7 @@ public partial class LaunchStatusViewModel : ObservableObject, IDisposable
     /// </summary>
     private static readonly TimeSpan RefusalFor = TimeSpan.FromSeconds(7);
 
-    private readonly LaunchIntents? _intents;
+    private readonly ILaunchObservations? _intents;
     private readonly TimeProvider _clock;
     private readonly Action<Action> _post;
     private readonly TimeSpan _patience;
@@ -41,7 +41,7 @@ public partial class LaunchStatusViewModel : ObservableObject, IDisposable
     /// and this is the seam that fact crosses.
     /// </param>
     public LaunchStatusViewModel(
-        LaunchIntents? intents = null,
+        ILaunchObservations? intents = null,
         TimeProvider? clock = null,
         Action<Action>? post = null,
         TimeSpan? patience = null)

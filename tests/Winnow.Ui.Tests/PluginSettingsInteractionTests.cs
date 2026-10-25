@@ -21,6 +21,49 @@ public sealed class PluginSettingsInteractionTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task Manage_plugins_restart_supports_keyboard_and_controller(bool fullscreen)
+    {
+        var lifecycle = new RestartLifecycle();
+        var shell = await ShellAsync(lifecycle: lifecycle);
+        shell.PluginSettings.SelectPlugin(null);
+        using var context = new FullscreenContext(shell.Library, shell.Feed, shell);
+        using var page = fullscreen ? new FullscreenSettingsPage(context, "Plugins") : null;
+        Control view = page is null ? new PluginSettingsView { DataContext = shell.PluginSettings } : page;
+        var window = new Window { Width = fullscreen ? 1920 : 1200, Height = 1080, Content = view };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            var button = Named<Button>(view, "Restart library service");
+            button.BringIntoView();
+            Assert.True(button.Focus());
+            if (page is not null) page.Handle(GamepadButtons.Accept);
+            else
+            {
+                window.KeyPress(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Enter, null);
+                window.KeyRelease(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Enter, null);
+            }
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1, lifecycle.Calls);
+            Assert.False(button.IsEffectivelyEnabled);
+            Capture(window, fullscreen ? "fullscreen-plugin-restart" : "desktop-plugin-restart");
+            lifecycle.Completion.SetResult();
+            await shell.PluginSettings.RestartLibraryServiceCommand.ExecutionTask!;
+            Assert.Contains("restarted", shell.PluginSettings.Status);
+        }
+        finally { lifecycle.Completion.TrySetResult(); window.Close(); }
+    }
+
+    private sealed class RestartLifecycle : ILibraryServiceLifecycle
+    {
+        public int Calls { get; private set; }
+        public TaskCompletionSource Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task RestartAsync(CancellationToken ct = default) { Calls++; return Completion.Task; }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task Advanced_settings_start_collapsed_support_input_and_preserve_hidden_values_on_save(bool fullscreen)
     {
         var backend = new AccountBackend();
@@ -627,10 +670,11 @@ public sealed class PluginSettingsInteractionTests
         frame!.Save(Path.Combine(directory, name + ".png"));
     }
 
-    private static async Task<MainWindowViewModel> ShellAsync(IPluginSettingsBackend? backend = null, bool preload = true)
+    private static async Task<MainWindowViewModel> ShellAsync(IPluginSettingsBackend? backend = null, bool preload = true,
+        ILibraryServiceLifecycle? lifecycle = null)
     {
         var preview = PreviewData.Shell;
-        var plugins = new PluginSettingsViewModel(backend ?? new Backend());
+        var plugins = new PluginSettingsViewModel(backend ?? new Backend(), lifecycle: lifecycle);
         if (preload) await plugins.LoadAsync();
         return new(preview.Library, preview.MergeQueue, preview.Stores, preview.Appearance,
             preview.Feed, preview.AccountStats, preview.LibrarySettings,

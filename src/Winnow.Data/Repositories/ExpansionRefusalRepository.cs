@@ -56,8 +56,8 @@ public sealed class ExpansionRefusalRepository : IExpansionRefusalRepository
             return;
         }
 
-        using var scope = _factory.Begin();
-        using var lease = _factory.Lease();
+        using var scope = new RepositoryWriteBatch(_factory);
+        var lease = scope.Lease;
 
         var refusedAt = _clock.GetUtcNow().UtcDateTime;
 
@@ -96,8 +96,8 @@ public sealed class ExpansionRefusalRepository : IExpansionRefusalRepository
             return 0;
         }
 
-        using var scope = _factory.Begin();
-        using var lease = _factory.Lease();
+        using var scope = new RepositoryWriteBatch(_factory);
+        var lease = scope.Lease;
 
         var removed = 0;
         foreach (var pair in pairs)

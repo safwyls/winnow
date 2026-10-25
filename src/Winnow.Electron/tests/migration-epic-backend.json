@@ -1,0 +1,130 @@
+{
+  "BuiltInEpicCredentialTests.The_built_in_pair_makes_a_fresh_install_configured": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+      "src/Winnow.Ingest.Epic/Web/ServiceCollectionExtensions.Web.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/BuiltInEpicCredentialSource.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/ChainedEpicCredentialProvider.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/EpicClientCredentials.cs"
+    ],
+    "reason": "Production backend AddEpicWebApi retains the same credential source order, first-complete-pair selection and redacted credential type. The four unchanged original tests run against that composition."
+  },
+  "BuiltInEpicCredentialTests.A_user_supplied_pair_beats_the_built_in_one": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+      "src/Winnow.Ingest.Epic/Web/ServiceCollectionExtensions.Web.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/BuiltInEpicCredentialSource.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/ChainedEpicCredentialProvider.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/EpicClientCredentials.cs"
+    ],
+    "reason": "Production backend AddEpicWebApi retains the same credential source order, first-complete-pair selection and redacted credential type. The four unchanged original tests run against that composition."
+  },
+  "BuiltInEpicCredentialTests.The_built_in_source_is_registered_last": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+      "src/Winnow.Ingest.Epic/Web/ServiceCollectionExtensions.Web.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/BuiltInEpicCredentialSource.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/ChainedEpicCredentialProvider.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/EpicClientCredentials.cs"
+    ],
+    "reason": "Production backend AddEpicWebApi retains the same credential source order, first-complete-pair selection and redacted credential type. The four unchanged original tests run against that composition."
+  },
+  "BuiltInEpicCredentialTests.The_built_in_source_yields_a_complete_pair_that_redacts_itself": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+      "src/Winnow.Ingest.Epic/Web/ServiceCollectionExtensions.Web.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/BuiltInEpicCredentialSource.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/ChainedEpicCredentialProvider.cs",
+      "src/Winnow.Ingest.Epic/Web/Credentials/EpicClientCredentials.cs"
+    ],
+    "reason": "Production backend AddEpicWebApi retains the same credential source order, first-complete-pair selection and redacted credential type. The four unchanged original tests run against that composition."
+  },
+  "EpicScanCompletenessTests.A_partial_scan_keeps_positive_facts_but_has_no_absence_authority": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs"
+    ],
+    "reason": "The shared backend registers the unchanged readers, scan gate and local/remote sync services. Original temporary-file/SQLite cases verify absence authority and re-reading under the gate for both sync paths; no frontend coordinator implements this behavior."
+  },
+  "EpicScanCompletenessTests.Missing_and_readable_empty_directories_have_different_authority": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs"
+    ],
+    "reason": "The shared backend registers the unchanged readers, scan gate and local/remote sync services. Original temporary-file/SQLite cases verify absence authority and re-reading under the gate for both sync paths; no frontend coordinator implements this behavior."
+  },
+  "EpicScanCompletenessTests.Incomplete_scans_preserve_a_prior_install_until_a_complete_scan_proves_absence": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs"
+    ],
+    "reason": "The shared backend registers the unchanged readers, scan gate and local/remote sync services. Original temporary-file/SQLite cases verify absence authority and re-reading under the gate for both sync paths; no frontend coordinator implements this behavior."
+  },
+  "EpicSyncInstallOrderingTests.A_queued_pass_rereads_Epic_after_the_gate_and_cannot_undo_completion": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Application/Services/BackendServiceRegistration.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs",
+      "src/Winnow.Ingest.Epic/EpicLibrarySource.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestReader.cs",
+      "src/Winnow.Ingest.Epic/EpicManifestStateReader.cs"
+    ],
+    "reason": "The shared backend registers the unchanged readers, scan gate and local/remote sync services. Original temporary-file/SQLite cases verify absence authority and re-reading under the gate for both sync paths; no frontend coordinator implements this behavior."
+  },
+  "EpicSourceMergeTests.The_API_half_cannot_clear_install_state_the_local_half_established": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Ingest.Epic/Web/Model/EpicOwnedLibrary.cs",
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs"
+    ],
+    "reason": "The production backend retains the same catalogue-ID projection and candidate union, including null API install opinions, local uninstall authority and API-only entitlements. The unchanged source tests exercise the retained implementation."
+  },
+  "EpicSourceMergeTests.A_local_uninstall_still_shows_through_the_merge": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Ingest.Epic/Web/Model/EpicOwnedLibrary.cs",
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs"
+    ],
+    "reason": "The production backend retains the same catalogue-ID projection and candidate union, including null API install opinions, local uninstall authority and API-only entitlements. The unchanged source tests exercise the retained implementation."
+  },
+  "EpicSourceMergeTests.A_title_only_the_API_owns_survives_the_union": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Ingest.Epic/Web/Model/EpicOwnedLibrary.cs",
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs"
+    ],
+    "reason": "The production backend retains the same catalogue-ID projection and candidate union, including null API install opinions, local uninstall authority and API-only entitlements. The unchanged source tests exercise the retained implementation."
+  },
+  "EpicSourceMergeTests.The_API_and_local_halves_key_on_the_same_catalog_item_id": {
+    "status": "retained-backend",
+    "implementation": [
+      "src/Winnow.Core/Ingest/CandidateOwnershipMerge.cs",
+      "src/Winnow.Ingest.Epic/Web/Model/EpicOwnedLibrary.cs",
+      "src/Winnow.Ingest.Epic/Web/EpicAccountClient.cs",
+      "src/Winnow.Application/Services/LibrarySyncService.cs"
+    ],
+    "reason": "The production backend retains the same catalogue-ID projection and candidate union, including null API install opinions, local uninstall authority and API-only entitlements. The unchanged source tests exercise the retained implementation."
+  }
+}

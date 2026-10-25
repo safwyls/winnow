@@ -138,7 +138,7 @@ internal static class PreviewData
             new PreviewWorkRepository(),
             links,
             new PreviewOwnershipRepository(),
-            new LibraryExpansionScan(releases, links, refusals),
+            new PreviewExpansionScan(),
             refusals,
             new PreviewLibraryQueryRepository());
     }
@@ -208,4 +208,10 @@ internal static class PreviewData
             updateEvents: events,
             ownerships: [ownership]);
     }
+}
+
+internal sealed class PreviewExpansionScan : IExpansionReviewScan
+{
+    public Task<ExpansionScanReport> ScanAsync(CancellationToken ct = default)
+        => Task.FromResult(new ExpansionScanReport(PreviewLibrary.Works.Count, 0, [], TimeSpan.Zero));
 }

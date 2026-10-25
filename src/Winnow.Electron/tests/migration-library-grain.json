@@ -1,0 +1,63 @@
+{
+  "LibraryGrainTests.An_expansion_link_does_not_collapse_a_tile": {
+    "status": "ported",
+    "tests": [{ "file": "tests/parity-library-grain.test.ts", "case": "keeps an unlinked library and disabled expansion links tile for tile with the original row identities" }],
+    "reason": "With grouping disabled the exact raw game array and entry objects remain, including the expansion's own zero playtime and Never played bucket. Identity relationships do not collapse expansion tiles by default."
+  },
+  "LibraryGrainTests.The_stored_grouping_preference_defaults_to_off": {
+    "status": "ported",
+    "tests": [{ "file": "tests/parity-library-grain.test.ts", "case": "defaults stored %s to grouping=%s and round trips its formatted value" }],
+    "reason": "The exact null, empty, whitespace, invalid, false, true and trimmed mixed-case source matrix is covered, including formatting the parsed Boolean and parsing it again."
+  },
+  "LibraryGrainTests.Grouping_folds_the_pack_into_its_base_and_the_counts_follow": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-library-grain.test.ts", "case": "folds a pack with %s minutes and carries its count without adding its stores dates bucket or playtime to the base" },
+      { "file": "tests/parity-library-workflows.test.tsx", "case": "folds expansions with %s minutes before rail list and search cuts and restores their own tiles when grouping is disabled" }
+    ],
+    "reason": "Both surfaces fold three raw games into two tiles and matching All games/Never played rail counts; desktop also checks the total and list row. Base entries, 12000 minutes, date and bucket remain unchanged. Pack-only lists and title cuts operate after folding, and disabling grouping restores the separate pack."
+  },
+  "LibraryGrainTests.A_folded_pack_that_was_never_played_says_so_on_its_base": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-library-grain.test.ts", "case": "folds a pack with %s minutes and carries its count without adding its stores dates bucket or playtime to the base" },
+      { "file": "tests/parity-library-workflows.test.tsx", "case": "folds expansions with %s minutes before rail list and search cuts and restores their own tiles when grouping is disabled" }
+    ],
+    "reason": "The zero-minute case records count one and unplayed true; desktop grid/list and fullscreen expose +1 plus the original Includes 1 expansion, one of them never played wording in the accessible game name."
+  },
+  "LibraryGrainTests.A_folded_pack_that_was_played_marks_the_count_and_claims_nothing_more": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-library-grain.test.ts", "case": "folds a pack with %s minutes and carries its count without adding its stores dates bucket or playtime to the base" },
+      { "file": "tests/parity-library-workflows.test.tsx", "case": "folds expansions with %s minutes before rail list and search cuts and restores their own tiles when grouping is disabled" }
+    ],
+    "reason": "The played-pack case records count one and unplayed false; both surfaces and desktop list include the count without claiming never played. Base playtime remains 12000 minutes."
+  },
+  "LibraryGrainTests.A_pack_whose_base_is_not_in_the_library_keeps_its_own_tile": {
+    "status": "ported",
+    "tests": [{ "file": "tests/parity-library-grain.test.ts", "case": "keeps a pack whose base is absent and ignores variants and retracted relationships" }],
+    "reason": "A link to an absent base leaves the exact pack row in the visible array with no expansion marker. The same pure projection drives both surfaces and their counts."
+  },
+  "LibraryGrainTests.Every_count_on_screen_agrees_with_its_own_definition": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-library-workflows.test.tsx", "case": "counts grouped games once in the rail and per store and keeps a multi-store game in either store cut" },
+      { "file": "tests/parity-platforms.test.tsx", "case": "counts each grouped title once per store before screen filtering" },
+      { "file": "tests/parity-platforms.test.tsx", "case": "shows formatted whole-library totals and account summary with tabular figure styling" }
+    ],
+    "reason": "The source three-game overlap matrix checks All games and each bucket against the displayed games, Steam=2/Epic=1/GOG=1 residual filter counts, and stable total after a store cut on both surfaces. Platforms independently checks the same per-game/per-store rule and displayed formatted totals across both modes."
+  },
+  "LibraryGrainTests.A_store_cut_keeps_a_game_owned_on_either_store": {
+    "status": "ported",
+    "tests": [{ "file": "tests/parity-library-workflows.test.tsx", "case": "counts grouped games once in the rail and per store and keeps a multi-store game in either store cut" }],
+    "reason": "Both Library surfaces report the source Epic count of one and selecting Epic keeps the game whose grouped entries include Steam and Epic. Filtering checks all grouped entries rather than only the primary ownership."
+  },
+  "LibraryGrainTests.Grouping_changes_no_row_the_recommender_reads": {
+    "status": "ported",
+    "tests": [
+      { "file": "tests/parity-library-grain.test.ts", "case": "folds a pack with %s minutes and carries its count without adding its stores dates bucket or playtime to the base" },
+      { "file": "tests/electron/library-lifecycle.spec.ts", "case": "folds real expansion links and applies a changed default while preserving raw game facts" }
+    ],
+    "reason": "Both native surfaces create a real expansion link through the production API, verify that the unplayed pack has its own ownership bucket, enable grouping in Settings, and compare every raw library game and workspace bucket before and after the visible grid folds. The backend facts read by recommendation consumers stay identical. A pack-only manual list becomes empty under the projection, and switching grouping off restores its tile."
+  }
+}

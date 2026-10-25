@@ -1,0 +1,96 @@
+{
+  "LibraryViewModelTests.Update_events_are_listed_newest_first_and_only_announcements_link_out": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "lists source update headlines newest first and offers only supported reader pages"
+      }
+    ],
+    "reason": "Both Avalon modes show the original three headlines in descending date order, correlate the announcement/build into unread rows, retain old news without an unread claim and expose only its supported reader URL. The unbound GapCaption/RailMarks assertions are superseded by active Updates/timeline composition, as documented in details-actions-and-metadata.md."
+  },
+  "LibraryViewModelTests.An_update_older_than_the_last_session_is_history_not_a_missed_one": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "keeps a readable update from before the last session as history without an unread claim"
+      }
+    ],
+    "reason": "Both modes keep the dated historical row and reader button, without an unread flag. The old unbound gap-caption string is not part of either active view."
+  },
+  "LibraryViewModelTests.Opening_details_carries_the_steam_appid_through_to_real_links": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-action-controls.test.tsx",
+        "case": "carries the Steam identity into Install and the real store and news destinations"
+      },
+      {
+        "file": "../../tests/Winnow.Backend.Tests/GameActionParityTests.cs",
+        "case": "Store_actions_keep_the_measured_launcher_URI_and_action_kind"
+      }
+    ],
+    "reason": "Both modes dispatch Install for the correct ownership and open the original Steam store/news URLs. The actual production HTTP dispatcher test separately measures the resulting Steam install URI."
+  },
+  "LibraryViewModelTests.The_panel_reports_the_playtime_history_winnow_has_recorded": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "composes the recorded playtime series only when the API supplies readings: %s"
+      }
+    ],
+    "reason": "Both modes compose the ownership history supplied by the details API into the original two-reading increase of 1h 7m."
+  },
+  "LibraryViewModelTests.No_snapshot_source_means_no_record_line": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "composes the recorded playtime series only when the API supplies readings: %s"
+      }
+    ],
+    "reason": "An absent API history creates no Checked record sentence; both modes show the existing explicit empty-state message."
+  },
+  "LibraryViewModelTests.Missing_metadata_renders_as_absent_rows_rather_than_placeholders": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "renders absent metadata and zero playtime without inventing a publisher date or install path"
+      }
+    ],
+    "reason": "Both modes omit absent identity fields, show the original empty-summary and never-opened sentences, use the compact zero-playtime dash, report Not installed and offer no invented folder or date."
+  },
+  "LibraryViewModelTests.Enriched_metadata_is_bound_when_it_lands": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "binds refreshed enrichment and installation facts into the already open panel"
+      }
+    ],
+    "reason": "The already mounted panel receives refreshed title/year/summary/playtime/date through the live library query; both modes show 268h and the combined year/month idle span, and retained ownership data exposes the actual install path."
+  },
+  "LibraryViewModelTests.Playtime_without_a_date_reads_as_unrecorded_not_as_never": {
+    "status": "ported",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "distinguishes no play from missing last-session dates for %s minutes"
+      }
+    ],
+    "reason": "Both modes include the exact source 7-minute case, retain its 7m figure and Steam missing-session-date sentence, and never claim it was never opened."
+  },
+  "LibraryViewModelTests.One_update_is_singular": {
+    "status": "framework-specific",
+    "reason": "This source method asserts only the obsolete GameDetailsViewModel.GapCaption string. Neither active baseline desktop nor fullscreen views bind GapCaption; they show the Updates tab and timeline. Both Electron Details modes assert the active 1 unread update shortcut with its singular wording in the source update-composition replacement.",
+    "tests": [
+      {
+        "file": "tests/parity-details.test.tsx",
+        "case": "lists source update headlines newest first and offers only supported reader pages"
+      }
+    ]
+  }
+}

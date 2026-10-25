@@ -16,7 +16,7 @@ namespace Winnow.Tests;
 /// production code path could reach them. A type with no registration and no
 /// caller passes every unit test it has.
 ///
-/// <para>These build the container the way <c>Program.ConfigureServices</c>
+/// <para>These build the container the way <c>Winnow.App.LegacyTestServices.ConfigureServices</c>
 /// does and then actually resolve the sweep, so the registration is exercised
 /// rather than asserted about.</para>
 /// </summary>
