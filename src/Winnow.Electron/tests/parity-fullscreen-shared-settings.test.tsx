@@ -205,6 +205,24 @@ describe('fullscreen Library uses the shared application preferences', () => {
       await waitFor(() => expect(row.getAttribute('aria-checked')).toBe('false'))
     }
   })
+  it('draws the journal switch only once its preference is read, so it never flips from disabled', async () => {
+    const f = fixture()
+    const original = f.request.getMockImplementation()!
+    let release!: () => void
+    f.request.mockImplementation((input: ApiRequest) =>
+      input.route === 'journal.preferences.get'
+        ? new Promise((resolve) => {
+            release = () => resolve(original(input))
+          })
+        : original(input),
+    )
+    render(<LibraryRows />, { wrapper: f.wrapper })
+    await ready('Group expansions', 'switch')
+    expect(screen.queryByRole('switch', { name: 'Journal after playing' })).toBeNull()
+    await act(async () => release())
+    const row = await screen.findByRole<HTMLButtonElement>('switch', { name: 'Journal after playing' })
+    expect(row.disabled).toBe(false)
+  })
   it('refreshes an independent Library and preserves the newest other visibility preferences', async () => {
     const f = fixture()
     render(

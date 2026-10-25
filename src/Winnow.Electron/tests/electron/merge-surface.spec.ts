@@ -65,7 +65,9 @@ for (const zoom of [0.8, 1, 1.4])
       document.body.style.zoom = String(zoom)
     }, zoom)
     await page.addStyleTag({
-      content: '.shared-sort-trigger { position: fixed; right: 12px; bottom: 12px; z-index: 10; }',
+      // Only the sort trigger moves: the platform choice trigger shares its class and must stay put.
+      content:
+        '.shared-sort-trigger[title="Sort order"] { position: fixed; right: 12px; bottom: 12px; z-index: 10; }',
     })
     const trigger = page.getByRole('button', { name: 'Sort · Strongest match', exact: true })
     await trigger.click()

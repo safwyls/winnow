@@ -418,15 +418,19 @@ export function JournalPromptPreference({ mode = 'desktop' }: { mode?: Mode } = 
   return (
     <div>
       {mode === 'fullscreen' ? (
-        <FullscreenSwitch
-          label="Journal after playing"
-          description="Ask for a note after a session."
-          value={query.data?.promptAfterPlay ?? false}
-          disabled={!query.data || command.isPending}
-          change={(value) =>
-            command.mutate({ route: 'journal.preferences.put', body: { promptAfterPlay: value } })
-          }
-        />
+        // The row appears once its preference is known, so it never reports a disabled state
+        // that flips to enabled moments later; the other rows read preferences cached earlier.
+        query.data && (
+          <FullscreenSwitch
+            label="Journal after playing"
+            description="Ask for a note after a session."
+            value={query.data.promptAfterPlay}
+            disabled={command.isPending}
+            change={(value) =>
+              command.mutate({ route: 'journal.preferences.put', body: { promptAfterPlay: value } })
+            }
+          />
+        )
       ) : (
         <label className="check-field">
           <input

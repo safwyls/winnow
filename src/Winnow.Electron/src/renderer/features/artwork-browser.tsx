@@ -5,6 +5,7 @@ import { ApiError, openExternal, request } from '../api/client'
 import type { ArtworkCandidate, ArtworkPage, ArtworkState, CoverKey, Mode } from '../api/types'
 import type { ArtworkSaveResult } from '../../shared/bridge'
 import { updatePageUrl } from './details-facts'
+import { escapeOwner, isOwnEscape } from './dialog-escape'
 import { Empty, Notice } from './shared'
 import { useArtworkSelection } from '../components/Artwork'
 import { ArtworkPlaceholder } from '../components/ArtworkPlaceholder'
@@ -144,12 +145,15 @@ export function ArtworkBrowserDialog({
           aria-describedby={undefined}
           onEscapeKeyDown={(event) => {
             event.preventDefault()
-            const owner =
-              event.target instanceof Element
-                ? event.target.closest('[role="dialog"], [role="alertdialog"]')
-                : null
+            const owner = escapeOwner(event.target)
             if (owner && owner !== root.current) return
             event.stopImmediatePropagation()
+            if (!busy.current) onClose()
+          }}
+          onKeyDown={(event) => {
+            if (!isOwnEscape(event)) return
+            event.preventDefault()
+            event.stopPropagation()
             if (!busy.current) onClose()
           }}
           onOpenAutoFocus={(event) => {

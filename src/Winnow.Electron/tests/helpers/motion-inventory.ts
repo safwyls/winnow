@@ -84,7 +84,10 @@ export const scheduledOwners: Record<string, [number, string]> = {
     'Row controller snaps and clears motion when reduced; avalon-row-motion tests.',
   ],
   'themes/avalon-search.tsx': [1, 'Search-field focus after mount.'],
-  'themes/avalon.tsx': [11, 'Library/Home retained selection, measurement and focus restoration.'],
+  'themes/avalon.tsx': [
+    12,
+    'Library/Home retained selection, measurement, hide scroll restoration and focus restoration.',
+  ],
   'themes/rift.tsx': [4, 'Mounted page and search focus.'],
   'themes/rift/Discover.tsx': [1, 'Recommendation focus after explicit selection.'],
   'themes/rift/Library.tsx': [3, 'Hover preview delay and retained scroll/focus restoration.'],

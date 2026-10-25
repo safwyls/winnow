@@ -523,7 +523,11 @@ test('desktop directional input reveals the last cover and carries its column be
   }
 })
 test('fullscreen retains row nodes, carries and clamps columns on revisits, and reverses without fading', async () => {
-  await replace(fixture())
+  // The previous test leaves the desktop feed, which has no shelf indicator for replace() to
+  // await; the reload below loads the restored fixture before fullscreen is entered.
+  await application.evaluate((_, data) => {
+    ;(globalThis as unknown as { __winnowLayoutFixture: Fixture }).__winnowLayoutFixture = data
+  }, fixture())
   await page.reload()
   await surface('fullscreen', 1920, 1080)
   await page.getByRole('button', { name: 'Show Layout shelf 1', exact: true }).click()

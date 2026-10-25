@@ -11,6 +11,7 @@ $hadExitCode = $null -ne $initialExitVariable
 $initialExitCode = if ($hadExitCode) { $initialExitVariable.Value } else { $null }
 $global:WinnowEntryPointCommands = [Collections.Generic.List[object]]::new()
 $global:WinnowEntryPointNodeExit = 0
+$global:WinnowEntryPointElectronInstallExit = 0
 $global:WinnowEntryPointDotnetExit = 0
 $global:WinnowEntryPointNpmExit = 0
 function Assert-True([bool]$Condition, [string]$Message) {
@@ -35,7 +36,7 @@ function node {
         file = 'node'; arguments = @($args); cwd = (Get-Location).Path
         backend = $env:WINNOW_BACKEND_PATH; activation = $env:WINNOW_ACTIVATION_HELPER_PATH; update = $env:WINNOW_UPDATE_HELPER_PATH
     })
-    $global:LASTEXITCODE = $global:WinnowEntryPointNodeExit
+    $global:LASTEXITCODE = if ("$($args[0])".EndsWith('install.js')) { $global:WinnowEntryPointElectronInstallExit } else { $global:WinnowEntryPointNodeExit }
 }
 $saved = @{}
 foreach ($name in @('WINNOW_BACKEND_PATH', 'WINNOW_ACTIVATION_HELPER_PATH', 'WINNOW_UPDATE_HELPER_PATH')) {
@@ -81,16 +82,22 @@ if ($Version -eq '0.2.0-failure') { throw 'Primary publisher failed.' }
     $global:WinnowEntryPointCommands.Clear()
     $data = Join-Path $root 'throwaway library'
     & (Join-Path $root 'Run.ps1') -ArtifactsPath $artifacts -DataDirectory $data -SeedSample -NoSync -ApplicationArguments @('--fullscreen', '--uri', 'winnow://show')
-    Assert-True (($global:WinnowEntryPointCommands.file -join ',') -ceq 'dotnet,dotnet,node') 'Development run did not build companions then use Vite.'
-    $launch = $global:WinnowEntryPointCommands[2]
+    Assert-True (($global:WinnowEntryPointCommands.file -join ',') -ceq 'node,dotnet,dotnet,node') 'Development run did not prepare the Electron runtime, build companions, then use Vite.'
+    Assert-True (($global:WinnowEntryPointCommands[0].arguments -join '|') -ceq (Join-Path $root 'src/Winnow.Electron/node_modules/electron/install.js')) 'Run did not install the pinned Electron runtime first.'
+    $launch = $global:WinnowEntryPointCommands[3]
     Assert-True (($launch.arguments -join '|') -ceq "node_modules/electron-vite/bin/electron-vite.js|dev|--|--data-dir|$data|--seed-sample|--no-sync|--fullscreen|--uri|winnow://show") 'Run did not forward literal product arguments.'
     Assert-True ($launch.backend -ceq (Join-Path $artifacts "bin/Winnow.Backend/debug/Winnow.Backend$suffix") -and
         $launch.activation -ceq $launch.backend -and $launch.update -ceq (Join-Path $artifacts "bin/Winnow.Update.Helper/debug/Winnow.Update.Helper$suffix")) 'Run used unrelated companion outputs.'
     $global:WinnowEntryPointCommands.Clear()
+    $global:WinnowEntryPointElectronInstallExit = 5
+    Assert-Failure { & (Join-Path $root 'Run.ps1') -ArtifactsPath $artifacts } 'Electron runtime installation failed. Run npm ci in src/Winnow.Electron and retry.'
+    Assert-True ($global:WinnowEntryPointCommands.Count -eq 1) 'Failed Electron runtime installation continued into later steps.'
+    $global:WinnowEntryPointElectronInstallExit = 0
+    $global:WinnowEntryPointCommands.Clear()
     $global:WinnowEntryPointNodeExit = 9
     Assert-Failure { & (Join-Path $root 'Run.ps1') -Preview -ArtifactsPath $artifacts } 'Electron exited with code 9.'
-    Assert-True (($global:WinnowEntryPointCommands.file -join ',') -ceq 'dotnet,dotnet,npm,node' -and
-        ($global:WinnowEntryPointCommands[3].arguments -join '|') -ceq 'node_modules/electron-vite/bin/electron-vite.js|preview|--skipBuild|--') 'Preview did not build first or forced an unrequested data override.'
+    Assert-True (($global:WinnowEntryPointCommands.file -join ',') -ceq 'node,dotnet,dotnet,npm,node' -and
+        ($global:WinnowEntryPointCommands[4].arguments -join '|') -ceq 'node_modules/electron-vite/bin/electron-vite.js|preview|--skipBuild|--') 'Preview did not build first or forced an unrequested data override.'
     foreach ($name in $saved.Keys) {
         Assert-True ([Environment]::GetEnvironmentVariable($name) -ceq "original-$name") 'Run leaked companion environment overrides.'
     }

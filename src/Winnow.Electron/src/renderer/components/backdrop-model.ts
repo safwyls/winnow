@@ -38,13 +38,36 @@ export interface BackdropFrame {
 }
 export const BACKDROP_FADE_MS = 180
 export const backdropKey = (key: BackdropKey) => `${key.provider}:${key.id}`
+const isBackdropKey = (value: unknown): value is BackdropKey =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as BackdropKey).provider === 'string' &&
+  typeof (value as BackdropKey).id === 'string'
+const isBackdropCandidate = (value: unknown): value is BackdropCandidate =>
+  typeof value === 'object' &&
+  value !== null &&
+  isBackdropKey((value as BackdropCandidate).key) &&
+  // Saved images without stored dimensions report an aspect ratio of 0.
+  Number.isFinite((value as BackdropCandidate).aspectRatio)
+/** A missing, partial or malformed selection has no candidates; it must never fail a consumer. */
+export function normalizeBackdropSelection(value: unknown): BackdropSelection {
+  const selection =
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Partial<Record<keyof BackdropSelection, unknown>>)
+      : undefined
+  const candidates = Array.isArray(selection?.candidates)
+    ? selection.candidates.filter(isBackdropCandidate).map((candidate) => ({
+        key: candidate.key,
+        aspectRatio: candidate.aspectRatio,
+        fitWholeHero: candidate.fitWholeHero === true,
+      }))
+    : []
+  return { candidates, coverKey: isBackdropKey(selection?.coverKey) ? selection.coverKey : null }
+}
 export function backdropCandidates(selection: BackdropSelection): BackdropCandidate[] {
-  const candidates = [...selection.candidates]
-  if (
-    selection.coverKey &&
-    !candidates.some((candidate) => backdropKey(candidate.key) === backdropKey(selection.coverKey!))
-  )
-    candidates.push({ key: selection.coverKey, aspectRatio: 2 / 3, fitWholeHero: false })
+  const { candidates, coverKey } = normalizeBackdropSelection(selection)
+  if (coverKey && !candidates.some((candidate) => backdropKey(candidate.key) === backdropKey(coverKey)))
+    candidates.push({ key: coverKey, aspectRatio: 2 / 3, fitWholeHero: false })
   return candidates
 }
 export function backdropGeometry(
@@ -121,7 +144,9 @@ export class BackdropController {
     const stale = () => this.disposed || signal.aborted || generation !== this.generation
     let selection: BackdropSelection
     try {
-      selection = await this.dependencies.resolve(workId, size.width / size.height, signal)
+      selection = normalizeBackdropSelection(
+        await this.dependencies.resolve(workId, size.width / size.height, signal),
+      )
     } catch {
       if (!stale()) this.settle(null)
       return

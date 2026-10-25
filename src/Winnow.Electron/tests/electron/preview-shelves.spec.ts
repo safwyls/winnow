@@ -658,14 +658,16 @@ test('desktop preview releases a pending real artwork request ignores its late b
 test('desktop detached metadata cannot replace the reattached preview artwork candidates', async () => {
   await seed('backdrop')
   const target = await sourceSlot()
-  const old = await arm('artworkState', { slot: 'Hero' })
+  // Hero previews share the Details backdrop selector, so their metadata read is
+  // GET works/{id}/backdrop rather than the Hero artwork-state slot.
+  const old = await arm('backdrop')
   await hover(target)
   await entered(old.gateId)
   await page.mouse.move(880, 380)
   await expect(bubble()).toHaveCount(0)
   await canceled(old.gateId)
   await control('change', { kind: 'currentart' })
-  const current = await arm('artworkState', { slot: 'Hero' })
+  const current = await arm('backdrop')
   await hover(target)
   await entered(current.gateId)
   await released(old.gateId)

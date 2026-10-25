@@ -129,6 +129,33 @@ describe('fullscreen metadata field navigation', () => {
     fireEvent.keyDown(name, { key: 'Escape' })
     expect(close).toHaveBeenCalledTimes(1)
   })
+  it('closes the artwork layer on an Escape that lands before Radix hands it the document listener', async () => {
+    const { close } = mount({ dialog: true })
+    const browse = await screen.findByRole('button', { name: 'Browse cover artwork' })
+    browse.focus()
+    // Outside act, the click commits the artwork dialog and moves focus, while the layer
+    // handoff waits for a scheduler task: the metadata layer still owns the Escape listener.
+    const environment = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    const previous = environment.IS_REACT_ACT_ENVIRONMENT
+    environment.IS_REACT_ACT_ENVIRONMENT = false
+    try {
+      browse.click()
+      for (let turn = 0; turn < 20 && !document.querySelector('.artwork-browser-dialog'); turn++)
+        await Promise.resolve()
+      const artwork = document.querySelector('.artwork-browser-dialog')!
+      expect(artwork).not.toBeNull()
+      expect(artwork.contains(document.activeElement)).toBe(true)
+      document.activeElement!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      )
+      await waitFor(() => expect(document.querySelector('.artwork-browser-dialog')).toBeNull())
+    } finally {
+      environment.IS_REACT_ACT_ENVIRONMENT = previous
+    }
+    await waitFor(() => expect(document.activeElement).toBe(browse))
+    expect(screen.getByLabelText('Name')).toBeTruthy()
+    expect(close).not.toHaveBeenCalled()
+  })
   it.each([false, true])(
     'disables Back throughout a pending save and restores it after publication, fullscreen=%s',
     async (fullscreen) => {

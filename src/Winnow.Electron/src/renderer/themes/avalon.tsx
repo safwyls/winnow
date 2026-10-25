@@ -96,6 +96,7 @@ import { FullscreenHints } from '../components/FullscreenHints'
 import { AnnouncedName } from '../components/AnnouncedName'
 import { RootBumper, SectionLabel, SectionNavigation } from '../components/SectionNavigation'
 import { AvalonShelfIndicator } from './avalon-shelf-indicator'
+import { AvalonRecord } from './avalon-record'
 import { useSystemReducedMotion } from '../useSystemReducedMotion'
 import { Details } from '../features/Details'
 import { AvalonSearch } from './avalon-search'
@@ -1015,35 +1016,17 @@ export function AvalonLibrary(context: ThemeContext) {
   const selectionSending = useRef(false)
   const [hideTargets, setHideTargets] = useState<number[] | null>(null)
   const hideOrigin = useRef<HTMLElement | null>(null)
+  const hideOffset = useRef(0)
+  const [hideRestore, setHideRestore] = useState<{ targets: number[]; offset: number } | null>(null)
   function closeHide(completed: boolean) {
     setHideTargets(null)
     if (fullscreen) {
       if (completed) restoreBrowseFocus()
       else setPanel('options')
-    } else
+    } else if (completed) setHideRestore({ targets: hideTargets ?? [], offset: hideOffset.current })
+    else
       requestAnimationFrame(() => {
-        if (!completed) {
-          if (hideOrigin.current?.isConnected) hideOrigin.current.focus({ preventScroll: true })
-          return
-        }
-        const viewport = scroll.current?.getBoundingClientRect()
-        const remaining = [
-          ...(scroll.current?.querySelectorAll<HTMLButtonElement>('[data-avalon-game]') ?? []),
-        ].find((button) => {
-          const bounds = button.getBoundingClientRect()
-          return (
-            !hideTargets?.includes(Number(button.dataset.avalonGame)) &&
-            viewport &&
-            bounds.bottom > viewport.top &&
-            bounds.top < viewport.bottom &&
-            bounds.width > 0
-          )
-        })
-        ;(
-          remaining ??
-          document.querySelector<HTMLElement>('[data-library-search]') ??
-          manageButton.current
-        )?.focus({ preventScroll: true })
+        if (hideOrigin.current?.isConnected) hideOrigin.current.focus({ preventScroll: true })
       })
   }
   const anchor = useRef<number | null>(null)
@@ -1070,6 +1053,36 @@ export function AvalonLibrary(context: ThemeContext) {
     if (!fullscreen && selected !== null && !visible.has(selected)) setSelected(retained[0] ?? null)
     if (anchor.current !== null && !visible.has(anchor.current)) anchor.current = null
   }, [games, selection, selected, fullscreen])
+  useEffect(() => {
+    if (!hideRestore || games.some((game) => hideRestore.targets.includes(game.workId))) return
+    setHideRestore(null)
+    const firstVisibleGame = () => {
+      const viewport = scroll.current?.getBoundingClientRect()
+      return [...(scroll.current?.querySelectorAll<HTMLButtonElement>('[data-avalon-game]') ?? [])].find(
+        (button) => {
+          const bounds = button.getBoundingClientRect()
+          return viewport && bounds.bottom > viewport.top && bounds.top < viewport.bottom && bounds.width > 0
+        },
+      )
+    }
+    const remaining = firstVisibleGame()
+    if (!remaining) {
+      ;(document.querySelector<HTMLElement>('[data-library-search]') ?? manageButton.current)?.focus({
+        preventScroll: true,
+      })
+      return
+    }
+    // Clearing the hidden selection removes the selection actions and lets the results grow;
+    // selecting a surviving game first brings them back, so the saved offset is restored against
+    // the final geometry and focus lands on a row that stays visible. Runs after the retaining
+    // effect above so its reset of the hidden selection does not override this choice.
+    setSelected(Number(remaining.dataset.avalonGame))
+    requestAnimationFrame(() => {
+      if (!scroll.current) return
+      scroll.current.scrollTop = hideRestore.offset
+      ;(firstVisibleGame() ?? remaining).focus({ preventScroll: true })
+    })
+  }, [games, hideRestore])
   useEffect(() => {
     if (fullscreen && !games.length) {
       setSelected(null)
@@ -1435,6 +1448,7 @@ export function AvalonLibrary(context: ThemeContext) {
                 .map((game) => game.workId)
               if (!targets.length) return
               hideOrigin.current = event.currentTarget
+              hideOffset.current = scroll.current?.scrollTop ?? 0
               setHideTargets(targets)
               if (fullscreen) setPanel(null)
             }}
@@ -1692,8 +1706,7 @@ export function AvalonLibrary(context: ThemeContext) {
                           >
                             {games.slice(row.index * columns, (row.index + 1) * columns).map((game, index) =>
                               listMode ? (
-                                <button
-                                  className="avalon-record"
+                                <AvalonRecord
                                   key={game.workId}
                                   data-avalon-game={game.workId}
                                   data-work-id={game.workId}
@@ -1728,7 +1741,7 @@ export function AvalonLibrary(context: ThemeContext) {
                                   <span>{libraryBucketLabel(game.bucket)}</span>
                                   <span>{libraryPlaytime(game.playtimeMinutes)}</span>
                                   <span>{libraryIdle(game.lastPlayedAt)}</span>
-                                </button>
+                                </AvalonRecord>
                               ) : (
                                 <AvalonCover
                                   key={game.workId}

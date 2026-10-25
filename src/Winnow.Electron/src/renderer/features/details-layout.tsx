@@ -40,6 +40,7 @@ import { librarySourceSummary } from './library-source'
 import { ArtworkBrowserDialog } from './artwork-browser'
 import { AvalonBackdrop } from '../themes/avalon-backdrop'
 import { restoreFocusWhenReady } from './restore-focus'
+import { isOwnEscape } from './dialog-escape'
 import { AvalonAction, AvalonActions } from '../themes/avalon-actions'
 import { ChooseLaunchVersion } from './choose-launch-version'
 import { ReleaseAchievements } from './detail-achievements'
@@ -809,7 +810,15 @@ export function AvalonDetailsLayout({
             }
             if (closeLayer()) event.preventDefault()
           }}
-          onKeyDown={escape}
+          onKeyDown={(event) => {
+            escape(event)
+            // Radix attaches its Escape listener to the top layer in a deferred render, so an
+            // Escape pressed as a nested dialog settles reaches no layer; close Details here.
+            if (event.defaultPrevented || !isOwnEscape(event)) return
+            event.preventDefault()
+            event.stopPropagation()
+            closeDetails()
+          }}
           onInteractOutside={(event) => {
             if (journalSending) event.preventDefault()
           }}

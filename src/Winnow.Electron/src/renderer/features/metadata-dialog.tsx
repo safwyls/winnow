@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { ArrowLeft } from 'lucide-react'
 import type { Mode } from '../api/types'
 import { MetadataEditor, type MetadataEditorNavigation } from './parity-details'
+import { escapeOwner, isOwnEscape } from './dialog-escape'
 import './metadata-dialog.css'
 
 export function MetadataDialog({
@@ -45,14 +46,17 @@ export function MetadataDialog({
           onPointerDownOutside={(event) => event.preventDefault()}
           onEscapeKeyDown={(event) => {
             event.preventDefault()
-            const owner =
-              event.target instanceof Element
-                ? event.target.closest('[role="dialog"], [role="alertdialog"]')
-                : null
+            const owner = escapeOwner(event.target)
             if (owner && owner !== root.current) return
             // Radix listeners share document capture. Consume this layer before
             // closing it, so another listener cannot dismiss the restored parent.
             event.stopImmediatePropagation()
+            back()
+          }}
+          onKeyDown={(event) => {
+            if (!isOwnEscape(event)) return
+            event.preventDefault()
+            event.stopPropagation()
             back()
           }}
           onOpenAutoFocus={(event) => {

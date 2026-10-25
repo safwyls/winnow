@@ -74,6 +74,19 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
+it.each([[], null, { candidates: null, coverKey: null }])(
+  'preloads nothing and settles quietly when the backdrop selection payload is %j',
+  async (payload) => {
+    vi.mocked(window.winnow.request).mockImplementation(async ({ route }) => ({
+      ok: true,
+      status: 200,
+      data: route === 'artwork.backdrop' ? payload : { current: null, revision: 'r1' },
+    }))
+    await expect(preloadBackground(client, { ...target, coverWorkId: 9 }, signal())).resolves.toBeUndefined()
+    expect(window.winnow.artworkBytes).not.toHaveBeenCalled()
+    expect(client.getQueryCache().getAll()).toEqual([])
+  },
+)
 it('warms the desktop Details crop width and the actual backdrop consumer reuses its bytes without speculative decoding', async () => {
   await preloadBackground(client, target, signal())
   expect(window.winnow.request).toHaveBeenCalledWith(

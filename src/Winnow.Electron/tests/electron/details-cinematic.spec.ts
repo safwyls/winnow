@@ -141,6 +141,9 @@ for (const [userBackground, longTitle, hasJournal, uiScale] of [
         create = URL.createObjectURL.bind(URL),
         revoke = URL.revokeObjectURL.bind(URL)
       ;(window as any).cinematicUrls = live
+      // Backdrops decoded before this tracker, such as the fullscreen Home or Library
+      // backdrop, stay in the shared bounded cache and are reused by Details.
+      ;(window as any).cinematicCachedSources = [...document.images].map((image) => image.src)
       URL.createObjectURL = (value) => {
         const url = create(value)
         live.add(url)
@@ -158,6 +161,13 @@ for (const [userBackground, longTitle, hasJournal, uiScale] of [
       previews = details.locator('.screenshot-previews > button')
     const key = userBackground ? 'user:landscape' : 'steam-hero:42'
     await expect(backdrop.locator(`[data-key="${key}"] img`)).toBeVisible()
+    await expect
+      .poll(() =>
+        backdrop
+          .locator(`[data-key="${key}"] img`)
+          .evaluate((node) => (node as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0)
     await expect(previews.locator('img')).toHaveCount(2)
     await expect
       .poll(() =>
@@ -310,10 +320,17 @@ for (const [userBackground, longTitle, hasJournal, uiScale] of [
         ...document.querySelectorAll<HTMLImageElement>('.avalon-details .screenshot-previews img'),
       ].map((image) => image.src),
       live: [...(window as any).cinematicUrls] as string[],
+      cached: (window as any).cinematicCachedSources as string[],
     }))
     expect(ownedSources.backdrop).toHaveLength(1)
     expect(ownedSources.screenshots).toHaveLength(2)
-    expect(ownedSources.live.sort()).toEqual([...ownedSources.backdrop, ...ownedSources.screenshots].sort())
+    // Details and fullscreen backdrops share one bounded pixel cache: a backdrop already
+    // displayed before the tracker was installed is reused, every other image is a live
+    // URL created for this Details view.
+    const tracked = [...ownedSources.backdrop, ...ownedSources.screenshots]
+      .filter((source) => !ownedSources.cached.includes(source))
+      .sort()
+    expect(ownedSources.live.sort()).toEqual(tracked)
     await details.getByRole('button', { name: 'Read more →', exact: true }).click()
     await expect(
       reading.getByText(Array(12).fill('Explore the mountain coast and find your way home.').join(' '), {
@@ -335,13 +352,13 @@ for (const [userBackground, longTitle, hasJournal, uiScale] of [
       ),
       contentType: 'application/json',
     })
-    // Backdrops own their pixels until detach; screenshot pixels instead belong
-    // to the bounded artwork LRU. Only those exact two entries may survive.
+    // Closing Details hands its backdrop and screenshot pixels to the bounded artwork
+    // cache instead of revoking them, alongside the Library backdrop decoded for the
+    // 720p window on the way out. The invalidation below is the leak check: a lease
+    // that outlives its view keeps its URL alive past that eviction.
     await expect
-      .poll(() => page.evaluate(() => [...(window as any).cinematicUrls].sort()))
-      .toEqual([...ownedSources.screenshots].sort())
-    for (const source of ownedSources.backdrop)
-      expect(await page.evaluate((source) => (window as any).cinematicUrls.has(source), source)).toBe(false)
+      .poll(() => page.evaluate(() => [...(window as any).cinematicUrls]))
+      .toEqual(expect.arrayContaining(tracked))
     // Exercise the production cache invalidation path, including detached assets.
     await application.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]!.webContents.send('winnow:event', {

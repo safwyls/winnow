@@ -14,6 +14,7 @@ import { acquisitionFacts, playtimeRecordLine, updateHeadline, updatePageUrl } f
 import { updateFlagState } from './update-flags'
 import { ArtworkBrowserDialog, type ArtworkSlot } from './artwork-browser'
 import { InstallFolderButton } from './install-folder'
+import { isOwnEscape } from './dialog-escape'
 
 export { IgdbMatch } from './igdb-match'
 
@@ -1024,6 +1025,13 @@ export function MetadataEditor({
               }}
               onEscapeKeyDown={(event) => {
                 if (sending) event.preventDefault()
+              }}
+              onKeyDown={(event) => {
+                // Also answers an Escape that a stale parent layer swallowed while this dialog settled.
+                if (!isOwnEscape(event)) return
+                event.preventDefault()
+                event.stopPropagation()
+                if (!sending) setResetField(null)
               }}
             >
               <Dialog.Title>Reset {fieldLabels[resetField.field]}?</Dialog.Title>

@@ -89,6 +89,29 @@ beforeEach(() => {
     },
   })
 })
+it.each([[], null, { candidates: 'none', coverKey: 'cover' }, { candidates: [{ key: { provider: 'x' } }] }])(
+  'treats an unexpected selection payload %j as no candidates instead of failing the frame',
+  async (payload) => {
+    controller.select(1, size)
+    reads.at(-1)!.finish(payload as unknown as BackdropSelection)
+    await flush()
+    expect(images).toEqual([])
+    expect(current).toEqual({ current: null, outgoing: null, progress: 1, loading: false })
+  },
+)
+it('appends a well-formed cover fallback behind malformed candidates and marks it as the fallback layer', async () => {
+  controller.select(1, size)
+  reads.at(-1)!.finish({
+    candidates: [{ key: { provider: 'igdb-backdrop' }, aspectRatio: 16 / 9 }, landscape('kept')],
+    coverKey: { provider: 'steam', id: '42' },
+  } as unknown as BackdropSelection)
+  await flush()
+  expect(images.map((image) => image.key)).toEqual(['igdb-backdrop:kept'])
+  await complete(null)
+  expect(images.map((image) => image.key)).toEqual(['igdb-backdrop:kept', 'steam:42'])
+  await complete(pixels('cover'))
+  expect(current.current).toMatchObject({ fallback: true, pixels: { source: 'cover' } })
+})
 it('cancels superseded metadata and cannot present its late selection', async () => {
   controller.select(1, size)
   const obsolete = reads[0]

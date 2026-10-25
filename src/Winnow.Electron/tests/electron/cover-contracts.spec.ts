@@ -706,6 +706,10 @@ for (const surfaceName of ['desktop', 'fullscreen']) {
       await openQueue()
       if (mode === 'fullscreen') {
         await expect(queue().locator('.artwork')).toHaveCount(0)
+        // Browsing the Library preloads visible members' 1920x1080 Details backdrops into
+        // the shared bounded cache. A smaller view needs its own rendition, so this Details
+        // read is the one the gate observes.
+        await surface(1280, 720)
         const held = await arm('620', 'steam-hero')
         await openMergeDetails()
         await entered(held.gateId)
